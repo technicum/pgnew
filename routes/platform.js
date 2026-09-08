@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { pool, THEMES, RESERVED_SUBDOMAINS, TABLES } = require('../db/database');
 const { storeUrl, rootUrl } = require('../middleware/tenant');
+const { defaultFields } = require('../lib/sections');
 
 function slugify(str) {
   return (str || '')
@@ -92,6 +93,24 @@ router.post('/signup', async (req, res, next) => {
     const [adminResult] = await conn.query(
       `INSERT INTO ${TABLES.admins} (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)`,
       [storeId, ownerName, ownerEmail, passwordHash]
+    );
+
+    // Every store needs a Home page to render "/" from — create one here so
+    // a brand-new store never 404s. (Stores that existed before the page
+    // builder shipped get this backfilled on server boot instead — see
+    // migratePagesForExistingStores in db/database.js.)
+    const [pageResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'Home', '/', 1, 'published')`,
+      [storeId]
+    );
+    const pageId = pageResult.insertId;
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'hero', 0, ?)`,
+      [pageId, JSON.stringify(defaultFields('hero'))]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'products', 1, ?)`,
+      [pageId, JSON.stringify(defaultFields('products'))]
     );
 
     await conn.commit();
