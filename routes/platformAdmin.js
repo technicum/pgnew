@@ -76,7 +76,14 @@ router.get('/stores/:id', async (req, res, next) => {
       req.flash('error', 'Store not found.');
       return res.redirect('/platform-admin');
     }
-    const [admins] = await pool.query(`SELECT id, name, email, created_at FROM ${TABLES.admins} WHERE store_id = ? ORDER BY created_at`, [store.id]);
+    const [admins] = await pool.query(
+      `SELECT ur.id, u.name, u.email, ur.role, ur.created_at
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.users} u ON u.id = ur.user_id
+       WHERE ur.store_id = ? AND ur.role IN ('admin', 'manager')
+       ORDER BY (ur.role = 'admin') DESC, ur.created_at`,
+      [store.id]
+    );
     const [[{ c: productCount }]] = await pool.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [store.id]);
     const [[{ c: orderCount }]] = await pool.query(`SELECT COUNT(*) AS c FROM ${TABLES.orders} WHERE store_id = ?`, [store.id]);
     const [[{ total }]] = await pool.query(
@@ -145,14 +152,19 @@ router.get('/plans', async (req, res, next) => {
   }
 });
 
-// ---------- Users (every store admin, across every store) ----------
+// ---------- Users (every store admin/manager, across every store) ----------
+// A pz_users login can hold a role at more than one store, so this lists
+// one row per (user, store, role) — i.e. per pz_user_roles row, not per
+// person. The :roleId in the routes below is that pz_user_roles.id.
 router.get('/users', async (req, res, next) => {
   try {
     const [users] = await pool.query(
-      `SELECT a.id, a.name, a.email, a.created_at, s.id AS store_id, s.name AS store_name, s.subdomain
-       FROM ${TABLES.admins} a
-       JOIN ${TABLES.stores} s ON s.id = a.store_id
-       ORDER BY s.name, a.created_at`
+      `SELECT ur.id, u.name, u.email, ur.role, ur.created_at, s.id AS store_id, s.name AS store_name, s.subdomain
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.users} u ON u.id = ur.user_id
+       JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       WHERE ur.role IN ('admin', 'manager')
+       ORDER BY s.name, ur.created_at`
     );
     res.render('platform-admin/users', { title: 'Users', users });
   } catch (err) {
@@ -160,55 +172,60 @@ router.get('/users', async (req, res, next) => {
   }
 });
 
-// Logs the platform admin into a store's admin panel as that store's admin,
-// without knowing their password. The session gains an `impersonation`
-// marker (shown as a banner in views/admin/partials/header.ejs) so it's
-// always visible that this isn't a normal store-admin session, with a way
-// back to the platform admin.
-router.post('/users/:adminId/login-as', async (req, res, next) => {
+// Logs the platform admin into a store's admin panel as that user, without
+// knowing their password. The session gains an `impersonation` marker
+// (shown as a banner in views/admin/partials/header.ejs) so it's always
+// visible that this isn't a normal store-admin session, with a way back to
+// the platform admin.
+router.post('/users/:roleId/login-as', async (req, res, next) => {
   try {
-    const [[admin]] = await pool.query(
-      `SELECT a.id, a.name, a.email, a.store_id, s.subdomain, s.status AS store_status
-       FROM ${TABLES.admins} a
-       JOIN ${TABLES.stores} s ON s.id = a.store_id
-       WHERE a.id = ?`,
-      [req.params.adminId]
+    const [[row]] = await pool.query(
+      `SELECT ur.role, u.id AS user_id, u.name, u.email, s.id AS store_id, s.subdomain, s.status AS store_status
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.users} u ON u.id = ur.user_id
+       JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       WHERE ur.id = ?`,
+      [req.params.roleId]
     );
-    if (!admin) {
+    if (!row) {
       req.flash('error', 'User not found.');
       return res.redirect('/platform-admin/users');
     }
-    if (admin.store_status !== 'active') {
+    if (row.store_status !== 'active') {
       req.flash('error', "That store is suspended — reactivate it first to log in as this user.");
       return res.redirect('/platform-admin/users');
     }
 
-    req.session.admin = { id: admin.id, name: admin.name, email: admin.email, store_id: admin.store_id };
+    req.session.admin = { id: row.user_id, name: row.name, email: row.email, store_id: row.store_id, role: row.role };
     req.session.impersonation = { platformAdminId: req.session.platformAdmin.id, platformAdminName: req.session.platformAdmin.name };
 
-    res.redirect(storeUrl(req, admin.subdomain, '/admin'));
+    res.redirect(storeUrl(req, row.subdomain, '/admin'));
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/users/:adminId/delete', async (req, res, next) => {
+router.post('/users/:roleId/delete', async (req, res, next) => {
   try {
-    const [[admin]] = await pool.query(`SELECT * FROM ${TABLES.admins} WHERE id = ?`, [req.params.adminId]);
-    if (!admin) {
+    const [[role]] = await pool.query(`SELECT * FROM ${TABLES.userRoles} WHERE id = ?`, [req.params.roleId]);
+    if (!role) {
       req.flash('error', 'User not found.');
       return res.redirect('/platform-admin/users');
     }
-    const [[{ c: siblingCount }]] = await pool.query(
-      `SELECT COUNT(*) AS c FROM ${TABLES.admins} WHERE store_id = ?`,
-      [admin.store_id]
-    );
-    if (siblingCount <= 1) {
-      req.flash('error', "Can't delete the only admin of a store — that store would be locked out.");
-      return res.redirect('/platform-admin/users');
+    if (role.role === 'admin') {
+      const [[{ c: adminCount }]] = await pool.query(
+        `SELECT COUNT(*) AS c FROM ${TABLES.userRoles} WHERE store_id = ? AND role = 'admin'`,
+        [role.store_id]
+      );
+      if (adminCount <= 1) {
+        req.flash('error', "Can't delete the only admin of a store — that store would be locked out.");
+        return res.redirect('/platform-admin/users');
+      }
     }
 
-    await pool.query(`DELETE FROM ${TABLES.admins} WHERE id = ?`, [admin.id]);
+    // Removes this person's access to this one store only — their pz_users
+    // login (and any role at other stores) stays intact.
+    await pool.query(`DELETE FROM ${TABLES.userRoles} WHERE id = ?`, [role.id]);
     req.flash('success', 'User deleted.');
     res.redirect('/platform-admin/users');
   } catch (err) {

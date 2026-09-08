@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { pool, TABLES, THEMES } = require('../db/database');
-const { requireAdmin } = require('../middleware/auth');
+const { requireAdmin, requireAdminRole } = require('../middleware/auth');
 const { rootUrl } = require('../middleware/tenant');
 const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields } = require('../lib/sections');
 
@@ -51,14 +51,21 @@ router.get('/login', (req, res) => {
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const [[admin]] = await pool.query(`SELECT * FROM ${TABLES.admins} WHERE store_id = ? AND email = ?`, [req.store.id, email]);
+    const [[user]] = await pool.query(
+      `SELECT u.*, ur.role FROM ${TABLES.users} u
+       JOIN ${TABLES.userRoles} ur ON ur.user_id = u.id
+       WHERE ur.store_id = ? AND ur.role IN ('admin', 'manager') AND u.email = ?
+       ORDER BY (ur.role = 'admin') DESC
+       LIMIT 1`,
+      [req.store.id, email]
+    );
 
-    if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
+    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       req.flash('error', 'Invalid email or password.');
       return res.redirect('/admin/login');
     }
 
-    req.session.admin = { id: admin.id, name: admin.name, email: admin.email, store_id: admin.store_id };
+    req.session.admin = { id: user.id, name: user.name, email: user.email, store_id: req.store.id, role: user.role };
     res.redirect('/admin');
   } catch (err) {
     next(err);
@@ -337,7 +344,8 @@ router.post('/pages/:id/publish', async (req, res, next) => {
   }
 });
 
-router.post('/pages/:id/delete', async (req, res, next) => {
+// Admin only — a Manager can create/edit pages but not delete them.
+router.post('/pages/:id/delete', requireAdminRole, async (req, res, next) => {
   try {
     const page = await loadOwnedPage(req.store.id, req.params.id);
     if (!page) {
@@ -479,17 +487,20 @@ router.post('/orders/:id/status', async (req, res, next) => {
 });
 
 // ---------- Customers ----------
-// PageZaper doesn't have a separate customers table — every shopper is
-// whoever they said they were at checkout. This derives a customer list
-// from order history (grouped by email), which is real data, not a stub.
+// Real accounts from pz_customers (storefront signup/login), not guests
+// derived from order history — a guest checkout with no account won't show
+// up here, only shoppers who actually created a customer account.
 router.get('/customers', async (req, res, next) => {
   try {
     const [customers] = await pool.query(
-      `SELECT customer_email AS email, MAX(customer_name) AS name, COUNT(*) AS orderCount,
-              COALESCE(SUM(total), 0) AS totalSpent, MAX(created_at) AS lastOrderAt
-       FROM ${TABLES.orders}
-       WHERE store_id = ?
-       GROUP BY customer_email
+      `SELECT c.id, c.name, c.email, c.phone, c.created_at,
+              COUNT(o.id) AS orderCount,
+              COALESCE(SUM(CASE WHEN o.status != 'cancelled' THEN o.total ELSE 0 END), 0) AS totalSpent,
+              MAX(o.created_at) AS lastOrderAt
+       FROM ${TABLES.customers} c
+       LEFT JOIN ${TABLES.orders} o ON o.customer_id = c.id
+       WHERE c.store_id = ?
+       GROUP BY c.id
        ORDER BY totalSpent DESC`,
       [req.store.id]
     );
@@ -656,8 +667,101 @@ router.get('/apps', (req, res) => {
 });
 
 // ---------- Settings ----------
-router.get('/settings', (req, res) => {
-  res.render('admin/settings', { title: 'Settings', themes: THEMES });
+router.get('/settings', async (req, res, next) => {
+  try {
+    const [team] = await pool.query(
+      `SELECT u.id, u.name, u.email, ur.role, ur.created_at
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.users} u ON u.id = ur.user_id
+       WHERE ur.store_id = ?
+       ORDER BY (ur.role = 'admin') DESC, u.name ASC`,
+      [req.store.id]
+    );
+    res.render('admin/settings', { title: 'Settings', themes: THEMES, team });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Invite a teammate as Admin or Manager. Admin AND Manager can both do this
+// ("can add") — reuses an existing pz_users login by email if that person
+// already has an account (e.g. staff at another store) rather than
+// overwriting their password.
+router.post('/settings/team', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const name = (req.body.name || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    const password = req.body.password || '';
+    const role = req.body.role === 'manager' ? 'manager' : 'admin';
+
+    if (!name || !email) {
+      req.flash('error', 'Name and email are required.');
+      return res.redirect('/admin/settings');
+    }
+
+    const [[existingUser]] = await pool.query(`SELECT id, name FROM ${TABLES.users} WHERE email = ?`, [email]);
+
+    let userId;
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      if (!password || password.length < 6) {
+        req.flash('error', 'Password must be at least 6 characters for a new team member.');
+        return res.redirect('/admin/settings');
+      }
+      const passwordHash = bcrypt.hashSync(password, 10);
+      const [result] = await pool.query(`INSERT INTO ${TABLES.users} (name, email, password_hash) VALUES (?, ?, ?)`, [name, email, passwordHash]);
+      userId = result.insertId;
+    }
+
+    const [[existingRole]] = await pool.query(
+      `SELECT id FROM ${TABLES.userRoles} WHERE user_id = ? AND store_id = ? AND role = ?`,
+      [userId, storeId, role]
+    );
+    if (existingRole) {
+      req.flash('error', `${email} already has ${role} access to this store.`);
+      return res.redirect('/admin/settings');
+    }
+
+    await pool.query(`INSERT INTO ${TABLES.userRoles} (user_id, store_id, role) VALUES (?, ?, ?)`, [userId, storeId, role]);
+    req.flash('success', `${email} added as ${role}.`);
+    res.redirect('/admin/settings');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin only — a Manager can invite teammates but not remove them.
+router.post('/settings/team/:userId/delete', requireAdminRole, async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const [[role]] = await pool.query(
+      `SELECT * FROM ${TABLES.userRoles} WHERE user_id = ? AND store_id = ?`,
+      [req.params.userId, storeId]
+    );
+    if (!role) {
+      req.flash('error', 'Team member not found.');
+      return res.redirect('/admin/settings');
+    }
+
+    if (role.role === 'admin') {
+      const [[{ c: adminCount }]] = await pool.query(
+        `SELECT COUNT(*) AS c FROM ${TABLES.userRoles} WHERE store_id = ? AND role = 'admin'`,
+        [storeId]
+      );
+      if (adminCount <= 1) {
+        req.flash('error', "Can't remove the only Admin — the store would be locked out.");
+        return res.redirect('/admin/settings');
+      }
+    }
+
+    await pool.query(`DELETE FROM ${TABLES.userRoles} WHERE id = ?`, [role.id]);
+    req.flash('success', 'Team member removed.');
+    res.redirect('/admin/settings');
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post('/settings/store', async (req, res, next) => {
@@ -681,9 +785,9 @@ router.post('/settings/store', async (req, res, next) => {
 router.post('/settings/password', async (req, res, next) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
-    const [[admin]] = await pool.query(`SELECT * FROM ${TABLES.admins} WHERE id = ?`, [req.session.admin.id]);
+    const [[user]] = await pool.query(`SELECT * FROM ${TABLES.users} WHERE id = ?`, [req.session.admin.id]);
 
-    if (!admin || !bcrypt.compareSync(currentPassword || '', admin.password_hash)) {
+    if (!user || !bcrypt.compareSync(currentPassword || '', user.password_hash)) {
       req.flash('error', 'Current password is incorrect.');
       return res.redirect('/admin/settings');
     }
@@ -696,8 +800,11 @@ router.post('/settings/password', async (req, res, next) => {
       return res.redirect('/admin/settings');
     }
 
+    // This changes the pz_users password globally — note it applies to every
+    // store this person has a role at, not just this one, since logins are
+    // shared across stores now.
     const passwordHash = bcrypt.hashSync(newPassword, 10);
-    await pool.query(`UPDATE ${TABLES.admins} SET password_hash = ? WHERE id = ?`, [passwordHash, admin.id]);
+    await pool.query(`UPDATE ${TABLES.users} SET password_hash = ? WHERE id = ?`, [passwordHash, user.id]);
     req.flash('success', 'Password changed.');
     res.redirect('/admin/settings');
   } catch (err) {

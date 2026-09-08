@@ -55,27 +55,26 @@
   </section>
 
   <section class="panel">
-    <h2>Store admins</h2>
+    <h2>Store team</h2>
     <% if (admins.length === 0) { %>
-      <p class="empty-state">No admin accounts yet.</p>
+      <p class="empty-state">No admin or manager accounts yet.</p>
     <% } else { %>
       <table class="admin-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Since</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Since</th><th></th></tr></thead>
         <tbody>
           <% admins.forEach(function(a) { %>
             <tr>
               <td><%= a.name %></td>
               <td><%= a.email %></td>
+              <td><span class="status-pill"><%= a.role %></span></td>
               <td><%= new Date(a.created_at).toLocaleDateString() %></td>
               <td class="admin-row-actions">
                 <form action="/platform-admin/users/<%= a.id %>/login-as" method="POST">
                   <button type="submit" class="link-btn">Log in as</button>
                 </form>
-                <% if (admins.length > 1) { %>
-                  <form action="/platform-admin/users/<%= a.id %>/delete" method="POST" onsubmit="return confirm('Delete this user? They will no longer be able to log in.');">
-                    <button type="submit" class="link-btn danger">Delete</button>
-                  </form>
-                <% } %>
+                <form action="/platform-admin/users/<%= a.id %>/delete" method="POST" onsubmit="return confirm('Delete this user? They will no longer be able to log in as this store\'s admin/manager.');">
+                  <button type="submit" class="link-btn danger">Delete</button>
+                </form>
               </td>
             </tr>
           <% }); %>

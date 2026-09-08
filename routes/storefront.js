@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const { pool, TABLES } = require('../db/database');
 const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
+const { requireCustomer } = require('../middleware/auth');
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function genOrderNumber() {
   const rand = Math.floor(1000 + Math.random() * 9000);
@@ -10,6 +14,15 @@ function genOrderNumber() {
 
 function toNumber(product) {
   return { ...product, price: Number(product.price), compare_at_price: product.compare_at_price !== null ? Number(product.compare_at_price) : null };
+}
+
+function orderToNumber(order) {
+  return {
+    ...order,
+    subtotal: Number(order.subtotal),
+    discount_amount: Number(order.discount_amount || 0),
+    total: Number(order.total != null ? order.total : order.subtotal),
+  };
 }
 
 // Everything in this router belongs to a specific store, resolved from the
@@ -159,6 +172,103 @@ router.get('/products/:slug', async (req, res, next) => {
   }
 });
 
+// ---------- Customer accounts ----------
+// Separate from admin/staff logins entirely (pz_customers, not pz_users) —
+// scoped to this one store, same as an order or a product. req.session.customer
+// mirrors req.session.admin's shape/security pattern: a single object
+// checked against req.store.id on every request, since the session cookie
+// is shared across every *.pagezaper.com subdomain.
+router.get('/account/signup', (req, res) => {
+  if (req.session.customer && req.session.customer.store_id === req.store.id) return res.redirect('/account');
+  res.render('storefront/account/signup', { title: 'Create account', errors: [], values: { name: '', email: '' } });
+});
+
+router.post('/account/signup', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const name = (req.body.name || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    const password = req.body.password || '';
+    const confirmPassword = req.body.confirmPassword || '';
+    const values = { name, email };
+    const errors = [];
+
+    if (!name) errors.push('Name is required.');
+    if (!email || !EMAIL_RE.test(email)) errors.push('A valid email address is required.');
+    if (!password || password.length < 6) errors.push('Password must be at least 6 characters.');
+    if (password !== confirmPassword) errors.push('Passwords do not match.');
+
+    if (errors.length) {
+      return res.status(400).render('storefront/account/signup', { title: 'Create account', errors, values });
+    }
+
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.customers} WHERE store_id = ? AND email = ?`, [storeId, email]);
+    if (existing) {
+      return res.status(400).render('storefront/account/signup', {
+        title: 'Create account',
+        errors: [`An account with ${email} already exists — log in instead.`],
+        values,
+      });
+    }
+
+    const passwordHash = bcrypt.hashSync(password, 10);
+    const [result] = await pool.query(
+      `INSERT INTO ${TABLES.customers} (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)`,
+      [storeId, name, email, passwordHash]
+    );
+
+    req.session.customer = { id: result.insertId, name, email, store_id: storeId };
+    req.flash('success', `Welcome, ${name}!`);
+    res.redirect('/account');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/account/login', (req, res) => {
+  if (req.session.customer && req.session.customer.store_id === req.store.id) return res.redirect('/account');
+  res.render('storefront/account/login', { title: 'Log in' });
+});
+
+router.post('/account/login', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const email = (req.body.email || '').trim().toLowerCase();
+    const password = req.body.password || '';
+
+    const [[customer]] = await pool.query(`SELECT * FROM ${TABLES.customers} WHERE store_id = ? AND email = ?`, [storeId, email]);
+    if (!customer || !bcrypt.compareSync(password, customer.password_hash)) {
+      req.flash('error', 'Invalid email or password.');
+      return res.redirect('/account/login');
+    }
+
+    req.session.customer = { id: customer.id, name: customer.name, email: customer.email, store_id: storeId };
+    res.redirect('/account');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/account/logout', (req, res) => {
+  req.session.customer = null;
+  res.redirect('/');
+});
+
+router.get('/account', requireCustomer, async (req, res, next) => {
+  try {
+    const [orders] = await pool.query(
+      `SELECT * FROM ${TABLES.orders} WHERE store_id = ? AND customer_id = ? ORDER BY created_at DESC`,
+      [req.store.id, req.session.customer.id]
+    );
+    res.render('storefront/account/dashboard', {
+      title: 'My Account',
+      orders: orders.map(orderToNumber),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------- Cart ----------
 router.get('/cart', async (req, res, next) => {
   try {
@@ -284,10 +394,14 @@ router.post('/checkout', async (req, res, next) => {
 
     await conn.beginTransaction();
 
+    // Link to the logged-in customer account for THIS store, if any — guest
+    // checkout (no account) still works fine and just leaves this null.
+    const customerId = (req.session.customer && req.session.customer.store_id === storeId) ? req.session.customer.id : null;
+
     const [orderResult] = await conn.query(
-      `INSERT INTO ${TABLES.orders} (store_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, discount_code, discount_amount, total, status, payment_method)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
-      [storeId, orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal, discount ? discount.code : null, discountAmount, total]
+      `INSERT INTO ${TABLES.orders} (store_id, customer_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, discount_code, discount_amount, total, status, payment_method)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
+      [storeId, customerId, orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal, discount ? discount.code : null, discountAmount, total]
     );
     const orderId = orderResult.insertId;
 

@@ -2,13 +2,14 @@
 
 <table class="admin-table">
   <thead>
-    <tr><th>Name</th><th>Email</th><th>Store</th><th>Since</th><th></th></tr>
+    <tr><th>Name</th><th>Email</th><th>Role</th><th>Store</th><th>Since</th><th></th></tr>
   </thead>
   <tbody>
     <% users.forEach(function(u) { %>
       <tr>
         <td><%= u.name %></td>
         <td><%= u.email %></td>
+        <td><span class="status-pill"><%= u.role %></span></td>
         <td><a href="/platform-admin/stores/<%= u.store_id %>"><%= u.store_name %></a></td>
         <td><%= new Date(u.created_at).toLocaleDateString() %></td>
         <td class="admin-row-actions">
@@ -22,7 +23,7 @@
       </tr>
     <% }); %>
     <% if (users.length === 0) { %>
-      <tr><td colspan="5" class="empty-state">No users yet.</td></tr>
+      <tr><td colspan="6" class="empty-state">No users yet.</td></tr>
     <% } %>
   </tbody>
 </table>

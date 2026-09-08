@@ -83,17 +83,44 @@ router.post('/signup', async (req, res, next) => {
 
     await conn.beginTransaction();
 
+    // pz_users is a global login, not scoped to one store — someone who
+    // already has an account (e.g. they admin another store) can create a
+    // second store under that same login, as long as they prove it's them
+    // by entering their existing password.
+    const [[existingUser]] = await conn.query(`SELECT id, name, password_hash FROM ${TABLES.users} WHERE email = ?`, [ownerEmail]);
+    let userId = null;
+    let sessionName = ownerName;
+    if (existingUser) {
+      if (!bcrypt.compareSync(password, existingUser.password_hash)) {
+        await conn.rollback();
+        conn.release();
+        return res.status(400).render('platform/signup', {
+          title: 'Create your store',
+          errors: [`An account already exists for ${ownerEmail} — enter its password to add another store, or log in instead.`],
+          themes: THEMES,
+          values,
+        });
+      }
+      userId = existingUser.id;
+      sessionName = existingUser.name;
+    }
+
     const [storeResult] = await conn.query(
       `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES (?, ?, ?, 'free', 'active')`,
       [storeName, subdomain, theme]
     );
     const storeId = storeResult.insertId;
 
-    const passwordHash = bcrypt.hashSync(password, 10);
-    const [adminResult] = await conn.query(
-      `INSERT INTO ${TABLES.admins} (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)`,
-      [storeId, ownerName, ownerEmail, passwordHash]
-    );
+    if (!userId) {
+      const passwordHash = bcrypt.hashSync(password, 10);
+      const [userResult] = await conn.query(
+        `INSERT INTO ${TABLES.users} (name, email, password_hash) VALUES (?, ?, ?)`,
+        [ownerName, ownerEmail, passwordHash]
+      );
+      userId = userResult.insertId;
+    }
+
+    await conn.query(`INSERT INTO ${TABLES.userRoles} (user_id, store_id, role) VALUES (?, ?, 'admin')`, [userId, storeId]);
 
     // Every store needs a Home page to render "/" from — create one here so
     // a brand-new store never 404s. (Stores that existed before the page
@@ -115,8 +142,8 @@ router.post('/signup', async (req, res, next) => {
 
     await conn.commit();
 
-    req.session.admin = { id: adminResult.insertId, name: ownerName, email: ownerEmail, store_id: storeId };
-    req.flash('success', `Welcome to PageZaper, ${ownerName}! Your store "${storeName}" is ready — add your first products to get started.`);
+    req.session.admin = { id: userId, name: sessionName, email: ownerEmail, store_id: storeId, role: 'admin' };
+    req.flash('success', `Welcome to PageZaper, ${sessionName}! Your store "${storeName}" is ready — add your first products to get started.`);
     res.redirect(storeUrl(req, subdomain, '/admin'));
   } catch (err) {
     await conn.rollback();
@@ -142,22 +169,32 @@ router.post('/login', async (req, res, next) => {
     const email = (req.body.email || '').trim().toLowerCase();
     const password = req.body.password || '';
 
-    const [rows] = await pool.query(
-      `SELECT a.id, a.name, a.email, a.password_hash, a.store_id, s.subdomain, s.status AS store_status
-       FROM ${TABLES.admins} a
-       JOIN ${TABLES.stores} s ON s.id = a.store_id
-       WHERE a.email = ?`,
-      [email]
-    );
-
-    const match = rows.find((r) => r.store_status === 'active' && bcrypt.compareSync(password, r.password_hash));
-
-    if (!match) {
+    const [[user]] = await pool.query(`SELECT * FROM ${TABLES.users} WHERE email = ?`, [email]);
+    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
       req.flash('error', 'No matching account found. Check your email and password.');
       return res.redirect('/login');
     }
 
-    req.session.admin = { id: match.id, name: match.name, email: match.email, store_id: match.store_id };
+    // One login can have a role at more than one store now — send them to
+    // the first active store they administer (preferring one they're Admin
+    // of, not just Manager, if they have both).
+    const [roles] = await pool.query(
+      `SELECT ur.store_id, ur.role, s.subdomain
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       WHERE ur.user_id = ? AND ur.role IN ('admin', 'manager') AND s.status = 'active'
+       ORDER BY (ur.role = 'admin') DESC, s.created_at ASC
+       LIMIT 1`,
+      [user.id]
+    );
+    const match = roles[0];
+
+    if (!match) {
+      req.flash('error', 'No active store found for this account.');
+      return res.redirect('/login');
+    }
+
+    req.session.admin = { id: user.id, name: user.name, email: user.email, store_id: match.store_id, role: match.role };
     res.redirect(storeUrl(req, match.subdomain, '/admin'));
   } catch (err) {
     next(err);

@@ -11,11 +11,11 @@
         <td><%= c.email %></td>
         <td><%= c.orderCount %></td>
         <td>₹<%= c.totalSpent.toFixed(2) %></td>
-        <td><%= new Date(c.lastOrderAt).toLocaleDateString() %></td>
+        <td><%= c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString() : '—' %></td>
       </tr>
     <% }); %>
     <% if (customers.length === 0) { %>
-      <tr><td colspan="5" class="empty-state">No customers yet — they show up here once you get your first order.</td></tr>
+      <tr><td colspan="5" class="empty-state">No customers yet — they show up here once someone creates an account in your store.</td></tr>
     <% } %>
   </tbody>
 </table>

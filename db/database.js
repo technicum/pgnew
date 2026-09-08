@@ -31,7 +31,13 @@ const RESERVED_SUBDOMAINS = new Set([
 const PREFIX = process.env.DB_PREFIX || 'pz_';
 const TABLES = {
   stores: `${PREFIX}stores`,
+  // `admins` (pz_admins) is legacy — kept here only so migrateAdminsToUsers()
+  // can find and migrate it on databases that still have it. New code should
+  // never query it directly; use `users` + `userRoles` instead.
   admins: `${PREFIX}admins`,
+  users: `${PREFIX}users`,
+  userRoles: `${PREFIX}user_roles`,
+  customers: `${PREFIX}customers`,
   categories: `${PREFIX}categories`,
   products: `${PREFIX}products`,
   orders: `${PREFIX}orders`,
@@ -72,15 +78,47 @@ CREATE TABLE IF NOT EXISTS ${TABLES.stores} (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS ${TABLES.admins} (
+-- pz_admins is intentionally NOT created here anymore — new installs go
+-- straight to pz_users/pz_user_roles below. migrateAdminsToUsers() handles
+-- an existing database that still has pz_admins from before this change.
+
+-- Global login, not scoped to any one store — a person can own or staff
+-- multiple stores through pz_user_roles below (mirrors how a Shopify staff
+-- account can belong to several shops).
+CREATE TABLE IF NOT EXISTS ${TABLES.users} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Links a pz_users login to a store with a role. One user can hold more
+-- than one role at the same store (unlikely) or roles at different stores.
+CREATE TABLE IF NOT EXISTS ${TABLES.userRoles} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  store_id INT NOT NULL,
+  role VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_user_store_role (user_id, store_id, role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Storefront shopper accounts. Unlike pz_users, these ARE scoped to a single
+-- store (store_id, email) — same person shopping at two different stores is
+-- two separate customer records, matching how Shopify customers work.
+CREATE TABLE IF NOT EXISTS ${TABLES.customers} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   store_id INT NOT NULL,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
-  UNIQUE KEY uniq_store_admin_email (store_id, email)
+  UNIQUE KEY uniq_store_customer_email (store_id, email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS ${TABLES.categories} (
@@ -331,7 +369,9 @@ async function renameLegacyTables(conn) {
 }
 
 async function migrateMultiTenancy(conn) {
-  const tenantTables = [TABLES.admins, TABLES.categories, TABLES.products, TABLES.orders];
+  // pz_admins deliberately excluded — it's being retired by
+  // migrateAdminsToUsers() below, not managed here anymore.
+  const tenantTables = [TABLES.categories, TABLES.products, TABLES.orders];
 
   // 1. Add store_id (nullable for now) to any table that predates multi-tenancy.
   for (const t of tenantTables) {
@@ -378,7 +418,6 @@ async function migrateMultiTenancy(conn) {
   const uniquePlans = [
     { table: TABLES.products, column: 'slug', indexName: 'uniq_store_slug' },
     { table: TABLES.categories, column: 'name', indexName: 'uniq_store_category_name' },
-    { table: TABLES.admins, column: 'email', indexName: 'uniq_store_admin_email' },
   ];
   for (const plan of uniquePlans) {
     const legacyIdx = await findLegacyUniqueIndex(conn, plan.table, plan.column);
@@ -443,6 +482,70 @@ async function migrateOrderDiscountColumns(conn) {
   }
 }
 
+// Adds customer_id to orders so a checkout can be linked to a pz_customers
+// account. Nullable and ON DELETE SET NULL — guest checkout (no account)
+// stays fully supported, and deleting a customer account never deletes
+// their past orders.
+async function migrateOrderCustomerColumn(conn) {
+  if (!(await columnExists(conn, TABLES.orders, 'customer_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.orders} ADD COLUMN customer_id INT NULL`);
+  }
+  if (!(await foreignKeyExists(conn, TABLES.orders, 'customer_id'))) {
+    await conn.query(
+      `ALTER TABLE ${TABLES.orders} ADD CONSTRAINT fk_${TABLES.orders}_customer FOREIGN KEY (customer_id) REFERENCES ${TABLES.customers}(id) ON DELETE SET NULL`
+    );
+  }
+}
+
+// ONE-TIME EXCEPTION to this file's "never drop data" rule: pz_admins is
+// being fully replaced by pz_users + pz_user_roles. Every existing pz_admins
+// row is copied forward first, then the (now-empty-of-value) table is
+// dropped. Safe to run on every boot — it's a no-op once pz_admins is gone.
+//
+// pz_admins allowed the same email to be an independent admin row on more
+// than one store (UNIQUE was store_id+email). pz_users.email is globally
+// unique, so rows sharing an email are collapsed into ONE pz_users identity
+// (using the most-recently-created row's name/password) with a
+// pz_user_roles row per store it used to administer.
+async function migrateAdminsToUsers(conn) {
+  if (!(await tableExists(conn, TABLES.admins))) return;
+
+  const [oldAdmins] = await conn.query(`SELECT * FROM ${TABLES.admins} ORDER BY created_at ASC`);
+
+  const byEmail = new Map();
+  for (const row of oldAdmins) {
+    const key = row.email.toLowerCase();
+    if (!byEmail.has(key)) byEmail.set(key, []);
+    byEmail.get(key).push(row);
+  }
+
+  for (const [email, rows] of byEmail) {
+    const latest = rows[rows.length - 1];
+
+    let userId;
+    const [[existingUser]] = await conn.query(`SELECT id FROM ${TABLES.users} WHERE email = ?`, [email]);
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      const [result] = await conn.query(
+        `INSERT INTO ${TABLES.users} (name, email, password_hash) VALUES (?, ?, ?)`,
+        [latest.name, email, latest.password_hash]
+      );
+      userId = result.insertId;
+    }
+
+    for (const row of rows) {
+      await conn.query(
+        `INSERT IGNORE INTO ${TABLES.userRoles} (user_id, store_id, role) VALUES (?, ?, 'admin')`,
+        [userId, row.store_id]
+      );
+    }
+  }
+
+  await conn.query(`DROP TABLE ${TABLES.admins}`);
+  console.log(`Migrated ${oldAdmins.length} pz_admins row(s) into pz_users/pz_user_roles and dropped pz_admins.`);
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
@@ -456,6 +559,8 @@ async function init() {
     const demoStoreId = await migrateMultiTenancy(conn);
     await migratePagesForExistingStores(conn);
     await migrateOrderDiscountColumns(conn);
+    await migrateOrderCustomerColumn(conn);
+    await migrateAdminsToUsers(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 
@@ -483,15 +588,26 @@ async function init() {
       console.log('Demo store seeded with sample products.');
     }
 
-    const [[{ c: demoAdminCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.admins} WHERE store_id = ?`, [demoStoreId]);
+    const [[{ c: demoAdminCount }]] = await conn.query(
+      `SELECT COUNT(*) AS c FROM ${TABLES.userRoles} WHERE store_id = ? AND role = 'admin'`,
+      [demoStoreId]
+    );
     if (demoAdminCount === 0) {
-      const passwordHash = bcrypt.hashSync('admin123', 10);
-      await conn.query(`INSERT INTO ${TABLES.admins} (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)`, [
-        demoStoreId,
-        'Store Admin',
-        'admin@pagezaper.test',
-        passwordHash,
-      ]);
+      const demoEmail = 'admin@pagezaper.test';
+      const [[existingUser]] = await conn.query(`SELECT id FROM ${TABLES.users} WHERE email = ?`, [demoEmail]);
+      let userId;
+      if (existingUser) {
+        userId = existingUser.id;
+      } else {
+        const passwordHash = bcrypt.hashSync('admin123', 10);
+        const [result] = await conn.query(`INSERT INTO ${TABLES.users} (name, email, password_hash) VALUES (?, ?, ?)`, [
+          'Store Admin',
+          demoEmail,
+          passwordHash,
+        ]);
+        userId = result.insertId;
+      }
+      await conn.query(`INSERT INTO ${TABLES.userRoles} (user_id, store_id, role) VALUES (?, ?, 'admin')`, [userId, demoStoreId]);
       console.log('Demo store admin created (admin@pagezaper.test / admin123)');
     }
 

@@ -24,6 +24,11 @@
         <% } %>
       </nav>
       <div class="header-actions">
+        <% if (typeof customer !== 'undefined' && customer) { %>
+          <a href="/account">My account</a>
+        <% } else { %>
+          <a href="/account/login">Log in</a>
+        <% } %>
         <a href="/cart" class="cart-link">
           Cart
           <% if (cartItemCount > 0) { %><span class="badge"><%= cartItemCount %></span><% } %>

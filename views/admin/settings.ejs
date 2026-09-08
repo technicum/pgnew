@@ -38,6 +38,54 @@
       <button type="submit" class="btn btn-primary">Change password</button>
     </form>
   </section>
+
+  <section class="panel">
+    <h2>Team</h2>
+    <table class="admin-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
+      <tbody>
+        <% team.forEach(function(t) { %>
+          <tr>
+            <td><%= t.name %></td>
+            <td><%= t.email %></td>
+            <td><span class="status-pill"><%= t.role %></span></td>
+            <td class="admin-row-actions">
+              <% if (admin && admin.role === 'admin') { %>
+                <form action="/admin/settings/team/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Remove ' + <%- JSON.stringify(t.name) %> + ' from this store?');">
+                  <button type="submit" class="link-btn danger">Remove</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (team.length === 0) { %>
+          <tr><td colspan="4" class="empty-state">No team members yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <form action="/admin/settings/team" method="POST" class="admin-form" style="margin-top:16px;">
+      <label>Name
+        <input type="text" name="name" required />
+      </label>
+      <label>Email
+        <input type="email" name="email" required />
+      </label>
+      <label>Password
+        <input type="password" name="password" minlength="6" placeholder="Leave blank if they already have a PageZaper login" />
+      </label>
+      <label>Role
+        <select name="role">
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;">Add to team</button>
+    </form>
+    <% if (!(admin && admin.role === 'admin')) { %>
+      <p style="color:#6b7280; margin-top:8px; font-size: 0.9em;">As a Manager, you can add teammates but only an Admin can remove them.</p>
+    <% } %>
+  </section>
 </div>
 
 <%- include('partials/footer') %>

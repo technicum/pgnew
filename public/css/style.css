@@ -424,3 +424,31 @@ main.container {
 @media (max-width: 720px) {
   .text-image, .text-image-left { flex-direction: column; }
 }
+
+/* Header actions row (Log in / My account + Cart) */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-actions > a:not(.cart-link) {
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--color-muted);
+}
+.header-actions > a:not(.cart-link):hover { color: var(--color-text); }
+
+/* Customer account pages (signup/login/dashboard) */
+.auth-card {
+  max-width: 420px;
+  margin: 40px auto;
+}
+.auth-card h1 { text-align: center; }
+.auth-hint { margin-top: 16px; text-align: center; color: var(--color-muted); font-size: 0.9rem; }
+
+.account-dashboard { max-width: 640px; margin: 0 auto; }
+.account-dashboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
