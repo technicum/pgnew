@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-login-body">
+  <div class="login-card signup-card">
+    <a href="/" class="admin-logo" style="display:inline-block; text-decoration:none;">Page<span>Zaper</span></a>
+    <p class="signup-tagline">Create your store in under a minute.</p>
+
+    <% if (errors && errors.length) { %>
+      <div class="flash flash-error">
+        <% errors.forEach(function(e) { %>
+          <div><%= e %></div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <form action="/signup" method="POST" id="signup-form">
+      <label>Store name
+        <input type="text" name="storeName" id="storeName" value="<%= values.storeName %>" required autofocus placeholder="Riya's Boutique" />
+      </label>
+
+      <label>Store address
+        <div class="subdomain-field">
+          <input type="text" name="subdomain" id="subdomain" value="<%= values.subdomain %>" placeholder="riyas-boutique" pattern="[a-z0-9][a-z0-9-]{1,61}[a-z0-9]" required />
+          <span class="subdomain-suffix">.<%= baseDomain %></span>
+        </div>
+      </label>
+
+      <label>Your name
+        <input type="text" name="ownerName" value="<%= values.ownerName %>" required placeholder="Riya Mehta" />
+      </label>
+
+      <label>Email
+        <input type="email" name="ownerEmail" value="<%= values.ownerEmail %>" required placeholder="you@example.com" />
+      </label>
+
+      <div class="form-row">
+        <label>Password
+          <input type="password" name="password" required minlength="6" />
+        </label>
+        <label>Confirm password
+          <input type="password" name="confirmPassword" required minlength="6" />
+        </label>
+      </div>
+
+      <label>Theme</label>
+      <div class="theme-picker">
+        <% themes.forEach(function(t) { %>
+          <label class="theme-swatch theme-swatch-<%= t %>">
+            <input type="radio" name="theme" value="<%= t %>" <%= values.theme === t ? 'checked' : '' %> />
+            <span class="swatch-dot"></span>
+            <span class="swatch-label"><%= t.charAt(0).toUpperCase() + t.slice(1) %></span>
+          </label>
+        <% }); %>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create my store</button>
+    </form>
+    <p class="login-hint">Already have a store? <a href="/login">Log in</a></p>
+  </div>
+
+  <script>
+    // Auto-suggest the store address from the store name, but stop as soon
+    // as the shopper edits the address field themselves.
+    (function () {
+      var nameInput = document.getElementById('storeName');
+      var subInput = document.getElementById('subdomain');
+      var subEdited = subInput.value.length > 0;
+      subInput.addEventListener('input', function () { subEdited = true; });
+      nameInput.addEventListener('input', function () {
+        if (subEdited) return;
+        subInput.value = nameInput.value
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '')
+          .slice(0, 63);
+      });
+    })();
+  </script>
+</body>
+</html>

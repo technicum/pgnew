@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Login · PageZaper</title>
+  <title>Admin Login<%= typeof store !== 'undefined' && store ? ' · ' + store.name : ' · PageZaper' %></title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="/css/admin.css" />
 </head>
-<body class="admin-login-body">
+<body class="admin-login-body theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>">
   <div class="login-card">
-    <div class="admin-logo">Page<span>Zaper</span> <small>Admin</small></div>
+    <div class="admin-logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %> <small>Admin</small></div>
 
     <% if (typeof error !== 'undefined' && error && error.length) { %>
       <div class="flash flash-error"><%= error[0] %></div>
@@ -24,7 +24,9 @@
       </label>
       <button type="submit" class="btn btn-primary btn-block">Log in</button>
     </form>
-    <p class="login-hint">Default: admin@pagezaper.test / admin123</p>
+    <% if (typeof store !== 'undefined' && store && store.subdomain === 'demo') { %>
+      <p class="login-hint">Demo login: admin@pagezaper.test / admin123</p>
+    <% } %>
   </div>
 </body>
 </html>

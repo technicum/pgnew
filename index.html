@@ -508,7 +508,7 @@
 
 <header class="site">
   <div class="container nav-inner">
-    <a href="#" class="logo">
+    <a href="/" class="logo">
       <span class="mark">P</span>
       Page<span class="accent">Zaper</span>
     </a>
@@ -517,11 +517,11 @@
       <a href="#how-it-works">How it works</a>
       <a href="#pricing">Pricing</a>
       <a href="#testimonials">Customers</a>
-      <a href="/store">Demo store</a>
+      <a href="/store" id="nav-demo-link">Demo store</a>
     </nav>
     <div class="nav-actions">
-      <a href="#" class="btn btn-ghost">Log in</a>
-      <a href="/store" class="btn btn-primary">View demo store</a>
+      <a href="/login" class="btn btn-ghost">Log in</a>
+      <a href="/store" id="hdr-demo-link" class="btn btn-primary">View demo store</a>
     </div>
     <button class="nav-toggle" aria-label="Menu">&#9776;</button>
   </div>
@@ -534,7 +534,7 @@
       <h1>Build your online store in minutes, not months.</h1>
       <p class="lead">PageZaper gives you everything to start, run, and grow an online business — storefront, payments, inventory, and orders, all in one place.</p>
       <div class="hero-cta">
-        <a href="#" class="btn btn-primary btn-lg">Start free trial</a>
+        <a href="/signup" class="btn btn-primary btn-lg">Start free trial</a>
         <a href="#how-it-works" class="btn btn-outline btn-lg">See how it works</a>
       </div>
       <p class="hero-note">No credit card required · Free 14-day trial · Cancel anytime</p>
@@ -672,7 +672,7 @@
           <li><span class="check">✓</span> Basic order management</li>
           <li><span class="check">✓</span> PageZaper subdomain</li>
         </ul>
-        <a href="#" class="btn btn-outline btn-block">Get started</a>
+        <a href="/signup" class="btn btn-outline btn-block">Get started</a>
       </div>
       <div class="price-card featured">
         <h3>Growth</h3>
@@ -686,7 +686,7 @@
           <li><span class="check">✓</span> Custom domain</li>
           <li><span class="check">✓</span> Priority support</li>
         </ul>
-        <a href="#" class="btn btn-primary btn-block">Start free trial</a>
+        <a href="/signup" class="btn btn-primary btn-block">Start free trial</a>
       </div>
       <div class="price-card">
         <h3>Advanced</h3>
@@ -755,7 +755,7 @@
     <h2>Ready to open your store?</h2>
     <p>Join thousands of entrepreneurs building their business on PageZaper.</p>
     <div class="hero-cta">
-      <a href="#" class="btn btn-primary btn-lg">Start your free trial</a>
+      <a href="/signup" class="btn btn-primary btn-lg">Start your free trial</a>
       <a href="#" class="btn btn-outline btn-lg">Talk to sales</a>
     </div>
   </div>
@@ -765,7 +765,7 @@
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="#" class="logo"><span class="mark">P</span>Page<span class="accent">Zaper</span></a>
+        <a href="/" class="logo"><span class="mark">P</span>Page<span class="accent">Zaper</span></a>
         <p>The all-in-one platform to start, run, and grow your online store.</p>
       </div>
       <div class="footer-col">
@@ -816,6 +816,18 @@
       actions.style.cssText = 'display:flex; position:absolute; top:' + (72 + links.offsetHeight) + 'px; left:0; right:0; background:#fff; padding:0 24px 20px; gap:12px;';
     }
   });
+</script>
+
+<script>
+  // Point the demo store links at the "demo" subdomain of whatever host
+  // we're being served from (works in local dev and in production alike).
+  (function () {
+    var demoHref = window.location.protocol + '//demo.' + window.location.host + '/';
+    ['nav-demo-link', 'hdr-demo-link'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.href = demoHref;
+    });
+  })();
 </script>
 
 </body>

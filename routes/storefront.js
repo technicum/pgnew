@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db/database');
-const { getCartItems, getCartTotals } = require('../middleware/cart');
+const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
 
 function genOrderNumber() {
   const rand = Math.floor(1000 + Math.random() * 9000);
@@ -12,27 +12,45 @@ function toNumber(product) {
   return { ...product, price: Number(product.price), compare_at_price: product.compare_at_price !== null ? Number(product.compare_at_price) : null };
 }
 
+// Everything in this router belongs to a specific store, resolved from the
+// subdomain by middleware/tenant.js. On the root domain (or an unknown/
+// suspended subdomain) there's no storefront to show.
+router.use((req, res, next) => {
+  if (req.store) return next();
+  if (req.unknownSubdomain) {
+    return res.status(404).render('storefront/404', { title: 'Store not found' });
+  }
+  return res.status(404).render('storefront/404', { title: 'Page not found' });
+});
+
 // ---------- Store / product listing ----------
-router.get('/store', async (req, res, next) => {
+// A store's own subdomain shows its home page at "/"; "/store" is kept as
+// an alias so older links (and the demo store link on the marketing page)
+// keep working.
+router.get(['/', '/store'], async (req, res, next) => {
   try {
+    const storeId = req.store.id;
     const { category } = req.query;
-    const [categories] = await pool.query('SELECT * FROM categories ORDER BY name');
+    const [categories] = await pool.query('SELECT * FROM categories WHERE store_id = ? ORDER BY name', [storeId]);
 
     let products;
     if (category) {
       [products] = await pool.query(
         `SELECT p.* FROM products p
          JOIN categories c ON p.category_id = c.id
-         WHERE c.name = ? AND p.status = 'active'
+         WHERE p.store_id = ? AND c.name = ? AND p.status = 'active'
          ORDER BY p.created_at DESC`,
-        [category]
+        [storeId, category]
       );
     } else {
-      [products] = await pool.query(`SELECT * FROM products WHERE status = 'active' ORDER BY created_at DESC`);
+      [products] = await pool.query(
+        `SELECT * FROM products WHERE store_id = ? AND status = 'active' ORDER BY created_at DESC`,
+        [storeId]
+      );
     }
 
     res.render('storefront/home', {
-      title: 'Shop everything you need',
+      title: `Shop ${req.store.name}`,
       products: products.map(toNumber),
       categories,
       activeCategory: category || null,
@@ -45,13 +63,14 @@ router.get('/store', async (req, res, next) => {
 // ---------- Product detail ----------
 router.get('/products/:slug', async (req, res, next) => {
   try {
-    const [[product]] = await pool.query('SELECT * FROM products WHERE slug = ?', [req.params.slug]);
+    const storeId = req.store.id;
+    const [[product]] = await pool.query('SELECT * FROM products WHERE store_id = ? AND slug = ?', [storeId, req.params.slug]);
     if (!product) {
       return res.status(404).render('storefront/404', { title: 'Product not found' });
     }
     const [related] = await pool.query(
-      `SELECT * FROM products WHERE category_id = ? AND id != ? AND status = 'active' LIMIT 4`,
-      [product.category_id, product.id]
+      `SELECT * FROM products WHERE store_id = ? AND category_id = ? AND id != ? AND status = 'active' LIMIT 4`,
+      [storeId, product.category_id, product.id]
     );
 
     res.render('storefront/product', {
@@ -67,7 +86,8 @@ router.get('/products/:slug', async (req, res, next) => {
 // ---------- Cart ----------
 router.get('/cart', async (req, res, next) => {
   try {
-    const items = await getCartItems(pool, req.session.cart);
+    const cart = getStoreCart(req, req.store.id);
+    const items = await getCartItems(pool, req.store.id, cart);
     const { subtotal } = getCartTotals(items);
     res.render('storefront/cart', { title: 'Your Cart', items, subtotal });
   } catch (err) {
@@ -77,19 +97,20 @@ router.get('/cart', async (req, res, next) => {
 
 router.post('/cart/add', async (req, res, next) => {
   try {
+    const storeId = req.store.id;
     const { productId, quantity } = req.body;
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
-    const [[product]] = await pool.query('SELECT * FROM products WHERE id = ?', [productId]);
+    const [[product]] = await pool.query('SELECT * FROM products WHERE store_id = ? AND id = ?', [storeId, productId]);
 
     if (!product) {
       req.flash('error', 'Product not found.');
       return res.redirect('back');
     }
 
-    if (!req.session.cart) req.session.cart = {};
-    const current = req.session.cart[productId] || 0;
+    const cart = getStoreCart(req, storeId);
+    const current = cart[productId] || 0;
     const newQty = Math.min(current + qty, product.stock);
-    req.session.cart[productId] = newQty;
+    cart[productId] = newQty;
 
     req.flash('success', `${product.title} added to cart.`);
     res.redirect(req.body.redirectTo || '/cart');
@@ -100,16 +121,16 @@ router.post('/cart/add', async (req, res, next) => {
 
 router.post('/cart/update', async (req, res, next) => {
   try {
+    const storeId = req.store.id;
     const { productId, quantity } = req.body;
     const qty = parseInt(quantity, 10);
-
-    if (!req.session.cart) req.session.cart = {};
+    const cart = getStoreCart(req, storeId);
 
     if (!qty || qty <= 0) {
-      delete req.session.cart[productId];
+      delete cart[productId];
     } else {
-      const [[product]] = await pool.query('SELECT * FROM products WHERE id = ?', [productId]);
-      req.session.cart[productId] = product ? Math.min(qty, product.stock) : qty;
+      const [[product]] = await pool.query('SELECT * FROM products WHERE store_id = ? AND id = ?', [storeId, productId]);
+      cart[productId] = product ? Math.min(qty, product.stock) : qty;
     }
 
     res.redirect('/cart');
@@ -120,14 +141,16 @@ router.post('/cart/update', async (req, res, next) => {
 
 router.post('/cart/remove', (req, res) => {
   const { productId } = req.body;
-  if (req.session.cart) delete req.session.cart[productId];
+  const cart = getStoreCart(req, req.store.id);
+  delete cart[productId];
   res.redirect('/cart');
 });
 
 // ---------- Checkout ----------
 router.get('/checkout', async (req, res, next) => {
   try {
-    const items = await getCartItems(pool, req.session.cart);
+    const cart = getStoreCart(req, req.store.id);
+    const items = await getCartItems(pool, req.store.id, cart);
     if (items.length === 0) {
       req.flash('error', 'Your cart is empty.');
       return res.redirect('/cart');
@@ -140,9 +163,11 @@ router.get('/checkout', async (req, res, next) => {
 });
 
 router.post('/checkout', async (req, res, next) => {
+  const storeId = req.store.id;
   const conn = await pool.getConnection();
   try {
-    const items = await getCartItems(pool, req.session.cart);
+    const cart = getStoreCart(req, storeId);
+    const items = await getCartItems(pool, storeId, cart);
     if (items.length === 0) {
       req.flash('error', 'Your cart is empty.');
       conn.release();
@@ -162,9 +187,9 @@ router.post('/checkout', async (req, res, next) => {
     await conn.beginTransaction();
 
     const [orderResult] = await conn.query(
-      `INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, status, payment_method)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
-      [orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal]
+      `INSERT INTO orders (store_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, status, payment_method)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
+      [storeId, orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal]
     );
     const orderId = orderResult.insertId;
 
@@ -173,11 +198,11 @@ router.post('/checkout', async (req, res, next) => {
         `INSERT INTO order_items (order_id, product_id, title, price, quantity) VALUES (?, ?, ?, ?, ?)`,
         [orderId, item.id, item.title, item.price, item.quantity]
       );
-      await conn.query(`UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE id = ?`, [item.quantity, item.id]);
+      await conn.query(`UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE store_id = ? AND id = ?`, [item.quantity, storeId, item.id]);
     }
 
     await conn.commit();
-    req.session.cart = {};
+    req.session.carts[storeId] = {};
 
     res.render('storefront/order-confirmation', {
       title: 'Order Confirmed',

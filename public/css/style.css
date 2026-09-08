@@ -11,6 +11,20 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
 }
 
+/* ---------- Store themes ----------
+   Every store picks a theme at signup (stored as stores.theme). The theme is
+   applied as a class on <body>; everything else in this stylesheet already
+   reads --color-primary / --color-primary-dark, so a theme only needs to
+   override those two variables to reskin the whole storefront + admin. */
+body.theme-gold {
+  --color-primary: #b45309;
+  --color-primary-dark: #92400e;
+}
+body.theme-red {
+  --color-primary: #dc2626;
+  --color-primary-dark: #b91c1c;
+}
+
 * { box-sizing: border-box; }
 
 body {

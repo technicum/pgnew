@@ -5,15 +5,19 @@ const flash = require('connect-flash');
 const path = require('path');
 
 const { pool, init } = require('./db/database');
+const { resolveStore, getBaseDomain } = require('./middleware/tenant');
+const platformRoutes = require('./routes/platform');
 const storefrontRoutes = require('./routes/storefront');
 const adminRoutes = require('./routes/admin');
 const { attachCartInfo } = require('./middleware/cart');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const BASE_DOMAIN = getBaseDomain();
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.set('trust proxy', true);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -23,17 +27,25 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Marketing homepage — served at the site root, ahead of the storefront routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// Figure out which store (if any) this request's subdomain belongs to,
+// before anything else runs — routes below rely on req.store.
+app.use(resolveStore(pool));
 
+// Session cookie: shared across every *.BASE_DOMAIN subdomain so a merchant
+// who logs in (or signs up) on the root domain stays logged in when they're
+// sent on to their own store's subdomain. It's the same Express app and
+// session store handling every subdomain either way; this just controls
+// which hosts the browser will send the cookie back to.
+const cookieConfig = { maxAge: 1000 * 60 * 60 * 24 * 7 }; // 7 days
+if (BASE_DOMAIN && BASE_DOMAIN !== 'localhost' && !/^\d+\.\d+\.\d+\.\d+$/.test(BASE_DOMAIN)) {
+  cookieConfig.domain = `.${BASE_DOMAIN}`;
+}
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'pagezaper-dev-secret-change-me',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }, // 7 days
+    cookie: cookieConfig,
   })
 );
 app.use(flash());
@@ -47,6 +59,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/', platformRoutes);
 app.use('/', storefrontRoutes);
 app.use('/admin', adminRoutes);
 
@@ -64,7 +77,7 @@ app.use((err, req, res, next) => {
 init()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`PageZaper running at http://localhost:${PORT}`);
+      console.log(`PageZaper running at http://localhost:${PORT} (base domain: ${BASE_DOMAIN})`);
     });
   })
   .catch((err) => {

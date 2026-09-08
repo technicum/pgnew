@@ -32,7 +32,7 @@
   color: #d1d5db;
 }
 .admin-nav a:hover { background: #1f2937; color: #fff; }
-.admin-nav a.active { background: #16a34a; color: #fff; }
+.admin-nav a.active { background: var(--color-primary); color: #fff; }
 
 .admin-logout-form { margin-top: auto; }
 .admin-logout-form .link-btn { color: #9ca3af; }
@@ -189,7 +189,7 @@
   max-width: 360px;
 }
 .login-card .admin-logo { color: #111827; font-weight: 800; font-size: 1.3rem; margin-bottom: 20px; }
-.login-card .admin-logo span { color: #16a34a; }
+.login-card .admin-logo span { color: var(--color-primary); }
 .login-card .admin-logo small { display: block; color: #9ca3af; font-weight: 500; font-size: 0.7rem; text-transform: uppercase; }
 .login-card label {
   display: block;
@@ -207,6 +207,67 @@
   border-radius: 8px;
 }
 .login-hint { text-align: center; color: #9ca3af; font-size: 0.8rem; margin-top: 16px; margin-bottom: 0; }
+.login-hint a { color: var(--color-primary); font-weight: 600; }
+
+/* Signup page */
+.signup-card { max-width: 440px; }
+.signup-tagline { color: #6b7280; font-size: 0.88rem; margin: 4px 0 20px; }
+.signup-card .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 0; }
+.subdomain-field {
+  display: flex;
+  align-items: stretch;
+  margin-top: 6px;
+}
+.subdomain-field input {
+  margin-top: 0;
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+.subdomain-suffix {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.theme-picker {
+  display: flex;
+  gap: 10px;
+  margin: 6px 0 20px;
+}
+.theme-swatch {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0;
+}
+.theme-swatch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.theme-swatch .swatch-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+.theme-swatch-default .swatch-dot { background: #16a34a; }
+.theme-swatch-gold .swatch-dot { background: #b45309; }
+.theme-swatch-red .swatch-dot { background: #dc2626; }
+.theme-swatch:has(input:checked) {
+  border-color: #111827;
+  box-shadow: 0 0 0 1px #111827;
+}
 
 @media (max-width: 900px) {
   .dashboard-grid, .order-detail-layout { grid-template-columns: 1fr; }

@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title %> · PageZaper</title>
+  <title><%= title %><%= typeof store !== 'undefined' && store ? ' · ' + store.name : ' · PageZaper' %></title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body>
+<body class="theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>">
   <header class="site-header">
     <div class="container header-inner">
-      <a href="/store" class="logo">Page<span>Zaper</span></a>
+      <a href="/" class="logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></a>
       <nav class="main-nav">
-        <a href="/store" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
+        <a href="/" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
         <% if (typeof categories !== 'undefined') { %>
           <% categories.forEach(function(c) { %>
-            <a href="/store?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
+            <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
           <% }); %>
         <% } %>
       </nav>

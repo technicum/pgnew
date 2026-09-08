@@ -1,11 +1,24 @@
-// Cart is stored in session as: { [productId]: quantity }
+// Cart is stored in session, namespaced per store, as:
+//   req.session.carts = { [storeId]: { [productId]: quantity } }
+// so a shopper browsing two different stores in the same browser (the
+// session cookie is shared across every *.pagezaper.com subdomain) never
+// mixes one store's cart with another's.
 
-async function getCartItems(pool, cart) {
+function getStoreCart(req, storeId) {
+  if (!req.session.carts) req.session.carts = {};
+  if (!req.session.carts[storeId]) req.session.carts[storeId] = {};
+  return req.session.carts[storeId];
+}
+
+async function getCartItems(pool, storeId, cart) {
   const ids = Object.keys(cart || {});
   if (ids.length === 0) return [];
 
   const placeholders = ids.map(() => '?').join(',');
-  const [products] = await pool.query(`SELECT * FROM products WHERE id IN (${placeholders})`, ids);
+  const [products] = await pool.query(
+    `SELECT * FROM products WHERE store_id = ? AND id IN (${placeholders})`,
+    [storeId, ...ids]
+  );
 
   return products.map((p) => {
     const quantity = cart[p.id];
@@ -29,8 +42,12 @@ function getCartTotals(items) {
 function attachCartInfo(pool) {
   return async (req, res, next) => {
     try {
-      if (!req.session.cart) req.session.cart = {};
-      const items = await getCartItems(pool, req.session.cart);
+      if (!req.store) {
+        res.locals.cartItemCount = 0;
+        return next();
+      }
+      const cart = getStoreCart(req, req.store.id);
+      const items = await getCartItems(pool, req.store.id, cart);
       const { itemCount } = getCartTotals(items);
       res.locals.cartItemCount = itemCount;
       next();
@@ -40,4 +57,4 @@ function attachCartInfo(pool) {
   };
 }
 
-module.exports = { getCartItems, getCartTotals, attachCartInfo };
+module.exports = { getCartItems, getCartTotals, attachCartInfo, getStoreCart };

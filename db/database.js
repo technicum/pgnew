@@ -13,25 +13,55 @@ const pool = mysql.createPool({
   namedPlaceholders: true,
 });
 
+const THEMES = ['default', 'gold', 'red'];
+const RESERVED_SUBDOMAINS = new Set([
+  'www', 'admin', 'api', 'app', 'mail', 'ftp', 'blog', 'help', 'support',
+  'static', 'cdn', 'assets', 'shop', 'store', 'dashboard', 'signup', 'login',
+  'signin', 'signout', 'register', 'test', 'staging', 'dev', 'my', 'account',
+  'billing', 'docs', 'status', 'pagezaper',
+]);
+
 // ---------- Schema ----------
+// These CREATE TABLE statements describe the full desired multi-tenant
+// schema and are what a brand new database gets. An existing (pre-multi-
+// tenant) database won't have store_id on these tables yet since
+// `CREATE TABLE IF NOT EXISTS` is a no-op when the table already exists —
+// migrateMultiTenancy() below brings those up to the same shape safely.
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS admins (
+CREATE TABLE IF NOT EXISTS stores (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  subdomain VARCHAR(63) UNIQUE NOT NULL,
+  theme VARCHAR(50) NOT NULL DEFAULT 'default',
+  plan VARCHAR(20) NOT NULL DEFAULT 'free',
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS admins (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_admin_email (store_id, email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL UNIQUE
+  store_id INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_category_name (store_id, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS products (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
-  slug VARCHAR(255) NOT NULL UNIQUE,
+  slug VARCHAR(255) NOT NULL,
   description TEXT,
   price DECIMAL(10,2) NOT NULL,
   compare_at_price DECIMAL(10,2) NULL,
@@ -40,13 +70,16 @@ CREATE TABLE IF NOT EXISTS products (
   stock INT NOT NULL DEFAULT 0,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+  UNIQUE KEY uniq_store_slug (store_id, slug),
   INDEX idx_status (status),
   INDEX idx_category (category_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
   order_number VARCHAR(64) UNIQUE NOT NULL,
   customer_name VARCHAR(255) NOT NULL,
   customer_email VARCHAR(255) NOT NULL,
@@ -58,6 +91,7 @@ CREATE TABLE IF NOT EXISTS orders (
   status VARCHAR(20) NOT NULL DEFAULT 'pending',
   payment_method VARCHAR(20) DEFAULT 'cod',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
   INDEX idx_order_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -136,46 +170,162 @@ const SAMPLE_PRODUCTS = [
   },
 ];
 
+// ---------- Migration helpers ----------
+// All idempotent: safe to run on every boot, on a brand new DB or an old
+// single-tenant one. Never drops or truncates data.
+async function columnExists(conn, table, column) {
+  const [rows] = await conn.query(
+    `SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+    [table, column]
+  );
+  return rows[0].c > 0;
+}
+
+async function indexExists(conn, table, indexName) {
+  const [rows] = await conn.query(
+    `SELECT COUNT(*) AS c FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?`,
+    [table, indexName]
+  );
+  return rows[0].c > 0;
+}
+
+async function foreignKeyExists(conn, table, column) {
+  const [rows] = await conn.query(
+    `SELECT COUNT(*) AS c FROM information_schema.KEY_COLUMN_USAGE
+     WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? AND referenced_table_name IS NOT NULL`,
+    [table, column]
+  );
+  return rows[0].c > 0;
+}
+
+// Finds a UNIQUE index that covers exactly `column` alone (not PRIMARY, not
+// already the store-scoped composite one) so it can be replaced.
+async function findLegacyUniqueIndex(conn, table, column) {
+  const [rows] = await conn.query(
+    `SELECT index_name, COUNT(*) AS col_count,
+            SUM(CASE WHEN column_name = ? THEN 1 ELSE 0 END) AS matches
+     FROM information_schema.statistics
+     WHERE table_schema = DATABASE() AND table_name = ? AND non_unique = 0 AND index_name != 'PRIMARY'
+     GROUP BY index_name`,
+    [column, table]
+  );
+  const hit = rows.find((r) => r.col_count === 1 && r.matches === 1);
+  return hit ? hit.index_name : null;
+}
+
+async function migrateMultiTenancy(conn) {
+  const tenantTables = ['admins', 'categories', 'products', 'orders'];
+
+  // 1. Add store_id (nullable for now) to any table that predates multi-tenancy.
+  for (const t of tenantTables) {
+    if (!(await columnExists(conn, t, 'store_id'))) {
+      await conn.query(`ALTER TABLE ${t} ADD COLUMN store_id INT NULL`);
+    }
+  }
+
+  // 2. Make sure a "demo" store exists to own any pre-existing rows (the
+  // original single-tenant storefront becomes this store).
+  let [[demoStore]] = await conn.query(`SELECT id FROM stores WHERE subdomain = 'demo' LIMIT 1`);
+  if (!demoStore) {
+    const [result] = await conn.query(
+      `INSERT INTO stores (name, subdomain, theme, plan, status) VALUES (?, 'demo', 'default', 'free', 'active')`,
+      ['Demo Store']
+    );
+    demoStore = { id: result.insertId };
+  }
+  const demoStoreId = demoStore.id;
+
+  // 3. Backfill any NULL store_id rows onto the demo store.
+  for (const t of tenantTables) {
+    await conn.query(`UPDATE ${t} SET store_id = ? WHERE store_id IS NULL`, [demoStoreId]);
+  }
+
+  // 4. Enforce NOT NULL + index + FK now that every row has a store_id.
+  for (const t of tenantTables) {
+    await conn.query(`ALTER TABLE ${t} MODIFY store_id INT NOT NULL`);
+
+    const idxName = `idx_${t}_store_id`;
+    if (!(await indexExists(conn, t, idxName))) {
+      await conn.query(`ALTER TABLE ${t} ADD INDEX ${idxName} (store_id)`);
+    }
+
+    if (!(await foreignKeyExists(conn, t, 'store_id'))) {
+      await conn.query(
+        `ALTER TABLE ${t} ADD CONSTRAINT fk_${t}_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE`
+      );
+    }
+  }
+
+  // 5. Replace old single-column UNIQUE constraints with store-scoped ones,
+  // so different merchants can reuse the same slug/category name/admin email.
+  const uniquePlans = [
+    { table: 'products', column: 'slug', indexName: 'uniq_store_slug' },
+    { table: 'categories', column: 'name', indexName: 'uniq_store_category_name' },
+    { table: 'admins', column: 'email', indexName: 'uniq_store_admin_email' },
+  ];
+  for (const plan of uniquePlans) {
+    const legacyIdx = await findLegacyUniqueIndex(conn, plan.table, plan.column);
+    if (legacyIdx) {
+      await conn.query(`ALTER TABLE ${plan.table} DROP INDEX ${legacyIdx}`);
+    }
+    if (!(await indexExists(conn, plan.table, plan.indexName))) {
+      await conn.query(`ALTER TABLE ${plan.table} ADD UNIQUE KEY ${plan.indexName} (store_id, ${plan.column})`);
+    }
+  }
+
+  return demoStoreId;
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
-    // Run each statement in the schema separately (mysql2 needs multipleStatements for this,
-    // so split on the ';' that ends each CREATE TABLE block).
     const statements = SCHEMA.split(/;\s*\n/).map((s) => s.trim()).filter(Boolean);
     for (const stmt of statements) {
       await conn.query(stmt);
     }
 
-    const [[{ c: productCount }]] = await conn.query('SELECT COUNT(*) AS c FROM products');
+    const demoStoreId = await migrateMultiTenancy(conn);
+
+    const [[{ c: productCount }]] = await conn.query('SELECT COUNT(*) AS c FROM products WHERE store_id = ?', [demoStoreId]);
 
     if (productCount === 0) {
       const categoryNames = [...new Set(SAMPLE_PRODUCTS.map((p) => p.category))];
       const catIds = {};
       for (const name of categoryNames) {
-        const [result] = await conn.query('INSERT INTO categories (name) VALUES (?)', [name]);
-        catIds[name] = result.insertId;
+        const [[existingCat]] = await conn.query('SELECT id FROM categories WHERE store_id = ? AND name = ?', [demoStoreId, name]);
+        if (existingCat) {
+          catIds[name] = existingCat.id;
+        } else {
+          const [result] = await conn.query('INSERT INTO categories (store_id, name) VALUES (?, ?)', [demoStoreId, name]);
+          catIds[name] = result.insertId;
+        }
       }
 
       for (const p of SAMPLE_PRODUCTS) {
         await conn.query(
-          `INSERT INTO products (title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
-          [p.title, p.slug, p.description, p.price, p.compare_at_price, p.image_url, catIds[p.category], p.stock]
+          `INSERT INTO products (store_id, title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+          [demoStoreId, p.title, p.slug, p.description, p.price, p.compare_at_price, p.image_url, catIds[p.category], p.stock]
         );
       }
 
+      console.log('Demo store seeded with sample products.');
+    }
+
+    const [[{ c: demoAdminCount }]] = await conn.query('SELECT COUNT(*) AS c FROM admins WHERE store_id = ?', [demoStoreId]);
+    if (demoAdminCount === 0) {
       const passwordHash = bcrypt.hashSync('admin123', 10);
-      await conn.query('INSERT INTO admins (name, email, password_hash) VALUES (?, ?, ?)', [
+      await conn.query('INSERT INTO admins (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)', [
+        demoStoreId,
         'Store Admin',
         'admin@pagezaper.test',
         passwordHash,
       ]);
-
-      console.log('Database seeded with sample products and default admin (admin@pagezaper.test / admin123)');
+      console.log('Demo store admin created (admin@pagezaper.test / admin123)');
     }
   } finally {
     conn.release();
   }
 }
 
-module.exports = { pool, init };
+module.exports = { pool, init, THEMES, RESERVED_SUBDOMAINS };
