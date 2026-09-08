@@ -1,0 +1,10 @@
+<%- include('partials/header') %>
+
+<% sections.forEach(function(section) { %>
+  <%- include('partials/section', { section: section }) %>
+<% }); %>
+<% if (sections.length === 0) { %>
+  <p class="empty-state">This page doesn't have any content yet.</p>
+<% } %>
+
+<%- include('partials/footer') %>

@@ -13,6 +13,7 @@
       <div class="admin-logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %> <small>Admin</small></div>
       <nav class="admin-nav">
         <a href="/admin" class="<%= title === 'Dashboard' ? 'active' : '' %>">Dashboard</a>
+        <a href="/admin/pages" class="<%= title && (title === 'Pages' || title.includes('Page') || title.startsWith('Edit ') || title === 'New Page') ? 'active' : '' %>">Pages</a>
         <a href="/admin/products" class="<%= title && title.includes('Product') ? 'active' : '' %>">Products</a>
         <a href="/admin/orders" class="<%= title && title.includes('Order') ? 'active' : '' %>">Orders</a>
         <a href="/" target="_blank">View store ↗</a>

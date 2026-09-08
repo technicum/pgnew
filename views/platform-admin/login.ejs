@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform Admin Login · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-login-body theme-default">
+  <div class="login-card">
+    <div class="admin-logo">PageZaper <small>Platform</small></div>
+
+    <% if (typeof error !== 'undefined' && error && error.length) { %>
+      <div class="flash flash-error"><%= error[0] %></div>
+    <% } %>
+
+    <form action="/platform-admin/login" method="POST">
+      <label>Email
+        <input type="email" name="email" required autofocus />
+      </label>
+      <label>Password
+        <input type="password" name="password" required />
+      </label>
+      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+    </form>
+  </div>
+</body>
+</html>

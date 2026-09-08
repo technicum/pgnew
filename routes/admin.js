@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { pool, TABLES } = require('../db/database');
 const { requireAdmin } = require('../middleware/auth');
+const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields } = require('../lib/sections');
 
 function slugify(str) {
   return str
@@ -204,6 +205,191 @@ router.post('/products/:id/delete', async (req, res, next) => {
     await pool.query(`DELETE FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     req.flash('success', 'Product deleted.');
     res.redirect('/admin/products');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Pages (builder) ----------
+// Loads a page and confirms it belongs to the logged-in store — every
+// section route below goes through this so a page/section id can never be
+// used to read or edit another merchant's page.
+async function loadOwnedPage(storeId, pageId) {
+  const [[page]] = await pool.query(`SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND id = ?`, [storeId, pageId]);
+  return page;
+}
+
+router.get('/pages', async (req, res, next) => {
+  try {
+    const [pages] = await pool.query(
+      `SELECT * FROM ${TABLES.pages} WHERE store_id = ? ORDER BY is_home DESC, name ASC`,
+      [req.store.id]
+    );
+    res.render('admin/pages', { title: 'Pages', pages });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/pages/new', (req, res) => {
+  res.render('admin/page-form', { title: 'New Page' });
+});
+
+router.post('/pages/new', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const name = (req.body.name || '').trim();
+    if (!name) {
+      req.flash('error', 'Page name is required.');
+      return res.redirect('/admin/pages/new');
+    }
+
+    let slug = slugify(name) || 'page';
+    let path = `/${slug}`;
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.pages} WHERE store_id = ? AND path = ?`, [storeId, path]);
+    if (existing) path = `/${slug}-${Date.now().toString().slice(-4)}`;
+
+    const [result] = await pool.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, ?, ?, 0, 'published')`,
+      [storeId, name, path]
+    );
+    const pageId = result.insertId;
+
+    // Seed a starter hero so the page isn't blank the first time it's opened.
+    await pool.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'hero', 0, ?)`,
+      [pageId, JSON.stringify(Object.assign(defaultFields('hero'), { heading: name }))]
+    );
+
+    req.flash('success', 'Page created.');
+    res.redirect(`/admin/pages/${pageId}/edit`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/pages/:id/edit', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) {
+      req.flash('error', 'Page not found.');
+      return res.redirect('/admin/pages');
+    }
+    const [rawSections] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE page_id = ? ORDER BY position ASC`, [page.id]);
+    const sections = rawSections.map((s) => ({
+      ...s,
+      fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
+    }));
+    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/pages/:id/publish', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+    const status = req.body.status === 'draft' ? 'draft' : 'published';
+    await pool.query(`UPDATE ${TABLES.pages} SET status = ? WHERE id = ?`, [status, page.id]);
+    res.json({ ok: true, status });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/pages/:id/delete', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) {
+      req.flash('error', 'Page not found.');
+      return res.redirect('/admin/pages');
+    }
+    if (page.is_home) {
+      req.flash('error', "You can't delete the Home page.");
+      return res.redirect('/admin/pages');
+    }
+    await pool.query(`DELETE FROM ${TABLES.pages} WHERE id = ?`, [page.id]);
+    req.flash('success', 'Page deleted.');
+    res.redirect('/admin/pages');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Section JSON API, used by public/js/builder.js ----
+router.post('/pages/:id/sections', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+
+    const { type } = req.body;
+    if (!SECTION_TYPE_KEYS.includes(type)) return res.status(400).json({ error: 'Unknown section type' });
+
+    const [[{ maxPos }]] = await pool.query(
+      `SELECT COALESCE(MAX(position), -1) AS maxPos FROM ${TABLES.pageSections} WHERE page_id = ?`,
+      [page.id]
+    );
+    const fields = defaultFields(type);
+    const [result] = await pool.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, ?, ?, ?)`,
+      [page.id, type, maxPos + 1, JSON.stringify(fields)]
+    );
+    res.json({ ok: true, section: { id: result.insertId, type, position: maxPos + 1, fields, hidden: 0 } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/pages/:id/sections/reorder', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+
+    const order = Array.isArray(req.body.order) ? req.body.order : [];
+    for (let i = 0; i < order.length; i++) {
+      await pool.query(`UPDATE ${TABLES.pageSections} SET position = ? WHERE id = ? AND page_id = ?`, [i, order[i], page.id]);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/pages/:id/sections/:sectionId', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+
+    const [[section]] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+
+    const currentFields = typeof section.fields === 'string' ? JSON.parse(section.fields) : section.fields;
+    const nextFields = sanitizeFields(section.type, currentFields, req.body.fields);
+    await pool.query(`UPDATE ${TABLES.pageSections} SET fields = ? WHERE id = ?`, [JSON.stringify(nextFields), section.id]);
+    res.json({ ok: true, fields: nextFields });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/pages/:id/sections/:sectionId/toggle', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+    await pool.query(`UPDATE ${TABLES.pageSections} SET hidden = NOT hidden WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/pages/:id/sections/:sectionId/delete', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+    await pool.query(`DELETE FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

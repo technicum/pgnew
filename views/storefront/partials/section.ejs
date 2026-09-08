@@ -1,0 +1,61 @@
+<% if (section.type === 'hero') { %>
+  <section class="hero">
+    <h1><%= section.fields.heading %></h1>
+    <p><%= section.fields.subheading %></p>
+  </section>
+
+<% } else if (section.type === 'products') { %>
+  <section class="product-grid-section">
+    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <div class="product-grid">
+      <% if (section.products.length === 0) { %>
+        <p class="empty-state">No products found in this category yet.</p>
+      <% } %>
+      <% section.products.forEach(function(p) { %>
+        <a class="product-card" href="/products/<%= p.slug %>">
+          <div class="product-card-img" style="background-image: url('<%= p.image_url %>')"></div>
+          <div class="product-card-body">
+            <h3><%= p.title %></h3>
+            <div class="price-row">
+              <span class="price">₹<%= p.price.toFixed(2) %></span>
+              <% if (p.compare_at_price) { %><span class="compare-price">₹<%= p.compare_at_price.toFixed(2) %></span><% } %>
+            </div>
+            <% if (p.stock <= 0) { %><span class="tag tag-out">Out of stock</span><% } %>
+          </div>
+        </a>
+      <% }); %>
+    </div>
+  </section>
+
+<% } else if (section.type === 'text_image') { %>
+  <section class="text-image text-image-<%= section.fields.side === 'left' ? 'left' : 'right' %>">
+    <div class="text-image-media" style="<%= section.fields.image_url ? `background-image:url('${section.fields.image_url}')` : '' %>"></div>
+    <div class="text-image-copy">
+      <h2><%= section.fields.heading %></h2>
+      <p><%= section.fields.body %></p>
+    </div>
+  </section>
+
+<% } else if (section.type === 'testimonials') { %>
+  <section class="testimonials">
+    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <div class="testimonial-grid">
+      <% section.fields.quotes.forEach(function(q) { %>
+        <blockquote class="testimonial-card">
+          <p>&ldquo;<%= q.quote %>&rdquo;</p>
+          <cite>&mdash; <%= q.author %></cite>
+        </blockquote>
+      <% }); %>
+    </div>
+  </section>
+
+<% } else if (section.type === 'newsletter') { %>
+  <section class="newsletter">
+    <h2><%= section.fields.heading %></h2>
+    <p><%= section.fields.subtext %></p>
+    <form class="newsletter-form" action="/newsletter" method="POST">
+      <input type="email" name="email" placeholder="you@example.com" required />
+      <button type="submit" class="btn btn-primary"><%= section.fields.button %></button>
+    </form>
+  </section>
+<% } %>

@@ -1,0 +1,65 @@
+<%- include('partials/header') %>
+
+<div class="stat-cards">
+  <div class="stat-card">
+    <span class="stat-label">Revenue</span>
+    <span class="stat-value">₹<%= revenue.toFixed(2) %></span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Orders</span>
+    <span class="stat-value"><%= orderCount %></span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Products</span>
+    <span class="stat-value"><%= productCount %></span>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <section class="panel">
+    <h2>Store details</h2>
+    <table class="admin-table">
+      <tbody>
+        <tr><td>Subdomain</td><td><%= store.subdomain %></td></tr>
+        <tr><td>Plan</td><td><%= store.plan %></td></tr>
+        <tr><td>Theme</td><td><%= store.theme %></td></tr>
+        <tr><td>Status</td><td><span class="status-pill <%= store.status === 'active' ? 'status-delivered' : 'status-cancelled' %>"><%= store.status %></span></td></tr>
+        <tr><td>Created</td><td><%= new Date(store.created_at).toLocaleDateString() %></td></tr>
+      </tbody>
+    </table>
+
+    <% if (store.status === 'active') { %>
+      <form action="/platform-admin/stores/<%= store.id %>/status" method="POST" style="margin-top:16px;" onsubmit="return confirm('Suspend this store? Its storefront and admin will stop working.');">
+        <input type="hidden" name="status" value="suspended" />
+        <button type="submit" class="btn" style="border:1px solid var(--color-danger); color: var(--color-danger);">Suspend store</button>
+      </form>
+    <% } else { %>
+      <form action="/platform-admin/stores/<%= store.id %>/status" method="POST" style="margin-top:16px;">
+        <input type="hidden" name="status" value="active" />
+        <button type="submit" class="btn btn-primary">Reactivate store</button>
+      </form>
+    <% } %>
+  </section>
+
+  <section class="panel">
+    <h2>Store admins</h2>
+    <% if (admins.length === 0) { %>
+      <p class="empty-state">No admin accounts yet.</p>
+    <% } else { %>
+      <table class="admin-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Since</th></tr></thead>
+        <tbody>
+          <% admins.forEach(function(a) { %>
+            <tr>
+              <td><%= a.name %></td>
+              <td><%= a.email %></td>
+              <td><%= new Date(a.created_at).toLocaleDateString() %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
+
+<%- include('partials/footer') %>

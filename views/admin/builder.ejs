@@ -1,0 +1,32 @@
+<%- include('partials/header') %>
+
+<div class="builder-layout">
+  <aside class="builder-sidebar">
+    <h2>Add a section</h2>
+    <div class="builder-add-list">
+      <% Object.keys(sectionTypes).forEach(function(key) { %>
+        <button type="button" class="builder-add-btn" data-type="<%= key %>"><%= sectionTypes[key].name %></button>
+      <% }); %>
+    </div>
+    <div class="builder-page-meta">
+      <p><strong>Path:</strong> <%= page.path %></p>
+      <% if (page.is_home) { %>
+        <p class="builder-home-badge">This is your store's Home page</p>
+      <% } %>
+      <a href="<%= page.is_home ? '/' : '/pages' + page.path %>" target="_blank" class="btn btn-block" style="border:1px solid var(--color-border);">Preview &#8599;</a>
+    </div>
+  </aside>
+
+  <div class="builder-canvas" id="builder-canvas" data-page-id="<%= page.id %>">
+    <% sections.forEach(function(section) { %>
+      <%- include('partials/builder-section-card', { section: section, sectionTypes: sectionTypes }) %>
+    <% }); %>
+    <% if (sections.length === 0) { %>
+      <p class="empty-state">No sections yet &mdash; add one from the left.</p>
+    <% } %>
+  </div>
+</div>
+
+<script src="/js/builder.js"></script>
+
+<%- include('partials/footer') %>

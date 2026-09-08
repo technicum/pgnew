@@ -32,6 +32,10 @@ const TABLES = {
   products: `${PREFIX}products`,
   orders: `${PREFIX}orders`,
   orderItems: `${PREFIX}order_items`,
+  pages: `${PREFIX}pages`,
+  pageSections: `${PREFIX}page_sections`,
+  newsletterSubscribers: `${PREFIX}newsletter_subscribers`,
+  platformAdmins: `${PREFIX}platform_admins`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -129,6 +133,48 @@ CREATE TABLE IF NOT EXISTS ${TABLES.orderItems} (
   quantity INT NOT NULL,
   FOREIGN KEY (order_id) REFERENCES ${TABLES.orders}(id) ON DELETE CASCADE,
   FOREIGN KEY (product_id) REFERENCES ${TABLES.products}(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ${TABLES.pages} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  path VARCHAR(255) NOT NULL,
+  is_home TINYINT(1) NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'published',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_page_path (store_id, path)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  page_id INT NOT NULL,
+  type VARCHAR(30) NOT NULL,
+  position INT NOT NULL DEFAULT 0,
+  fields JSON NOT NULL,
+  hidden TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
+  INDEX idx_page_position (page_id, position)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ${TABLES.newsletterSubscribers} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_subscriber_email (store_id, email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ${TABLES.platformAdmins} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -330,6 +376,39 @@ async function migrateMultiTenancy(conn) {
   return demoStoreId;
 }
 
+// Every store needs exactly one Home page (is_home=1, path='/') to render the
+// storefront front page from. Any store that doesn't have one yet (brand new
+// stores created before this feature existed, or a fresh signup) gets one
+// created here with a starter hero + product grid section, matching what the
+// hardcoded storefront home page used to look like.
+async function migratePagesForExistingStores(conn) {
+  const { defaultFields } = require('../lib/sections');
+
+  const [stores] = await conn.query(`SELECT id FROM ${TABLES.stores}`);
+  for (const store of stores) {
+    const [[home]] = await conn.query(
+      `SELECT id FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 1 LIMIT 1`,
+      [store.id]
+    );
+    if (home) continue;
+
+    const [result] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'Home', '/', 1, 'published')`,
+      [store.id]
+    );
+    const pageId = result.insertId;
+
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'hero', 0, ?)`,
+      [pageId, JSON.stringify(defaultFields('hero'))]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'products', 1, ?)`,
+      [pageId, JSON.stringify(defaultFields('products'))]
+    );
+  }
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
@@ -341,6 +420,7 @@ async function init() {
     }
 
     const demoStoreId = await migrateMultiTenancy(conn);
+    await migratePagesForExistingStores(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 
@@ -378,6 +458,22 @@ async function init() {
         passwordHash,
       ]);
       console.log('Demo store admin created (admin@pagezaper.test / admin123)');
+    }
+
+    // Platform super-admin: separate account/table from per-store admins,
+    // used to manage ALL stores from one place (see routes/platformAdmin.js).
+    // Override the seeded credentials via env vars in production.
+    const [[{ c: platformAdminCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.platformAdmins}`);
+    if (platformAdminCount === 0) {
+      const email = process.env.PLATFORM_ADMIN_EMAIL || 'superadmin@pagezaper.com';
+      const password = process.env.PLATFORM_ADMIN_PASSWORD || 'changeme123';
+      const passwordHash = bcrypt.hashSync(password, 10);
+      await conn.query(`INSERT INTO ${TABLES.platformAdmins} (name, email, password_hash) VALUES (?, ?, ?)`, [
+        'Platform Admin',
+        email,
+        passwordHash,
+      ]);
+      console.log(`Platform admin created (${email} / ${password}) - change this password.`);
     }
   } finally {
     conn.release();

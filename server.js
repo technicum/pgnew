@@ -7,6 +7,7 @@ const path = require('path');
 const { pool, init } = require('./db/database');
 const { resolveStore, getBaseDomain } = require('./middleware/tenant');
 const platformRoutes = require('./routes/platform');
+const platformAdminRoutes = require('./routes/platformAdmin');
 const storefrontRoutes = require('./routes/storefront');
 const adminRoutes = require('./routes/admin');
 const { attachCartInfo } = require('./middleware/cart');
@@ -56,10 +57,15 @@ app.use((req, res, next) => {
   res.locals.success = req.flash('success');
   res.locals.error = req.flash('error');
   res.locals.admin = req.session.admin || null;
+  res.locals.platformAdmin = req.session.platformAdmin || null;
   next();
 });
 
 app.use('/', platformRoutes);
+// Mounted before storefrontRoutes: storefrontRoutes' catch-all guard 404s
+// any root-domain request it doesn't recognize, which would otherwise
+// swallow /platform-admin before this router ever saw it.
+app.use('/platform-admin', platformAdminRoutes);
 app.use('/', storefrontRoutes);
 app.use('/admin', adminRoutes);
 

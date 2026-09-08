@@ -275,3 +275,59 @@
   .admin-sidebar { width: 100%; flex-direction: row; align-items: center; }
   .admin-nav { flex-direction: row; }
 }
+
+/* ---------- Page builder ---------- */
+.builder-layout { display: flex; gap: 24px; align-items: flex-start; }
+
+.builder-sidebar { width: 220px; flex-shrink: 0; position: sticky; top: 20px; }
+.builder-sidebar h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin: 0 0 10px; }
+
+.builder-add-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.builder-add-btn {
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.builder-add-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.builder-add-btn:disabled { opacity: 0.5; cursor: default; }
+
+.builder-page-meta { font-size: 0.85rem; color: #6b7280; border-top: 1px solid var(--color-border); padding-top: 16px; }
+.builder-page-meta p { margin: 0 0 8px; }
+.builder-home-badge { color: var(--color-primary); font-weight: 600; }
+
+.builder-canvas { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+.builder-card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.builder-card-hidden { opacity: 0.55; }
+
+.builder-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  cursor: grab;
+}
+.builder-card-head:active { cursor: grabbing; }
+.builder-drag-handle { color: #9ca3af; }
+.builder-card-head strong { flex: 1; font-size: 0.92rem; }
+.builder-card-actions { display: flex; gap: 12px; font-size: 0.82rem; }
+
+.builder-card-body { padding: 16px; gap: 12px; }
+.builder-hint { margin: 0; font-size: 0.75rem; color: #9ca3af; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.builder-field-saving { opacity: 0.6; }
+
+@media (max-width: 900px) {
+  .builder-layout { flex-direction: column; }
+  .builder-sidebar { width: 100%; position: static; }
+}

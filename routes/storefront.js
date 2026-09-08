@@ -23,41 +23,117 @@ router.use((req, res, next) => {
   return res.status(404).render('storefront/404', { title: 'Page not found' });
 });
 
-// ---------- Store / product listing ----------
-// A store's own subdomain shows its home page at "/"; "/store" is kept as
-// an alias so older links (and the demo store link on the marketing page)
-// keep working.
-router.get(['/', '/store'], async (req, res, next) => {
+// Non-home published pages, made available to every view in this router so
+// the header nav can link to them (see views/storefront/partials/header.ejs).
+router.use(async (req, res, next) => {
+  try {
+    const [pages] = await pool.query(
+      `SELECT id, name, path FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 0 AND status = 'published' ORDER BY name`,
+      [req.store.id]
+    );
+    res.locals.storePages = pages;
+  } catch (err) {
+    res.locals.storePages = [];
+  }
+  next();
+});
+
+// Renders any page (home or a custom one) by loading its sections from the
+// builder and, if one of those sections is a product grid, fetching the
+// products it needs. Shared by the "/" route and "/pages/:slug" below so
+// both go through the exact same rendering logic.
+async function renderStorePage(req, res, next, page) {
   try {
     const storeId = req.store.id;
     const { category } = req.query;
+
+    const [rawSections] = await pool.query(
+      `SELECT * FROM ${TABLES.pageSections} WHERE page_id = ? AND hidden = 0 ORDER BY position ASC`,
+      [page.id]
+    );
     const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [storeId]);
 
-    let products;
-    if (category) {
-      [products] = await pool.query(
-        `SELECT p.* FROM ${TABLES.products} p
-         JOIN ${TABLES.categories} c ON p.category_id = c.id
-         WHERE p.store_id = ? AND c.name = ? AND p.status = 'active'
-         ORDER BY p.created_at DESC`,
-        [storeId, category]
-      );
-    } else {
-      [products] = await pool.query(
-        `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND status = 'active' ORDER BY created_at DESC`,
-        [storeId]
-      );
+    const needsProducts = rawSections.some((s) => s.type === 'products');
+    let allProducts = [];
+    if (needsProducts) {
+      if (category) {
+        [allProducts] = await pool.query(
+          `SELECT p.* FROM ${TABLES.products} p
+           JOIN ${TABLES.categories} c ON p.category_id = c.id
+           WHERE p.store_id = ? AND c.name = ? AND p.status = 'active'
+           ORDER BY p.created_at DESC`,
+          [storeId, category]
+        );
+      } else {
+        [allProducts] = await pool.query(
+          `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND status = 'active' ORDER BY created_at DESC`,
+          [storeId]
+        );
+      }
+      allProducts = allProducts.map(toNumber);
     }
 
-    res.render('storefront/home', {
-      title: `Shop ${req.store.name}`,
-      products: products.map(toNumber),
+    const sections = rawSections.map((s) => {
+      const fields = typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields;
+      const section = { id: s.id, type: s.type, fields };
+      if (s.type === 'products') {
+        section.products = allProducts.slice(0, fields.limit || 12);
+      }
+      return section;
+    });
+
+    res.render('storefront/page', {
+      title: page.is_home ? `Shop ${req.store.name}` : `${page.name} · ${req.store.name}`,
+      sections,
       categories,
       activeCategory: category || null,
     });
   } catch (err) {
     next(err);
   }
+}
+
+// ---------- Store home / custom pages ----------
+// A store's own subdomain shows its Home page at "/"; "/store" is kept as
+// an alias so older links (and the demo store link on the marketing page)
+// keep working.
+router.get(['/', '/store'], async (req, res, next) => {
+  try {
+    const [[home]] = await pool.query(`SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 1 LIMIT 1`, [req.store.id]);
+    if (!home) return res.status(404).render('storefront/404', { title: 'Page not found' });
+    return renderStorePage(req, res, next, home);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Extra pages built with the page builder, e.g. "/pages/about-us".
+router.get('/pages/:slug', async (req, res, next) => {
+  try {
+    const path = `/${req.params.slug}`;
+    const [[page]] = await pool.query(
+      `SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND path = ? AND status = 'published' LIMIT 1`,
+      [req.store.id, path]
+    );
+    if (!page) return res.status(404).render('storefront/404', { title: 'Page not found' });
+    return renderStorePage(req, res, next, page);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Newsletter ----------
+router.post('/newsletter', async (req, res) => {
+  const email = (req.body.email || '').trim();
+  if (email) {
+    try {
+      await pool.query(`INSERT IGNORE INTO ${TABLES.newsletterSubscribers} (store_id, email) VALUES (?, ?)`, [req.store.id, email]);
+    } catch (err) {
+      // swallow — subscribing shouldn't be able to break the page
+    }
+  }
+  req.flash('success', 'Thanks for subscribing!');
+  res.redirect(req.get('Referer') || '/');
 });
 
 // ---------- Product detail ----------

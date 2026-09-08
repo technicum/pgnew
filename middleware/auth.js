@@ -15,4 +15,13 @@ function requireAdmin(req, res, next) {
   return res.redirect('/admin/login');
 }
 
-module.exports = { requireAdmin };
+// Platform super-admin: a separate account/session from any store's admins,
+// used to manage every store from one place (routes/platformAdmin.js). Not
+// tied to req.store at all — it works from the root domain only.
+function requirePlatformAdmin(req, res, next) {
+  if (req.session && req.session.platformAdmin) return next();
+  req.flash('error', 'Please log in to continue.');
+  return res.redirect('/platform-admin/login');
+}
+
+module.exports = { requireAdmin, requirePlatformAdmin };

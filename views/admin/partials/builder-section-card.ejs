@@ -1,0 +1,68 @@
+<div class="builder-card <%= section.hidden ? 'builder-card-hidden' : '' %>" draggable="true" data-section-id="<%= section.id %>" data-type="<%= section.type %>">
+  <div class="builder-card-head">
+    <span class="builder-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>
+    <strong><%= sectionTypes[section.type] ? sectionTypes[section.type].name : section.type %></strong>
+    <div class="builder-card-actions">
+      <button type="button" class="link-btn" data-action="toggle"><%= section.hidden ? 'Show' : 'Hide' %></button>
+      <button type="button" class="link-btn danger" data-action="delete">Delete</button>
+    </div>
+  </div>
+  <div class="builder-card-body admin-form">
+    <% if (section.type === 'hero') { %>
+      <label>Heading
+        <input type="text" data-field="heading" value="<%= section.fields.heading %>" />
+      </label>
+      <label>Subheading
+        <textarea rows="2" data-field="subheading"><%= section.fields.subheading %></textarea>
+      </label>
+
+    <% } else if (section.type === 'products') { %>
+      <label>Heading
+        <input type="text" data-field="heading" value="<%= section.fields.heading %>" />
+      </label>
+      <label>Max products to show
+        <input type="number" min="1" max="48" data-field="limit" value="<%= section.fields.limit %>" />
+      </label>
+
+    <% } else if (section.type === 'text_image') { %>
+      <label>Heading
+        <input type="text" data-field="heading" value="<%= section.fields.heading %>" />
+      </label>
+      <label>Body text
+        <textarea rows="3" data-field="body"><%= section.fields.body %></textarea>
+      </label>
+      <label>Image URL
+        <input type="text" data-field="image_url" value="<%= section.fields.image_url %>" placeholder="https://..." />
+      </label>
+      <label>Image side
+        <select data-field="side">
+          <option value="right" <%= section.fields.side === 'right' ? 'selected' : '' %>>Right</option>
+          <option value="left" <%= section.fields.side === 'left' ? 'selected' : '' %>>Left</option>
+        </select>
+      </label>
+
+    <% } else if (section.type === 'testimonials') { %>
+      <label>Heading
+        <input type="text" data-field="heading" value="<%= section.fields.heading %>" />
+      </label>
+      <p class="builder-hint">Quote</p>
+      <label>Quote text
+        <textarea rows="2" data-field="quotes.0.quote"><%= section.fields.quotes[0] ? section.fields.quotes[0].quote : '' %></textarea>
+      </label>
+      <label>Author
+        <input type="text" data-field="quotes.0.author" value="<%= section.fields.quotes[0] ? section.fields.quotes[0].author : '' %>" />
+      </label>
+
+    <% } else if (section.type === 'newsletter') { %>
+      <label>Heading
+        <input type="text" data-field="heading" value="<%= section.fields.heading %>" />
+      </label>
+      <label>Subtext
+        <textarea rows="2" data-field="subtext"><%= section.fields.subtext %></textarea>
+      </label>
+      <label>Button text
+        <input type="text" data-field="button" value="<%= section.fields.button %>" />
+      </label>
+    <% } %>
+  </div>
+</div>
