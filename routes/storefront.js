@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../db/database');
+const { pool, TABLES } = require('../db/database');
 const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
 
 function genOrderNumber() {
@@ -31,20 +31,20 @@ router.get(['/', '/store'], async (req, res, next) => {
   try {
     const storeId = req.store.id;
     const { category } = req.query;
-    const [categories] = await pool.query('SELECT * FROM categories WHERE store_id = ? ORDER BY name', [storeId]);
+    const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [storeId]);
 
     let products;
     if (category) {
       [products] = await pool.query(
-        `SELECT p.* FROM products p
-         JOIN categories c ON p.category_id = c.id
+        `SELECT p.* FROM ${TABLES.products} p
+         JOIN ${TABLES.categories} c ON p.category_id = c.id
          WHERE p.store_id = ? AND c.name = ? AND p.status = 'active'
          ORDER BY p.created_at DESC`,
         [storeId, category]
       );
     } else {
       [products] = await pool.query(
-        `SELECT * FROM products WHERE store_id = ? AND status = 'active' ORDER BY created_at DESC`,
+        `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND status = 'active' ORDER BY created_at DESC`,
         [storeId]
       );
     }
@@ -64,12 +64,12 @@ router.get(['/', '/store'], async (req, res, next) => {
 router.get('/products/:slug', async (req, res, next) => {
   try {
     const storeId = req.store.id;
-    const [[product]] = await pool.query('SELECT * FROM products WHERE store_id = ? AND slug = ?', [storeId, req.params.slug]);
+    const [[product]] = await pool.query(`SELECT * FROM ${TABLES.products} WHERE store_id = ? AND slug = ?`, [storeId, req.params.slug]);
     if (!product) {
       return res.status(404).render('storefront/404', { title: 'Product not found' });
     }
     const [related] = await pool.query(
-      `SELECT * FROM products WHERE store_id = ? AND category_id = ? AND id != ? AND status = 'active' LIMIT 4`,
+      `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND category_id = ? AND id != ? AND status = 'active' LIMIT 4`,
       [storeId, product.category_id, product.id]
     );
 
@@ -100,7 +100,7 @@ router.post('/cart/add', async (req, res, next) => {
     const storeId = req.store.id;
     const { productId, quantity } = req.body;
     const qty = Math.max(1, parseInt(quantity, 10) || 1);
-    const [[product]] = await pool.query('SELECT * FROM products WHERE store_id = ? AND id = ?', [storeId, productId]);
+    const [[product]] = await pool.query(`SELECT * FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [storeId, productId]);
 
     if (!product) {
       req.flash('error', 'Product not found.');
@@ -129,7 +129,7 @@ router.post('/cart/update', async (req, res, next) => {
     if (!qty || qty <= 0) {
       delete cart[productId];
     } else {
-      const [[product]] = await pool.query('SELECT * FROM products WHERE store_id = ? AND id = ?', [storeId, productId]);
+      const [[product]] = await pool.query(`SELECT * FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [storeId, productId]);
       cart[productId] = product ? Math.min(qty, product.stock) : qty;
     }
 
@@ -187,7 +187,7 @@ router.post('/checkout', async (req, res, next) => {
     await conn.beginTransaction();
 
     const [orderResult] = await conn.query(
-      `INSERT INTO orders (store_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, status, payment_method)
+      `INSERT INTO ${TABLES.orders} (store_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, status, payment_method)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
       [storeId, orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal]
     );
@@ -195,10 +195,10 @@ router.post('/checkout', async (req, res, next) => {
 
     for (const item of items) {
       await conn.query(
-        `INSERT INTO order_items (order_id, product_id, title, price, quantity) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO ${TABLES.orderItems} (order_id, product_id, title, price, quantity) VALUES (?, ?, ?, ?, ?)`,
         [orderId, item.id, item.title, item.price, item.quantity]
       );
-      await conn.query(`UPDATE products SET stock = GREATEST(stock - ?, 0) WHERE store_id = ? AND id = ?`, [item.quantity, storeId, item.id]);
+      await conn.query(`UPDATE ${TABLES.products} SET stock = GREATEST(stock - ?, 0) WHERE store_id = ? AND id = ?`, [item.quantity, storeId, item.id]);
     }
 
     await conn.commit();

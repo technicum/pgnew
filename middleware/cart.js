@@ -3,6 +3,7 @@
 // so a shopper browsing two different stores in the same browser (the
 // session cookie is shared across every *.pagezaper.com subdomain) never
 // mixes one store's cart with another's.
+const { TABLES } = require('../db/database');
 
 function getStoreCart(req, storeId) {
   if (!req.session.carts) req.session.carts = {};
@@ -16,7 +17,7 @@ async function getCartItems(pool, storeId, cart) {
 
   const placeholders = ids.map(() => '?').join(',');
   const [products] = await pool.query(
-    `SELECT * FROM products WHERE store_id = ? AND id IN (${placeholders})`,
+    `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND id IN (${placeholders})`,
     [storeId, ...ids]
   );
 

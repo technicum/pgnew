@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
-const { pool, THEMES, RESERVED_SUBDOMAINS } = require('../db/database');
+const { pool, THEMES, RESERVED_SUBDOMAINS, TABLES } = require('../db/database');
 const { storeUrl, rootUrl } = require('../middleware/tenant');
 
 function slugify(str) {
@@ -69,7 +69,7 @@ router.post('/signup', async (req, res, next) => {
 
   const conn = await pool.getConnection();
   try {
-    const [[existing]] = await conn.query('SELECT id FROM stores WHERE subdomain = ?', [subdomain]);
+    const [[existing]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = ?`, [subdomain]);
     if (existing) {
       conn.release();
       return res.status(400).render('platform/signup', {
@@ -83,14 +83,14 @@ router.post('/signup', async (req, res, next) => {
     await conn.beginTransaction();
 
     const [storeResult] = await conn.query(
-      `INSERT INTO stores (name, subdomain, theme, plan, status) VALUES (?, ?, ?, 'free', 'active')`,
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES (?, ?, ?, 'free', 'active')`,
       [storeName, subdomain, theme]
     );
     const storeId = storeResult.insertId;
 
     const passwordHash = bcrypt.hashSync(password, 10);
     const [adminResult] = await conn.query(
-      `INSERT INTO admins (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)`,
+      `INSERT INTO ${TABLES.admins} (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)`,
       [storeId, ownerName, ownerEmail, passwordHash]
     );
 
@@ -125,8 +125,8 @@ router.post('/login', async (req, res, next) => {
 
     const [rows] = await pool.query(
       `SELECT a.id, a.name, a.email, a.password_hash, a.store_id, s.subdomain, s.status AS store_status
-       FROM admins a
-       JOIN stores s ON s.id = a.store_id
+       FROM ${TABLES.admins} a
+       JOIN ${TABLES.stores} s ON s.id = a.store_id
        WHERE a.email = ?`,
       [email]
     );

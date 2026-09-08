@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const { pool } = require('../db/database');
+const { pool, TABLES } = require('../db/database');
 const { requireAdmin } = require('../middleware/auth');
 
 function slugify(str) {
@@ -40,7 +40,7 @@ router.get('/login', (req, res) => {
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const [[admin]] = await pool.query('SELECT * FROM admins WHERE store_id = ? AND email = ?', [req.store.id, email]);
+    const [[admin]] = await pool.query(`SELECT * FROM ${TABLES.admins} WHERE store_id = ? AND email = ?`, [req.store.id, email]);
 
     if (!admin || !bcrypt.compareSync(password, admin.password_hash)) {
       req.flash('error', 'Invalid email or password.');
@@ -66,18 +66,18 @@ router.use(requireAdmin);
 router.get('/', async (req, res, next) => {
   try {
     const storeId = req.store.id;
-    const [[{ c: productCount }]] = await pool.query('SELECT COUNT(*) AS c FROM products WHERE store_id = ?', [storeId]);
-    const [[{ c: orderCount }]] = await pool.query('SELECT COUNT(*) AS c FROM orders WHERE store_id = ?', [storeId]);
+    const [[{ c: productCount }]] = await pool.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [storeId]);
+    const [[{ c: orderCount }]] = await pool.query(`SELECT COUNT(*) AS c FROM ${TABLES.orders} WHERE store_id = ?`, [storeId]);
     const [[{ total }]] = await pool.query(
-      `SELECT COALESCE(SUM(subtotal), 0) AS total FROM orders WHERE store_id = ? AND status != 'cancelled'`,
+      `SELECT COALESCE(SUM(subtotal), 0) AS total FROM ${TABLES.orders} WHERE store_id = ? AND status != 'cancelled'`,
       [storeId]
     );
     const [lowStock] = await pool.query(
-      `SELECT * FROM products WHERE store_id = ? AND stock <= 5 AND status = 'active' ORDER BY stock ASC LIMIT 5`,
+      `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND stock <= 5 AND status = 'active' ORDER BY stock ASC LIMIT 5`,
       [storeId]
     );
     const [recentOrders] = await pool.query(
-      `SELECT * FROM orders WHERE store_id = ? ORDER BY created_at DESC LIMIT 5`,
+      `SELECT * FROM ${TABLES.orders} WHERE store_id = ? ORDER BY created_at DESC LIMIT 5`,
       [storeId]
     );
 
@@ -98,8 +98,8 @@ router.get('/', async (req, res, next) => {
 router.get('/products', async (req, res, next) => {
   try {
     const [products] = await pool.query(
-      `SELECT p.*, c.name AS category_name FROM products p
-       LEFT JOIN categories c ON p.category_id = c.id
+      `SELECT p.*, c.name AS category_name FROM ${TABLES.products} p
+       LEFT JOIN ${TABLES.categories} c ON p.category_id = c.id
        WHERE p.store_id = ?
        ORDER BY p.created_at DESC`,
       [req.store.id]
@@ -112,7 +112,7 @@ router.get('/products', async (req, res, next) => {
 
 router.get('/products/new', async (req, res, next) => {
   try {
-    const [categories] = await pool.query('SELECT * FROM categories WHERE store_id = ? ORDER BY name', [req.store.id]);
+    const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [req.store.id]);
     res.render('admin/product-form', { title: 'New Product', product: null, categories });
   } catch (err) {
     next(err);
@@ -130,11 +130,11 @@ router.post('/products/new', async (req, res, next) => {
     }
 
     let slug = slugify(title);
-    const [[existing]] = await pool.query('SELECT id FROM products WHERE store_id = ? AND slug = ?', [storeId, slug]);
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.products} WHERE store_id = ? AND slug = ?`, [storeId, slug]);
     if (existing) slug = `${slug}-${Date.now().toString().slice(-4)}`;
 
     await pool.query(
-      `INSERT INTO products (store_id, title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
+      `INSERT INTO ${TABLES.products} (store_id, title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         storeId,
@@ -159,12 +159,12 @@ router.post('/products/new', async (req, res, next) => {
 
 router.get('/products/:id/edit', async (req, res, next) => {
   try {
-    const [[product]] = await pool.query('SELECT * FROM products WHERE store_id = ? AND id = ?', [req.store.id, req.params.id]);
+    const [[product]] = await pool.query(`SELECT * FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     if (!product) {
       req.flash('error', 'Product not found.');
       return res.redirect('/admin/products');
     }
-    const [categories] = await pool.query('SELECT * FROM categories WHERE store_id = ? ORDER BY name', [req.store.id]);
+    const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [req.store.id]);
     res.render('admin/product-form', { title: 'Edit Product', product: toNumber(product), categories });
   } catch (err) {
     next(err);
@@ -176,7 +176,7 @@ router.post('/products/:id/edit', async (req, res, next) => {
     const { title, description, price, compare_at_price, image_url, category_id, stock, status } = req.body;
 
     await pool.query(
-      `UPDATE products SET title = ?, description = ?, price = ?, compare_at_price = ?, image_url = ?, category_id = ?, stock = ?, status = ?
+      `UPDATE ${TABLES.products} SET title = ?, description = ?, price = ?, compare_at_price = ?, image_url = ?, category_id = ?, stock = ?, status = ?
        WHERE store_id = ? AND id = ?`,
       [
         title,
@@ -201,7 +201,7 @@ router.post('/products/:id/edit', async (req, res, next) => {
 
 router.post('/products/:id/delete', async (req, res, next) => {
   try {
-    await pool.query('DELETE FROM products WHERE store_id = ? AND id = ?', [req.store.id, req.params.id]);
+    await pool.query(`DELETE FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     req.flash('success', 'Product deleted.');
     res.redirect('/admin/products');
   } catch (err) {
@@ -212,7 +212,7 @@ router.post('/products/:id/delete', async (req, res, next) => {
 // ---------- Orders ----------
 router.get('/orders', async (req, res, next) => {
   try {
-    const [orders] = await pool.query('SELECT * FROM orders WHERE store_id = ? ORDER BY created_at DESC', [req.store.id]);
+    const [orders] = await pool.query(`SELECT * FROM ${TABLES.orders} WHERE store_id = ? ORDER BY created_at DESC`, [req.store.id]);
     res.render('admin/orders', { title: 'Orders', orders: orders.map((o) => ({ ...o, subtotal: Number(o.subtotal) })) });
   } catch (err) {
     next(err);
@@ -221,12 +221,12 @@ router.get('/orders', async (req, res, next) => {
 
 router.get('/orders/:id', async (req, res, next) => {
   try {
-    const [[order]] = await pool.query('SELECT * FROM orders WHERE store_id = ? AND id = ?', [req.store.id, req.params.id]);
+    const [[order]] = await pool.query(`SELECT * FROM ${TABLES.orders} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     if (!order) {
       req.flash('error', 'Order not found.');
       return res.redirect('/admin/orders');
     }
-    const [items] = await pool.query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+    const [items] = await pool.query(`SELECT * FROM ${TABLES.orderItems} WHERE order_id = ?`, [order.id]);
     res.render('admin/order-detail', {
       title: `Order ${order.order_number}`,
       order: { ...order, subtotal: Number(order.subtotal) },
@@ -245,7 +245,7 @@ router.post('/orders/:id/status', async (req, res, next) => {
       req.flash('error', 'Invalid status.');
       return res.redirect(`/admin/orders/${req.params.id}`);
     }
-    await pool.query('UPDATE orders SET status = ? WHERE store_id = ? AND id = ?', [status, req.store.id, req.params.id]);
+    await pool.query(`UPDATE ${TABLES.orders} SET status = ? WHERE store_id = ? AND id = ?`, [status, req.store.id, req.params.id]);
     req.flash('success', 'Order status updated.');
     res.redirect(`/admin/orders/${req.params.id}`);
   } catch (err) {

@@ -21,14 +21,39 @@ const RESERVED_SUBDOMAINS = new Set([
   'billing', 'docs', 'status', 'pagezaper',
 ]);
 
+// All table names go through this prefix, so PageZaper's tables are easy to
+// pick out if this database is ever shared with another app. Every route
+// file imports TABLES from here rather than hardcoding table names.
+const PREFIX = process.env.DB_PREFIX || 'pz_';
+const TABLES = {
+  stores: `${PREFIX}stores`,
+  admins: `${PREFIX}admins`,
+  categories: `${PREFIX}categories`,
+  products: `${PREFIX}products`,
+  orders: `${PREFIX}orders`,
+  orderItems: `${PREFIX}order_items`,
+};
+// The un-prefixed names this app used before DB_PREFIX existed — used only
+// to detect and safely rename an older install's tables (see
+// renameLegacyTables below). Not used anywhere else.
+const LEGACY_NAMES = {
+  stores: 'stores',
+  admins: 'admins',
+  categories: 'categories',
+  products: 'products',
+  orders: 'orders',
+  orderItems: 'order_items',
+};
+
 // ---------- Schema ----------
 // These CREATE TABLE statements describe the full desired multi-tenant
 // schema and are what a brand new database gets. An existing (pre-multi-
-// tenant) database won't have store_id on these tables yet since
+// tenant, or pre-prefix) database won't be shaped like this yet since
 // `CREATE TABLE IF NOT EXISTS` is a no-op when the table already exists —
-// migrateMultiTenancy() below brings those up to the same shape safely.
+// renameLegacyTables() and migrateMultiTenancy() below bring those up to
+// the same shape safely, without ever dropping data.
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS stores (
+CREATE TABLE IF NOT EXISTS ${TABLES.stores} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   subdomain VARCHAR(63) UNIQUE NOT NULL,
@@ -38,26 +63,26 @@ CREATE TABLE IF NOT EXISTS stores (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS admins (
+CREATE TABLE IF NOT EXISTS ${TABLES.admins} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   store_id INT NOT NULL,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   UNIQUE KEY uniq_store_admin_email (store_id, email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS categories (
+CREATE TABLE IF NOT EXISTS ${TABLES.categories} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   store_id INT NOT NULL,
   name VARCHAR(255) NOT NULL,
-  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   UNIQUE KEY uniq_store_category_name (store_id, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS products (
+CREATE TABLE IF NOT EXISTS ${TABLES.products} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   store_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
@@ -70,14 +95,14 @@ CREATE TABLE IF NOT EXISTS products (
   stock INT NOT NULL DEFAULT 0,
   status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES ${TABLES.categories}(id) ON DELETE SET NULL,
   UNIQUE KEY uniq_store_slug (store_id, slug),
   INDEX idx_status (status),
   INDEX idx_category (category_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS orders (
+CREATE TABLE IF NOT EXISTS ${TABLES.orders} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   store_id INT NOT NULL,
   order_number VARCHAR(64) UNIQUE NOT NULL,
@@ -91,19 +116,19 @@ CREATE TABLE IF NOT EXISTS orders (
   status VARCHAR(20) NOT NULL DEFAULT 'pending',
   payment_method VARCHAR(20) DEFAULT 'cod',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   INDEX idx_order_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS order_items (
+CREATE TABLE IF NOT EXISTS ${TABLES.orderItems} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT NOT NULL,
   product_id INT NULL,
   title VARCHAR(255) NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   quantity INT NOT NULL,
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL
+  FOREIGN KEY (order_id) REFERENCES ${TABLES.orders}(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES ${TABLES.products}(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -171,8 +196,17 @@ const SAMPLE_PRODUCTS = [
 ];
 
 // ---------- Migration helpers ----------
-// All idempotent: safe to run on every boot, on a brand new DB or an old
-// single-tenant one. Never drops or truncates data.
+// All idempotent: safe to run on every boot, on a brand new DB, an old
+// single-tenant one, or an old un-prefixed multi-tenant one. Never drops
+// or truncates data.
+async function tableExists(conn, table) {
+  const [rows] = await conn.query(
+    `SELECT COUNT(*) AS c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?`,
+    [table]
+  );
+  return rows[0].c > 0;
+}
+
 async function columnExists(conn, table, column) {
   const [rows] = await conn.query(
     `SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
@@ -213,8 +247,28 @@ async function findLegacyUniqueIndex(conn, table, column) {
   return hit ? hit.index_name : null;
 }
 
+// If this database still has the old un-prefixed tables (from before
+// DB_PREFIX existed) and the prefixed ones don't exist yet, rename them in
+// place — a single atomic RENAME TABLE per table, which MySQL/InnoDB keeps
+// foreign keys pointing through correctly. All data, all rows, stays intact.
+async function renameLegacyTables(conn) {
+  for (const key of Object.keys(TABLES)) {
+    const legacy = LEGACY_NAMES[key];
+    const prefixed = TABLES[key];
+    if (legacy === prefixed) continue;
+    const [legacyThere, prefixedThere] = await Promise.all([
+      tableExists(conn, legacy),
+      tableExists(conn, prefixed),
+    ]);
+    if (legacyThere && !prefixedThere) {
+      await conn.query(`RENAME TABLE \`${legacy}\` TO \`${prefixed}\``);
+      console.log(`Renamed table \`${legacy}\` -> \`${prefixed}\``);
+    }
+  }
+}
+
 async function migrateMultiTenancy(conn) {
-  const tenantTables = ['admins', 'categories', 'products', 'orders'];
+  const tenantTables = [TABLES.admins, TABLES.categories, TABLES.products, TABLES.orders];
 
   // 1. Add store_id (nullable for now) to any table that predates multi-tenancy.
   for (const t of tenantTables) {
@@ -225,10 +279,10 @@ async function migrateMultiTenancy(conn) {
 
   // 2. Make sure a "demo" store exists to own any pre-existing rows (the
   // original single-tenant storefront becomes this store).
-  let [[demoStore]] = await conn.query(`SELECT id FROM stores WHERE subdomain = 'demo' LIMIT 1`);
+  let [[demoStore]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'demo' LIMIT 1`);
   if (!demoStore) {
     const [result] = await conn.query(
-      `INSERT INTO stores (name, subdomain, theme, plan, status) VALUES (?, 'demo', 'default', 'free', 'active')`,
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES (?, 'demo', 'default', 'free', 'active')`,
       ['Demo Store']
     );
     demoStore = { id: result.insertId };
@@ -251,7 +305,7 @@ async function migrateMultiTenancy(conn) {
 
     if (!(await foreignKeyExists(conn, t, 'store_id'))) {
       await conn.query(
-        `ALTER TABLE ${t} ADD CONSTRAINT fk_${t}_store FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE`
+        `ALTER TABLE ${t} ADD CONSTRAINT fk_${t}_store FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE`
       );
     }
   }
@@ -259,9 +313,9 @@ async function migrateMultiTenancy(conn) {
   // 5. Replace old single-column UNIQUE constraints with store-scoped ones,
   // so different merchants can reuse the same slug/category name/admin email.
   const uniquePlans = [
-    { table: 'products', column: 'slug', indexName: 'uniq_store_slug' },
-    { table: 'categories', column: 'name', indexName: 'uniq_store_category_name' },
-    { table: 'admins', column: 'email', indexName: 'uniq_store_admin_email' },
+    { table: TABLES.products, column: 'slug', indexName: 'uniq_store_slug' },
+    { table: TABLES.categories, column: 'name', indexName: 'uniq_store_category_name' },
+    { table: TABLES.admins, column: 'email', indexName: 'uniq_store_admin_email' },
   ];
   for (const plan of uniquePlans) {
     const legacyIdx = await findLegacyUniqueIndex(conn, plan.table, plan.column);
@@ -279,6 +333,8 @@ async function migrateMultiTenancy(conn) {
 async function init() {
   const conn = await pool.getConnection();
   try {
+    await renameLegacyTables(conn);
+
     const statements = SCHEMA.split(/;\s*\n/).map((s) => s.trim()).filter(Boolean);
     for (const stmt of statements) {
       await conn.query(stmt);
@@ -286,24 +342,24 @@ async function init() {
 
     const demoStoreId = await migrateMultiTenancy(conn);
 
-    const [[{ c: productCount }]] = await conn.query('SELECT COUNT(*) AS c FROM products WHERE store_id = ?', [demoStoreId]);
+    const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 
     if (productCount === 0) {
       const categoryNames = [...new Set(SAMPLE_PRODUCTS.map((p) => p.category))];
       const catIds = {};
       for (const name of categoryNames) {
-        const [[existingCat]] = await conn.query('SELECT id FROM categories WHERE store_id = ? AND name = ?', [demoStoreId, name]);
+        const [[existingCat]] = await conn.query(`SELECT id FROM ${TABLES.categories} WHERE store_id = ? AND name = ?`, [demoStoreId, name]);
         if (existingCat) {
           catIds[name] = existingCat.id;
         } else {
-          const [result] = await conn.query('INSERT INTO categories (store_id, name) VALUES (?, ?)', [demoStoreId, name]);
+          const [result] = await conn.query(`INSERT INTO ${TABLES.categories} (store_id, name) VALUES (?, ?)`, [demoStoreId, name]);
           catIds[name] = result.insertId;
         }
       }
 
       for (const p of SAMPLE_PRODUCTS) {
         await conn.query(
-          `INSERT INTO products (store_id, title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
+          `INSERT INTO ${TABLES.products} (store_id, title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
           [demoStoreId, p.title, p.slug, p.description, p.price, p.compare_at_price, p.image_url, catIds[p.category], p.stock]
         );
@@ -312,10 +368,10 @@ async function init() {
       console.log('Demo store seeded with sample products.');
     }
 
-    const [[{ c: demoAdminCount }]] = await conn.query('SELECT COUNT(*) AS c FROM admins WHERE store_id = ?', [demoStoreId]);
+    const [[{ c: demoAdminCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.admins} WHERE store_id = ?`, [demoStoreId]);
     if (demoAdminCount === 0) {
       const passwordHash = bcrypt.hashSync('admin123', 10);
-      await conn.query('INSERT INTO admins (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)', [
+      await conn.query(`INSERT INTO ${TABLES.admins} (store_id, name, email, password_hash) VALUES (?, ?, ?, ?)`, [
         demoStoreId,
         'Store Admin',
         'admin@pagezaper.test',
@@ -328,4 +384,4 @@ async function init() {
   }
 }
 
-module.exports = { pool, init, THEMES, RESERVED_SUBDOMAINS };
+module.exports = { pool, init, THEMES, RESERVED_SUBDOMAINS, TABLES };

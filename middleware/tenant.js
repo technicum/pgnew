@@ -10,6 +10,8 @@
 // (BASE_DOMAIN=localhost, tested with `curl -H "Host: demo.localhost:3000" ...`)
 // and in production (BASE_DOMAIN=pagezaper.com).
 
+const { TABLES } = require('../db/database');
+
 function getBaseDomain() {
   return (process.env.BASE_DOMAIN || 'localhost').toLowerCase();
 }
@@ -40,7 +42,7 @@ function resolveStore(pool) {
       if (subdomain) {
         req.isRootDomain = false;
         const [[store]] = await pool.query(
-          `SELECT * FROM stores WHERE subdomain = ? LIMIT 1`,
+          `SELECT * FROM ${TABLES.stores} WHERE subdomain = ? LIMIT 1`,
           [subdomain]
         );
         if (store && store.status === 'active') {
