@@ -23,6 +23,11 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Marketing homepage — served at the site root, ahead of the storefront routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || 'pagezaper-dev-secret-change-me',

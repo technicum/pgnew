@@ -9,12 +9,12 @@
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a href="/" class="logo">Page<span>Zaper</span></a>
+      <a href="/store" class="logo">Page<span>Zaper</span></a>
       <nav class="main-nav">
-        <a href="/" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
+        <a href="/store" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
         <% if (typeof categories !== 'undefined') { %>
           <% categories.forEach(function(c) { %>
-            <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
+            <a href="/store?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
           <% }); %>
         <% } %>
       </nav>

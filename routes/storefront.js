@@ -12,8 +12,8 @@ function toNumber(product) {
   return { ...product, price: Number(product.price), compare_at_price: product.compare_at_price !== null ? Number(product.compare_at_price) : null };
 }
 
-// ---------- Home / product listing ----------
-router.get('/', async (req, res, next) => {
+// ---------- Store / product listing ----------
+router.get('/store', async (req, res, next) => {
   try {
     const { category } = req.query;
     const [categories] = await pool.query('SELECT * FROM categories ORDER BY name');
