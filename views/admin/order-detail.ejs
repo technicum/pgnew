@@ -1,0 +1,46 @@
+<%- include('partials/header') %>
+
+<div class="order-detail-layout">
+  <section class="panel">
+    <h2>Items</h2>
+    <table class="admin-table">
+      <thead><tr><th>Product</th><th>Price</th><th>Qty</th><th>Total</th></tr></thead>
+      <tbody>
+        <% items.forEach(function(i) { %>
+          <tr>
+            <td><%= i.title %></td>
+            <td>₹<%= i.price.toFixed(2) %></td>
+            <td><%= i.quantity %></td>
+            <td>₹<%= (i.price * i.quantity).toFixed(2) %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+    <div class="order-summary-row total">
+      <span>Total</span>
+      <span>₹<%= order.subtotal.toFixed(2) %></span>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <h2>Customer</h2>
+    <p><strong><%= order.customer_name %></strong></p>
+    <p><%= order.customer_email %></p>
+    <% if (order.customer_phone) { %><p><%= order.customer_phone %></p><% } %>
+    <p><%= order.shipping_address %><br />
+      <%= order.shipping_city || '' %> <%= order.shipping_zip || '' %>
+    </p>
+
+    <h2>Status</h2>
+    <form action="/admin/orders/<%= order.id %>/status" method="POST" class="status-form">
+      <select name="status">
+        <% ['pending','paid','shipped','delivered','cancelled'].forEach(function(s) { %>
+          <option value="<%= s %>" <%= order.status === s ? 'selected' : '' %>><%= s %></option>
+        <% }); %>
+      </select>
+      <button type="submit" class="btn btn-primary">Update</button>
+    </form>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

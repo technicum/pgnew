@@ -1,0 +1,53 @@
+<%- include('partials/header') %>
+
+<form
+  action="<%= product ? `/admin/products/${product.id}/edit` : '/admin/products/new' %>"
+  method="POST"
+  class="admin-form"
+>
+  <label>Title *
+    <input type="text" name="title" value="<%= product ? product.title : '' %>" required />
+  </label>
+
+  <label>Description
+    <textarea name="description" rows="4"><%= product ? product.description : '' %></textarea>
+  </label>
+
+  <div class="form-row">
+    <label>Price *
+      <input type="number" step="0.01" name="price" value="<%= product ? product.price : '' %>" required />
+    </label>
+    <label>Compare-at price
+      <input type="number" step="0.01" name="compare_at_price" value="<%= product && product.compare_at_price ? product.compare_at_price : '' %>" />
+    </label>
+  </div>
+
+  <div class="form-row">
+    <label>Stock
+      <input type="number" name="stock" value="<%= product ? product.stock : 0 %>" />
+    </label>
+    <label>Status
+      <select name="status">
+        <option value="active" <%= product && product.status === 'active' ? 'selected' : '' %>>Active</option>
+        <option value="draft" <%= product && product.status === 'draft' ? 'selected' : '' %>>Draft</option>
+      </select>
+    </label>
+  </div>
+
+  <label>Category
+    <select name="category_id">
+      <option value="">— None —</option>
+      <% categories.forEach(function(c) { %>
+        <option value="<%= c.id %>" <%= product && product.category_id === c.id ? 'selected' : '' %>><%= c.name %></option>
+      <% }); %>
+    </select>
+  </label>
+
+  <label>Image URL
+    <input type="text" name="image_url" value="<%= product ? product.image_url : '' %>" placeholder="https://..." />
+  </label>
+
+  <button type="submit" class="btn btn-primary"><%= product ? 'Save changes' : 'Create product' %></button>
+</form>
+
+<%- include('partials/footer') %>

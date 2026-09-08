@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper Admin</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <div class="admin-logo">Page<span>Zaper</span> <small>Admin</small></div>
+      <nav class="admin-nav">
+        <a href="/admin" class="<%= title === 'Dashboard' ? 'active' : '' %>">Dashboard</a>
+        <a href="/admin/products" class="<%= title && title.includes('Product') ? 'active' : '' %>">Products</a>
+        <a href="/admin/orders" class="<%= title && title.includes('Order') ? 'active' : '' %>">Orders</a>
+        <a href="/" target="_blank">View store ↗</a>
+      </nav>
+      <form action="/admin/logout" method="POST" class="admin-logout-form">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    </aside>
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <h1><%= title %></h1>
+        <% if (admin) { %><span class="admin-user">Hi, <%= admin.name %></span><% } %>
+      </header>
+
+      <% if (success && success.length) { %>
+        <div class="flash flash-success"><%= success[0] %></div>
+      <% } %>
+      <% if (error && error.length) { %>
+        <div class="flash flash-error"><%= error[0] %></div>
+      <% } %>
+
+      <div class="admin-content">

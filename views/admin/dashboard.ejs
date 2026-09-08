@@ -1,0 +1,60 @@
+<%- include('partials/header') %>
+
+<div class="stat-cards">
+  <div class="stat-card">
+    <span class="stat-label">Total Revenue</span>
+    <span class="stat-value">₹<%= revenue.toFixed(2) %></span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Orders</span>
+    <span class="stat-value"><%= orderCount %></span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Products</span>
+    <span class="stat-value"><%= productCount %></span>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <section class="panel">
+    <h2>Recent orders</h2>
+    <% if (recentOrders.length === 0) { %>
+      <p class="empty-state">No orders yet.</p>
+    <% } else { %>
+      <table class="admin-table">
+        <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody>
+          <% recentOrders.forEach(function(o) { %>
+            <tr>
+              <td><a href="/admin/orders/<%= o.id %>"><%= o.order_number %></a></td>
+              <td><%= o.customer_name %></td>
+              <td>₹<%= o.subtotal.toFixed(2) %></td>
+              <td><span class="status-pill status-<%= o.status %>"><%= o.status %></span></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="panel">
+    <h2>Low stock</h2>
+    <% if (lowStock.length === 0) { %>
+      <p class="empty-state">All products well stocked.</p>
+    <% } else { %>
+      <table class="admin-table">
+        <thead><tr><th>Product</th><th>Stock</th></tr></thead>
+        <tbody>
+          <% lowStock.forEach(function(p) { %>
+            <tr>
+              <td><a href="/admin/products/<%= p.id %>/edit"><%= p.title %></a></td>
+              <td><%= p.stock %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
+
+<%- include('partials/footer') %>

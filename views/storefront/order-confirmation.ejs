@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+
+<section class="confirmation">
+  <h1>Thank you, <%= name %>! 🎉</h1>
+  <p>Your order <strong><%= orderNumber %></strong> has been placed successfully.</p>
+  <p>A confirmation would normally be emailed to <strong><%= email %></strong>.</p>
+
+  <div class="order-summary">
+    <% items.forEach(function(item) { %>
+      <div class="order-summary-row">
+        <span><%= item.title %> × <%= item.quantity %></span>
+        <span>₹<%= item.lineTotal.toFixed(2) %></span>
+      </div>
+    <% }); %>
+    <div class="order-summary-row total">
+      <span>Total</span>
+      <span>₹<%= subtotal.toFixed(2) %></span>
+    </div>
+  </div>
+
+  <a href="/" class="btn btn-primary">Continue shopping</a>
+</section>
+
+<%- include('partials/footer') %>

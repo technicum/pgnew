@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="logo">Page<span>Zaper</span></a>
+      <nav class="main-nav">
+        <a href="/" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
+        <% if (typeof categories !== 'undefined') { %>
+          <% categories.forEach(function(c) { %>
+            <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
+          <% }); %>
+        <% } %>
+      </nav>
+      <div class="header-actions">
+        <a href="/cart" class="cart-link">
+          Cart
+          <% if (cartItemCount > 0) { %><span class="badge"><%= cartItemCount %></span><% } %>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <% if (success && success.length) { %>
+    <div class="flash flash-success container"><%= success[0] %></div>
+  <% } %>
+  <% if (error && error.length) { %>
+    <div class="flash flash-error container"><%= error[0] %></div>
+  <% } %>
+
+  <main class="container">

@@ -1,0 +1,29 @@
+<%- include('partials/header') %>
+
+<section class="hero">
+  <h1>Shop everything you need.</h1>
+  <p>Quality products, fast checkout, delivered to your door.</p>
+</section>
+
+<section class="product-grid">
+  <% if (products.length === 0) { %>
+    <p class="empty-state">No products found in this category yet.</p>
+  <% } %>
+  <% products.forEach(function(p) { %>
+    <a class="product-card" href="/products/<%= p.slug %>">
+      <div class="product-card-img" style="background-image: url('<%= p.image_url %>')"></div>
+      <div class="product-card-body">
+        <h3><%= p.title %></h3>
+        <div class="price-row">
+          <span class="price">₹<%= p.price.toFixed(2) %></span>
+          <% if (p.compare_at_price) { %>
+            <span class="compare-price">₹<%= p.compare_at_price.toFixed(2) %></span>
+          <% } %>
+        </div>
+        <% if (p.stock <= 0) { %><span class="tag tag-out">Out of stock</span><% } %>
+      </div>
+    </a>
+  <% }); %>
+</section>
+
+<%- include('partials/footer') %>
