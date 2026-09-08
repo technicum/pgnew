@@ -14,6 +14,10 @@ const pool = mysql.createPool({
 });
 
 const THEMES = ['default', 'gold', 'red'];
+// Plan tiers a store can be on. No billing is wired up yet (every store
+// signs up on 'free') — the platform admin can move a store between these
+// by hand from /platform-admin/stores/:id until Razorpay billing exists.
+const PLANS = ['free', 'starter', 'pro'];
 const RESERVED_SUBDOMAINS = new Set([
   'www', 'admin', 'api', 'app', 'mail', 'ftp', 'blog', 'help', 'support',
   'static', 'cdn', 'assets', 'shop', 'store', 'dashboard', 'signup', 'login',
@@ -480,4 +484,4 @@ async function init() {
   }
 }
 
-module.exports = { pool, init, THEMES, RESERVED_SUBDOMAINS, TABLES };
+module.exports = { pool, init, THEMES, PLANS, RESERVED_SUBDOMAINS, TABLES };

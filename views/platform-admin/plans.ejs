@@ -1,0 +1,14 @@
+<%- include('partials/header') %>
+
+<p style="color:#6b7280; margin-top:0;">No billing is wired up yet — every store signs up on Free. Move a store between plans from its store page.</p>
+
+<div class="stat-cards">
+  <% plans.forEach(function(p) { %>
+    <div class="stat-card">
+      <span class="stat-label"><%= p.name %></span>
+      <span class="stat-value"><%= p.storeCount %></span>
+    </div>
+  <% }); %>
+</div>
+
+<%- include('partials/footer') %>

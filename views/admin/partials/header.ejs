@@ -23,6 +23,14 @@
       </form>
     </aside>
     <div class="admin-main">
+      <% if (typeof impersonation !== 'undefined' && impersonation) { %>
+        <div class="impersonation-banner">
+          <span>You're viewing this store's admin as <strong><%= admin ? admin.name : '' %></strong>, logged in by platform admin <%= impersonation.platformAdminName %>.</span>
+          <form action="/admin/exit-impersonation" method="POST">
+            <button type="submit" class="link-btn">Return to Platform Admin</button>
+          </form>
+        </div>
+      <% } %>
       <header class="admin-topbar">
         <h1><%= title %></h1>
         <% if (admin) { %><span class="admin-user">Hi, <%= admin.name %></span><% } %>

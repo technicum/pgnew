@@ -22,6 +22,19 @@
       <tbody>
         <tr><td>Subdomain</td><td><%= store.subdomain %></td></tr>
         <tr><td>Plan</td><td><%= store.plan %></td></tr>
+        <tr>
+          <td>Change plan</td>
+          <td>
+            <form action="/platform-admin/stores/<%= store.id %>/plan" method="POST" style="display:flex; gap:8px;">
+              <select name="plan">
+                <% plans.forEach(function(p) { %>
+                  <option value="<%= p %>" <%= store.plan === p ? 'selected' : '' %>><%= p %></option>
+                <% }); %>
+              </select>
+              <button type="submit" class="link-btn">Save</button>
+            </form>
+          </td>
+        </tr>
         <tr><td>Theme</td><td><%= store.theme %></td></tr>
         <tr><td>Status</td><td><span class="status-pill <%= store.status === 'active' ? 'status-delivered' : 'status-cancelled' %>"><%= store.status %></span></td></tr>
         <tr><td>Created</td><td><%= new Date(store.created_at).toLocaleDateString() %></td></tr>
@@ -47,13 +60,23 @@
       <p class="empty-state">No admin accounts yet.</p>
     <% } else { %>
       <table class="admin-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Since</th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Since</th><th></th></tr></thead>
         <tbody>
           <% admins.forEach(function(a) { %>
             <tr>
               <td><%= a.name %></td>
               <td><%= a.email %></td>
               <td><%= new Date(a.created_at).toLocaleDateString() %></td>
+              <td class="admin-row-actions">
+                <form action="/platform-admin/users/<%= a.id %>/login-as" method="POST">
+                  <button type="submit" class="link-btn">Log in as</button>
+                </form>
+                <% if (admins.length > 1) { %>
+                  <form action="/platform-admin/users/<%= a.id %>/delete" method="POST" onsubmit="return confirm('Delete this user? They will no longer be able to log in.');">
+                    <button type="submit" class="link-btn danger">Delete</button>
+                  </form>
+                <% } %>
+              </td>
             </tr>
           <% }); %>
         </tbody>

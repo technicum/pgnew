@@ -54,6 +54,19 @@
 .admin-content { padding: 28px 32px; }
 .admin-content .flash { margin: 0 32px 20px; }
 
+.impersonation-banner {
+  background: #1f2937;
+  color: #fff;
+  padding: 10px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.85rem;
+}
+.impersonation-banner .link-btn { color: #fbbf24; font-weight: 600; }
+.impersonation-banner .link-btn:hover { color: #fff; }
+
 .stat-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

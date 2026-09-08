@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+
+<table class="admin-table">
+  <thead>
+    <tr><th>Name</th><th>Email</th><th>Store</th><th>Since</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% users.forEach(function(u) { %>
+      <tr>
+        <td><%= u.name %></td>
+        <td><%= u.email %></td>
+        <td><a href="/platform-admin/stores/<%= u.store_id %>"><%= u.store_name %></a></td>
+        <td><%= new Date(u.created_at).toLocaleDateString() %></td>
+        <td class="admin-row-actions">
+          <form action="/platform-admin/users/<%= u.id %>/login-as" method="POST">
+            <button type="submit" class="link-btn">Log in as</button>
+          </form>
+          <form action="/platform-admin/users/<%= u.id %>/delete" method="POST" onsubmit="return confirm('Delete this user? They will no longer be able to log in.');">
+            <button type="submit" class="link-btn danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    <% }); %>
+    <% if (users.length === 0) { %>
+      <tr><td colspan="5" class="empty-state">No users yet.</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/footer') %>

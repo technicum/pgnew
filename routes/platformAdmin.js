@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const { pool, TABLES } = require('../db/database');
+const { pool, TABLES, PLANS } = require('../db/database');
 const { requirePlatformAdmin } = require('../middleware/auth');
-const { rootUrl } = require('../middleware/tenant');
+const { rootUrl, storeUrl } = require('../middleware/tenant');
 
 // The platform admin only makes sense on the root domain (pagezaper.com),
 // never on a store's own subdomain — send those requests back to the root.
@@ -91,6 +91,7 @@ router.get('/stores/:id', async (req, res, next) => {
       productCount,
       orderCount,
       revenue: Number(total),
+      plans: PLANS,
     });
   } catch (err) {
     next(err);
@@ -108,6 +109,108 @@ router.post('/stores/:id/status', async (req, res, next) => {
     await pool.query(`UPDATE ${TABLES.stores} SET status = ? WHERE id = ?`, [status, req.params.id]);
     req.flash('success', `Store ${status === 'active' ? 'activated' : 'suspended'}.`);
     res.redirect(`/platform-admin/stores/${req.params.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/stores/:id/plan', async (req, res, next) => {
+  try {
+    const { plan } = req.body;
+    if (!PLANS.includes(plan)) {
+      req.flash('error', 'Invalid plan.');
+      return res.redirect(`/platform-admin/stores/${req.params.id}`);
+    }
+    await pool.query(`UPDATE ${TABLES.stores} SET plan = ? WHERE id = ?`, [plan, req.params.id]);
+    req.flash('success', `Plan changed to ${plan}.`);
+    res.redirect(`/platform-admin/stores/${req.params.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Plans overview ----------
+router.get('/plans', async (req, res, next) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT plan, COUNT(*) AS storeCount FROM ${TABLES.stores} GROUP BY plan`
+    );
+    const counts = {};
+    rows.forEach((r) => { counts[r.plan] = r.storeCount; });
+    const plans = PLANS.map((p) => ({ name: p, storeCount: counts[p] || 0 }));
+
+    res.render('platform-admin/plans', { title: 'Plans', plans });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Users (every store admin, across every store) ----------
+router.get('/users', async (req, res, next) => {
+  try {
+    const [users] = await pool.query(
+      `SELECT a.id, a.name, a.email, a.created_at, s.id AS store_id, s.name AS store_name, s.subdomain
+       FROM ${TABLES.admins} a
+       JOIN ${TABLES.stores} s ON s.id = a.store_id
+       ORDER BY s.name, a.created_at`
+    );
+    res.render('platform-admin/users', { title: 'Users', users });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Logs the platform admin into a store's admin panel as that store's admin,
+// without knowing their password. The session gains an `impersonation`
+// marker (shown as a banner in views/admin/partials/header.ejs) so it's
+// always visible that this isn't a normal store-admin session, with a way
+// back to the platform admin.
+router.post('/users/:adminId/login-as', async (req, res, next) => {
+  try {
+    const [[admin]] = await pool.query(
+      `SELECT a.id, a.name, a.email, a.store_id, s.subdomain, s.status AS store_status
+       FROM ${TABLES.admins} a
+       JOIN ${TABLES.stores} s ON s.id = a.store_id
+       WHERE a.id = ?`,
+      [req.params.adminId]
+    );
+    if (!admin) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/platform-admin/users');
+    }
+    if (admin.store_status !== 'active') {
+      req.flash('error', "That store is suspended — reactivate it first to log in as this user.");
+      return res.redirect('/platform-admin/users');
+    }
+
+    req.session.admin = { id: admin.id, name: admin.name, email: admin.email, store_id: admin.store_id };
+    req.session.impersonation = { platformAdminId: req.session.platformAdmin.id, platformAdminName: req.session.platformAdmin.name };
+
+    res.redirect(storeUrl(req, admin.subdomain, '/admin'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/users/:adminId/delete', async (req, res, next) => {
+  try {
+    const [[admin]] = await pool.query(`SELECT * FROM ${TABLES.admins} WHERE id = ?`, [req.params.adminId]);
+    if (!admin) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/platform-admin/users');
+    }
+    const [[{ c: siblingCount }]] = await pool.query(
+      `SELECT COUNT(*) AS c FROM ${TABLES.admins} WHERE store_id = ?`,
+      [admin.store_id]
+    );
+    if (siblingCount <= 1) {
+      req.flash('error', "Can't delete the only admin of a store — that store would be locked out.");
+      return res.redirect('/platform-admin/users');
+    }
+
+    await pool.query(`DELETE FROM ${TABLES.admins} WHERE id = ?`, [admin.id]);
+    req.flash('success', 'User deleted.');
+    res.redirect('/platform-admin/users');
   } catch (err) {
     next(err);
   }

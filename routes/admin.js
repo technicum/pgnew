@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { pool, TABLES } = require('../db/database');
 const { requireAdmin } = require('../middleware/auth');
+const { rootUrl } = require('../middleware/tenant');
 const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields } = require('../lib/sections');
 
 function slugify(str) {
@@ -58,6 +59,15 @@ router.post('/login', async (req, res, next) => {
 router.post('/logout', (req, res) => {
   req.session.admin = null;
   res.redirect('/admin/login');
+});
+
+// Ends a platform-admin "log in as" session (see routes/platformAdmin.js)
+// and sends them back to the platform admin dashboard on the root domain.
+router.post('/exit-impersonation', (req, res) => {
+  if (!req.session.impersonation) return res.redirect('/admin');
+  req.session.admin = null;
+  req.session.impersonation = null;
+  res.redirect(rootUrl(req, '/platform-admin'));
 });
 
 // Everything below requires admin auth for this store

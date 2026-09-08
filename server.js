@@ -58,6 +58,7 @@ app.use((req, res, next) => {
   res.locals.error = req.flash('error');
   res.locals.admin = req.session.admin || null;
   res.locals.platformAdmin = req.session.platformAdmin || null;
+  res.locals.impersonation = req.session.impersonation || null;
   next();
 });
 
