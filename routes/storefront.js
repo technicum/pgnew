@@ -222,6 +222,25 @@ router.post('/cart/remove', (req, res) => {
   res.redirect('/cart');
 });
 
+// Looks up an active discount code for this store and computes how much it
+// takes off a given subtotal. Returns null (no discount) if the code is
+// missing, unknown, or inactive — checkout just proceeds at full price.
+async function resolveDiscount(storeId, code, subtotal) {
+  if (!code || !code.trim()) return null;
+  const [[discount]] = await pool.query(
+    `SELECT * FROM ${TABLES.discounts} WHERE store_id = ? AND code = ? AND active = 1`,
+    [storeId, code.trim().toUpperCase()]
+  );
+  if (!discount) return null;
+
+  const value = Number(discount.value);
+  const amount = discount.type === 'percent' ? (subtotal * value) / 100 : value;
+  return {
+    code: discount.code,
+    amount: Math.min(Math.round(amount * 100) / 100, subtotal),
+  };
+}
+
 // ---------- Checkout ----------
 router.get('/checkout', async (req, res, next) => {
   try {
@@ -250,7 +269,7 @@ router.post('/checkout', async (req, res, next) => {
       return res.redirect('/cart');
     }
 
-    const { name, email, phone, address, city, zip } = req.body;
+    const { name, email, phone, address, city, zip, discountCode } = req.body;
     if (!name || !email || !address) {
       req.flash('error', 'Please fill in all required fields.');
       conn.release();
@@ -258,14 +277,17 @@ router.post('/checkout', async (req, res, next) => {
     }
 
     const { subtotal } = getCartTotals(items);
+    const discount = await resolveDiscount(storeId, discountCode, subtotal);
+    const discountAmount = discount ? discount.amount : 0;
+    const total = Math.round((subtotal - discountAmount) * 100) / 100;
     const orderNumber = genOrderNumber();
 
     await conn.beginTransaction();
 
     const [orderResult] = await conn.query(
-      `INSERT INTO ${TABLES.orders} (store_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, status, payment_method)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
-      [storeId, orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal]
+      `INSERT INTO ${TABLES.orders} (store_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, discount_code, discount_amount, total, status, payment_method)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
+      [storeId, orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal, discount ? discount.code : null, discountAmount, total]
     );
     const orderId = orderResult.insertId;
 
@@ -286,6 +308,9 @@ router.post('/checkout', async (req, res, next) => {
       name,
       email,
       subtotal,
+      discountCode: discount ? discount.code : null,
+      discountAmount,
+      total,
       items,
     });
   } catch (err) {

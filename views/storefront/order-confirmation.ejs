@@ -12,9 +12,19 @@
         <span>₹<%= item.lineTotal.toFixed(2) %></span>
       </div>
     <% }); %>
+    <div class="order-summary-row">
+      <span>Subtotal</span>
+      <span>₹<%= subtotal.toFixed(2) %></span>
+    </div>
+    <% if (discountCode) { %>
+      <div class="order-summary-row">
+        <span>Discount (<%= discountCode %>)</span>
+        <span>&minus;₹<%= discountAmount.toFixed(2) %></span>
+      </div>
+    <% } %>
     <div class="order-summary-row total">
       <span>Total</span>
-      <span>₹<%= subtotal.toFixed(2) %></span>
+      <span>₹<%= total.toFixed(2) %></span>
     </div>
   </div>
 

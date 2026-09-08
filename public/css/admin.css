@@ -33,6 +33,17 @@
 }
 .admin-nav a:hover { background: #1f2937; color: #fff; }
 .admin-nav a.active { background: var(--color-primary); color: #fff; }
+.admin-nav a.admin-nav-sub { padding-left: 24px; font-size: 0.86rem; }
+
+.admin-nav-divider { height: 1px; background: #1f2937; margin: 10px 4px; }
+.admin-nav-group-label {
+  padding: 10px 12px 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+}
 
 .admin-logout-form { margin-top: auto; }
 .admin-logout-form .link-btn { color: #9ca3af; }
@@ -54,6 +65,13 @@
 .admin-content { padding: 28px 32px; }
 .admin-content .flash { margin: 0 32px 20px; }
 
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-chart-row { display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 10px; }
+.bar-chart-label { font-size: 0.78rem; color: #6b7280; }
+.bar-chart-track { background: #f1f2f4; border-radius: 6px; height: 14px; overflow: hidden; }
+.bar-chart-fill { background: var(--color-primary); height: 100%; border-radius: 6px; }
+.bar-chart-value { font-size: 0.78rem; color: #6b7280; white-space: nowrap; }
+
 .impersonation-banner {
   background: #1f2937;
   color: #fff;
@@ -66,6 +84,46 @@
 }
 .impersonation-banner .link-btn { color: #fbbf24; font-weight: 600; }
 .impersonation-banner .link-btn:hover { color: #fff; }
+
+.dash-hero { text-align: center; padding: 28px 0 8px; }
+.dash-hero h2 { margin: 0 0 4px; font-size: 1.6rem; }
+.dash-hero p { margin: 0; color: #6b7280; }
+
+.dash-chips { display: flex; justify-content: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+.dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.dash-chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.dash-chip-count {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+}
+
+.dash-setup-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 28px 0;
+}
+.dash-setup-card {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.dash-setup-card h3 { margin: 0 0 6px; font-size: 1rem; }
+.dash-setup-card p { margin: 0 0 16px; color: #6b7280; font-size: 0.88rem; }
 
 .stat-cards {
   display: grid;

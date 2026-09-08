@@ -1,0 +1,43 @@
+<%- include('partials/header') %>
+
+<div class="dashboard-grid">
+  <section class="panel">
+    <h2>Store</h2>
+    <form action="/admin/settings/store" method="POST" class="admin-form">
+      <label>Store name
+        <input type="text" name="name" value="<%= store.name %>" required />
+      </label>
+
+      <label>Theme</label>
+      <div class="theme-picker">
+        <% themes.forEach(function(t) { %>
+          <label class="theme-swatch theme-swatch-<%= t %>">
+            <input type="radio" name="theme" value="<%= t %>" <%= store.theme === t ? 'checked' : '' %> />
+            <span class="swatch-dot"></span>
+            <span class="swatch-label"><%= t.charAt(0).toUpperCase() + t.slice(1) %></span>
+          </label>
+        <% }); %>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;">Save store settings</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Change password</h2>
+    <form action="/admin/settings/password" method="POST" class="admin-form">
+      <label>Current password
+        <input type="password" name="currentPassword" required />
+      </label>
+      <label>New password
+        <input type="password" name="newPassword" required minlength="6" />
+      </label>
+      <label>Confirm new password
+        <input type="password" name="confirmPassword" required minlength="6" />
+      </label>
+      <button type="submit" class="btn btn-primary">Change password</button>
+    </form>
+  </section>
+</div>
+
+<%- include('partials/footer') %>

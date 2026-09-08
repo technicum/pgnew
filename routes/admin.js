@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const { pool, TABLES } = require('../db/database');
+const { pool, TABLES, THEMES } = require('../db/database');
 const { requireAdmin } = require('../middleware/auth');
 const { rootUrl } = require('../middleware/tenant');
 const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields } = require('../lib/sections');
@@ -19,6 +19,15 @@ function toNumber(product) {
     ...product,
     price: Number(product.price),
     compare_at_price: product.compare_at_price !== null ? Number(product.compare_at_price) : null,
+  };
+}
+
+function orderToNumber(order) {
+  return {
+    ...order,
+    subtotal: Number(order.subtotal),
+    discount_amount: Number(order.discount_amount || 0),
+    total: Number(order.total != null ? order.total : order.subtotal),
   };
 }
 
@@ -74,15 +83,33 @@ router.post('/exit-impersonation', (req, res) => {
 router.use(requireAdmin);
 
 // ---------- Dashboard ----------
+// Everything on this page is a real number from real data — no fabricated
+// "sessions" or "live visitors" counts, since PageZaper doesn't track
+// storefront traffic (yet).
 router.get('/', async (req, res, next) => {
   try {
     const storeId = req.store.id;
     const [[{ c: productCount }]] = await pool.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [storeId]);
-    const [[{ c: orderCount }]] = await pool.query(`SELECT COUNT(*) AS c FROM ${TABLES.orders} WHERE store_id = ?`, [storeId]);
-    const [[{ total }]] = await pool.query(
-      `SELECT COALESCE(SUM(subtotal), 0) AS total FROM ${TABLES.orders} WHERE store_id = ? AND status != 'cancelled'`,
+
+    const [[{ c: orders30, total: revenue30 }]] = await pool.query(
+      `SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS total FROM ${TABLES.orders}
+       WHERE store_id = ? AND status != 'cancelled' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`,
       [storeId]
     );
+
+    // "Fulfill orders": placed but not yet shipped. "Capture payments" has no
+    // real equivalent yet (checkout is Cash on Delivery only) — the closest
+    // honest analogue is COD orders still marked pending, i.e. not yet
+    // confirmed/collected.
+    const [[{ c: toFulfill }]] = await pool.query(
+      `SELECT COUNT(*) AS c FROM ${TABLES.orders} WHERE store_id = ? AND status IN ('pending', 'paid')`,
+      [storeId]
+    );
+    const [[{ c: toCollect }]] = await pool.query(
+      `SELECT COUNT(*) AS c FROM ${TABLES.orders} WHERE store_id = ? AND status = 'pending'`,
+      [storeId]
+    );
+
     const [lowStock] = await pool.query(
       `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND stock <= 5 AND status = 'active' ORDER BY stock ASC LIMIT 5`,
       [storeId]
@@ -95,10 +122,12 @@ router.get('/', async (req, res, next) => {
     res.render('admin/dashboard', {
       title: 'Dashboard',
       productCount,
-      orderCount,
-      revenue: Number(total),
+      orders30,
+      revenue30: Number(revenue30),
+      toFulfill,
+      toCollect,
       lowStock: lowStock.map(toNumber),
-      recentOrders: recentOrders.map((o) => ({ ...o, subtotal: Number(o.subtotal) })),
+      recentOrders: recentOrders.map(orderToNumber),
     });
   } catch (err) {
     next(err);
@@ -409,7 +438,7 @@ router.post('/pages/:id/sections/:sectionId/delete', async (req, res, next) => {
 router.get('/orders', async (req, res, next) => {
   try {
     const [orders] = await pool.query(`SELECT * FROM ${TABLES.orders} WHERE store_id = ? ORDER BY created_at DESC`, [req.store.id]);
-    res.render('admin/orders', { title: 'Orders', orders: orders.map((o) => ({ ...o, subtotal: Number(o.subtotal) })) });
+    res.render('admin/orders', { title: 'Orders', orders: orders.map(orderToNumber) });
   } catch (err) {
     next(err);
   }
@@ -425,7 +454,7 @@ router.get('/orders/:id', async (req, res, next) => {
     const [items] = await pool.query(`SELECT * FROM ${TABLES.orderItems} WHERE order_id = ?`, [order.id]);
     res.render('admin/order-detail', {
       title: `Order ${order.order_number}`,
-      order: { ...order, subtotal: Number(order.subtotal) },
+      order: orderToNumber(order),
       items: items.map((i) => ({ ...i, price: Number(i.price) })),
     });
   } catch (err) {
@@ -444,6 +473,233 @@ router.post('/orders/:id/status', async (req, res, next) => {
     await pool.query(`UPDATE ${TABLES.orders} SET status = ? WHERE store_id = ? AND id = ?`, [status, req.store.id, req.params.id]);
     req.flash('success', 'Order status updated.');
     res.redirect(`/admin/orders/${req.params.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Customers ----------
+// PageZaper doesn't have a separate customers table — every shopper is
+// whoever they said they were at checkout. This derives a customer list
+// from order history (grouped by email), which is real data, not a stub.
+router.get('/customers', async (req, res, next) => {
+  try {
+    const [customers] = await pool.query(
+      `SELECT customer_email AS email, MAX(customer_name) AS name, COUNT(*) AS orderCount,
+              COALESCE(SUM(total), 0) AS totalSpent, MAX(created_at) AS lastOrderAt
+       FROM ${TABLES.orders}
+       WHERE store_id = ?
+       GROUP BY customer_email
+       ORDER BY totalSpent DESC`,
+      [req.store.id]
+    );
+    res.render('admin/customers', {
+      title: 'Customers',
+      customers: customers.map((c) => ({ ...c, totalSpent: Number(c.totalSpent) })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Discounts ----------
+router.get('/discounts', async (req, res, next) => {
+  try {
+    const [discounts] = await pool.query(`SELECT * FROM ${TABLES.discounts} WHERE store_id = ? ORDER BY created_at DESC`, [req.store.id]);
+    res.render('admin/discounts', { title: 'Discounts', discounts: discounts.map((d) => ({ ...d, value: Number(d.value) })) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/discounts/new', (req, res) => {
+  res.render('admin/discount-form', { title: 'New Discount' });
+});
+
+router.post('/discounts/new', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const code = (req.body.code || '').trim().toUpperCase();
+    const type = req.body.type === 'flat' ? 'flat' : 'percent';
+    const value = parseFloat(req.body.value);
+
+    if (!code) {
+      req.flash('error', 'Code is required.');
+      return res.redirect('/admin/discounts/new');
+    }
+    if (!Number.isFinite(value) || value <= 0 || (type === 'percent' && value > 100)) {
+      req.flash('error', type === 'percent' ? 'Percent must be between 1 and 100.' : 'Amount must be greater than 0.');
+      return res.redirect('/admin/discounts/new');
+    }
+
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.discounts} WHERE store_id = ? AND code = ?`, [storeId, code]);
+    if (existing) {
+      req.flash('error', `Code "${code}" already exists.`);
+      return res.redirect('/admin/discounts/new');
+    }
+
+    await pool.query(`INSERT INTO ${TABLES.discounts} (store_id, code, type, value, active) VALUES (?, ?, ?, ?, 1)`, [storeId, code, type, value]);
+    req.flash('success', 'Discount created.');
+    res.redirect('/admin/discounts');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/discounts/:id/toggle', async (req, res, next) => {
+  try {
+    await pool.query(`UPDATE ${TABLES.discounts} SET active = NOT active WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    res.redirect('/admin/discounts');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/discounts/:id/delete', async (req, res, next) => {
+  try {
+    await pool.query(`DELETE FROM ${TABLES.discounts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    req.flash('success', 'Discount deleted.');
+    res.redirect('/admin/discounts');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Finance ----------
+router.get('/finance', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const [[{ total: revenue }]] = await pool.query(
+      `SELECT COALESCE(SUM(total), 0) AS total FROM ${TABLES.orders} WHERE store_id = ? AND status != 'cancelled'`,
+      [storeId]
+    );
+    const [[{ total: collected }]] = await pool.query(
+      `SELECT COALESCE(SUM(total), 0) AS total FROM ${TABLES.orders} WHERE store_id = ? AND status IN ('paid', 'shipped', 'delivered')`,
+      [storeId]
+    );
+    const [[{ total: pendingCOD }]] = await pool.query(
+      `SELECT COALESCE(SUM(total), 0) AS total FROM ${TABLES.orders} WHERE store_id = ? AND status = 'pending'`,
+      [storeId]
+    );
+    const [byStatus] = await pool.query(
+      `SELECT status, COUNT(*) AS c, COALESCE(SUM(total), 0) AS total FROM ${TABLES.orders} WHERE store_id = ? GROUP BY status`,
+      [storeId]
+    );
+    const [recentOrders] = await pool.query(
+      `SELECT * FROM ${TABLES.orders} WHERE store_id = ? ORDER BY created_at DESC LIMIT 10`,
+      [storeId]
+    );
+
+    res.render('admin/finance', {
+      title: 'Finance',
+      revenue: Number(revenue),
+      collected: Number(collected),
+      pendingCOD: Number(pendingCOD),
+      byStatus: byStatus.map((s) => ({ ...s, total: Number(s.total) })),
+      recentOrders: recentOrders.map(orderToNumber),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Analytics ----------
+router.get('/analytics', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const [byDay] = await pool.query(
+      `SELECT DATE(created_at) AS day, COUNT(*) AS orders, COALESCE(SUM(total), 0) AS revenue
+       FROM ${TABLES.orders}
+       WHERE store_id = ? AND status != 'cancelled' AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY day`,
+      [storeId]
+    );
+    const [topProducts] = await pool.query(
+      `SELECT oi.title, SUM(oi.quantity) AS unitsSold, SUM(oi.price * oi.quantity) AS revenue
+       FROM ${TABLES.orderItems} oi
+       JOIN ${TABLES.orders} o ON o.id = oi.order_id
+       WHERE o.store_id = ? AND o.status != 'cancelled'
+       GROUP BY oi.title
+       ORDER BY unitsSold DESC
+       LIMIT 5`,
+      [storeId]
+    );
+
+    const days = byDay.map((d) => ({ day: d.day, orders: d.orders, revenue: Number(d.revenue) }));
+    const maxRevenue = Math.max(1, ...days.map((d) => d.revenue));
+
+    res.render('admin/analytics', {
+      title: 'Analytics',
+      days,
+      maxRevenue,
+      topProducts: topProducts.map((p) => ({ ...p, revenue: Number(p.revenue) })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Markets ----------
+// PageZaper only sells in one market today — there's no multi-currency or
+// per-country pricing yet, so this is an honest status page, not a
+// functional multi-market setup like Shopify's.
+router.get('/markets', (req, res) => {
+  res.render('admin/markets', { title: 'Markets' });
+});
+
+// ---------- Apps ----------
+// No app/integration marketplace exists yet — this says so plainly rather
+// than showing fake installed apps.
+router.get('/apps', (req, res) => {
+  res.render('admin/apps', { title: 'Apps' });
+});
+
+// ---------- Settings ----------
+router.get('/settings', (req, res) => {
+  res.render('admin/settings', { title: 'Settings', themes: THEMES });
+});
+
+router.post('/settings/store', async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    const theme = THEMES.includes(req.body.theme) ? req.body.theme : req.store.theme;
+
+    if (!name) {
+      req.flash('error', 'Store name is required.');
+      return res.redirect('/admin/settings');
+    }
+
+    await pool.query(`UPDATE ${TABLES.stores} SET name = ?, theme = ? WHERE id = ?`, [name, theme, req.store.id]);
+    req.flash('success', 'Store settings updated.');
+    res.redirect('/admin/settings');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/settings/password', async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const [[admin]] = await pool.query(`SELECT * FROM ${TABLES.admins} WHERE id = ?`, [req.session.admin.id]);
+
+    if (!admin || !bcrypt.compareSync(currentPassword || '', admin.password_hash)) {
+      req.flash('error', 'Current password is incorrect.');
+      return res.redirect('/admin/settings');
+    }
+    if (!newPassword || newPassword.length < 6) {
+      req.flash('error', 'New password must be at least 6 characters.');
+      return res.redirect('/admin/settings');
+    }
+    if (newPassword !== confirmPassword) {
+      req.flash('error', 'New passwords do not match.');
+      return res.redirect('/admin/settings');
+    }
+
+    const passwordHash = bcrypt.hashSync(newPassword, 10);
+    await pool.query(`UPDATE ${TABLES.admins} SET password_hash = ? WHERE id = ?`, [passwordHash, admin.id]);
+    req.flash('success', 'Password changed.');
+    res.redirect('/admin/settings');
   } catch (err) {
     next(err);
   }

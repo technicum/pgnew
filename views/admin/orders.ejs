@@ -10,7 +10,7 @@
         <td><a href="/admin/orders/<%= o.id %>"><%= o.order_number %></a></td>
         <td><%= o.customer_name %><br /><small><%= o.customer_email %></small></td>
         <td><%= o.created_at %></td>
-        <td>₹<%= o.subtotal.toFixed(2) %></td>
+        <td>₹<%= o.total.toFixed(2) %></td>
         <td><span class="status-pill status-<%= o.status %>"><%= o.status %></span></td>
       </tr>
     <% }); %>

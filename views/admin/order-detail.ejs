@@ -16,9 +16,19 @@
         <% }); %>
       </tbody>
     </table>
+    <div class="order-summary-row">
+      <span>Subtotal</span>
+      <span>₹<%= order.subtotal.toFixed(2) %></span>
+    </div>
+    <% if (order.discount_code) { %>
+      <div class="order-summary-row">
+        <span>Discount (<%= order.discount_code %>)</span>
+        <span>&minus;₹<%= order.discount_amount.toFixed(2) %></span>
+      </div>
+    <% } %>
     <div class="order-summary-row total">
       <span>Total</span>
-      <span>₹<%= order.subtotal.toFixed(2) %></span>
+      <span>₹<%= order.total.toFixed(2) %></span>
     </div>
   </section>
 

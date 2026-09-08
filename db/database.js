@@ -40,6 +40,7 @@ const TABLES = {
   pageSections: `${PREFIX}page_sections`,
   newsletterSubscribers: `${PREFIX}newsletter_subscribers`,
   platformAdmins: `${PREFIX}platform_admins`,
+  discounts: `${PREFIX}discounts`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -179,6 +180,18 @@ CREATE TABLE IF NOT EXISTS ${TABLES.platformAdmins} (
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS ${TABLES.discounts} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  code VARCHAR(50) NOT NULL,
+  type VARCHAR(10) NOT NULL DEFAULT 'percent',
+  value DECIMAL(10,2) NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_discount_code (store_id, code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -413,6 +426,23 @@ async function migratePagesForExistingStores(conn) {
   }
 }
 
+// Adds discount tracking to orders placed before the Discounts feature
+// existed. `total` is what the customer actually paid (subtotal minus any
+// discount); existing rows get total = subtotal, discount_amount = 0, which
+// is the correct value for an order that had no discount applied.
+async function migrateOrderDiscountColumns(conn) {
+  if (!(await columnExists(conn, TABLES.orders, 'discount_code'))) {
+    await conn.query(`ALTER TABLE ${TABLES.orders} ADD COLUMN discount_code VARCHAR(50) NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.orders, 'discount_amount'))) {
+    await conn.query(`ALTER TABLE ${TABLES.orders} ADD COLUMN discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.orders, 'total'))) {
+    await conn.query(`ALTER TABLE ${TABLES.orders} ADD COLUMN total DECIMAL(10,2) NULL`);
+    await conn.query(`UPDATE ${TABLES.orders} SET total = subtotal - discount_amount WHERE total IS NULL`);
+  }
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
@@ -425,6 +455,7 @@ async function init() {
 
     const demoStoreId = await migrateMultiTenancy(conn);
     await migratePagesForExistingStores(conn);
+    await migrateOrderDiscountColumns(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 
