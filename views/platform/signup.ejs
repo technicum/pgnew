@@ -49,17 +49,6 @@
         </label>
       </div>
 
-      <label>Theme</label>
-      <div class="theme-picker">
-        <% themes.forEach(function(t) { %>
-          <label class="theme-swatch theme-swatch-<%= t %>">
-            <input type="radio" name="theme" value="<%= t %>" <%= values.theme === t ? 'checked' : '' %> />
-            <span class="swatch-dot"></span>
-            <span class="swatch-label"><%= t.charAt(0).toUpperCase() + t.slice(1) %></span>
-          </label>
-        <% }); %>
-      </div>
-
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create my store</button>
     </form>
     <p class="login-hint">Already have a store? <a href="/login">Log in</a></p>
