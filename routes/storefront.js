@@ -237,8 +237,12 @@ router.post('/account/login', async (req, res, next) => {
     const password = req.body.password || '';
 
     const [[customer]] = await pool.query(`SELECT * FROM ${TABLES.customers} WHERE store_id = ? AND email = ?`, [storeId, email]);
-    if (!customer || !bcrypt.compareSync(password, customer.password_hash)) {
-      req.flash('error', 'Invalid email or password.');
+    if (!customer) {
+      req.flash('error', 'No account found with that email.');
+      return res.redirect('/account/login');
+    }
+    if (!bcrypt.compareSync(password, customer.password_hash)) {
+      req.flash('error', 'Incorrect password.');
       return res.redirect('/account/login');
     }
 

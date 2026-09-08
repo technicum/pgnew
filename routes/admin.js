@@ -60,8 +60,12 @@ router.post('/login', async (req, res, next) => {
       [req.store.id, email]
     );
 
-    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-      req.flash('error', 'Invalid email or password.');
+    if (!user) {
+      req.flash('error', 'No account found with that email for this store.');
+      return res.redirect('/admin/login');
+    }
+    if (!bcrypt.compareSync(password, user.password_hash)) {
+      req.flash('error', 'Incorrect password.');
       return res.redirect('/admin/login');
     }
 
