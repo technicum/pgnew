@@ -1,3 +1,4 @@
+// PageZaper server entrypoint (pz_users/pz_user_roles/pz_customers schema)
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
