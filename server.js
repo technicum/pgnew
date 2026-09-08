@@ -1,4 +1,5 @@
 // PageZaper server entrypoint (pz_users/pz_user_roles/pz_customers schema)
+// SYNC-TEST-MARKER: 2026-09-08 18:41 UTC
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
