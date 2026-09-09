@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { pool, TABLES, THEMES } = require('../db/database');
 const { requireAdmin, requireAdminRole } = require('../middleware/auth');
-const { rootUrl } = require('../middleware/tenant');
+const { rootUrl, adminPortalUrl } = require('../middleware/tenant');
 const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields } = require('../lib/sections');
 
 function slugify(str) {
@@ -36,49 +36,30 @@ function orderToNumber(order) {
 // directly) there's nothing to log in to.
 router.use((req, res, next) => {
   if (!req.store) {
-    req.flash('error', "Please visit your store's own address to sign in, e.g. yourstore.pagezaper.com/admin.");
-    return res.redirect('/login');
+    req.flash('error', "Please log in first.");
+    return res.redirect(adminPortalUrl(req, '/login'));
   }
   next();
 });
 
 // ---------- Auth ----------
+// There is exactly one login FORM in the whole app, served from
+// admin.pagezaper.com (see routes/platform.js) — a store's own subdomain no
+// longer renders its own login page, it just bounces there. The actual
+// credential check (pz_users JOIN pz_user_roles, scoped by store) also lives
+// in that one route now.
 router.get('/login', (req, res) => {
   if (req.session.admin && req.session.admin.store_id === req.store.id) return res.redirect('/admin');
-  res.render('admin/login', { title: 'Admin Login' });
+  res.redirect(adminPortalUrl(req, '/login'));
 });
 
-router.post('/login', async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const [[user]] = await pool.query(
-      `SELECT u.*, ur.role FROM ${TABLES.users} u
-       JOIN ${TABLES.userRoles} ur ON ur.user_id = u.id
-       WHERE ur.store_id = ? AND ur.role IN ('admin', 'manager') AND u.email = ?
-       ORDER BY (ur.role = 'admin') DESC
-       LIMIT 1`,
-      [req.store.id, email]
-    );
-
-    if (!user) {
-      req.flash('error', 'No account found with that email for this store.');
-      return res.redirect('/admin/login');
-    }
-    if (!bcrypt.compareSync(password, user.password_hash)) {
-      req.flash('error', 'Incorrect password.');
-      return res.redirect('/admin/login');
-    }
-
-    req.session.admin = { id: user.id, name: user.name, email: user.email, store_id: req.store.id, role: user.role };
-    res.redirect('/admin');
-  } catch (err) {
-    next(err);
-  }
+router.post('/login', (req, res) => {
+  res.redirect(adminPortalUrl(req, '/login'));
 });
 
 router.post('/logout', (req, res) => {
   req.session.admin = null;
-  res.redirect('/admin/login');
+  res.redirect(adminPortalUrl(req, '/login'));
 });
 
 // Ends a platform-admin "log in as" session (see routes/platformAdmin.js)

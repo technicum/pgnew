@@ -1,5 +1,4 @@
 // PageZaper server entrypoint (pz_users/pz_user_roles/pz_customers schema)
-// SYNC-TEST-MARKER: 2026-09-08 18:41 UTC
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
@@ -7,7 +6,7 @@ const flash = require('connect-flash');
 const path = require('path');
 
 const { pool, init } = require('./db/database');
-const { resolveStore, getBaseDomain } = require('./middleware/tenant');
+const { resolveStore, getBaseDomain, adminPortalUrl } = require('./middleware/tenant');
 const platformRoutes = require('./routes/platform');
 const platformAdminRoutes = require('./routes/platformAdmin');
 const storefrontRoutes = require('./routes/storefront');
@@ -62,6 +61,10 @@ app.use((req, res, next) => {
   res.locals.customer = req.session.customer || null;
   res.locals.platformAdmin = req.session.platformAdmin || null;
   res.locals.impersonation = req.session.impersonation || null;
+  // Single login gateway for staff (Admin/Manager) — admin.pagezaper.com.
+  // Any "Store admin" / "Log in" link for staff should use this, not a
+  // relative /login or /admin/login.
+  res.locals.loginUrl = adminPortalUrl(req, '/login');
   next();
 });
 

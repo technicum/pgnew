@@ -51,7 +51,7 @@
 
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create my store</button>
     </form>
-    <p class="login-hint">Already have a store? <a href="/login">Log in</a></p>
+    <p class="login-hint">Already have a store? <a href="<%= typeof loginUrl !== 'undefined' ? loginUrl : '/login' %>">Log in</a></p>
   </div>
 
   <script>

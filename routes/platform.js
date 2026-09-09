@@ -3,7 +3,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { pool, THEMES, RESERVED_SUBDOMAINS, TABLES } = require('../db/database');
-const { storeUrl, rootUrl } = require('../middleware/tenant');
+const { storeUrl, rootUrl, adminPortalUrl } = require('../middleware/tenant');
 const { defaultFields } = require('../lib/sections');
 
 function slugify(str) {
@@ -22,6 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // store's storefront home instead (handled by routes/storefront.js).
 router.get('/', (req, res, next) => {
   if (req.store) return next();
+  if (req.isAdminPortal) return res.redirect('/login'); // admin.pagezaper.com -> straight to the staff login form
   if (!req.isRootDomain) return next(); // unknown/suspended subdomain — let storefront.js 404 it
   res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
@@ -154,17 +155,21 @@ router.post('/signup', async (req, res, next) => {
 });
 
 // ---------- Platform login ----------
-// A merchant may not remember their store's subdomain, so this looks their
-// account up by email (checking the password against every store they own).
+// The single staff login gateway lives at admin.pagezaper.com — a merchant
+// may not remember their store's subdomain, so this looks their account up
+// by email and sends them on to whichever store(s) they administer. Hitting
+// "/login" from anywhere else (the root marketing domain, a store's own
+// subdomain) just bounces here rather than rendering its own form, so there
+// is exactly one login page in the whole app.
 router.get('/login', (req, res) => {
-  if (req.store) return res.redirect('/admin/login');
-  if (!req.isRootDomain) return res.redirect(rootUrl(req, '/login'));
+  if (req.store) return res.redirect(adminPortalUrl(req, '/login'));
+  if (!req.isAdminPortal) return res.redirect(adminPortalUrl(req, '/login'));
   res.render('platform/login', { title: 'Log in' });
 });
 
 router.post('/login', async (req, res, next) => {
-  if (req.store) return res.redirect('/admin/login');
-  if (!req.isRootDomain) return res.redirect(rootUrl(req, '/login'));
+  if (req.store) return res.redirect(adminPortalUrl(req, '/login'));
+  if (!req.isAdminPortal) return res.redirect(adminPortalUrl(req, '/login'));
   try {
     const email = (req.body.email || '').trim().toLowerCase();
     const password = req.body.password || '';

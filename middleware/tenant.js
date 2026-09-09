@@ -3,6 +3,10 @@
 //
 //   pagezaper.com          -> req.store = null      (the platform/marketing site)
 //   www.pagezaper.com      -> req.store = null      (same, "www" is not a store)
+//   admin.pagezaper.com    -> req.store = null, req.isAdminPortal = true
+//                              (the single staff login gateway — "admin" is a
+//                              reserved subdomain, see RESERVED_SUBDOMAINS,
+//                              so no store can ever collide with it)
 //   acme.pagezaper.com     -> req.store = the "acme" store row (or null + req.unknownSubdomain
 //                              if no such store exists / it's suspended)
 //
@@ -28,6 +32,7 @@ function resolveStore(pool) {
       req.store = null;
       req.unknownSubdomain = null;
       req.isRootDomain = true;
+      req.isAdminPortal = false;
 
       let subdomain = null;
       if (hostname === baseDomain || hostname === `www.${baseDomain}`) {
@@ -39,7 +44,10 @@ function resolveStore(pool) {
         if (subdomain.includes('.')) subdomain = null;
       }
 
-      if (subdomain) {
+      if (subdomain === 'admin') {
+        req.isRootDomain = false;
+        req.isAdminPortal = true;
+      } else if (subdomain) {
         req.isRootDomain = false;
         const [[store]] = await pool.query(
           `SELECT * FROM ${TABLES.stores} WHERE subdomain = ? LIMIT 1`,
@@ -78,4 +86,16 @@ function rootUrl(req, path = '/') {
   return `${req.protocol}://${baseDomain}${port}${path}`;
 }
 
-module.exports = { resolveStore, storeUrl, rootUrl, getBaseDomain };
+// Builds an absolute URL pointing at the admin portal (admin.<baseDomain>) —
+// the single login gateway for store staff (Admin/Manager), regardless of
+// which store's subdomain, the root marketing domain, or another store's
+// subdomain the request came from. Every "log in" link in the app should
+// point here.
+function adminPortalUrl(req, path = '/') {
+  const baseDomain = req.baseDomain || getBaseDomain();
+  const hostHeader = req.headers.host || baseDomain;
+  const port = hostHeader.includes(':') ? `:${hostHeader.split(':')[1]}` : '';
+  return `${req.protocol}://admin.${baseDomain}${port}${path}`;
+}
+
+module.exports = { resolveStore, storeUrl, rootUrl, adminPortalUrl, getBaseDomain };
