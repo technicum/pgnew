@@ -280,25 +280,49 @@
 .login-hint { text-align: center; color: #9ca3af; font-size: 0.8rem; margin-top: 16px; margin-bottom: 0; }
 .login-hint a { color: var(--color-primary); font-weight: 600; }
 
-/* Select-store page */
-.store-select-card { max-width: 420px; }
-.store-select-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
-.store-select-btn {
+/* Account dashboard */
+.dashboard-body { background: #f9fafb; min-height: 100vh; }
+.dashboard-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  padding: 14px 16px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-  font-size: 0.95rem;
+  padding: 18px 32px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
 }
-.store-select-btn:hover { border-color: var(--color-primary); background: #fff; }
-.store-select-name { font-weight: 700; color: #111827; }
-.store-select-role { font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; font-weight: 600; }
+.dashboard-header .admin-logo { color: #111827; font-weight: 800; font-size: 1.2rem; }
+.dashboard-header .admin-logo span { color: var(--color-primary); }
+.dashboard-header-right { display: flex; align-items: center; gap: 18px; }
+.dashboard-account-name { color: #6b7280; font-size: 0.85rem; font-weight: 600; }
+.dashboard-main { max-width: 760px; margin: 0 auto; padding: 40px 24px; }
+.dashboard-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.dashboard-title-row h1 { font-size: 1.4rem; margin: 0; }
+.dashboard-empty {
+  background: #fff;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+}
+.dashboard-empty p { margin: 0 0 16px; }
+.dashboard-store-list { display: flex; flex-direction: column; gap: 12px; }
+.dashboard-store-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 20px;
+}
+.dashboard-store-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.dashboard-store-name { font-weight: 700; color: #111827; font-size: 1rem; }
+.dashboard-store-domain { color: #9ca3af; font-size: 0.82rem; }
+.dashboard-store-role { font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 600; background: #f3f4f6; padding: 4px 10px; border-radius: 999px; }
+
+/* Profile page */
+.profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }
 
 /* Signup page */
 .signup-card { max-width: 440px; }

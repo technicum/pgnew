@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-login-body">
+  <div class="login-card signup-card">
+    <a href="/dashboard" class="admin-logo" style="display:inline-block; text-decoration:none;">Page<span>Zaper</span></a>
+    <p class="signup-tagline">Add another store to your account.</p>
+
+    <% if (errors && errors.length) { %>
+      <div class="flash flash-error">
+        <% errors.forEach(function(e) { %>
+          <div><%= e %></div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <form action="/dashboard/new-store" method="POST" id="new-store-form">
+      <label>Store name
+        <input type="text" name="storeName" id="storeName" value="<%= values.storeName %>" required autofocus placeholder="Riya's Boutique" />
+      </label>
+
+      <label>Store address
+        <div class="subdomain-field">
+          <input type="text" name="subdomain" id="subdomain" value="<%= values.subdomain %>" placeholder="riyas-boutique" pattern="[a-z0-9][a-z0-9-]{1,61}[a-z0-9]" required />
+          <span class="subdomain-suffix">.<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %></span>
+        </div>
+      </label>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create store</button>
+    </form>
+    <p class="login-hint"><a href="/dashboard">Back to your stores</a></p>
+  </div>
+
+  <script>
+    (function () {
+      var nameInput = document.getElementById('storeName');
+      var subInput = document.getElementById('subdomain');
+      var subEdited = subInput.value.length > 0;
+      subInput.addEventListener('input', function () { subEdited = true; });
+      nameInput.addEventListener('input', function () {
+        if (subEdited) return;
+        subInput.value = nameInput.value
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '')
+          .slice(0, 63);
+      });
+    })();
+  </script>
+</body>
+</html>

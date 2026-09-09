@@ -59,6 +59,7 @@ router.post('/login', (req, res) => {
 
 router.post('/logout', (req, res) => {
   req.session.admin = null;
+  req.session.account = null;
   res.redirect(adminPortalUrl(req, '/login'));
 });
 

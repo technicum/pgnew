@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-login-body">
+  <div class="login-card signup-card">
+    <a href="/dashboard" class="admin-logo" style="display:inline-block; text-decoration:none;">Page<span>Zaper</span></a>
+    <p class="signup-tagline">Update your name, email, or password.</p>
+
+    <% if (errors && errors.length) { %>
+      <div class="flash flash-error">
+        <% errors.forEach(function(e) { %>
+          <div><%= e %></div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <form action="/dashboard/profile" method="POST">
+      <label>Name
+        <input type="text" name="name" value="<%= values.name %>" required autofocus />
+      </label>
+      <label>Email
+        <input type="email" name="email" value="<%= values.email %>" required />
+      </label>
+
+      <p class="profile-password-hint">Leave the password fields blank to keep your current password.</p>
+
+      <label>Current password
+        <input type="password" name="currentPassword" autocomplete="current-password" />
+      </label>
+      <div class="form-row">
+        <label>New password
+          <input type="password" name="newPassword" minlength="6" autocomplete="new-password" />
+        </label>
+        <label>Confirm new password
+          <input type="password" name="confirmNewPassword" minlength="6" autocomplete="new-password" />
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Save changes</button>
+    </form>
+    <p class="login-hint"><a href="/dashboard">Back to your stores</a></p>
+  </div>
+</body>
+</html>
