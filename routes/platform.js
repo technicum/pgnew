@@ -162,14 +162,6 @@ router.post('/signup', async (req, res, next) => {
 // subdomain) just bounces here rather than rendering its own form, so there
 // is exactly one login page in the whole app.
 router.get('/login', (req, res) => {
-  // TEMP DEBUG — remove once the admin.pagezaper.com redirect bug is found.
-  // These headers show up on `curl -I` directly, no log-digging needed.
-  res.set('X-Debug-Host', req.headers.host || '(none)');
-  res.set('X-Debug-Base-Domain', req.baseDomain || '(none)');
-  res.set('X-Debug-Admin-Portal', String(req.isAdminPortal));
-  res.set('X-Debug-Root-Domain', String(req.isRootDomain));
-  res.set('X-Debug-Has-Store', String(!!req.store));
-
   if (req.store) return res.redirect(adminPortalUrl(req, '/login'));
   if (!req.isAdminPortal) return res.redirect(adminPortalUrl(req, '/login'));
   res.render('platform/login', { title: 'Log in' });
