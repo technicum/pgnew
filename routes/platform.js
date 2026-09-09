@@ -164,6 +164,7 @@ router.post('/signup', async (req, res, next) => {
 router.get('/login', (req, res) => {
   if (req.store) return res.redirect(adminPortalUrl(req, '/login'));
   if (!req.isAdminPortal) return res.redirect(adminPortalUrl(req, '/login'));
+  req.session.pendingUser = null; // abandon any in-progress store selection
   res.render('platform/login', { title: 'Log in' });
 });
 
@@ -184,26 +185,103 @@ router.post('/login', async (req, res, next) => {
       return res.redirect('/login');
     }
 
-    // One login can have a role at more than one store now — send them to
-    // the first active store they administer (preferring one they're Admin
-    // of, not just Manager, if they have both).
+    // One login can have a role at more than one store now. Exactly one
+    // active store — skip straight there like before. More than one — ask
+    // which store they mean instead of guessing (see /select-store below).
     const [roles] = await pool.query(
       `SELECT ur.store_id, ur.role, s.subdomain
        FROM ${TABLES.userRoles} ur
        JOIN ${TABLES.stores} s ON s.id = ur.store_id
        WHERE ur.user_id = ? AND ur.role IN ('admin', 'manager') AND s.status = 'active'
-       ORDER BY (ur.role = 'admin') DESC, s.created_at ASC
-       LIMIT 1`,
+       ORDER BY (ur.role = 'admin') DESC, s.created_at ASC`,
       [user.id]
     );
-    const match = roles[0];
 
-    if (!match) {
+    if (!roles.length) {
       req.flash('error', 'No active store found for this account.');
       return res.redirect('/login');
     }
 
+    if (roles.length > 1) {
+      // Hold the verified identity in session while they pick — nothing
+      // store-scoped (req.session.admin) is set until they choose.
+      req.session.pendingUser = { id: user.id, name: user.name, email: user.email };
+      return res.redirect(adminPortalUrl(req, '/select-store'));
+    }
+
+    const match = roles[0];
     req.session.admin = { id: user.id, name: user.name, email: user.email, store_id: match.store_id, role: match.role };
+    res.redirect(storeUrl(req, match.subdomain, '/admin'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// A login that administers more than one store lands here after password
+// check instead of being sent straight to a store — req.session.pendingUser
+// (set by POST /login above) holds the verified identity until they pick.
+router.get('/select-store', async (req, res, next) => {
+  if (req.store) return res.redirect(adminPortalUrl(req, '/select-store'));
+  if (!req.isAdminPortal) return res.redirect(adminPortalUrl(req, '/select-store'));
+
+  const pending = req.session.pendingUser;
+  if (!pending) return res.redirect(adminPortalUrl(req, '/login'));
+
+  try {
+    const [roles] = await pool.query(
+      `SELECT ur.store_id, ur.role, s.name, s.subdomain
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       WHERE ur.user_id = ? AND ur.role IN ('admin', 'manager') AND s.status = 'active'
+       ORDER BY (ur.role = 'admin') DESC, s.created_at ASC`,
+      [pending.id]
+    );
+
+    if (!roles.length) {
+      req.session.pendingUser = null;
+      req.flash('error', 'No active store found for this account.');
+      return res.redirect(adminPortalUrl(req, '/login'));
+    }
+
+    if (roles.length === 1) {
+      // Could happen if a store got suspended between login and this page.
+      const match = roles[0];
+      req.session.admin = { id: pending.id, name: pending.name, email: pending.email, store_id: match.store_id, role: match.role };
+      req.session.pendingUser = null;
+      return res.redirect(storeUrl(req, match.subdomain, '/admin'));
+    }
+
+    res.render('platform/select-store', { title: 'Select a store', name: pending.name, stores: roles });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/select-store', async (req, res, next) => {
+  if (req.store) return res.redirect(adminPortalUrl(req, '/select-store'));
+  if (!req.isAdminPortal) return res.redirect(adminPortalUrl(req, '/select-store'));
+
+  const pending = req.session.pendingUser;
+  if (!pending) return res.redirect(adminPortalUrl(req, '/login'));
+
+  try {
+    const storeId = parseInt(req.body.storeId, 10);
+    const [[match]] = await pool.query(
+      `SELECT ur.store_id, ur.role, s.subdomain
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       WHERE ur.user_id = ? AND ur.store_id = ? AND ur.role IN ('admin', 'manager') AND s.status = 'active'
+       LIMIT 1`,
+      [pending.id, storeId]
+    );
+
+    if (!match) {
+      req.flash('error', 'Please choose one of your stores.');
+      return res.redirect(adminPortalUrl(req, '/select-store'));
+    }
+
+    req.session.admin = { id: pending.id, name: pending.name, email: pending.email, store_id: match.store_id, role: match.role };
+    req.session.pendingUser = null;
     res.redirect(storeUrl(req, match.subdomain, '/admin'));
   } catch (err) {
     next(err);

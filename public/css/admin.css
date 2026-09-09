@@ -280,6 +280,26 @@
 .login-hint { text-align: center; color: #9ca3af; font-size: 0.8rem; margin-top: 16px; margin-bottom: 0; }
 .login-hint a { color: var(--color-primary); font-weight: 600; }
 
+/* Select-store page */
+.store-select-card { max-width: 420px; }
+.store-select-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.store-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.95rem;
+}
+.store-select-btn:hover { border-color: var(--color-primary); background: #fff; }
+.store-select-name { font-weight: 700; color: #111827; }
+.store-select-role { font-size: 0.75rem; text-transform: uppercase; color: #9ca3af; font-weight: 600; }
+
 /* Signup page */
 .signup-card { max-width: 440px; }
 .signup-tagline { color: #6b7280; font-size: 0.88rem; margin: 4px 0 20px; }
