@@ -103,7 +103,8 @@
       store: <%- JSON.stringify({ name: store.name }).split('/').join(String.fromCharCode(92) + '/') %>,
       sectionTypes: <%- JSON.stringify(sectionTypes).split('/').join(String.fromCharCode(92) + '/') %>,
       sections: <%- JSON.stringify(sections.map(function (s) { return { id: s.id, type: s.type, fields: s.fields, hidden: !!s.hidden }; })).split('/').join(String.fromCharCode(92) + '/') %>,
-      products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>
+      products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>,
+      categories: <%- JSON.stringify(categories).split('/').join(String.fromCharCode(92) + '/') %>
     };
   </script>
   <script src="/js/admin-builder.js"></script>

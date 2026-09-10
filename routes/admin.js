@@ -321,7 +321,14 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       [req.store.id]
     );
     const products = rawProducts.map((p) => ({ ...p, price: Number(p.price) }));
-    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, products });
+    // Real store categories, so the "Collection list" module previews the
+    // merchant's actual categories on the canvas (and, on the live
+    // storefront, is never anything but a live reflection of them).
+    const [categories] = await pool.query(
+      `SELECT id, name FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`,
+      [req.store.id]
+    );
+    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, products, categories });
   } catch (err) {
     next(err);
   }

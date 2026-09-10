@@ -32,7 +32,17 @@
     trash: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.5h4V6M5.5 6l.7 9.5a1 1 0 0 0 1 .9h5.6a1 1 0 0 0 1-.9L14.5 6"/></svg>',
     eye: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M2 10s2.8-5.5 8-5.5S18 10 18 10s-2.8 5.5-8 5.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2.2"/></svg>',
     eyeOff: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l14 14M8.3 8.4a2.2 2.2 0 0 0 3.1 3.1M6 5.4C3.6 6.7 2 10 2 10s2.8 5.5 8 5.5c1.4 0 2.6-.4 3.6-1M15.2 13.2C16.9 11.9 18 10 18 10s-2.8-5.5-8-5.5c-.6 0-1.2.05-1.7.15"/></svg>',
-    image: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="13" rx="1.3"/><circle cx="7" cy="8" r="1.3"/><path d="M3.5 15 8 10.5l2.5 2.5L14 9l2.5 3"/></svg>'
+    image: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="13" rx="1.3"/><circle cx="7" cy="8" r="1.3"/><path d="M3.5 15 8 10.5l2.5 2.5L14 9l2.5 3"/></svg>',
+    richtext: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 5h14M3 9h14M3 13h9"/></svg>',
+    gallery: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="11" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="2.5" y="10" width="6.5" height="6.5" rx="1"/><rect x="11" y="10" width="6.5" height="6.5" rx="1"/></svg>',
+    video: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="15" height="12" rx="1.3"/><path d="M8.2 7.5v5l4.3-2.5-4.3-2.5Z" fill="currentColor" stroke="none"/></svg>',
+    spotlight: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10.5 2.5H16a1 1 0 0 1 1 1v5.5a1 1 0 0 1-.3.7l-7 7a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 .2-.1Z"/><circle cx="13" cy="6" r="1"/></svg>',
+    collections: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="4" rx="1"/><rect x="2.5" y="10.5" width="15" height="4" rx="1"/></svg>',
+    logos: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.2"/><path d="M7 10h6M10 7v6"/></svg>',
+    faq: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="7.2"/><path d="M7.8 7.8a2.2 2.2 0 1 1 3.1 2c-.9.6-.9 1.1-.9 1.9"/><circle cx="10" cy="14" r=".2" fill="currentColor"/></svg>',
+    countdown: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2"/><path d="M10 6v4l3 2"/></svg>',
+    spacer: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4h12M4 16h12M10 6.5v7"/></svg>',
+    divider: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 10h14"/></svg>'
   };
   function icon(name) { return ICON[name] || ""; }
 
@@ -72,6 +82,26 @@
   function el(html) { var d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstChild; }
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
   function money(n) { return "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  // For dropping a merchant-supplied URL into a single-quoted CSS url() or a
+  // double-quoted attribute: esc() alone only neutralizes & < >, so this
+  // additionally closes off both quote characters a URL could use to break
+  // out of whichever attribute it ends up in.
+  function attrUrl(u) { return esc(u).replace(/'/g, "%27").replace(/"/g, "%22"); }
+
+  // Converts a stored end_at (an ISO/UTC string, or "" if unset) to the
+  // "YYYY-MM-DDTHH:mm" shape an <input type="datetime-local"> needs, in the
+  // browser's own local time — the inverse of the toISOString() conversion
+  // done where the input's value is saved (see wireInspector's change
+  // handler), which is what keeps the countdown's deadline the same real
+  // moment for every visitor regardless of their timezone.
+  function toLocalInputValue(v) {
+    if (!v) return "";
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return "";
+    var pad = function (n) { return String(n).padStart(2, "0"); };
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
 
   function phTile(extraClass, styleAttr) {
     return '<div class="b-ph ' + (extraClass || "") + '"' + (styleAttr || "") + '>' + icon("image") + "</div>";
@@ -123,6 +153,78 @@
           '<div class="b-newsletter-form"><input placeholder="you@example.com" disabled/>' +
           '<button style="background:var(--b-accent);color:var(--b-accent-ink);" data-field="button" contenteditable="true">' + esc(d.button) + '</button></div></div>';
 
+      case "richtext":
+        return '<div class="b-sec-pad b-richtext-' + (d.width === "wide" ? "wide" : "narrow") + '" style="text-align:' + (d.align === "left" ? "left" : "center") + ';">' +
+          '<h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
+          '<p data-field="body" contenteditable="true">' + esc(d.body) + '</p></div>';
+
+      case "gallery": {
+        var imgs = d.images || [];
+        var tiles = imgs.length
+          ? imgs.map(function (u) { return '<div class="b-ph b-gallery-tile" style="background-image:url(\'' + attrUrl(u) + '\');"></div>'; }).join("")
+          : '<div class="b-prod-empty">No images yet — add image URLs from the panel on the right.</div>';
+        return '<div class="b-sec-pad"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
+          '<div class="b-gallery-grid" data-cols="' + d.cols + '">' + tiles + '</div></div>';
+      }
+
+      case "video": {
+        var frame = d.embed_url
+          ? '<div class="b-video-frame"><iframe src="' + attrUrl(d.embed_url) + '" loading="lazy" allowfullscreen></iframe></div>'
+          : '<div class="b-video-frame b-ph"><div>' + icon("video") + '<div class="b-video-hint">Paste a video URL in the panel</div></div></div>';
+        return '<div class="b-sec-pad"><h3 style="margin-bottom:16px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + frame + '</div>';
+      }
+
+      case "spotlight": {
+        var sp = d.product_id ? DATA.products.filter(function (p) { return String(p.id) === String(d.product_id); })[0] : null;
+        if (!sp) return '<div class="b-sec-pad"><div class="b-prod-empty">No product selected — choose one from the panel on the right.</div></div>';
+        var spImgStyle = sp.image_url ? ' style="background-image:url(\'' + attrUrl(sp.image_url) + '\');"' : "";
+        return '<div class="b-sec-pad b-spotlight ' + (d.side === "left" ? "reverse" : "") + '">' +
+          '<div class="b-spotlight-media b-ph"' + spImgStyle + '>' + (sp.image_url ? "" : icon("image")) + '</div>' +
+          '<div><h3>' + esc(sp.title) + '</h3>' +
+          '<div class="b-spotlight-price">' + money(sp.price) + '</div>' +
+          '<p data-field="body" contenteditable="true">' + esc(d.body) + '</p>' +
+          '<span data-field="button" contenteditable="true" style="display:inline-block;background:var(--b-accent);color:var(--b-accent-ink);font-weight:700;font-size:13px;padding:9px 16px;border-radius:8px;">' + esc(d.button) + '</span></div></div>';
+      }
+
+      case "collections": {
+        var cats = DATA.categories || [];
+        var swatches = ["#F5F1E8", "#F3E4D6", "#FDE9C7", "#E7EEF6", "#EDEAF6", "#DDEAD9"];
+        var collInner = cats.length
+          ? '<div class="b-coll-grid" data-cols="' + d.cols + '">' + cats.map(function (c, i) {
+              return '<div class="b-coll-card" style="background:' + swatches[i % swatches.length] + ';"><span>' + esc(c.name) + '</span></div>';
+            }).join("") + '</div>'
+          : '<div class="b-prod-empty">No categories yet — add some from Products &rsaquo; Categories and they’ll show up here automatically.</div>';
+        return '<div class="b-sec-pad"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' + collInner + '</div>';
+      }
+
+      case "logos": {
+        var names = d.names || [];
+        if (!names.length) return '<div class="b-sec-pad"><div class="b-prod-empty">No names yet — add them from the panel on the right.</div></div>';
+        return '<div class="b-sec-pad b-logostrip">' + names.map(function (n) { return "<span>" + esc(n) + "</span>"; }).join("") + '</div>';
+      }
+
+      case "faq": {
+        var items = d.items || [];
+        var rows = items.map(function (f, idx) {
+          return '<div class="b-faq-item">' +
+            '<div class="b-faq-q" data-field="items.' + idx + '.q" contenteditable="true">' + esc(f.q) + '</div>' +
+            '<div class="b-faq-a" data-field="items.' + idx + '.a" contenteditable="true">' + esc(f.a) + '</div></div>';
+        }).join("");
+        return '<div class="b-sec-pad" style="max-width:640px;margin:0 auto;"><h3 style="margin-bottom:6px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + rows + '</div>';
+      }
+
+      case "countdown":
+        return '<div class="b-sec-pad b-countdown">' +
+          '<h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
+          (d.end_at ? '<div class="b-countdown-hint">Counts down to ' + esc(new Date(d.end_at).toLocaleString()) + '</div>' : '<div class="b-countdown-hint">Set an end date/time in the panel</div>') +
+          '</div>';
+
+      case "spacer":
+        return '<div class="b-spacer-preview" data-h="' + d.height + '"><span>Spacer</span></div>';
+
+      case "divider":
+        return d.style === "dots" ? '<div class="b-divider-preview b-divider-dots">• • • • •</div>' : '<div class="b-divider-preview"><hr/></div>';
+
       default:
         return '<div class="b-sec-pad"><div class="b-inspector-hint">Unknown section type "' + esc(sec.type) + '".</div></div>';
     }
@@ -155,17 +257,31 @@
     });
   }
 
+  var LIB_GROUP_ORDER = ["Content", "Commerce", "Engagement", "Layout"];
+
   function renderLibrary() {
     var body = document.getElementById("bLibraryBody");
     body.innerHTML = "";
+    var byGroup = {};
     Object.keys(SECTION_TYPES).forEach(function (type) {
-      var row = el(
-        '<div class="b-lib-item" data-type="' + type + '">' +
-          '<div class="b-lib-item-icon">' + icon(type) + '</div>' +
-          '<div class="b-lib-item-label">' + esc(SECTION_TYPES[type].name) + '</div>' +
-        '</div>'
-      );
-      body.appendChild(row);
+      var g = SECTION_TYPES[type].group || "More";
+      (byGroup[g] = byGroup[g] || []).push(type);
+    });
+    var groups = LIB_GROUP_ORDER.concat(Object.keys(byGroup).filter(function (g) { return LIB_GROUP_ORDER.indexOf(g) === -1; }));
+    groups.forEach(function (g) {
+      var types = byGroup[g];
+      if (!types || !types.length) return;
+      var groupEl = el('<div class="b-lib-group"><div class="b-lib-group-label">' + esc(g) + '</div></div>');
+      types.forEach(function (type) {
+        var row = el(
+          '<div class="b-lib-item" data-type="' + type + '">' +
+            '<div class="b-lib-item-icon">' + icon(type) + '</div>' +
+            '<div class="b-lib-item-label">' + esc(SECTION_TYPES[type].name) + '</div>' +
+          '</div>'
+        );
+        groupEl.appendChild(row);
+      });
+      body.appendChild(groupEl);
     });
     body.appendChild(el('<div class="b-lib-note">More section types are on the way — new ones will show up in this list as they ship.</div>'));
   }
@@ -217,6 +333,12 @@
   function textHtml(name, current, placeholder) {
     return '<input class="b-text-native" type="text" data-field="' + name + '" value="' + esc(current || "") + '" placeholder="' + esc(placeholder || "") + '" />';
   }
+  function textareaHtml(name, current, placeholder) {
+    return '<textarea class="b-text-native b-textarea-native" rows="4" data-field="' + name + '" placeholder="' + esc(placeholder || "") + '">' + esc(current || "") + '</textarea>';
+  }
+  function dateTimeHtml(name, isoCurrent) {
+    return '<input class="b-text-native" type="datetime-local" data-field="' + name + '" value="' + esc(toLocalInputValue(isoCurrent)) + '" />';
+  }
 
   function inspectorFieldsFor(sec) {
     var d = sec.fields;
@@ -234,6 +356,41 @@
         return field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it.</div>');
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
+      case "richtext":
+        return field("Width", segHtml("width", [{ val: "narrow", label: "Narrow" }, { val: "wide", label: "Wide" }], d.width)) +
+          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }], d.align)) +
+          field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it.</div>');
+      case "gallery":
+        return field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols)) +
+          field("Image URLs", textareaHtml("images", (d.images || []).join("\n"), "One image URL per line, up to 6")) +
+          field("", '<div class="b-inspector-hint">No upload yet — paste hosted image URLs, one per line. Click the heading to edit it.</div>');
+      case "video":
+        return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
+          field("", '<div class="b-inspector-hint">Paste an embeddable video link — a YouTube/Vimeo “embed” URL works best. Click the heading to edit it.</div>');
+      case "spotlight": {
+        var prodOptions = DATA.products.map(function (p) { return { val: String(p.id), label: p.title }; });
+        var picker = prodOptions.length
+          ? selectHtml("product_id", [{ val: "", label: "Choose a product…" }].concat(prodOptions), String(d.product_id || ""))
+          : '<div class="b-inspector-hint">Add a product first, then come back here to spotlight it.</div>';
+        return field("Product", picker) +
+          field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side)) +
+          field("", '<div class="b-inspector-hint">Click the description or button label on the canvas to edit it.</div>');
+      }
+      case "collections":
+        return field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols)) +
+          field("", '<div class="b-inspector-hint">Shows all ' + (DATA.categories ? DATA.categories.length : 0) + ' of your store’s categories automatically. Click the heading to edit it.</div>');
+      case "logos":
+        return field("Names", textareaHtml("names", (d.names || []).join("\n"), "One name per line, up to 8")) +
+          field("", '<div class="b-inspector-hint">Plain text only — good for press mentions or partner names.</div>');
+      case "faq":
+        return field("", '<div class="b-inspector-hint">Click any question or answer on the canvas to edit it.</div>');
+      case "countdown":
+        return field("Ends at", dateTimeHtml("end_at", d.end_at)) +
+          field("", '<div class="b-inspector-hint">Shown in your local time here, but counts down to the same moment for every visitor. Click the heading to edit it.</div>');
+      case "spacer":
+        return field("Height", segHtml("height", [{ val: "s", label: "S" }, { val: "m", label: "M" }, { val: "l", label: "L" }, { val: "xl", label: "XL" }], d.height));
+      case "divider":
+        return field("Style", segHtml("style", [{ val: "line", label: "Line" }, { val: "dots", label: "Dots" }], d.style));
       default:
         return "";
     }
@@ -490,15 +647,26 @@
       var value = f.textContent.trim();
       var patch;
       if (key.indexOf(".") !== -1) {
-        // "quotes.0.quote" / "quotes.0.author" -> { quotes: [{ quote, author }] }
+        // "arrayKey.idx.subKey" (e.g. "quotes.0.author" or "items.2.a") ->
+        // { arrayKey: [...] }. Rebuilds every item in the array from
+        // whatever's currently live on the canvas for this section, keyed
+        // off the existing item's own keys, so editing one field never
+        // clobbers its siblings (other items, or the other field on the
+        // same item).
         var parts = key.split(".");
-        var thisKey = parts[2];
-        var otherKey = thisKey === "quote" ? "author" : "quote";
-        var otherField = host.querySelector('[data-field="quotes.0.' + otherKey + '"]');
-        var qv = {};
-        qv[thisKey] = value;
-        qv[otherKey] = otherField ? otherField.textContent.trim() : "";
-        patch = { quotes: [qv] };
+        var arrayKey = parts[0], idx = parseInt(parts[1], 10), subKey = parts[2];
+        var existingArr = sec.fields[arrayKey] || [];
+        var newArr = existingArr.map(function (item, i) {
+          var out = Object.assign({}, item);
+          Object.keys(item).forEach(function (k) {
+            var sibling = host.querySelector('[data-field="' + arrayKey + '.' + i + '.' + k + '"]');
+            if (sibling) out[k] = sibling.textContent.trim();
+          });
+          return out;
+        });
+        if (newArr[idx]) newArr[idx][subKey] = value;
+        patch = {};
+        patch[arrayKey] = newArr;
       } else {
         patch = {};
         patch[key] = value;
@@ -531,18 +699,45 @@
         sec.fields[sel.dataset.field] = sel.value;
         renderAll();
         saveField(sec.id, patch);
+        return;
+      }
+      // datetime-local reports the admin's own local wall-clock time; convert
+      // to a UTC ISO string before saving so the countdown lands on the same
+      // real moment for every visitor, whatever timezone they're in.
+      var dt = e.target.closest('input[type="datetime-local"][data-field]');
+      if (dt) {
+        var iso = "";
+        if (dt.value) {
+          var parsed = new Date(dt.value);
+          if (!isNaN(parsed.getTime())) iso = parsed.toISOString();
+        }
+        var patch2 = {};
+        patch2[dt.dataset.field] = iso;
+        sec.fields[dt.dataset.field] = iso;
+        renderAll();
+        saveField(sec.id, patch2);
       }
     });
     document.getElementById("bInspectorBody").addEventListener("focusout", function (e) {
       var sec = state.selectedId ? findSection(state.selectedId) : null;
       if (!sec) return;
-      var input = e.target.closest('input.b-text-native[data-field]');
-      if (input) {
+      var ta = e.target.closest('textarea.b-textarea-native[data-field]');
+      if (ta) {
+        var lines = ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
         var patch = {};
-        patch[input.dataset.field] = input.value;
+        patch[ta.dataset.field] = lines;
+        sec.fields[ta.dataset.field] = lines;
+        renderAll();
+        saveField(sec.id, patch);
+        return;
+      }
+      var input = e.target.closest('input.b-text-native[data-field]');
+      if (input && input.type !== "datetime-local") {
+        var patch2 = {};
+        patch2[input.dataset.field] = input.value;
         sec.fields[input.dataset.field] = input.value;
         renderCanvas();
-        saveField(sec.id, patch);
+        saveField(sec.id, patch2);
       }
     });
   }

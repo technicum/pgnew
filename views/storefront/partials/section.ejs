@@ -58,4 +58,127 @@
       <button type="submit" class="btn btn-primary"><%= section.fields.button %></button>
     </form>
   </section>
+
+<% } else if (section.type === 'richtext') { %>
+  <section class="richtext richtext-<%= section.fields.width === 'wide' ? 'wide' : 'narrow' %>" style="text-align:<%= section.fields.align === 'left' ? 'left' : 'center' %>;">
+    <h2><%= section.fields.heading %></h2>
+    <p><%= section.fields.body %></p>
+  </section>
+
+<% } else if (section.type === 'gallery' && section.fields.images && section.fields.images.length) { %>
+  <section class="gallery">
+    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <div class="gallery-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
+      <% section.fields.images.forEach(function(url) { %>
+        <div class="gallery-tile" style="background-image:url('<%= url %>')"></div>
+      <% }); %>
+    </div>
+  </section>
+
+<% } else if (section.type === 'video' && section.fields.embed_url) { %>
+  <section class="video-section">
+    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <div class="video-frame">
+      <iframe src="<%= section.fields.embed_url %>" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+  </section>
+
+<% } else if (section.type === 'spotlight' && section.product) { %>
+  <section class="spotlight spotlight-<%= section.fields.side === 'left' ? 'left' : 'right' %>">
+    <div class="spotlight-media" style="<%= section.product.image_url ? `background-image:url('${section.product.image_url}')` : '' %>"></div>
+    <div class="spotlight-copy">
+      <h2><%= section.product.title %></h2>
+      <div class="price-row">
+        <span class="price">₹<%= section.product.price.toFixed(2) %></span>
+        <% if (section.product.compare_at_price) { %><span class="compare-price">₹<%= section.product.compare_at_price.toFixed(2) %></span><% } %>
+      </div>
+      <p><%= section.fields.body %></p>
+      <a class="btn btn-primary" href="/products/<%= section.product.slug %>"><%= section.fields.button %></a>
+    </div>
+  </section>
+
+<% } else if (section.type === 'collections' && typeof categories !== 'undefined' && categories.length) { %>
+  <section class="collections">
+    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <div class="collections-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
+      <% categories.forEach(function(c) { %>
+        <a class="collection-card" href="/?category=<%= encodeURIComponent(c.name) %>"><span><%= c.name %></span></a>
+      <% }); %>
+    </div>
+  </section>
+
+<% } else if (section.type === 'testimonials') { %>
+  <section class="testimonials">
+    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <div class="testimonial-grid">
+      <% section.fields.quotes.forEach(function(q) { %>
+        <blockquote class="testimonial-card">
+          <p>&ldquo;<%= q.quote %>&rdquo;</p>
+          <cite>&mdash; <%= q.author %></cite>
+        </blockquote>
+      <% }); %>
+    </div>
+  </section>
+
+<% } else if (section.type === 'logos' && section.fields.names && section.fields.names.length) { %>
+  <section class="logostrip">
+    <% section.fields.names.forEach(function(n) { %><span><%= n %></span><% }); %>
+  </section>
+
+<% } else if (section.type === 'faq' && section.fields.items && section.fields.items.length) { %>
+  <section class="faq">
+    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <% section.fields.items.forEach(function(f) { %>
+      <details class="faq-item">
+        <summary><%= f.q %></summary>
+        <p><%= f.a %></p>
+      </details>
+    <% }); %>
+  </section>
+
+<% } else if (section.type === 'countdown' && section.fields.end_at) { %>
+  <section class="countdown" data-end="<%= section.fields.end_at %>">
+    <h2><%= section.fields.heading %></h2>
+    <div class="countdown-timers">
+      <div><b data-u="d">00</b><small>Days</small></div>
+      <div><b data-u="h">00</b><small>Hrs</small></div>
+      <div><b data-u="m">00</b><small>Min</small></div>
+      <div><b data-u="s">00</b><small>Sec</small></div>
+    </div>
+  </section>
+  <script>
+    (function () {
+      var els = document.querySelectorAll('.countdown[data-end]');
+      Array.prototype.forEach.call(els, function (el) {
+        var end = new Date(el.dataset.end).getTime();
+        if (!end || isNaN(end)) return;
+        var d = el.querySelector('[data-u="d"]'), h = el.querySelector('[data-u="h"]'),
+            m = el.querySelector('[data-u="m"]'), s = el.querySelector('[data-u="s"]');
+        function tick() {
+          var diff = Math.max(0, end - Date.now());
+          var days = Math.floor(diff / 86400000);
+          var hrs = Math.floor((diff % 86400000) / 3600000);
+          var min = Math.floor((diff % 3600000) / 60000);
+          var sec = Math.floor((diff % 60000) / 1000);
+          d.textContent = String(days).padStart(2, '0');
+          h.textContent = String(hrs).padStart(2, '0');
+          m.textContent = String(min).padStart(2, '0');
+          s.textContent = String(sec).padStart(2, '0');
+          if (diff <= 0) { clearInterval(timer); el.classList.add('is-ended'); }
+        }
+        tick();
+        var timer = setInterval(tick, 1000);
+      });
+    })();
+  </script>
+
+<% } else if (section.type === 'spacer') { %>
+  <div class="section-spacer section-spacer-<%= section.fields.height %>"></div>
+
+<% } else if (section.type === 'divider') { %>
+  <% if (section.fields.style === 'dots') { %>
+    <div class="section-divider section-divider-dots">&bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;</div>
+  <% } else { %>
+    <hr class="section-divider" />
+  <% } %>
 <% } %>

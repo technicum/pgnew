@@ -86,11 +86,31 @@ async function renderStorePage(req, res, next, page) {
       allProducts = allProducts.map(toNumber);
     }
 
+    // "Product spotlight" sections each point at one specific product by id
+    // (chosen in the builder) — fetched fresh here so price/stock/image are
+    // always current, never a stale copy from when the section was set up.
+    const spotlightIds = [...new Set(
+      rawSections.filter((s) => s.type === 'spotlight')
+        .map((s) => (typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields).product_id)
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )];
+    let spotlightProducts = {};
+    if (spotlightIds.length) {
+      const [rows] = await pool.query(
+        `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND status = 'active' AND id IN (?)`,
+        [storeId, spotlightIds]
+      );
+      rows.forEach((p) => { spotlightProducts[p.id] = toNumber(p); });
+    }
+
     const sections = rawSections.map((s) => {
       const fields = typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields;
       const section = { id: s.id, type: s.type, fields };
       if (s.type === 'products') {
         section.products = allProducts.slice(0, fields.limit || 12);
+      }
+      if (s.type === 'spotlight') {
+        section.product = fields.product_id ? (spotlightProducts[fields.product_id] || null) : null;
       }
       return section;
     });
