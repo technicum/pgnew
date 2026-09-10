@@ -15,6 +15,7 @@ const {
   sanitizeElementStyle,
   sanitizeAllElementStyles,
 } = require('../lib/sections');
+const { resolveTokens, sanitizeTokenPatch, RADIUS_PX } = require('../lib/themeTokens');
 
 function slugify(str) {
   return str
@@ -649,6 +650,103 @@ router.post('/pages/:id/sections/:sectionId/delete', async (req, res, next) => {
     if (!page) return res.status(404).json({ error: 'Page not found' });
     await pool.query(`DELETE FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Edit Store: Themes ----------
+// "My themes" — every theme this store has installed (pz_store_themes),
+// with the active one marked and a Customize link per theme. Browsing and
+// installing MORE themes happens on themes.pagezaper.com (not built yet) —
+// this page only manages what's already installed for this store.
+router.get('/store/themes', async (req, res, next) => {
+  try {
+    const [installed] = await pool.query(
+      `SELECT st.id AS store_theme_id, st.is_active, t.name, t.description, t.price_cents
+       FROM ${TABLES.storeThemes} st
+       JOIN ${TABLES.themes} t ON t.id = st.theme_id
+       WHERE st.store_id = ?
+       ORDER BY st.is_active DESC, t.name ASC`,
+      [req.store.id]
+    );
+    res.render('admin/store-themes', { title: 'Themes', themes: installed });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/store/themes/:storeThemeId/activate', async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const [[target]] = await conn.query(
+      `SELECT id FROM ${TABLES.storeThemes} WHERE id = ? AND store_id = ?`,
+      [req.params.storeThemeId, req.store.id]
+    );
+    if (!target) {
+      req.flash('error', 'Theme not found.');
+      return res.redirect('/admin/store/themes');
+    }
+    await conn.beginTransaction();
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 0 WHERE store_id = ?`, [req.store.id]);
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 1 WHERE id = ?`, [target.id]);
+    await conn.commit();
+    req.flash('success', 'Theme activated — your storefront is now using it.');
+    res.redirect('/admin/store/themes');
+  } catch (err) {
+    await conn.rollback();
+    next(err);
+  } finally {
+    conn.release();
+  }
+});
+
+router.get('/store/themes/:storeThemeId/customize', async (req, res, next) => {
+  try {
+    const [[storeTheme]] = await pool.query(
+      `SELECT st.id AS store_theme_id, st.token_overrides, t.name
+       FROM ${TABLES.storeThemes} st
+       JOIN ${TABLES.themes} t ON t.id = st.theme_id
+       WHERE st.id = ? AND st.store_id = ?`,
+      [req.params.storeThemeId, req.store.id]
+    );
+    if (!storeTheme) {
+      req.flash('error', 'Theme not found.');
+      return res.redirect('/admin/store/themes');
+    }
+    const overrides = storeTheme.token_overrides
+      ? (typeof storeTheme.token_overrides === 'string' ? JSON.parse(storeTheme.token_overrides) : storeTheme.token_overrides)
+      : null;
+    res.render('admin/store-theme-customize', {
+      title: `Customize ${storeTheme.name}`,
+      storeTheme,
+      tokens: resolveTokens(overrides),
+      radiusOptions: RADIUS_PX,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/store/themes/:storeThemeId/customize', async (req, res, next) => {
+  try {
+    const [[storeTheme]] = await pool.query(
+      `SELECT id FROM ${TABLES.storeThemes} WHERE id = ? AND store_id = ?`,
+      [req.params.storeThemeId, req.store.id]
+    );
+    if (!storeTheme) {
+      req.flash('error', 'Theme not found.');
+      return res.redirect('/admin/store/themes');
+    }
+    if (req.body.reset === '1') {
+      await pool.query(`UPDATE ${TABLES.storeThemes} SET token_overrides = NULL WHERE id = ?`, [storeTheme.id]);
+      req.flash('success', "Reset to the theme's defaults.");
+      return res.redirect(`/admin/store/themes/${storeTheme.id}/customize`);
+    }
+    const patch = sanitizeTokenPatch(req.body);
+    await pool.query(`UPDATE ${TABLES.storeThemes} SET token_overrides = ? WHERE id = ?`, [JSON.stringify(patch), storeTheme.id]);
+    req.flash('success', 'Theme appearance updated.');
+    res.redirect(`/admin/store/themes/${storeTheme.id}/customize`);
   } catch (err) {
     next(err);
   }

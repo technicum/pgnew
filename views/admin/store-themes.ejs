@@ -1,0 +1,36 @@
+<%- include('partials/header') %>
+
+<div class="panel-toolbar" style="justify-content: space-between; align-items: center;">
+  <p style="margin: 0; color: #6b7280; font-size: 0.9rem; max-width: 520px;">
+    Themes control your storefront's structure and look. Switching themes keeps every page and section you've built exactly as it is.
+  </p>
+  <a href="https://themes.pagezaper.com" target="_blank" rel="noopener" class="btn btn-primary">Browse theme marketplace ↗</a>
+</div>
+
+<div class="theme-cards">
+  <% themes.forEach(function(t) { %>
+    <div class="theme-card<%= t.is_active ? ' is-active' : '' %>">
+      <div class="theme-card-thumb" aria-hidden="true"></div>
+      <div class="theme-card-body">
+        <div class="theme-card-name">
+          <%= t.name %>
+          <% if (t.is_active) { %><span class="status-pill status-delivered">Active</span><% } %>
+        </div>
+        <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
+        <div class="theme-card-actions">
+          <a href="/admin/store/themes/<%= t.store_theme_id %>/customize" class="link-btn">Customize</a>
+          <% if (!t.is_active) { %>
+            <form action="/admin/store/themes/<%= t.store_theme_id %>/activate" method="POST" onsubmit="return confirm(<%- JSON.stringify('Activate ' + t.name + '? Your live storefront will switch immediately.') %>);">
+              <button type="submit" class="link-btn">Activate</button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  <% }); %>
+  <% if (themes.length === 0) { %>
+    <p class="empty-state">No themes installed yet.</p>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

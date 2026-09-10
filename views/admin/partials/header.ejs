@@ -17,15 +17,16 @@
         <a href="/admin/products" class="<%= title && (title === 'Products' || title === 'New Product' || title === 'Edit Product') ? 'active' : '' %>">Products</a>
         <a href="/admin/customers" class="<%= title === 'Customers' ? 'active' : '' %>">Customers</a>
         <a href="/admin/discounts" class="<%= title && (title === 'Discounts' || title === 'New Discount') ? 'active' : '' %>">Discounts</a>
-        <a href="/admin/pages" class="<%= title && (title === 'Pages' || title === 'New Page' || title.startsWith('Edit ')) ? 'active' : '' %>">Content</a>
+
+        <div class="admin-nav-group-label">Edit Store</div>
+        <a href="/admin/store/themes" class="admin-nav-sub <%= title && (title === 'Themes' || title.startsWith('Customize ')) ? 'active' : '' %>">Themes</a>
+        <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || title.startsWith('Edit ')) ? 'active' : '' %>">Pages</a>
+        <a href="/" target="_blank" class="admin-nav-sub">View store ↗</a>
 
         <div class="admin-nav-divider"></div>
         <a href="/admin/markets" class="<%= title === 'Markets' ? 'active' : '' %>">Markets</a>
         <a href="/admin/finance" class="<%= title === 'Finance' ? 'active' : '' %>">Finance</a>
         <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
-
-        <div class="admin-nav-group-label">Sales channels</div>
-        <a href="/" target="_blank" class="admin-nav-sub">Online Store ↗</a>
 
         <div class="admin-nav-group-label">Apps</div>
         <a href="/admin/apps" class="admin-nav-sub <%= title === 'Apps' ? 'active' : '' %>">Manage apps</a>

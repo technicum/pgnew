@@ -384,6 +384,28 @@
   box-shadow: 0 0 0 1px #111827;
 }
 
+/* ---------- Edit Store: Themes ("My themes" listing) ---------- */
+.theme-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.theme-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.theme-card.is-active { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+.theme-card-thumb {
+  height: 120px;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+}
+.theme-card-body { padding: 14px 16px; }
+.theme-card-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.theme-card-desc { color: #6b7280; font-size: 0.85rem; margin: 6px 0 0; }
+.theme-card-actions { display: flex; gap: 14px; margin-top: 12px; }
+
 @media (max-width: 900px) {
   .dashboard-grid, .order-detail-layout { grid-template-columns: 1fr; }
   .admin-layout { flex-direction: column; }

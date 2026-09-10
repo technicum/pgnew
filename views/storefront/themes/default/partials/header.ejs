@@ -6,7 +6,7 @@
   <title><%= title %><%= typeof store !== 'undefined' && store ? ' · ' + store.name : ' · PageZaper' %></title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
-<body class="theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>">
+<body class="theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>" style="<%= typeof themeTokenStyle !== 'undefined' ? themeTokenStyle : '' %>">
   <header class="site-header">
     <div class="container header-inner">
       <a href="/" class="logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></a>

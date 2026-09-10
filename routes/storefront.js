@@ -5,6 +5,7 @@ const { pool, TABLES } = require('../db/database');
 const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
 const { requireCustomer } = require('../middleware/auth');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('../lib/themes');
+const { resolveTokens, tokensToInlineStyle } = require('../lib/themeTokens');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -46,15 +47,24 @@ router.use((req, res, next) => {
 router.use(async (req, res, next) => {
   try {
     const [[activeTheme]] = await pool.query(
-      `SELECT t.slug FROM ${TABLES.storeThemes} st
+      `SELECT t.slug, st.token_overrides FROM ${TABLES.storeThemes} st
        JOIN ${TABLES.themes} t ON t.id = st.theme_id
        WHERE st.store_id = ? AND st.is_active = 1
        LIMIT 1`,
       [req.store.id]
     );
     req.themeViewPrefix = themeViewPrefix(activeTheme ? activeTheme.slug : DEFAULT_THEME_SLUG);
+    const overrides = activeTheme && activeTheme.token_overrides
+      ? (typeof activeTheme.token_overrides === 'string' ? JSON.parse(activeTheme.token_overrides) : activeTheme.token_overrides)
+      : null;
+    // Emitted on <body style="..."> by the theme's header partial — see
+    // lib/themeTokens.js for why inline style is how a merchant's color/
+    // radius customization wins over both the theme's own CSS and the
+    // older pz_stores.theme preset class.
+    res.locals.themeTokenStyle = tokensToInlineStyle(resolveTokens(overrides));
   } catch (err) {
     req.themeViewPrefix = themeViewPrefix(DEFAULT_THEME_SLUG);
+    res.locals.themeTokenStyle = '';
   }
   next();
 });
