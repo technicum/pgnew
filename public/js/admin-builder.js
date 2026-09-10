@@ -16,6 +16,11 @@
   var PAGE = DATA.page;
   var STORE = DATA.store;
   var SECTION_TYPES = DATA.sectionTypes;
+  // Which of a section type's own text fields can be individually selected
+  // on the canvas for their own margin/padding (see lib/sections.js's
+  // TEXT_ELEMENT_FIELDS, the single source of truth this mirrors).
+  var TEXT_ELEMENT_FIELDS = DATA.textElementFields || {};
+  function isTextElementField(type, fieldKey) { return (TEXT_ELEMENT_FIELDS[type] || []).indexOf(fieldKey) !== -1; }
   var BASE = "/admin/pages/" + PAGE.id + "/sections";
 
   /* ---------------------------------------------------------------
@@ -52,7 +57,11 @@
      in-memory undo either: it replays an earlier snapshot of the section
      list against the database through POST .../sections/restore.
   --------------------------------------------------------------- */
-  var state = { sections: DATA.sections.slice(), selectedId: null };
+  // selectedFieldKey: the data-field name of a text element that's
+  // individually sub-selected within the selected section (e.g. "heading"),
+  // for the per-element spacing panel in the inspector — null when just the
+  // section itself is selected. Always scoped to state.selectedId's section.
+  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null };
 
   function findSection(id) { return state.sections.find(function (s) { return String(s.id) === String(id); }); }
   function indexOf(id) { return state.sections.findIndex(function (s) { return String(s.id) === String(id); }); }
@@ -110,7 +119,7 @@
       state.sections = res.sections.map(function (s) {
         return Object.assign({}, s, { fields: typeof s.fields === "string" ? JSON.parse(s.fields) : s.fields });
       });
-      if (state.selectedId && !findSection(state.selectedId)) state.selectedId = null;
+      if (state.selectedId && !findSection(state.selectedId)) { state.selectedId = null; state.selectedFieldKey = null; }
       renderAll();
       updateHistoryButtons();
       if (successMsg) toast(successMsg);
@@ -336,6 +345,24 @@
     rootEl.style.paddingBottom = sec.padding_bottom ? sec.padding_bottom + "px" : "";
   }
 
+  // Per-element spacing: margin/padding on one text field inside a section
+  // (e.g. just the Hero heading), applied straight to that field's own
+  // contenteditable node — independent of applySpacingStyle above, which is
+  // for the section as a whole.
+  function applyElStyleToNode(node, st) {
+    if (!node) return;
+    st = st || {};
+    node.style.marginTop = st.margin_top ? st.margin_top + "px" : "";
+    node.style.marginBottom = st.margin_bottom ? st.margin_bottom + "px" : "";
+    node.style.paddingTop = st.padding_top ? st.padding_top + "px" : "";
+    node.style.paddingBottom = st.padding_bottom ? st.padding_bottom + "px" : "";
+  }
+  function applyElementSpacingStyle(sectionId, fieldKey, st) {
+    var wrap = document.querySelector('.b-csec[data-id="' + sectionId + '"]');
+    var node = wrap ? wrap.querySelector('[data-field="' + fieldKey + '"]') : null;
+    applyElStyleToNode(node, st);
+  }
+
   function renderCanvas() {
     var sortable = document.getElementById("bSortable");
     sortable.innerHTML = "";
@@ -350,6 +377,11 @@
       if (resizable) {
         applyHeightStyle(wrap.firstElementChild, sec.min_height);
         applySpacingStyle(wrap.firstElementChild, sec);
+      }
+      if (sec.element_styles) {
+        Object.keys(sec.element_styles).forEach(function (fieldKey) {
+          applyElStyleToNode(wrap.querySelector('[data-field="' + fieldKey + '"]'), sec.element_styles[fieldKey]);
+        });
       }
       var label = (SECTION_TYPES[sec.type] && SECTION_TYPES[sec.type].name) || sec.type;
       var hiddenDevices = [];
@@ -372,7 +404,13 @@
         wrap.appendChild(el('<div class="b-csec-margin b-csec-margin-top" data-action="margin-top" title="Drag to add space above this section"></div>'));
         wrap.appendChild(el('<div class="b-csec-margin b-csec-margin-bottom" data-action="margin-bottom" title="Drag to add space below this section"></div>'));
       }
-      if (sec.id === state.selectedId) wrap.classList.add("is-selected");
+      if (sec.id === state.selectedId) {
+        wrap.classList.add("is-selected");
+        if (state.selectedFieldKey) {
+          var selFieldEl = wrap.querySelector('[data-field="' + state.selectedFieldKey + '"]');
+          if (selFieldEl) selFieldEl.classList.add("is-field-selected");
+        }
+      }
       if (sec.hidden) wrap.classList.add("is-hidden-sec");
       if (sec.hide_desktop) wrap.dataset.hideDesktop = "1";
       if (sec.hide_tablet) wrap.dataset.hideTablet = "1";
@@ -611,6 +649,29 @@
     '</div>';
   }
 
+  // Per-element spacing panel — shown only while a text field inside the
+  // selected section is itself sub-selected (state.selectedFieldKey), below
+  // its content fields and above the section-wide "Section settings" below.
+  // Reuses spacingPairHtml's layout with distinct "__elm_..." data-field
+  // names (plus data-el-field naming which field they belong to) so
+  // wireInspector's change handler can tell them apart from the
+  // section-level "__margin_"/"__padding_" inputs.
+  function elementSpacingPairHtml(fieldKey, topKey, bottomKey, topVal, bottomVal) {
+    return '<div class="b-spacing-pair">' +
+      '<label>Top<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="__elm_' + topKey + '" data-el-field="' + esc(fieldKey) + '" value="' + (topVal || 0) + '" /></label>' +
+      '<label>Bottom<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="__elm_' + bottomKey + '" data-el-field="' + esc(fieldKey) + '" value="' + (bottomVal || 0) + '" /></label>' +
+    '</div>';
+  }
+  function elementSettingsHtml(sec, fieldKey) {
+    var st = (sec.element_styles && sec.element_styles[fieldKey]) || {};
+    var label = fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1);
+    return '<div class="b-inspector-divider"></div>' +
+      '<div class="b-inspector-section-label">“' + esc(label) + '” text spacing</div>' +
+      field("Margin", elementSpacingPairHtml(fieldKey, "margin_top", "margin_bottom", st.margin_top, st.margin_bottom)) +
+      field("Padding", elementSpacingPairHtml(fieldKey, "padding_top", "padding_bottom", st.padding_top, st.padding_bottom)) +
+      field("", '<div class="b-inspector-hint">Just this text — on top of the section’s own margin/padding below. Click elsewhere on the canvas to go back to section settings.</div>');
+  }
+
   function sectionSettingsHtml(sec) {
     var resizable = !NO_RESIZE_TYPES[sec.type];
     var heightRow = resizable
@@ -648,16 +709,27 @@
     document.getElementById("bInspectorIcon").innerHTML = icon(sec.type);
     document.getElementById("bInspectorTitle").textContent = label;
     document.getElementById("bInspectorType").textContent = "section · " + sec.type + (sec.hidden ? " · hidden" : "");
-    document.getElementById("bInspectorBody").innerHTML = inspectorFieldsFor(sec) + sectionSettingsHtml(sec);
+    var fieldSel = (state.selectedFieldKey && isTextElementField(sec.type, state.selectedFieldKey)) ? state.selectedFieldKey : null;
+    document.getElementById("bInspectorBody").innerHTML =
+      inspectorFieldsFor(sec) + (fieldSel ? elementSettingsHtml(sec, fieldSel) : "") + sectionSettingsHtml(sec);
   }
 
   /* ---------------------------------------------------------------
      Selection & toolbar actions
   --------------------------------------------------------------- */
-  function selectSection(id) {
+  // fieldKey (optional): sub-selects one text element within this section
+  // for the per-element spacing panel — pass null/omit to select just the
+  // section itself (e.g. clicking blank canvas space, or a layer row).
+  function selectSection(id, fieldKey) {
     state.selectedId = id;
+    state.selectedFieldKey = fieldKey || null;
     document.querySelectorAll(".b-csec").forEach(function (n) { n.classList.toggle("is-selected", n.dataset.id === String(id)); });
     document.querySelectorAll(".b-layer-row").forEach(function (n) { n.classList.toggle("selected", n.dataset.id === String(id)); });
+    document.querySelectorAll(".b-csec [data-field]").forEach(function (n) {
+      var host = n.closest(".b-csec");
+      var match = state.selectedFieldKey && host && host.dataset.id === String(id) && n.dataset.field === state.selectedFieldKey;
+      n.classList.toggle("is-field-selected", !!match);
+    });
     renderInspector();
   }
 
@@ -681,6 +753,7 @@
       var sec = res.section;
       state.sections.splice(index, 0, sec);
       state.selectedId = sec.id;
+      state.selectedFieldKey = null;
       renderAll();
       var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
       persistOrder().then(function () { toast(label + " added"); });
@@ -700,6 +773,7 @@
         newSec.hidden = src.hidden;
         state.sections.splice(idx + 1, 0, newSec);
         state.selectedId = newSec.id;
+        state.selectedFieldKey = null;
         renderAll();
         return persistOrder().then(function () { toast("Section duplicated"); });
       });
@@ -714,7 +788,7 @@
       if (!res || !res.ok) return toast("Could not delete that section.", true);
       var idx = indexOf(id);
       if (idx >= 0) state.sections.splice(idx, 1);
-      if (state.selectedId === id) state.selectedId = null;
+      if (state.selectedId === id) { state.selectedId = null; state.selectedFieldKey = null; }
       renderAll();
       commitHistory();
       toast("Section deleted");
@@ -771,6 +845,24 @@
           if (patch.padding_bottom !== undefined) sec.padding_bottom = res.padding_bottom;
           renderCanvas();
         }
+        commitHistory();
+      } else {
+        toast("Could not save that change.", true);
+      }
+    });
+  }
+
+  // Per-element spacing (margin/padding on one text field inside a section)
+  // — its own endpoint/column, parallel to saveSettings() above but scoped
+  // to a single field rather than the whole section. `patch` is
+  // { field: "heading", margin_top?: n, ... }.
+  function saveElementStyle(id, patch) {
+    setSaving(true);
+    return api(BASE + "/" + id + "/element-style", patch).then(function (res) {
+      setSaving(false);
+      if (res && res.ok) {
+        var sec = findSection(id);
+        if (sec) sec.element_styles = res.element_styles;
         commitHistory();
       } else {
         toast("Could not save that change.", true);
@@ -928,7 +1020,21 @@
         if (action === "toggle") return toggleHidden(id);
         if (action === "drag" || action === "resize" || action === "margin-top" || action === "margin-bottom") return;
       }
-      selectSection(id);
+
+      // Clicking directly into one of this section's own text elements
+      // (not an array-item field like a testimonial quote, and only when
+      // that field is one lib/sections.js's TEXT_ELEMENT_FIELDS allows)
+      // additionally sub-selects it, surfacing its own margin/padding panel
+      // in the inspector — on top of the normal click-to-edit-text behavior,
+      // which the browser handles on its own since these are contenteditable.
+      var sec = findSection(id);
+      var fieldEl = e.target.closest("[data-field]");
+      var fieldKey = null;
+      if (sec && fieldEl && fieldEl.isContentEditable) {
+        var fk = fieldEl.dataset.field;
+        if (fk.indexOf(".") === -1 && isTextElementField(sec.type, fk)) fieldKey = fk;
+      }
+      selectSection(id, fieldKey);
     });
 
     canvas.addEventListener("focusout", function (e) {
@@ -1019,6 +1125,22 @@
         sec.min_height = h;
         applyHeightStyle(heightRootEl(sec.id), h);
         saveSettings(sec.id, { min_height: h });
+        return;
+      }
+      var elIn = e.target.closest('input[type="number"][data-field^="__elm_"]');
+      if (elIn) {
+        var elKey = elIn.dataset.field.slice(6); // "__elm_margin_top" -> "margin_top"
+        var targetField = elIn.dataset.elField;
+        var elVal = Math.max(0, Math.min(400, parseInt(elIn.value, 10) || 0));
+        elIn.value = elVal;
+        sec.element_styles = sec.element_styles || {};
+        var nextEntry = Object.assign({}, sec.element_styles[targetField] || {});
+        nextEntry[elKey] = elVal;
+        sec.element_styles[targetField] = nextEntry;
+        applyElementSpacingStyle(sec.id, targetField, nextEntry);
+        var elPatch = { field: targetField };
+        elPatch[elKey] = elVal;
+        saveElementStyle(sec.id, elPatch);
         return;
       }
       var spacingIn = e.target.closest('input[type="number"][data-field^="__margin_"], input[type="number"][data-field^="__padding_"]');

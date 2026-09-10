@@ -108,6 +108,7 @@
       page: <%- JSON.stringify({ id: page.id, name: page.name, path: page.path, is_home: !!page.is_home, status: page.status }).split('/').join(String.fromCharCode(92) + '/') %>,
       store: <%- JSON.stringify({ name: store.name }).split('/').join(String.fromCharCode(92) + '/') %>,
       sectionTypes: <%- JSON.stringify(sectionTypes).split('/').join(String.fromCharCode(92) + '/') %>,
+      textElementFields: <%- JSON.stringify(textElementFields).split('/').join(String.fromCharCode(92) + '/') %>,
       sections: <%- JSON.stringify(sections.map(function (s) {
         return {
           id: s.id, type: s.type, fields: s.fields, hidden: !!s.hidden,
@@ -115,6 +116,7 @@
           hide_desktop: !!s.hide_desktop, hide_tablet: !!s.hide_tablet, hide_mobile: !!s.hide_mobile,
           margin_top: s.margin_top || 0, margin_bottom: s.margin_bottom || 0,
           padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
+          element_styles: s.element_styles || {},
         };
       })).split('/').join(String.fromCharCode(92) + '/') %>,
       products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>,

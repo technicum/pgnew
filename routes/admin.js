@@ -4,7 +4,16 @@ const bcrypt = require('bcryptjs');
 const { pool, TABLES, THEMES } = require('../db/database');
 const { requireAdmin, requireAdminRole } = require('../middleware/auth');
 const { rootUrl, adminPortalUrl } = require('../middleware/tenant');
-const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields, sanitizeSectionSettings } = require('../lib/sections');
+const {
+  SECTION_TYPES,
+  SECTION_TYPE_KEYS,
+  TEXT_ELEMENT_FIELDS,
+  defaultFields,
+  sanitizeFields,
+  sanitizeSectionSettings,
+  sanitizeElementStyle,
+  sanitizeAllElementStyles,
+} = require('../lib/sections');
 
 function slugify(str) {
   return str
@@ -311,6 +320,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
     const sections = rawSections.map((s) => ({
       ...s,
       fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
+      element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
     }));
     // A handful of the store's real products, so the "Product grid" section
     // previews actual catalog items on the canvas instead of placeholders —
@@ -328,7 +338,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       `SELECT id, name FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`,
       [req.store.id]
     );
-    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, products, categories });
+    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, textElementFields: TEXT_ELEMENT_FIELDS, products, categories });
   } catch (err) {
     next(err);
   }
@@ -452,6 +462,8 @@ router.post('/pages/:id/sections/restore', async (req, res, next) => {
       const marginBottom = settings.margin_bottom || 0;
       const paddingTop = settings.padding_top || 0;
       const paddingBottom = settings.padding_bottom || 0;
+      const elementStyles = sanitizeAllElementStyles(item.type, item.element_styles);
+      const elementStylesJson = Object.keys(elementStyles).length ? JSON.stringify(elementStyles) : null;
 
       const incomingId = Number.isInteger(item.id) ? item.id : parseInt(item.id, 10);
       if (incomingId && existingIds.has(incomingId)) {
@@ -460,19 +472,19 @@ router.post('/pages/:id/sections/restore', async (req, res, next) => {
           `UPDATE ${TABLES.pageSections}
              SET position = ?, fields = ?, hidden = ?, custom_class = ?, custom_css = ?, min_height = ?,
                  hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
-                 margin_top = ?, margin_bottom = ?, padding_top = ?, padding_bottom = ?
+                 margin_top = ?, margin_bottom = ?, padding_top = ?, padding_bottom = ?, element_styles = ?
            WHERE id = ?`,
           [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
-            marginTop, marginBottom, paddingTop, paddingBottom, incomingId]
+            marginTop, marginBottom, paddingTop, paddingBottom, elementStylesJson, incomingId]
         );
       } else {
         const [result] = await pool.query(
           `INSERT INTO ${TABLES.pageSections}
              (page_id, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
-              margin_top, margin_bottom, padding_top, padding_bottom)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              margin_top, margin_bottom, padding_top, padding_bottom, element_styles)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [page.id, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
-            marginTop, marginBottom, paddingTop, paddingBottom]
+            marginTop, marginBottom, paddingTop, paddingBottom, elementStylesJson]
         );
         keepIds.add(result.insertId);
       }
@@ -490,6 +502,7 @@ router.post('/pages/:id/sections/restore', async (req, res, next) => {
     const sections = rawSections.map((s) => ({
       ...s,
       fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
+      element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
     }));
     res.json({ ok: true, sections });
   } catch (err) {
@@ -563,6 +576,39 @@ router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) =>
       padding_top: updated.padding_top || 0,
       padding_bottom: updated.padding_bottom || 0,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Per-element spacing — margin/padding on a single text field inside a
+// section (e.g. just the Hero heading), independent of the section-wide
+// margin/padding above. `field` must be one of that section type's
+// TEXT_ELEMENT_FIELDS (see lib/sections.js); sanitizeElementStyle silently
+// no-ops anything else rather than erroring, so a stale client can't corrupt
+// storage even if the section's type or content has since changed.
+router.post('/pages/:id/sections/:sectionId/element-style', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+
+    const [[section]] = await pool.query(`SELECT type, element_styles FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+
+    const field = typeof req.body.field === 'string' ? req.body.field : '';
+    if (!field || !(TEXT_ELEMENT_FIELDS[section.type] || []).includes(field)) {
+      return res.status(400).json({ error: 'Unknown text element for this section' });
+    }
+
+    const current = section.element_styles
+      ? (typeof section.element_styles === 'string' ? JSON.parse(section.element_styles) : section.element_styles)
+      : {};
+    const updated = sanitizeElementStyle(section.type, current, field, req.body);
+    await pool.query(
+      `UPDATE ${TABLES.pageSections} SET element_styles = ? WHERE id = ?`,
+      [Object.keys(updated).length ? JSON.stringify(updated) : null, req.params.sectionId]
+    );
+    res.json({ ok: true, element_styles: updated });
   } catch (err) {
     next(err);
   }

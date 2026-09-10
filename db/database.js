@@ -208,6 +208,7 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   margin_bottom INT NOT NULL DEFAULT 0,
   padding_top INT NOT NULL DEFAULT 0,
   padding_bottom INT NOT NULL DEFAULT 0,
+  element_styles JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
   INDEX idx_page_position (page_id, position)
@@ -541,6 +542,13 @@ async function migratePageSectionSettings(conn) {
   }
   if (!(await columnExists(conn, TABLES.pageSections, 'padding_bottom'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN padding_bottom INT NOT NULL DEFAULT 0`);
+  }
+  // Per-element spacing (margin/padding on one text field inside a section,
+  // e.g. just the Hero heading, independent of the section-level spacing
+  // above) — keyed by field name, see lib/sections.js's TEXT_ELEMENT_FIELDS
+  // and sanitizeElementStyle. NULL/absent means no element has an override.
+  if (!(await columnExists(conn, TABLES.pageSections, 'element_styles'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN element_styles JSON NULL`);
   }
 }
 

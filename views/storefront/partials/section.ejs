@@ -18,15 +18,32 @@
   if (section.padding_top) pzHeightStyle += 'padding-top:' + section.padding_top + 'px;';
   if (section.padding_bottom) pzHeightStyle += 'padding-bottom:' + section.padding_bottom + 'px;';
 %>
+<%
+  // Per-element spacing: margin/padding on a single text field inside this
+  // section (e.g. just the heading), set from the builder's inspector when
+  // that field is selected on the canvas — independent of, and layered on
+  // top of, the section-wide spacing above. See lib/sections.js's
+  // TEXT_ELEMENT_FIELDS for which fields on which types support this.
+  function pzElStyle(field) {
+    var st = section.element_styles && section.element_styles[field];
+    if (!st) return '';
+    var s = '';
+    if (st.margin_top) s += 'margin-top:' + st.margin_top + 'px;';
+    if (st.margin_bottom) s += 'margin-bottom:' + st.margin_bottom + 'px;';
+    if (st.padding_top) s += 'padding-top:' + st.padding_top + 'px;';
+    if (st.padding_bottom) s += 'padding-bottom:' + st.padding_bottom + 'px;';
+    return s;
+  }
+%>
 <% if (section.type === 'hero') { %>
   <section id="<%= pzId %>" class="hero<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h1><%= section.fields.heading %></h1>
-    <p><%= section.fields.subheading %></p>
+    <h1 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h1>
+    <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
   </section>
 
 <% } else if (section.type === 'products') { %>
   <section id="<%= pzId %>" class="product-grid-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="product-grid">
       <% if (section.products.length === 0) { %>
         <p class="empty-state">No products found in this category yet.</p>
@@ -51,14 +68,14 @@
   <section id="<%= pzId %>" class="text-image text-image-<%= section.fields.side === 'left' ? 'left' : 'right' %><%= pzExtra %>" style="<%= pzHeightStyle %>">
     <div class="text-image-media" style="<%= section.fields.image_url ? `background-image:url('${section.fields.image_url}')` : '' %>"></div>
     <div class="text-image-copy">
-      <h2><%= section.fields.heading %></h2>
-      <p><%= section.fields.body %></p>
+      <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+      <p style="<%= pzElStyle('body') %>"><%= section.fields.body %></p>
     </div>
   </section>
 
 <% } else if (section.type === 'testimonials') { %>
   <section id="<%= pzId %>" class="testimonials<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="testimonial-grid">
       <% section.fields.quotes.forEach(function(q) { %>
         <blockquote class="testimonial-card">
@@ -71,23 +88,23 @@
 
 <% } else if (section.type === 'newsletter') { %>
   <section id="<%= pzId %>" class="newsletter<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h2><%= section.fields.heading %></h2>
-    <p><%= section.fields.subtext %></p>
+    <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+    <p style="<%= pzElStyle('subtext') %>"><%= section.fields.subtext %></p>
     <form class="newsletter-form" action="/newsletter" method="POST">
       <input type="email" name="email" placeholder="you@example.com" required />
-      <button type="submit" class="btn btn-primary"><%= section.fields.button %></button>
+      <button type="submit" class="btn btn-primary" style="<%= pzElStyle('button') %>"><%= section.fields.button %></button>
     </form>
   </section>
 
 <% } else if (section.type === 'richtext') { %>
   <section id="<%= pzId %>" class="richtext richtext-<%= section.fields.width === 'wide' ? 'wide' : 'narrow' %><%= pzExtra %>" style="<%= pzHeightStyle %>text-align:<%= section.fields.align === 'left' ? 'left' : 'center' %>;">
-    <h2><%= section.fields.heading %></h2>
-    <p><%= section.fields.body %></p>
+    <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+    <p style="<%= pzElStyle('body') %>"><%= section.fields.body %></p>
   </section>
 
 <% } else if (section.type === 'gallery' && section.fields.images && section.fields.images.length) { %>
   <section id="<%= pzId %>" class="gallery<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="gallery-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
       <% section.fields.images.forEach(function(url) { %>
         <div class="gallery-tile" style="background-image:url('<%= url %>')"></div>
@@ -97,7 +114,7 @@
 
 <% } else if (section.type === 'video' && section.fields.embed_url) { %>
   <section id="<%= pzId %>" class="video-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="video-frame">
       <iframe src="<%= section.fields.embed_url %>" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
     </div>
@@ -112,14 +129,14 @@
         <span class="price">₹<%= section.product.price.toFixed(2) %></span>
         <% if (section.product.compare_at_price) { %><span class="compare-price">₹<%= section.product.compare_at_price.toFixed(2) %></span><% } %>
       </div>
-      <p><%= section.fields.body %></p>
-      <a class="btn btn-primary" href="/products/<%= section.product.slug %>"><%= section.fields.button %></a>
+      <p style="<%= pzElStyle('body') %>"><%= section.fields.body %></p>
+      <a class="btn btn-primary" href="/products/<%= section.product.slug %>" style="<%= pzElStyle('button') %>"><%= section.fields.button %></a>
     </div>
   </section>
 
 <% } else if (section.type === 'collections' && typeof categories !== 'undefined' && categories.length) { %>
   <section id="<%= pzId %>" class="collections<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="collections-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
       <% categories.forEach(function(c) { %>
         <a class="collection-card" href="/?category=<%= encodeURIComponent(c.name) %>"><span><%= c.name %></span></a>
@@ -134,7 +151,7 @@
 
 <% } else if (section.type === 'faq' && section.fields.items && section.fields.items.length) { %>
   <section id="<%= pzId %>" class="faq<%= pzExtra %>" style="<%= pzHeightStyle %>max-width:640px;margin:0 auto;">
-    <h2 class="section-title"><%= section.fields.heading %></h2>
+    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <% section.fields.items.forEach(function(f) { %>
       <details class="faq-item">
         <summary><%= f.q %></summary>
@@ -145,7 +162,7 @@
 
 <% } else if (section.type === 'countdown' && section.fields.end_at) { %>
   <section id="<%= pzId %>" class="countdown<%= pzExtra %>" data-end="<%= section.fields.end_at %>" style="<%= pzHeightStyle %>">
-    <h2><%= section.fields.heading %></h2>
+    <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="countdown-timers">
       <div><b data-u="d">00</b><small>Days</small></div>
       <div><b data-u="h">00</b><small>Hrs</small></div>

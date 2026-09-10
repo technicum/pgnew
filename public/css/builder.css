@@ -179,6 +179,12 @@ body.builder-body button { font-family: inherit; }
 [contenteditable="true"]:hover { box-shadow: 0 0 0 1px var(--b-line); }
 [contenteditable="true"]:focus { box-shadow: 0 0 0 2px var(--b-accent); }
 
+/* Sub-selected text element (its own margin/padding panel is open in the
+   inspector) — a dashed outline that, unlike the :focus ring above, stays
+   visible even once focus has moved into the inspector's numeric fields, so
+   it's clear which element those fields are editing. */
+[data-field].is-field-selected { box-shadow: 0 0 0 2px var(--b-accent); outline: 2px dashed var(--b-accent-ink); outline-offset: 3px; }
+
 .b-sec-pad { padding: 56px 48px; }
 .b-canvas-frame[data-vp="mobile"] .b-sec-pad { padding: 34px 20px; }
 

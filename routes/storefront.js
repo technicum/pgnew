@@ -111,6 +111,7 @@ async function renderStorePage(req, res, next, page) {
         hide_desktop: !!s.hide_desktop, hide_tablet: !!s.hide_tablet, hide_mobile: !!s.hide_mobile,
         margin_top: s.margin_top || 0, margin_bottom: s.margin_bottom || 0,
         padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
+        element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
       };
       if (s.type === 'products') {
         section.products = allProducts.slice(0, fields.limit || 12);
