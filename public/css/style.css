@@ -124,6 +124,13 @@ main.container {
 .hero {
   text-align: center;
   padding: 48px 0 40px;
+  /* Always a positioning root, whether or not a background is set — it's
+     what a freely-positioned heading/subheading measures from (see
+     section.ejs/block.ejs's pzElStyle), and what a video/image background
+     (below) is clipped and layered behind the text within. */
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
 }
 .hero h1 {
   font-size: 2.2rem;
@@ -131,6 +138,23 @@ main.container {
   letter-spacing: -0.02em;
 }
 .hero p { color: var(--color-muted); margin: 0; }
+.hero h1, .hero p { position: relative; z-index: 1; }
+.hero-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+.hero-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .35);
+  z-index: -1;
+}
+.hero-text-light h1 { color: #fff; }
+.hero-text-light p { color: rgba(255, 255, 255, .85); }
 
 /* Product grid */
 .section-title { margin: 40px 0 16px; }

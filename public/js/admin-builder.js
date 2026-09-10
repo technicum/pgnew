@@ -247,7 +247,22 @@
     var d = sec.fields;
     switch (sec.type) {
       case "hero":
-        return '<div class="b-sec-pad b-sec-hero">' +
+        var heroBgType = d.bg_type || "none";
+        var heroBgStyle = "";
+        var heroMedia = "";
+        if (heroBgType === "color" && d.bg_color) {
+          heroBgStyle = ' style="background:' + esc(d.bg_color) + ';"';
+        } else if (heroBgType === "image" && d.bg_image_url) {
+          heroBgStyle = ' style="background-image:url(\'' + esc(d.bg_image_url).replace(/'/g, "%27") + '\');background-size:cover;background-position:center;"';
+        } else if (heroBgType === "video" && d.bg_video_url) {
+          heroMedia = '<video class="b-sec-hero-video" src="' + esc(d.bg_video_url) + '" autoplay muted loop playsinline></video>';
+        }
+        if ((heroBgType === "image" || heroBgType === "video") && d.bg_overlay) {
+          heroMedia += '<div class="b-sec-hero-overlay"></div>';
+        }
+        var heroLight = heroBgType !== "none" && d.text_theme === "light";
+        return '<div class="b-sec-pad b-sec-hero' + (heroBgType !== "none" ? " has-custom-bg" : "") + (heroLight ? " has-light-text" : "") + '"' + heroBgStyle + '>' +
+          heroMedia +
           '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
           '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p></div>';
 
@@ -1088,6 +1103,9 @@
   function textareaHtml(name, current, placeholder) {
     return '<textarea class="b-text-native b-textarea-native" rows="4" data-field="' + name + '" placeholder="' + esc(placeholder || "") + '">' + esc(current || "") + '</textarea>';
   }
+  function colorHtml(name, current) {
+    return '<input class="b-color-native" type="color" data-field="' + name + '" value="' + esc(current || "#ffffff") + '" />';
+  }
   function dateTimeHtml(name, isoCurrent) {
     return '<input class="b-text-native" type="datetime-local" data-field="' + name + '" value="' + esc(toLocalInputValue(isoCurrent)) + '" />';
   }
@@ -1095,8 +1113,29 @@
   function inspectorFieldsFor(sec) {
     var d = sec.fields;
     switch (sec.type) {
-      case "hero":
-        return field("", '<div class="b-inspector-hint">Click the heading or subheading on the canvas to edit it.</div>');
+      case "hero": {
+        var heroBg = d.bg_type || "none";
+        var heroBgFields = "";
+        if (heroBg === "color") {
+          heroBgFields = field("Background color", colorHtml("bg_color", d.bg_color));
+        } else if (heroBg === "image") {
+          heroBgFields = field("Background image URL", textHtml("bg_image_url", d.bg_image_url, "https://…")) +
+            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
+        } else if (heroBg === "video") {
+          heroBgFields = field("Background video URL", textHtml("bg_video_url", d.bg_video_url, "https://….mp4")) +
+            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
+            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
+        }
+        var heroTextTheme = heroBg !== "none"
+          ? field("Text color", segHtml("text_theme", [{ val: "dark", label: "Dark" }, { val: "light", label: "Light" }], d.text_theme || "dark"))
+          : "";
+        return field("Heading", textHtml("heading", d.heading)) +
+          field("Subheading", textareaHtml("subheading", d.subheading)) +
+          field("Background", segHtml("bg_type", [{ val: "none", label: "None" }, { val: "color", label: "Color" }, { val: "image", label: "Image" }, { val: "video", label: "Video" }], heroBg)) +
+          heroBgFields +
+          heroTextTheme +
+          field("", '<div class="b-inspector-hint">You can also click the heading or subheading directly on the canvas to edit it.</div>');
+      }
       case "heading":
         return field("Size", selectHtml("size", [{ val: "s", label: "Small" }, { val: "m", label: "Medium" }, { val: "l", label: "Large" }, { val: "xl", label: "Extra large" }], d.size || "l")) +
           field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left")) +
@@ -1965,6 +2004,27 @@
         var sPatch = {};
         sPatch[sKey] = sVal;
         saveSettings(sec.id, sPatch);
+        return;
+      }
+      var colorIn = e.target.closest('input[type="color"][data-field]');
+      if (colorIn) {
+        var colorTarget = inspectorFieldTarget();
+        if (!colorTarget) return;
+        var colorPatch = {};
+        colorPatch[colorIn.dataset.field] = colorIn.value;
+        colorTarget.save(colorPatch);
+        return;
+      }
+      // A plain boolean content field (e.g. hero's "Darken for text
+      // readability" overlay toggle) — distinct from the "__show_" device
+      // checkboxes below, which are settings, not fields.
+      var boolBox = e.target.closest('input[type="checkbox"][data-field]:not([data-field^="__"])');
+      if (boolBox) {
+        var boolTarget = inspectorFieldTarget();
+        if (!boolTarget) return;
+        var boolPatch = {};
+        boolPatch[boolBox.dataset.field] = boolBox.checked;
+        boolTarget.save(boolPatch);
         return;
       }
       // "Show on Desktop/Tablet/Mobile" checkboxes are the positive framing

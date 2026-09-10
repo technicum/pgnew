@@ -30,10 +30,25 @@
     if (st.padding_right) s += 'padding-right:' + st.padding_right + 'px;';
     return s;
   }
+  // Mirrors section.ejs's pzHeroBgStyle — see the comment there.
+  function pzHeroBgStyle(fields) {
+    if (fields.bg_type === 'color' && fields.bg_color) return 'background-color:' + fields.bg_color + ';';
+    if (fields.bg_type === 'image' && fields.bg_image_url) {
+      return "background-image:url('" + fields.bg_image_url.replace(/'/g, '%27') + "');background-size:cover;background-position:center;";
+    }
+    return '';
+  }
 %>
 <div class="pz-block pz-block-<%= b.type %>" style="position:relative;">
   <% if (b.type === 'hero') { %>
-    <div class="hero">
+    <% var pzHeroLight = b.fields.bg_type !== 'none' && b.fields.text_theme === 'light'; %>
+    <div class="hero<%= pzHeroLight ? ' hero-text-light' : '' %>" style="<%= pzHeroBgStyle(b.fields) %>">
+      <% if (b.fields.bg_type === 'video' && b.fields.bg_video_url) { %>
+        <video class="hero-bg-video" src="<%= b.fields.bg_video_url %>" autoplay muted loop playsinline></video>
+      <% } %>
+      <% if ((b.fields.bg_type === 'image' || b.fields.bg_type === 'video') && b.fields.bg_overlay) { %>
+        <div class="hero-bg-overlay"></div>
+      <% } %>
       <h1 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h1>
       <p style="<%= pzElStyle('subheading') %>"><%= b.fields.subheading %></p>
     </div>

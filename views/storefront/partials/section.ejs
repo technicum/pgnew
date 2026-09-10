@@ -55,9 +55,30 @@
     if (st.padding_right) s += 'padding-right:' + st.padding_right + 'px;';
     return s;
   }
+  // A hero's background (see lib/sections.js's bg_type/bg_color/bg_image_url/
+  // bg_video_url fields): 'none' leaves the theme's plain background alone —
+  // every hero created before this existed keeps rendering exactly as it did.
+  // Color/image go straight on the section's own style; video is rendered as
+  // an absolutely-positioned <video> behind the heading/subheading, which is
+  // why .hero always has position:relative (see style.css) regardless of
+  // which background is chosen.
+  function pzHeroBgStyle(fields) {
+    if (fields.bg_type === 'color' && fields.bg_color) return 'background-color:' + fields.bg_color + ';';
+    if (fields.bg_type === 'image' && fields.bg_image_url) {
+      return "background-image:url('" + fields.bg_image_url.replace(/'/g, '%27') + "');background-size:cover;background-position:center;";
+    }
+    return '';
+  }
 %>
 <% if (section.type === 'hero') { %>
-  <section id="<%= pzId %>" class="hero<%= pzExtra %>" style="<%= pzHeightStyle %>">
+  <% var pzHeroLight = section.fields.bg_type !== 'none' && section.fields.text_theme === 'light'; %>
+  <section id="<%= pzId %>" class="hero<%= pzHeroLight ? ' hero-text-light' : '' %><%= pzExtra %>" style="<%= pzHeightStyle + pzHeroBgStyle(section.fields) %>">
+    <% if (section.fields.bg_type === 'video' && section.fields.bg_video_url) { %>
+      <video class="hero-bg-video" src="<%= section.fields.bg_video_url %>" autoplay muted loop playsinline></video>
+    <% } %>
+    <% if ((section.fields.bg_type === 'image' || section.fields.bg_type === 'video') && section.fields.bg_overlay) { %>
+      <div class="hero-bg-overlay"></div>
+    <% } %>
     <h1 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h1>
     <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
   </section>

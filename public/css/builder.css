@@ -264,9 +264,15 @@ body.builder-body button { font-family: inherit; }
 .b-sec-pad { padding: 56px 48px; }
 .b-canvas-frame[data-vp="mobile"] .b-sec-pad { padding: 34px 20px; }
 
-.b-sec-hero { text-align: center; background: var(--b-accent-soft); }
+.b-sec-hero { text-align: center; background: var(--b-accent-soft); position: relative; overflow: hidden; z-index: 0; }
+.b-sec-hero.has-custom-bg { background: transparent; }
+.b-sec-hero.has-light-text h2 { color: #fff; }
+.b-sec-hero.has-light-text p { color: rgba(255, 255, 255, .85); }
 .b-sec-hero h2 { font-size: 34px; font-weight: 800; line-height: 1.12; max-width: 620px; margin: 0 auto 14px; }
 .b-sec-hero p { font-size: 15px; color: var(--b-muted); max-width: 480px; margin: 0 auto; line-height: 1.55; }
+.b-sec-hero h2, .b-sec-hero p { position: relative; z-index: 1; }
+.b-sec-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+.b-sec-hero-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: -1; }
 
 .b-sec-imgtext { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
 .b-sec-imgtext.reverse { direction: rtl; }
@@ -416,6 +422,7 @@ body.builder-body button { font-family: inherit; }
 .b-seg button { flex: 1; border: none; background: transparent; border-radius: 6px; padding: 7px 0; font-size: 12px; font-weight: 600; color: var(--b-muted); cursor: pointer; }
 .b-seg button.active { background: var(--b-surface); color: var(--b-ink); box-shadow: var(--b-shadow-sm); }
 .b-select-native, .b-text-native { width: 100%; padding: 8px 10px; border: 1px solid var(--b-line); border-radius: 7px; background: var(--b-surface); color: var(--b-ink); font-size: 13px; font-family: inherit; }
+.b-color-native { width: 100%; height: 36px; padding: 3px; border: 1px solid var(--b-line); border-radius: 7px; background: var(--b-surface); cursor: pointer; }
 .b-inspector-hint { font-size: 12px; color: var(--b-muted); line-height: 1.55; background: var(--b-surface-2); padding: 12px; border-radius: 8px; }
 .b-inspector-hint code { font-family: var(--b-font-mono); background: var(--b-surface-3); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
 .b-inspector-empty { padding: 40px 20px; text-align: center; color: var(--b-muted); font-size: 12.5px; }
