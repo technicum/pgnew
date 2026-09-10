@@ -105,7 +105,7 @@ async function renderStorePage(req, res, next, page) {
 
     const sections = rawSections.map((s) => {
       const fields = typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields;
-      const section = { id: s.id, type: s.type, fields, custom_class: s.custom_class || '', custom_css: s.custom_css || '' };
+      const section = { id: s.id, type: s.type, fields, custom_class: s.custom_class || '', custom_css: s.custom_css || '', min_height: s.min_height || 0 };
       if (s.type === 'products') {
         section.products = allProducts.slice(0, fields.limit || 12);
       }

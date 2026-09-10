@@ -422,9 +422,10 @@ router.post('/pages/:id/sections/:sectionId', async (req, res, next) => {
   }
 });
 
-// Universal "module settings" (custom CSS class + custom CSS), same for
-// every section type — kept on their own columns and their own endpoint
-// rather than folded into the type-specific /sections/:sectionId above.
+// Universal "module settings" (custom CSS class, custom CSS, and the
+// drag-to-resize height), same for every section type — kept on their own
+// columns and their own endpoint rather than folded into the type-specific
+// /sections/:sectionId above.
 router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) => {
   try {
     const page = await loadOwnedPage(req.store.id, req.params.id);
@@ -438,13 +439,14 @@ router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) =>
     const values = [];
     if (patch.custom_class !== undefined) { sets.push('custom_class = ?'); values.push(patch.custom_class || null); }
     if (patch.custom_css !== undefined) { sets.push('custom_css = ?'); values.push(patch.custom_css || null); }
+    if (patch.min_height !== undefined) { sets.push('min_height = ?'); values.push(patch.min_height); }
     if (sets.length) {
       values.push(section.id);
       await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
     }
 
-    const [[updated]] = await pool.query(`SELECT custom_class, custom_css FROM ${TABLES.pageSections} WHERE id = ?`, [section.id]);
-    res.json({ ok: true, custom_class: updated.custom_class || '', custom_css: updated.custom_css || '' });
+    const [[updated]] = await pool.query(`SELECT custom_class, custom_css, min_height FROM ${TABLES.pageSections} WHERE id = ?`, [section.id]);
+    res.json({ ok: true, custom_class: updated.custom_class || '', custom_css: updated.custom_css || '', min_height: updated.min_height || 0 });
   } catch (err) {
     next(err);
   }

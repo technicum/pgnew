@@ -200,6 +200,7 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   hidden TINYINT(1) NOT NULL DEFAULT 0,
   custom_class VARCHAR(100) NULL,
   custom_css TEXT NULL,
+  min_height INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
   INDEX idx_page_position (page_id, position)
@@ -497,6 +498,12 @@ async function migratePageSectionSettings(conn) {
   }
   if (!(await columnExists(conn, TABLES.pageSections, 'custom_css'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN custom_css TEXT NULL`);
+  }
+  // min_height (px): the drag-to-resize handle on each canvas section writes
+  // here. 0 means "no override" — the section keeps its natural, content-fit
+  // height exactly as before.
+  if (!(await columnExists(conn, TABLES.pageSections, 'min_height'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN min_height INT NOT NULL DEFAULT 0`);
   }
 }
 

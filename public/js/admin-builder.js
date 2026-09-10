@@ -230,6 +230,30 @@
     }
   }
 
+  // spacer/divider already have their own height concept, so they don't get
+  // a resize handle or a min-height override on top of it.
+  var NO_RESIZE_TYPES = { spacer: true, divider: true };
+
+  function applyHeightStyle(rootEl, minHeight) {
+    if (!rootEl) return;
+    if (minHeight && minHeight > 0) {
+      rootEl.style.minHeight = minHeight + "px";
+      rootEl.style.display = "flex";
+      rootEl.style.flexDirection = "column";
+      rootEl.style.justifyContent = "center";
+    } else {
+      rootEl.style.minHeight = "";
+      rootEl.style.display = "";
+      rootEl.style.flexDirection = "";
+      rootEl.style.justifyContent = "";
+    }
+  }
+
+  function heightRootEl(id) {
+    var wrap = document.querySelector('.b-csec[data-id="' + id + '"]');
+    return wrap ? wrap.firstElementChild : null;
+  }
+
   function renderCanvas() {
     var sortable = document.getElementById("bSortable");
     sortable.innerHTML = "";
@@ -240,6 +264,8 @@
     state.sections.forEach(function (sec) {
       var wrap = el('<div class="b-csec" data-id="' + sec.id + '"></div>');
       wrap.innerHTML = renderSectionInner(sec);
+      var resizable = !NO_RESIZE_TYPES[sec.type];
+      if (resizable) applyHeightStyle(wrap.firstElementChild, sec.min_height);
       var label = (SECTION_TYPES[sec.type] && SECTION_TYPES[sec.type].name) || sec.type;
       var toolbar = el(
         '<div class="b-csec-toolbar">' +
@@ -251,10 +277,51 @@
         '</div>'
       );
       wrap.appendChild(toolbar);
+      if (resizable) {
+        wrap.appendChild(el('<div class="b-csec-resize" data-action="resize" title="Drag to resize this section’s height"><span></span></div>'));
+      }
       if (sec.id === state.selectedId) wrap.classList.add("is-selected");
       if (sec.hidden) wrap.classList.add("is-hidden-sec");
       sortable.appendChild(wrap);
     });
+  }
+
+  // Drag-to-resize: distinct from the reorder/insert drag system above (no
+  // drop targets, just a live height readout), so it gets its own small
+  // pointer session rather than reusing startDrag().
+  function startResize(e, sec, rootEl) {
+    if (!rootEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var startY = e.clientY;
+    var startHeight = rootEl.getBoundingClientRect().height;
+
+    function clamp(n) { return Math.max(0, Math.min(1200, Math.round(n))); }
+
+    function liveInput() {
+      // Keep the inspector's numeric field in sync if it's open on this
+      // same section while the handle is being dragged.
+      return document.querySelector('input[type="number"][data-field="__min_height"]');
+    }
+    function onMove(ev) {
+      var p = ev.touches ? ev.touches[0] : ev;
+      var h = clamp(startHeight + (p.clientY - startY));
+      applyHeightStyle(rootEl, h);
+      var input = liveInput();
+      if (input) input.value = h;
+    }
+    function onUp() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      var finalHeight = clamp(parseFloat(rootEl.style.minHeight) || 0);
+      applyHeightStyle(rootEl, finalHeight);
+      sec.min_height = finalHeight;
+      var input = liveInput();
+      if (input) input.value = finalHeight;
+      saveSettings(sec.id, { min_height: finalHeight });
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
   }
 
   var LIB_GROUP_ORDER = ["Content", "Commerce", "Engagement", "Layout"];
@@ -401,8 +468,13 @@
   // through a separate endpoint (saveSettings, below) and separate columns
   // from `fields`, since these apply identically regardless of type.
   function sectionSettingsHtml(sec) {
+    var heightRow = NO_RESIZE_TYPES[sec.type]
+      ? ""
+      : field("Height", '<input class="b-text-native" type="number" min="0" max="1200" step="10" data-field="__min_height" value="' + (sec.min_height || 0) + '" />' +
+          '<div class="b-field-hint">Drag the handle at the bottom of the section on the canvas, or type a height in pixels. 0 keeps it at its natural height.</div>');
     return '<div class="b-inspector-divider"></div>' +
       '<div class="b-inspector-section-label">Section settings</div>' +
+      heightRow +
       field("Custom CSS class", textHtml("__custom_class", sec.custom_class, "e.g. my-hero-tweak")) +
       field("Custom CSS", textareaHtml("__custom_css", sec.custom_css, "#" + pzSelector(sec.id) + " {\n  \n}")) +
       field("", '<div class="b-inspector-hint">Applies only to this section on your live storefront. Target it with <code>#' + pzSelector(sec.id) + '</code> to keep changes scoped there.</div>');
@@ -528,6 +600,7 @@
         if (sec) {
           if (patch.custom_class !== undefined) sec.custom_class = res.custom_class;
           if (patch.custom_css !== undefined) sec.custom_css = res.custom_css;
+          if (patch.min_height !== undefined) sec.min_height = res.min_height;
         }
       } else {
         toast("Could not save that change.", true);
@@ -646,6 +719,15 @@
     var canvas = document.getElementById("bCanvas");
 
     canvas.addEventListener("pointerdown", function (e) {
+      var resizeHandle = e.target.closest('[data-action="resize"]');
+      if (resizeHandle) {
+        var rhost = e.target.closest(".b-csec");
+        if (!rhost) return;
+        var sec = findSection(rhost.dataset.id);
+        if (!sec) return;
+        startResize(e, sec, rhost.firstElementChild);
+        return;
+      }
       var handle = e.target.closest('[data-action="drag"]');
       if (!handle) return;
       var host = e.target.closest(".b-csec");
@@ -664,7 +746,7 @@
         if (action === "dup") return duplicateSection(id);
         if (action === "del") return deleteSection(id);
         if (action === "toggle") return toggleHidden(id);
-        if (action === "drag") return;
+        if (action === "drag" || action === "resize") return;
       }
       selectSection(id);
     });
@@ -748,6 +830,15 @@
         sec.fields[dt.dataset.field] = iso;
         renderAll();
         saveField(sec.id, patch2);
+        return;
+      }
+      var hin = e.target.closest('input[type="number"][data-field="__min_height"]');
+      if (hin) {
+        var h = Math.max(0, Math.min(1200, parseInt(hin.value, 10) || 0));
+        hin.value = h;
+        sec.min_height = h;
+        applyHeightStyle(heightRootEl(sec.id), h);
+        saveSettings(sec.id, { min_height: h });
       }
     });
     document.getElementById("bInspectorBody").addEventListener("focusout", function (e) {
@@ -771,7 +862,7 @@
         return;
       }
       var input = e.target.closest('input.b-text-native[data-field]');
-      if (input && input.type !== "datetime-local") {
+      if (input && input.type !== "datetime-local" && input.type !== "number") {
         if (input.dataset.field === "__custom_class") {
           sec.custom_class = input.value;
           saveSettings(sec.id, { custom_class: input.value });
