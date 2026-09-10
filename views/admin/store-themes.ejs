@@ -17,6 +17,7 @@
         <div class="theme-card-name"><%= t.name %></div>
         <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
         <div class="theme-card-actions">
+          <a href="/?preview_theme=<%= encodeURIComponent(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">Preview ↗</a>
           <a href="/admin/store/themes/<%= t.store_theme_id %>/customize" class="theme-card-btn">Customize</a>
           <% if (!t.is_active) { %>
             <form action="/admin/store/themes/<%= t.store_theme_id %>/activate" method="POST" onsubmit="return confirm(<%- JSON.stringify('Activate ' + t.name + '? Your live storefront will switch immediately.') %>);">
@@ -45,6 +46,7 @@
           <div class="theme-card-name"><%= t.name %></div>
           <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
           <div class="theme-card-actions">
+            <a href="/?preview_theme=<%= encodeURIComponent(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">Preview ↗</a>
             <form action="/admin/store/themes/install" method="POST">
               <input type="hidden" name="themeId" value="<%= t.theme_id %>" />
               <button type="submit" class="theme-card-btn primary">Install</button>

@@ -591,3 +591,24 @@ hr.section-divider { border: none; border-top: 1px solid var(--color-border); ma
 @media (max-width: 720px) {
   .pz-hide-mobile { display: none !important; }
 }
+
+/* Theme preview banner — see views/storefront/partials/preview-banner.ejs.
+   Deliberately NOT themed off --color-primary/etc: it needs to read clearly
+   regardless of which theme is being previewed, so it uses its own fixed
+   dark bar rather than colors that change with the thing it's announcing. */
+.pz-preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #111827;
+  color: #f3f4f6;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.pz-preview-banner a { color: #fbbf24; font-weight: 600; text-decoration: underline; }

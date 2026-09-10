@@ -1,12 +1,13 @@
-/* PZ Starter theme chrome — everything else on the page (buttons, cards,
-   product grid, forms) already reads the --color-*/--radius custom
-   properties from public/css/style.css, so this file only needs to style
-   the header/footer markup that's unique to this theme's partials/header.ejs
-   and partials/footer.ejs, plus the typography that gives it its own
-   personality (a serif display face for the logo/headings, Inter for
-   everything else). Loaded after style.css, so it can also gently refine a
-   couple of shared elements (headings, .btn) without duplicating their base
-   rules. */
+/* PZ Starter theme chrome — a warm, organic ecommerce look: forest-green
+   accent, cream background, soft-rounded cards. Everything that isn't
+   markup unique to this theme's own header/footer (buttons, product cards,
+   hero, richtext, testimonials — all rendered by the SHARED section engine
+   at views/storefront/partials/section.ejs) already reads the --color-*/
+   --radius custom properties from public/css/style.css, so most of the
+   organic feel comes free from theme.json's tokens; this file only adds
+   the header/footer markup unique to partials/header.ejs + footer.ejs,
+   plus a handful of gentle refinements (shadows, spacing, tag styling) on
+   top of the shared section styles that pure CSS variables can't reach. */
 
 body.pzs {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -22,26 +23,50 @@ body.pzs .btn, body.pzs input, body.pzs select, body.pzs textarea {
   font-family: inherit;
 }
 
-/* Utility bar — a slim strip above the main header carrying page links and
-   account/cart actions, set in a small caps-ish uppercase treatment. */
-.pzs-utility-bar {
-  background: var(--color-text);
-  color: var(--color-bg);
+/* ---------- Header — clean white bar, centered logo, cart top-right ---------- */
+.pzs-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.pzs-utility-inner {
+.pzs-header-top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  height: 76px;
+}
+
+.pzs-logo {
+  grid-column: 2;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pzs-page-links {
+  grid-column: 1;
+  display: flex;
+  gap: 18px;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.pzs-page-links a:hover { color: var(--color-text); }
+
+.pzs-header-actions {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 40px;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  gap: 18px;
+  font-size: 0.85rem;
 }
-
-.pzs-utility-links { display: flex; align-items: center; gap: 20px; }
-.pzs-utility-links a { color: var(--color-bg); opacity: 0.85; }
-.pzs-utility-links a:hover { opacity: 1; }
+.pzs-header-actions a { color: var(--color-text); }
 
 .pzs-cart-link { position: relative; }
 .pzs-badge {
@@ -55,61 +80,45 @@ body.pzs .btn, body.pzs input, body.pzs select, body.pzs textarea {
   font-size: 0.68rem;
   line-height: 16px;
   text-align: center;
-  text-transform: none;
-  letter-spacing: normal;
-}
-
-/* Main header — centered logo above a centered nav row, rather than the
-   default theme's single-row logo-left/nav-right layout. */
-.pzs-header {
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.pzs-header-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding-top: 22px;
-  padding-bottom: 16px;
-}
-
-.pzs-logo {
-  font-size: 1.7rem;
-  font-weight: 600;
 }
 
 .pzs-main-nav {
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+.pzs-main-nav-inner {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 24px;
-  font-size: 0.92rem;
+  gap: 26px;
+  height: 46px;
+  align-items: center;
+  font-size: 0.86rem;
 }
-
-.pzs-main-nav a {
+.pzs-main-nav-inner a {
   color: var(--color-muted);
-  padding-bottom: 4px;
+  padding-bottom: 3px;
   border-bottom: 2px solid transparent;
 }
-
-.pzs-main-nav a.active,
-.pzs-main-nav a:hover {
+.pzs-main-nav-inner a.active,
+.pzs-main-nav-inner a:hover {
   color: var(--color-text);
   border-bottom-color: var(--color-primary);
 }
 
-/* Footer — centered, with the store name repeated in the display face as a
-   small sign-off above the fine print. */
+@media (max-width: 720px) {
+  .pzs-header-top { grid-template-columns: auto 1fr auto; height: auto; padding: 14px 0; gap: 10px; }
+  .pzs-page-links { display: none; }
+  .pzs-logo { grid-column: 2; font-size: 1.35rem; }
+  .pzs-header-actions { grid-column: 3; }
+}
+
+/* ---------- Footer ---------- */
 .pzs-footer {
   border-top: 1px solid var(--color-border);
   margin-top: 48px;
+  background: var(--color-bg);
 }
-
 .pzs-footer-inner {
   padding: 32px 24px;
   text-align: center;
@@ -119,15 +128,39 @@ body.pzs .btn, body.pzs input, body.pzs select, body.pzs textarea {
   flex-direction: column;
   gap: 6px;
 }
-
 .pzs-footer-brand {
   font-size: 1.15rem;
   color: var(--color-text);
   margin: 0 0 4px;
 }
-
 .pzs-footer-inner a { text-decoration: underline; }
 
-@media (max-width: 640px) {
-  .pzs-utility-inner { flex-direction: column; height: auto; padding: 8px 0; gap: 6px; }
+/* ---------- Organic refinements on the shared section engine ---------- */
+/* Soft shadow + gentle lift on product cards, instead of style.css's flat
+   border-only default — reads warmer and a little more tactile. */
+body.pzs .product-card {
+  box-shadow: 0 1px 2px rgba(43, 42, 37, 0.04);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
+body.pzs .product-card:hover {
+  box-shadow: 0 10px 24px rgba(43, 42, 37, 0.09);
+  transform: translateY(-3px);
+}
+
+body.pzs .hero { text-align: center; }
+body.pzs .hero h1 { font-size: 2.3rem; }
+
+body.pzs .testimonial-card,
+body.pzs .product-card,
+body.pzs .collection-card {
+  border-radius: var(--radius);
+}
+
+body.pzs .section-title { text-align: center; }
+
+/* Trust-badge style rows (a "row" section with short richtext blocks) read
+   a little tighter and more label-like than the default theme's generic
+   richtext spacing — center everything and tone down the body copy. */
+body.pzs .pz-row .richtext { padding: 0; }
+body.pzs .pz-row .richtext h2 { font-size: 1rem; margin-bottom: 4px; }
+body.pzs .pz-row .richtext p { font-size: 0.84rem; color: var(--color-muted); }

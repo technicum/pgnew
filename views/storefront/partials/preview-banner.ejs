@@ -1,0 +1,13 @@
+<%# Shared, theme-agnostic — every theme's header.ejs includes this right
+    after <body> (see views/storefront/themes/default/partials/header.ejs and
+    .../pz-starter/partials/header.ejs). Only rendered when
+    res.locals.previewingTheme is set by routes/storefront.js's theme-
+    resolution middleware, which only happens for a signed-in admin of this
+    exact store — so a regular visitor never sees this, and it never
+    reflects any real change to what's actually live. %>
+<% if (typeof previewingTheme !== 'undefined' && previewingTheme) { %>
+  <div class="pz-preview-banner">
+    <span>Previewing theme: <strong><%= previewingTheme.name %></strong> — this isn't live for your customers.</span>
+    <a href="/admin/store/themes">Back to admin</a>
+  </div>
+<% } %>

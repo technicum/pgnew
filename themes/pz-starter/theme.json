@@ -1,18 +1,18 @@
 {
   "slug": "pz-starter",
   "name": "PZ Starter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "PageZaper",
-  "description": "A warm, editorial storefront theme with a centered logo, utility bar, and pill-shaped controls.",
+  "description": "A warm, organic storefront theme with a clean centered header and soft-rounded product cards.",
   "price_cents": 0,
   "tokens": {
-    "color_primary": "#7c3aed",
-    "color_primary_dark": "#6d28d9",
-    "color_bg": "#faf9f7",
+    "color_primary": "#4a7c59",
+    "color_primary_dark": "#3a6247",
+    "color_bg": "#faf8f2",
     "color_surface": "#ffffff",
-    "color_text": "#1f1b2e",
-    "color_muted": "#71717a",
-    "color_border": "#e4e1dc",
-    "radius_style": "pill"
+    "color_text": "#2b2a25",
+    "color_muted": "#8a8478",
+    "color_border": "#e8e2d4",
+    "radius_style": "soft"
   }
 }

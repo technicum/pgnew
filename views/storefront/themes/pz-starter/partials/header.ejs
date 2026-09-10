@@ -11,18 +11,19 @@
   <link rel="stylesheet" href="/themes/pz-starter/theme.css" />
 </head>
 <body class="pzs theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>" style="<%= typeof themeTokenStyle !== 'undefined' ? themeTokenStyle : '' %>">
-  <div class="pzs-utility-bar">
-    <div class="container pzs-utility-inner">
-      <% if (typeof storePages !== 'undefined' && storePages.length) { %>
-        <nav class="pzs-utility-links">
+  <%- include('../../../partials/preview-banner') %>
+
+  <header class="pzs-header">
+    <div class="container pzs-header-top">
+      <nav class="pzs-page-links">
+        <% if (typeof storePages !== 'undefined' && storePages.length) { %>
           <% storePages.forEach(function(pg) { %>
             <a href="/pages<%= pg.path %>"><%= pg.name %></a>
           <% }); %>
-        </nav>
-      <% } else { %>
-        <span></span>
-      <% } %>
-      <div class="pzs-utility-links">
+        <% } %>
+      </nav>
+      <a href="/" class="pzs-logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></a>
+      <div class="pzs-header-actions">
         <% if (typeof customer !== 'undefined' && customer) { %>
           <a href="/account">My account</a>
         <% } else { %>
@@ -34,20 +35,16 @@
         </a>
       </div>
     </div>
-  </div>
-
-  <header class="pzs-header">
-    <div class="container pzs-header-inner">
-      <a href="/" class="pzs-logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></a>
-      <nav class="pzs-main-nav">
+    <nav class="pzs-main-nav">
+      <div class="container pzs-main-nav-inner">
         <a href="/" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
         <% if (typeof categories !== 'undefined') { %>
           <% categories.forEach(function(c) { %>
             <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
           <% }); %>
         <% } %>
-      </nav>
-    </div>
+      </div>
+    </nav>
   </header>
 
   <% if (success && success.length) { %>

@@ -5,7 +5,8 @@ const { pool, TABLES } = require('../db/database');
 const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
 const { requireCustomer } = require('../middleware/auth');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('../lib/themes');
-const { resolveTokens, tokensToInlineStyle } = require('../lib/themeTokens');
+const { resolveTokens, tokensToInlineStyle, themeDefaultTokens } = require('../lib/themeTokens');
+const { readManifest } = require('../lib/themeManifest');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -46,6 +47,27 @@ router.use((req, res, next) => {
 // lib/themes.js.
 router.use(async (req, res, next) => {
   try {
+    // Theme preview: ?preview_theme=<slug> lets whoever is signed into THIS
+    // store's admin see any catalog theme applied — installed or not,
+    // active or not — without writing anything to pz_store_themes. Only
+    // honored when req.session.admin actually matches this store, so a
+    // shared/guessable link can't be used to change what any other visitor
+    // sees; everyone else still gets the real active-theme lookup below.
+    // Uses the theme's own manifest defaults (never this store's saved
+    // token_overrides, which belong to whichever theme is actually
+    // installed) — a preview shows the theme as its author intended it.
+    const previewSlug = typeof req.query.preview_theme === 'string' ? req.query.preview_theme.slice(0, 60) : null;
+    const previewAuthorized = previewSlug && req.session.admin && req.session.admin.store_id === req.store.id;
+    if (previewAuthorized) {
+      const manifest = readManifest(previewSlug);
+      if (manifest) {
+        req.themeViewPrefix = themeViewPrefix(previewSlug);
+        res.locals.themeTokenStyle = tokensToInlineStyle(themeDefaultTokens(previewSlug));
+        res.locals.previewingTheme = { slug: previewSlug, name: manifest.name || previewSlug };
+        return next();
+      }
+    }
+
     const [[activeTheme]] = await pool.query(
       `SELECT t.slug, st.token_overrides FROM ${TABLES.storeThemes} st
        JOIN ${TABLES.themes} t ON t.id = st.theme_id
