@@ -657,9 +657,11 @@ router.post('/pages/:id/sections/:sectionId/delete', async (req, res, next) => {
 
 // ---------- Edit Store: Themes ----------
 // "My themes" — every theme this store has installed (pz_store_themes),
-// with the active one marked and a Customize link per theme. Browsing and
-// installing MORE themes happens on themes.pagezaper.com (not built yet) —
-// this page only manages what's already installed for this store.
+// with the active one marked and a Customize link per theme, plus an
+// "Available to install" list of catalog themes (pz_themes) this store
+// hasn't added yet. This is a local stand-in for the real marketplace —
+// once themes.pagezaper.com exists, that page's "Add to store" button will
+// hit the same POST /store/themes/install route this file already has.
 router.get('/store/themes', async (req, res, next) => {
   try {
     const [installed] = await pool.query(
@@ -670,7 +672,43 @@ router.get('/store/themes', async (req, res, next) => {
        ORDER BY st.is_active DESC, t.name ASC`,
       [req.store.id]
     );
-    res.render('admin/store-themes', { title: 'Themes', themes: installed });
+    const [available] = await pool.query(
+      `SELECT t.id AS theme_id, t.name, t.description, t.price_cents
+       FROM ${TABLES.themes} t
+       WHERE t.status = 'published'
+         AND t.id NOT IN (
+           SELECT theme_id FROM ${TABLES.storeThemes} WHERE store_id = ?
+         )
+       ORDER BY t.name ASC`,
+      [req.store.id]
+    );
+    res.render('admin/store-themes', { title: 'Themes', themes: installed, available });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Installs a catalog theme for this store — adds a pz_store_themes row
+// (inactive) so it shows up under "My themes" with Customize/Activate
+// available, without touching what's currently live on the storefront.
+router.post('/store/themes/install', async (req, res, next) => {
+  try {
+    const themeId = Number(req.body.themeId);
+    const [[theme]] = await pool.query(
+      `SELECT id FROM ${TABLES.themes} WHERE id = ? AND status = 'published'`,
+      [themeId]
+    );
+    if (!theme) {
+      req.flash('error', 'Theme not found.');
+      return res.redirect('/admin/store/themes');
+    }
+    await pool.query(
+      `INSERT INTO ${TABLES.storeThemes} (store_id, theme_id, is_active) VALUES (?, ?, 0)
+       ON DUPLICATE KEY UPDATE store_id = store_id`,
+      [req.store.id, theme.id]
+    );
+    req.flash('success', 'Theme installed — customize it or activate it below.');
+    res.redirect('/admin/store/themes');
   } catch (err) {
     next(err);
   }
