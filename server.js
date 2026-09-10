@@ -6,7 +6,7 @@ const flash = require('connect-flash');
 const path = require('path');
 
 const { pool, init } = require('./db/database');
-const { resolveStore, getBaseDomain, adminPortalUrl } = require('./middleware/tenant');
+const { resolveStore, getBaseDomain, adminPortalUrl, rootUrl } = require('./middleware/tenant');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('./lib/themes');
 const platformRoutes = require('./routes/platform');
 const platformAdminRoutes = require('./routes/platformAdmin');
@@ -66,6 +66,31 @@ app.use((req, res, next) => {
   // Any "Store admin" / "Log in" link for staff should use this, not a
   // relative /login or /admin/login.
   res.locals.loginUrl = adminPortalUrl(req, '/login');
+  next();
+});
+
+// themes.pagezaper.com and apps.pagezaper.com — the future public theme
+// and app marketplaces (see middleware/tenant.js's isThemeMarketplace /
+// isAppMarketplace handling). Neither is built yet, so every path on
+// either subdomain gets a simple coming-soon placeholder instead of
+// falling through to the storefront's generic "store not found" 404.
+app.use((req, res, next) => {
+  if (req.isThemeMarketplace) {
+    return res.status(200).render('marketplace-coming-soon', {
+      title: 'Theme Marketplace',
+      eyebrow: 'Theme Marketplace',
+      description: "Browse and install ready-made storefront themes for your PageZaper store. We're still building this out — check back shortly.",
+      rootUrl: rootUrl(req),
+    });
+  }
+  if (req.isAppMarketplace) {
+    return res.status(200).render('marketplace-coming-soon', {
+      title: 'App Marketplace',
+      eyebrow: 'App Marketplace',
+      description: "Browse and install apps that extend your PageZaper store. We're still building this out — check back shortly.",
+      rootUrl: rootUrl(req),
+    });
+  }
   next();
 });
 

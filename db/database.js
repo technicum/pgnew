@@ -23,6 +23,11 @@ const RESERVED_SUBDOMAINS = new Set([
   'static', 'cdn', 'assets', 'shop', 'store', 'dashboard', 'signup', 'login',
   'signin', 'signout', 'register', 'test', 'staging', 'dev', 'my', 'account',
   'billing', 'docs', 'status', 'pagezaper',
+  // The (future) public theme and app marketplaces — see
+  // middleware/tenant.js's isThemeMarketplace/isAppMarketplace handling and
+  // views/marketplace-coming-soon.ejs. ('app' singular was already
+  // reserved above; 'apps' plural is the actual subdomain these use.)
+  'themes', 'apps',
 ]);
 
 // All table names go through this prefix, so PageZaper's tables are easy to

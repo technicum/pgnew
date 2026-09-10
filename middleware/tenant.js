@@ -7,6 +7,12 @@
 //                              (the single staff login gateway — "admin" is a
 //                              reserved subdomain, see RESERVED_SUBDOMAINS,
 //                              so no store can ever collide with it)
+//   themes.pagezaper.com   -> req.store = null, req.isThemeMarketplace = true
+//                              (the future public theme marketplace — "themes"
+//                              is reserved the same way "admin" is; see
+//                              server.js's coming-soon placeholder for now)
+//   apps.pagezaper.com     -> req.store = null, req.isAppMarketplace = true
+//                              (same idea, for a future public app marketplace)
 //   acme.pagezaper.com     -> req.store = the "acme" store row (or null + req.unknownSubdomain
 //                              if no such store exists / it's suspended)
 //
@@ -33,6 +39,8 @@ function resolveStore(pool) {
       req.unknownSubdomain = null;
       req.isRootDomain = true;
       req.isAdminPortal = false;
+      req.isThemeMarketplace = false;
+      req.isAppMarketplace = false;
 
       let subdomain = null;
       if (hostname === baseDomain || hostname === `www.${baseDomain}`) {
@@ -47,6 +55,12 @@ function resolveStore(pool) {
       if (subdomain === 'admin') {
         req.isRootDomain = false;
         req.isAdminPortal = true;
+      } else if (subdomain === 'themes') {
+        req.isRootDomain = false;
+        req.isThemeMarketplace = true;
+      } else if (subdomain === 'apps') {
+        req.isRootDomain = false;
+        req.isAppMarketplace = true;
       } else if (subdomain) {
         req.isRootDomain = false;
         const [[store]] = await pool.query(
