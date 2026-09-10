@@ -1,0 +1,14 @@
+<%- include('partials/header') %>
+
+<% sections.forEach(function(section) { %>
+  <%# The section engine is shared across every theme, not theme-owned (see
+      lib/themes.js) — it lives at views/storefront/partials/ regardless of
+      which theme this is, so this reaches up out of themes/default/ to the
+      shared copy rather than a per-theme one. %>
+  <%- include('../../partials/section', { section: section, categories: categories }) %>
+<% }); %>
+<% if (sections.length === 0) { %>
+  <p class="empty-state">This page doesn't have any content yet.</p>
+<% } %>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,133 @@
+/* PZ Starter theme chrome — everything else on the page (buttons, cards,
+   product grid, forms) already reads the --color-*/--radius custom
+   properties from public/css/style.css, so this file only needs to style
+   the header/footer markup that's unique to this theme's partials/header.ejs
+   and partials/footer.ejs, plus the typography that gives it its own
+   personality (a serif display face for the logo/headings, Inter for
+   everything else). Loaded after style.css, so it can also gently refine a
+   couple of shared elements (headings, .btn) without duplicating their base
+   rules. */
+
+body.pzs {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body.pzs h1, body.pzs h2, body.pzs h3,
+body.pzs .pzs-logo, body.pzs .pzs-footer-brand {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.01em;
+}
+
+body.pzs .btn, body.pzs input, body.pzs select, body.pzs textarea {
+  font-family: inherit;
+}
+
+/* Utility bar — a slim strip above the main header carrying page links and
+   account/cart actions, set in a small caps-ish uppercase treatment. */
+.pzs-utility-bar {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+.pzs-utility-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pzs-utility-links { display: flex; align-items: center; gap: 20px; }
+.pzs-utility-links a { color: var(--color-bg); opacity: 0.85; }
+.pzs-utility-links a:hover { opacity: 1; }
+
+.pzs-cart-link { position: relative; }
+.pzs-badge {
+  display: inline-block;
+  min-width: 16px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 16px;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Main header — centered logo above a centered nav row, rather than the
+   default theme's single-row logo-left/nav-right layout. */
+.pzs-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pzs-header-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 22px;
+  padding-bottom: 16px;
+}
+
+.pzs-logo {
+  font-size: 1.7rem;
+  font-weight: 600;
+}
+
+.pzs-main-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
+  font-size: 0.92rem;
+}
+
+.pzs-main-nav a {
+  color: var(--color-muted);
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
+}
+
+.pzs-main-nav a.active,
+.pzs-main-nav a:hover {
+  color: var(--color-text);
+  border-bottom-color: var(--color-primary);
+}
+
+/* Footer — centered, with the store name repeated in the display face as a
+   small sign-off above the fine print. */
+.pzs-footer {
+  border-top: 1px solid var(--color-border);
+  margin-top: 48px;
+}
+
+.pzs-footer-inner {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pzs-footer-brand {
+  font-size: 1.15rem;
+  color: var(--color-text);
+  margin: 0 0 4px;
+}
+
+.pzs-footer-inner a { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .pzs-utility-inner { flex-direction: column; height: auto; padding: 8px 0; gap: 6px; }
+}

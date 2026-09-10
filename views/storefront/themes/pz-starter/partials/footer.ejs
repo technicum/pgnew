@@ -1,0 +1,11 @@
+  </main>
+
+  <footer class="pzs-footer">
+    <div class="container pzs-footer-inner">
+      <p class="pzs-footer-brand"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></p>
+      <p>&copy; <%= new Date().getFullYear() %> <%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %>. Powered by <a href="//<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %>/">PageZaper</a>.</p>
+      <p><a href="<%= typeof loginUrl !== 'undefined' ? loginUrl : '/admin/login' %>">Store admin</a></p>
+    </div>
+  </footer>
+</body>
+</html>

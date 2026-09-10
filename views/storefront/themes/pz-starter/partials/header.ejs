@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %><%= typeof store !== 'undefined' && store ? ' · ' + store.name : ' · PageZaper' %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/themes/pz-starter/theme.css" />
+</head>
+<body class="pzs theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>" style="<%= typeof themeTokenStyle !== 'undefined' ? themeTokenStyle : '' %>">
+  <div class="pzs-utility-bar">
+    <div class="container pzs-utility-inner">
+      <% if (typeof storePages !== 'undefined' && storePages.length) { %>
+        <nav class="pzs-utility-links">
+          <% storePages.forEach(function(pg) { %>
+            <a href="/pages<%= pg.path %>"><%= pg.name %></a>
+          <% }); %>
+        </nav>
+      <% } else { %>
+        <span></span>
+      <% } %>
+      <div class="pzs-utility-links">
+        <% if (typeof customer !== 'undefined' && customer) { %>
+          <a href="/account">My account</a>
+        <% } else { %>
+          <a href="/account/login">Log in</a>
+        <% } %>
+        <a href="/cart" class="pzs-cart-link">
+          Cart
+          <% if (cartItemCount > 0) { %><span class="pzs-badge"><%= cartItemCount %></span><% } %>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <header class="pzs-header">
+    <div class="container pzs-header-inner">
+      <a href="/" class="pzs-logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></a>
+      <nav class="pzs-main-nav">
+        <a href="/" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
+        <% if (typeof categories !== 'undefined') { %>
+          <% categories.forEach(function(c) { %>
+            <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
+          <% }); %>
+        <% } %>
+      </nav>
+    </div>
+  </header>
+
+  <% if (success && success.length) { %>
+    <div class="flash flash-success container"><%= success[0] %></div>
+  <% } %>
+  <% if (error && error.length) { %>
+    <div class="flash flash-error container"><%= error[0] %></div>
+  <% } %>
+
+  <main class="container">

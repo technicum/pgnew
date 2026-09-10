@@ -1,6 +1,8 @@
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
@@ -684,6 +686,57 @@ async function migrateAdminsToUsers(conn) {
 // views/storefront/themes/default/) and backfills an active pz_store_themes
 // row for any store that doesn't have one yet, so routes/storefront.js's
 // theme-resolution lookup always finds something. Safe to run on every boot.
+// Registers/updates every theme found under themes/<slug>/theme.json in the
+// pz_themes catalog, keeping the DB in sync with what's actually on disk —
+// adding a theme becomes "drop its folder in and redeploy" rather than
+// hand-writing an INSERT. This does NOT install a newly-found theme for any
+// store (that stays a deliberate action, eventually via the marketplace) —
+// it only makes the theme exist in the catalog at all. Safe to run on every
+// boot; an existing theme's row is refreshed from its current manifest.
+async function migrateThemesFromManifests(conn) {
+  const themesDir = path.join(__dirname, '..', 'themes');
+  let entries;
+  try {
+    entries = fs.readdirSync(themesDir, { withFileTypes: true }).filter((e) => e.isDirectory());
+  } catch (err) {
+    return; // no themes/ directory yet — nothing to sync
+  }
+
+  for (const entry of entries) {
+    const slug = entry.name;
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(path.join(themesDir, slug, 'theme.json'), 'utf8'));
+    } catch (err) {
+      continue; // no/invalid theme.json in this folder — skip it
+    }
+    const name = typeof manifest.name === 'string' && manifest.name ? manifest.name : slug;
+    const version = typeof manifest.version === 'string' && manifest.version ? manifest.version : '1.0.0';
+    const priceCents = Number.isInteger(manifest.price_cents) ? manifest.price_cents : 0;
+    const description = typeof manifest.description === 'string' ? manifest.description : null;
+
+    const [[existing]] = await conn.query(`SELECT id FROM ${TABLES.themes} WHERE slug = ?`, [slug]);
+    if (existing) {
+      await conn.query(
+        `UPDATE ${TABLES.themes} SET name = ?, version = ?, price_cents = ?, description = ? WHERE id = ?`,
+        [name, version, priceCents, description, existing.id]
+      );
+    } else {
+      await conn.query(
+        `INSERT INTO ${TABLES.themes} (slug, name, version, price_cents, status, description) VALUES (?, ?, ?, ?, 'published', ?)`,
+        [slug, name, version, priceCents, description]
+      );
+      console.log(`Registered new theme "${slug}" (from themes/${slug}/theme.json) into pz_themes.`);
+    }
+  }
+}
+
+// Backfills an active pz_store_themes row (pointing at the 'default' theme)
+// for any store that doesn't have one yet, so routes/storefront.js's
+// theme-resolution lookup always finds something. Assumes
+// migrateThemesFromManifests has already run this boot, so the 'default'
+// theme's pz_themes row already exists — falls back to inserting it
+// directly only in the unlikely case themes/default/theme.json is missing.
 async function migrateStoreThemes(conn) {
   const [[existingDefault]] = await conn.query(`SELECT id FROM ${TABLES.themes} WHERE slug = ?`, ['default']);
   let defaultThemeId;
@@ -695,7 +748,7 @@ async function migrateStoreThemes(conn) {
       ['default', 'Default', '1.0.0', 0, 'published', "PageZaper's built-in storefront theme."]
     );
     defaultThemeId = result.insertId;
-    console.log('Default theme seeded into pz_themes.');
+    console.log('Default theme seeded into pz_themes (fallback — themes/default/theme.json was not found).');
   }
 
   const [storesWithoutActiveTheme] = await conn.query(
@@ -731,6 +784,7 @@ async function init() {
     await migrateOrderDiscountColumns(conn);
     await migrateOrderCustomerColumn(conn);
     await migrateAdminsToUsers(conn);
+    await migrateThemesFromManifests(conn);
     await migrateStoreThemes(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
