@@ -1,0 +1,55 @@
+<%- include('partials/header') %>
+
+<h1>Checkout</h1>
+
+<div class="checkout-layout">
+  <form action="/checkout" method="POST" class="checkout-form">
+    <h2>Shipping details</h2>
+    <label>Full name *
+      <input type="text" name="name" required />
+    </label>
+    <label>Email *
+      <input type="email" name="email" required />
+    </label>
+    <label>Phone
+      <input type="tel" name="phone" />
+    </label>
+    <label>Address *
+      <input type="text" name="address" required />
+    </label>
+    <div class="form-row">
+      <label>City
+        <input type="text" name="city" />
+      </label>
+      <label>ZIP / PIN
+        <input type="text" name="zip" />
+      </label>
+    </div>
+
+    <h2>Discount code</h2>
+    <label>Code (optional)
+      <input type="text" name="discountCode" placeholder="e.g. WELCOME10" style="text-transform:uppercase;" />
+    </label>
+
+    <h2>Payment</h2>
+    <p class="payment-note">Cash on Delivery (payment gateway integration can be added later — Stripe, Razorpay, etc.)</p>
+
+    <button type="submit" class="btn btn-primary btn-block">Place order</button>
+  </form>
+
+  <aside class="order-summary">
+    <h2>Order summary</h2>
+    <% items.forEach(function(item) { %>
+      <div class="order-summary-row">
+        <span><%= item.title %> × <%= item.quantity %></span>
+        <span>₹<%= item.lineTotal.toFixed(2) %></span>
+      </div>
+    <% }); %>
+    <div class="order-summary-row total">
+      <span>Total</span>
+      <span>₹<%= subtotal.toFixed(2) %></span>
+    </div>
+  </aside>
+</div>
+
+<%- include('partials/footer') %>

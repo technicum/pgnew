@@ -7,6 +7,7 @@ const path = require('path');
 
 const { pool, init } = require('./db/database');
 const { resolveStore, getBaseDomain, adminPortalUrl } = require('./middleware/tenant');
+const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('./lib/themes');
 const platformRoutes = require('./routes/platform');
 const platformAdminRoutes = require('./routes/platformAdmin');
 const storefrontRoutes = require('./routes/storefront');
@@ -76,9 +77,10 @@ app.use('/platform-admin', platformAdminRoutes);
 app.use('/', storefrontRoutes);
 app.use('/admin', adminRoutes);
 
-// 404
+// 404 — no store context here (this catches /admin, /platform-admin, and
+// root-domain paths too), so always the built-in default theme's 404 page.
 app.use((req, res) => {
-  res.status(404).render('storefront/404', { title: 'Page not found' });
+  res.status(404).render(`${themeViewPrefix(DEFAULT_THEME_SLUG)}/404`, { title: 'Page not found' });
 });
 
 // Error handler

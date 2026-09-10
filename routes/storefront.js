@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { pool, TABLES } = require('../db/database');
 const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
 const { requireCustomer } = require('../middleware/auth');
+const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('../lib/themes');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -30,14 +31,36 @@ function orderToNumber(order) {
 // suspended subdomain) there's no storefront to show.
 router.use((req, res, next) => {
   if (req.store) return next();
+  // No resolved store means no theme to look up either — fall back to the
+  // built-in default theme's 404 page.
   if (req.unknownSubdomain) {
-    return res.status(404).render('storefront/404', { title: 'Store not found' });
+    return res.status(404).render(`${themeViewPrefix(DEFAULT_THEME_SLUG)}/404`, { title: 'Store not found' });
   }
-  return res.status(404).render('storefront/404', { title: 'Page not found' });
+  return res.status(404).render(`${themeViewPrefix(DEFAULT_THEME_SLUG)}/404`, { title: 'Page not found' });
+});
+
+// Resolves which structural theme is active for this store once per
+// request, so every render() below points at that theme's chrome templates
+// (views/storefront/themes/<slug>/...) instead of a fixed path. See
+// lib/themes.js.
+router.use(async (req, res, next) => {
+  try {
+    const [[activeTheme]] = await pool.query(
+      `SELECT t.slug FROM ${TABLES.storeThemes} st
+       JOIN ${TABLES.themes} t ON t.id = st.theme_id
+       WHERE st.store_id = ? AND st.is_active = 1
+       LIMIT 1`,
+      [req.store.id]
+    );
+    req.themeViewPrefix = themeViewPrefix(activeTheme ? activeTheme.slug : DEFAULT_THEME_SLUG);
+  } catch (err) {
+    req.themeViewPrefix = themeViewPrefix(DEFAULT_THEME_SLUG);
+  }
+  next();
 });
 
 // Non-home published pages, made available to every view in this router so
-// the header nav can link to them (see views/storefront/partials/header.ejs).
+// the header nav can link to them (see views/storefront/themes/default/partials/header.ejs).
 router.use(async (req, res, next) => {
   try {
     const [pages] = await pool.query(
@@ -124,7 +147,7 @@ async function renderStorePage(req, res, next, page) {
       return section;
     });
 
-    res.render('storefront/page', {
+    res.render(`${req.themeViewPrefix}/page`, {
       title: page.is_home ? `Shop ${req.store.name}` : `${page.name} · ${req.store.name}`,
       sections,
       categories,
@@ -142,7 +165,7 @@ async function renderStorePage(req, res, next, page) {
 router.get(['/', '/store'], async (req, res, next) => {
   try {
     const [[home]] = await pool.query(`SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 1 LIMIT 1`, [req.store.id]);
-    if (!home) return res.status(404).render('storefront/404', { title: 'Page not found' });
+    if (!home) return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Page not found' });
     return renderStorePage(req, res, next, home);
   } catch (err) {
     next(err);
@@ -157,7 +180,7 @@ router.get('/pages/:slug', async (req, res, next) => {
       `SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND path = ? AND status = 'published' LIMIT 1`,
       [req.store.id, path]
     );
-    if (!page) return res.status(404).render('storefront/404', { title: 'Page not found' });
+    if (!page) return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Page not found' });
     return renderStorePage(req, res, next, page);
   } catch (err) {
     next(err);
@@ -184,14 +207,14 @@ router.get('/products/:slug', async (req, res, next) => {
     const storeId = req.store.id;
     const [[product]] = await pool.query(`SELECT * FROM ${TABLES.products} WHERE store_id = ? AND slug = ?`, [storeId, req.params.slug]);
     if (!product) {
-      return res.status(404).render('storefront/404', { title: 'Product not found' });
+      return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Product not found' });
     }
     const [related] = await pool.query(
       `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND category_id = ? AND id != ? AND status = 'active' LIMIT 4`,
       [storeId, product.category_id, product.id]
     );
 
-    res.render('storefront/product', {
+    res.render(`${req.themeViewPrefix}/product`, {
       title: product.title,
       product: toNumber(product),
       related: related.map(toNumber),
@@ -209,7 +232,7 @@ router.get('/products/:slug', async (req, res, next) => {
 // is shared across every *.pagezaper.com subdomain.
 router.get('/account/signup', (req, res) => {
   if (req.session.customer && req.session.customer.store_id === req.store.id) return res.redirect('/account');
-  res.render('storefront/account/signup', { title: 'Create account', errors: [], values: { name: '', email: '' } });
+  res.render(`${req.themeViewPrefix}/account/signup`, { title: 'Create account', errors: [], values: { name: '', email: '' } });
 });
 
 router.post('/account/signup', async (req, res, next) => {
@@ -228,12 +251,12 @@ router.post('/account/signup', async (req, res, next) => {
     if (password !== confirmPassword) errors.push('Passwords do not match.');
 
     if (errors.length) {
-      return res.status(400).render('storefront/account/signup', { title: 'Create account', errors, values });
+      return res.status(400).render(`${req.themeViewPrefix}/account/signup`, { title: 'Create account', errors, values });
     }
 
     const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.customers} WHERE store_id = ? AND email = ?`, [storeId, email]);
     if (existing) {
-      return res.status(400).render('storefront/account/signup', {
+      return res.status(400).render(`${req.themeViewPrefix}/account/signup`, {
         title: 'Create account',
         errors: [`An account with ${email} already exists — log in instead.`],
         values,
@@ -256,7 +279,7 @@ router.post('/account/signup', async (req, res, next) => {
 
 router.get('/account/login', (req, res) => {
   if (req.session.customer && req.session.customer.store_id === req.store.id) return res.redirect('/account');
-  res.render('storefront/account/login', { title: 'Log in' });
+  res.render(`${req.themeViewPrefix}/account/login`, { title: 'Log in' });
 });
 
 router.post('/account/login', async (req, res, next) => {
@@ -293,7 +316,7 @@ router.get('/account', requireCustomer, async (req, res, next) => {
       `SELECT * FROM ${TABLES.orders} WHERE store_id = ? AND customer_id = ? ORDER BY created_at DESC`,
       [req.store.id, req.session.customer.id]
     );
-    res.render('storefront/account/dashboard', {
+    res.render(`${req.themeViewPrefix}/account/dashboard`, {
       title: 'My Account',
       orders: orders.map(orderToNumber),
     });
@@ -308,7 +331,7 @@ router.get('/cart', async (req, res, next) => {
     const cart = getStoreCart(req, req.store.id);
     const items = await getCartItems(pool, req.store.id, cart);
     const { subtotal } = getCartTotals(items);
-    res.render('storefront/cart', { title: 'Your Cart', items, subtotal });
+    res.render(`${req.themeViewPrefix}/cart`, { title: 'Your Cart', items, subtotal });
   } catch (err) {
     next(err);
   }
@@ -394,7 +417,7 @@ router.get('/checkout', async (req, res, next) => {
       return res.redirect('/cart');
     }
     const { subtotal } = getCartTotals(items);
-    res.render('storefront/checkout', { title: 'Checkout', items, subtotal });
+    res.render(`${req.themeViewPrefix}/checkout`, { title: 'Checkout', items, subtotal });
   } catch (err) {
     next(err);
   }
@@ -449,7 +472,7 @@ router.post('/checkout', async (req, res, next) => {
     await conn.commit();
     req.session.carts[storeId] = {};
 
-    res.render('storefront/order-confirmation', {
+    res.render(`${req.themeViewPrefix}/order-confirmation`, {
       title: 'Order Confirmed',
       orderNumber,
       name,

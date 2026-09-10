@@ -1,0 +1,30 @@
+<%- include('../partials/header') %>
+
+<div class="auth-card">
+  <h1>Create your account</h1>
+
+  <% if (errors && errors.length) { %>
+    <div class="flash flash-error">
+      <% errors.forEach(function(e) { %><div><%= e %></div><% }); %>
+    </div>
+  <% } %>
+
+  <form action="/account/signup" method="POST" class="checkout-form">
+    <label>Name
+      <input type="text" name="name" value="<%= values.name %>" required autofocus />
+    </label>
+    <label>Email
+      <input type="email" name="email" value="<%= values.email %>" required />
+    </label>
+    <label>Password
+      <input type="password" name="password" required minlength="6" />
+    </label>
+    <label>Confirm password
+      <input type="password" name="confirmPassword" required minlength="6" />
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Create account</button>
+  </form>
+  <p class="auth-hint">Already have an account? <a href="/account/login">Log in</a></p>
+</div>
+
+<%- include('../partials/footer') %>

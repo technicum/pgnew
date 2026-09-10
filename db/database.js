@@ -47,6 +47,13 @@ const TABLES = {
   newsletterSubscribers: `${PREFIX}newsletter_subscribers`,
   platformAdmins: `${PREFIX}platform_admins`,
   discounts: `${PREFIX}discounts`,
+  // Structural theme marketplace (see lib/themes.js) — distinct from the
+  // `theme` column on `stores` above, which only ever swaps two CSS color
+  // variables. These two tables let a store's storefront look structurally
+  // different (its own header/footer/product/cart templates), not just
+  // recolored.
+  themes: `${PREFIX}themes`,
+  storeThemes: `${PREFIX}store_themes`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -245,6 +252,41 @@ CREATE TABLE IF NOT EXISTS ${TABLES.discounts} (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   UNIQUE KEY uniq_store_discount_code (store_id, code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Theme marketplace catalog. One row per theme (e.g. the built-in 'default'
+-- theme, seeded below by migrateStoreThemes). author_id is nullable because
+-- phase 1 only has PageZaper-authored themes — it's here so third-party
+-- theme authorship can be added later without another migration.
+CREATE TABLE IF NOT EXISTS ${TABLES.themes} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  version VARCHAR(20) NOT NULL DEFAULT '1.0.0',
+  price_cents INT NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'published',
+  description TEXT NULL,
+  preview_image VARCHAR(500) NULL,
+  author_id INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Which theme(s) a store has installed and which one is active. A store can
+-- install more than one (a theme library, like Shopify's) but only one row
+-- per store should have is_active=1 — enforced in application code
+-- (lib/themes.js), same as this file's other single-active-row patterns.
+CREATE TABLE IF NOT EXISTS ${TABLES.storeThemes} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  theme_id INT NOT NULL,
+  token_overrides JSON NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 0,
+  installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (theme_id) REFERENCES ${TABLES.themes}(id) ON DELETE RESTRICT,
+  UNIQUE KEY uniq_store_theme (store_id, theme_id),
+  INDEX idx_store_active (store_id, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -632,6 +674,42 @@ async function migrateAdminsToUsers(conn) {
   console.log(`Migrated ${oldAdmins.length} pz_admins row(s) into pz_users/pz_user_roles and dropped pz_admins.`);
 }
 
+// Seeds the built-in 'default' theme (the design every store already has —
+// now addressable as a theme in its own right, see
+// views/storefront/themes/default/) and backfills an active pz_store_themes
+// row for any store that doesn't have one yet, so routes/storefront.js's
+// theme-resolution lookup always finds something. Safe to run on every boot.
+async function migrateStoreThemes(conn) {
+  const [[existingDefault]] = await conn.query(`SELECT id FROM ${TABLES.themes} WHERE slug = ?`, ['default']);
+  let defaultThemeId;
+  if (existingDefault) {
+    defaultThemeId = existingDefault.id;
+  } else {
+    const [result] = await conn.query(
+      `INSERT INTO ${TABLES.themes} (slug, name, version, price_cents, status, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      ['default', 'Default', '1.0.0', 0, 'published', "PageZaper's built-in storefront theme."]
+    );
+    defaultThemeId = result.insertId;
+    console.log('Default theme seeded into pz_themes.');
+  }
+
+  const [storesWithoutActiveTheme] = await conn.query(
+    `SELECT s.id FROM ${TABLES.stores} s
+     LEFT JOIN ${TABLES.storeThemes} st ON st.store_id = s.id AND st.is_active = 1
+     WHERE st.id IS NULL`
+  );
+  for (const s of storesWithoutActiveTheme) {
+    await conn.query(
+      `INSERT INTO ${TABLES.storeThemes} (store_id, theme_id, is_active) VALUES (?, ?, 1)
+       ON DUPLICATE KEY UPDATE is_active = 1`,
+      [s.id, defaultThemeId]
+    );
+  }
+  if (storesWithoutActiveTheme.length) {
+    console.log(`Activated the default theme for ${storesWithoutActiveTheme.length} store(s) with no active theme.`);
+  }
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
@@ -648,6 +726,7 @@ async function init() {
     await migrateOrderDiscountColumns(conn);
     await migrateOrderCustomerColumn(conn);
     await migrateAdminsToUsers(conn);
+    await migrateStoreThemes(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 
