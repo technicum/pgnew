@@ -15,7 +15,7 @@ const {
   sanitizeElementStyle,
   sanitizeAllElementStyles,
 } = require('../lib/sections');
-const { resolveTokens, sanitizeTokenPatch, RADIUS_PX } = require('../lib/themeTokens');
+const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
 
 function slugify(str) {
   return str
@@ -665,7 +665,7 @@ router.post('/pages/:id/sections/:sectionId/delete', async (req, res, next) => {
 router.get('/store/themes', async (req, res, next) => {
   try {
     const [installed] = await pool.query(
-      `SELECT st.id AS store_theme_id, st.is_active, t.name, t.description, t.price_cents
+      `SELECT st.id AS store_theme_id, st.is_active, t.slug, t.name, t.description, t.price_cents
        FROM ${TABLES.storeThemes} st
        JOIN ${TABLES.themes} t ON t.id = st.theme_id
        WHERE st.store_id = ?
@@ -673,7 +673,7 @@ router.get('/store/themes', async (req, res, next) => {
       [req.store.id]
     );
     const [available] = await pool.query(
-      `SELECT t.id AS theme_id, t.name, t.description, t.price_cents
+      `SELECT t.id AS theme_id, t.slug, t.name, t.description, t.price_cents
        FROM ${TABLES.themes} t
        WHERE t.status = 'published'
          AND t.id NOT IN (
@@ -682,7 +682,20 @@ router.get('/store/themes', async (req, res, next) => {
        ORDER BY t.name ASC`,
       [req.store.id]
     );
-    res.render('admin/store-themes', { title: 'Themes', themes: installed, available });
+    // Each card's thumbnail is colored from that theme's OWN manifest tokens
+    // (not the store's customized overrides — this is a catalog-level
+    // preview, same swatch regardless of what this particular store has
+    // saved) so Default and PZ Starter read as visually distinct at a
+    // glance without opening either one.
+    const withSwatch = (t) => {
+      const tokens = themeDefaultTokens(t.slug);
+      return { ...t, swatchFrom: tokens.color_primary, swatchTo: tokens.color_primary_dark };
+    };
+    res.render('admin/store-themes', {
+      title: 'Themes',
+      themes: installed.map(withSwatch),
+      available: available.map(withSwatch),
+    });
   } catch (err) {
     next(err);
   }

@@ -10,18 +10,17 @@
 <div class="theme-cards">
   <% themes.forEach(function(t) { %>
     <div class="theme-card<%= t.is_active ? ' is-active' : '' %>">
-      <div class="theme-card-thumb" aria-hidden="true"></div>
+      <div class="theme-card-thumb" style="--thumb-from: <%= t.swatchFrom %>; --thumb-to: <%= t.swatchTo %>;" aria-hidden="true">
+        <% if (t.is_active) { %><span class="theme-card-badge active">Active</span><% } %>
+      </div>
       <div class="theme-card-body">
-        <div class="theme-card-name">
-          <%= t.name %>
-          <% if (t.is_active) { %><span class="status-pill status-delivered">Active</span><% } %>
-        </div>
+        <div class="theme-card-name"><%= t.name %></div>
         <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
         <div class="theme-card-actions">
-          <a href="/admin/store/themes/<%= t.store_theme_id %>/customize" class="link-btn">Customize</a>
+          <a href="/admin/store/themes/<%= t.store_theme_id %>/customize" class="theme-card-btn">Customize</a>
           <% if (!t.is_active) { %>
             <form action="/admin/store/themes/<%= t.store_theme_id %>/activate" method="POST" onsubmit="return confirm(<%- JSON.stringify('Activate ' + t.name + '? Your live storefront will switch immediately.') %>);">
-              <button type="submit" class="link-btn">Activate</button>
+              <button type="submit" class="theme-card-btn primary">Activate</button>
             </form>
           <% } %>
         </div>
@@ -34,22 +33,21 @@
 </div>
 
 <% if (available.length) { %>
-  <h2 style="margin: 32px 0 4px; font-size: 1.1rem;">Available to install</h2>
-  <p style="margin: 0 0 16px; color: #6b7280; font-size: 0.9rem;">Registered on this server but not yet added to your store.</p>
+  <h2 class="theme-section-heading">Available to install</h2>
+  <p class="theme-section-sub">Registered on this server but not yet added to your store.</p>
   <div class="theme-cards">
     <% available.forEach(function(t) { %>
-      <div class="theme-card">
-        <div class="theme-card-thumb" aria-hidden="true"></div>
+      <div class="theme-card is-preview">
+        <div class="theme-card-thumb" style="--thumb-from: <%= t.swatchFrom %>; --thumb-to: <%= t.swatchTo %>;" aria-hidden="true">
+          <span class="theme-card-badge price"><%= t.price_cents > 0 ? '₹' + (t.price_cents / 100).toFixed(2) : 'Free' %></span>
+        </div>
         <div class="theme-card-body">
-          <div class="theme-card-name">
-            <%= t.name %>
-            <% if (t.price_cents > 0) { %><span class="status-pill">₹<%= (t.price_cents / 100).toFixed(2) %></span><% } else { %><span class="status-pill">Free</span><% } %>
-          </div>
+          <div class="theme-card-name"><%= t.name %></div>
           <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
           <div class="theme-card-actions">
             <form action="/admin/store/themes/install" method="POST">
               <input type="hidden" name="themeId" value="<%= t.theme_id %>" />
-              <button type="submit" class="link-btn">Install</button>
+              <button type="submit" class="theme-card-btn primary">Install</button>
             </form>
           </div>
         </div>

@@ -385,26 +385,68 @@
 }
 
 /* ---------- Edit Store: Themes ("My themes" listing) ---------- */
+.theme-section-heading { margin: 36px 0 4px; font-size: 1.05rem; font-weight: 700; color: #111827; }
+.theme-section-sub { margin: 0 0 16px; color: #6b7280; font-size: 0.85rem; }
+
 .theme-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
 }
 .theme-card {
   background: #fff;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 .theme-card.is-active { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+.theme-card:not(.is-preview):hover { box-shadow: 0 6px 18px rgba(17, 24, 39, 0.08); transform: translateY(-2px); }
+
+/* "Available to install" cards get a dashed border and a slightly muted
+   thumbnail instead of a hover lift — a visual cue that these aren't live
+   for this store yet, distinct from what's actually installed. */
+.theme-card.is-preview { border-style: dashed; }
+.theme-card.is-preview .theme-card-thumb { filter: saturate(0.75) brightness(1.03); }
+
 .theme-card-thumb {
+  position: relative;
   height: 120px;
-  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  background: linear-gradient(135deg, var(--thumb-from, #f3f4f6), var(--thumb-to, #e5e7eb));
 }
-.theme-card-body { padding: 14px 16px; }
-.theme-card-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.theme-card-desc { color: #6b7280; font-size: 0.85rem; margin: 6px 0 0; }
-.theme-card-actions { display: flex; gap: 14px; margin-top: 12px; }
+.theme-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.theme-card-badge.active { background: #16a34a; color: #fff; }
+.theme-card-badge.price { background: rgba(17, 24, 39, 0.72); color: #fff; }
+
+.theme-card-body { padding: 16px; }
+.theme-card-name { font-weight: 700; font-size: 1rem; color: #111827; }
+.theme-card-desc { color: #6b7280; font-size: 0.85rem; line-height: 1.45; margin: 6px 0 0; }
+.theme-card-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+.theme-card-btn {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.theme-card-btn:hover { background: #f9fafb; border-color: #d1d5db; }
+.theme-card-btn.primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.theme-card-btn.primary:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
 
 @media (max-width: 900px) {
   .dashboard-grid, .order-detail-layout { grid-template-columns: 1fr; }
