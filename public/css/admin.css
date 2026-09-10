@@ -45,32 +45,6 @@
   color: #6b7280;
 }
 
-/* Collapsible nav sections ("Edit Store", "Apps") — <details>/<summary> so
-   the sub-links only show once the group label is clicked, no JS needed.
-   display:contents keeps the summary/links laid out as direct children of
-   .admin-nav's flex column, same spacing as every other nav item. */
-.admin-nav-collapsible { display: contents; }
-.admin-nav-collapsible summary {
-  cursor: pointer;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.admin-nav-collapsible summary::-webkit-details-marker { display: none; }
-.admin-nav-collapsible summary:hover { color: #fff; }
-.admin-nav-collapsible summary::after {
-  content: '';
-  width: 6px;
-  height: 6px;
-  margin-right: 6px;
-  border-right: 1.5px solid #6b7280;
-  border-bottom: 1.5px solid #6b7280;
-  transform: rotate(-45deg);
-  transition: transform 0.15s ease;
-}
-.admin-nav-collapsible[open] summary::after { transform: rotate(45deg); }
-
 .admin-logout-form { margin-top: auto; }
 .admin-logout-form .link-btn { color: #9ca3af; }
 .admin-logout-form .link-btn:hover { color: #fff; }

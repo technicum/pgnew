@@ -19,23 +19,23 @@
         <a href="/admin/discounts" class="<%= title && (title === 'Discounts' || title === 'New Discount') ? 'active' : '' %>">Discounts</a>
 
         <% var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Pages' || title === 'New Page' || title.startsWith('Edit ')); %>
-        <details class="admin-nav-collapsible" <%= editStoreOpen ? 'open' : '' %>>
-          <summary class="admin-nav-group-label">Edit Store</summary>
+        <a href="/admin/store/themes" class="<%= editStoreOpen ? 'active' : '' %>">Edit Store</a>
+        <% if (editStoreOpen) { %>
           <a href="/admin/store/themes" class="admin-nav-sub <%= title && (title === 'Themes' || title.startsWith('Customize ')) ? 'active' : '' %>">Themes</a>
           <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || title.startsWith('Edit ')) ? 'active' : '' %>">Pages</a>
           <a href="/" target="_blank" class="admin-nav-sub">View store ↗</a>
-        </details>
+        <% } %>
 
         <div class="admin-nav-divider"></div>
         <a href="/admin/markets" class="<%= title === 'Markets' ? 'active' : '' %>">Markets</a>
         <a href="/admin/finance" class="<%= title === 'Finance' ? 'active' : '' %>">Finance</a>
         <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
 
-        <details class="admin-nav-collapsible" <%= title === 'Apps' ? 'open' : '' %>>
-          <summary class="admin-nav-group-label">Apps</summary>
-          <a href="/admin/apps" class="admin-nav-sub <%= title === 'Apps' ? 'active' : '' %>">Manage apps</a>
+        <a href="/admin/apps" class="<%= title === 'Apps' ? 'active' : '' %>">Apps</a>
+        <% if (title === 'Apps') { %>
+          <a href="/admin/apps" class="admin-nav-sub active">Manage apps</a>
           <a href="https://apps.pagezaper.com" target="_blank" rel="noopener" class="admin-nav-sub">Add new app ↗</a>
-        </details>
+        <% } %>
 
         <div class="admin-nav-divider"></div>
         <a href="/admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
