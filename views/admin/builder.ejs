@@ -44,6 +44,14 @@
             Exit editor
           </a>
           <div class="b-crumb"><span class="b-crumb-store"><%= store.name %></span><span class="b-crumb-sep">/</span><span class="b-crumb-page"><%= page.name %></span></div>
+          <div class="b-history-toggle">
+            <button id="bUndoBtn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8H12.5a4 4 0 0 1 0 8H8"/><path d="M8 4.5 4.5 8 8 11.5"/></svg>
+            </button>
+            <button id="bRedoBtn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8H7.5a4 4 0 0 0 0 8H12"/><path d="M12 4.5 15.5 8 12 11.5"/></svg>
+            </button>
+          </div>
         </div>
         <div class="b-topbar-center">
           <div class="b-viewport-toggle" id="bViewportToggle">
@@ -100,7 +108,15 @@
       page: <%- JSON.stringify({ id: page.id, name: page.name, path: page.path, is_home: !!page.is_home, status: page.status }).split('/').join(String.fromCharCode(92) + '/') %>,
       store: <%- JSON.stringify({ name: store.name }).split('/').join(String.fromCharCode(92) + '/') %>,
       sectionTypes: <%- JSON.stringify(sectionTypes).split('/').join(String.fromCharCode(92) + '/') %>,
-      sections: <%- JSON.stringify(sections.map(function (s) { return { id: s.id, type: s.type, fields: s.fields, hidden: !!s.hidden, custom_class: s.custom_class || '', custom_css: s.custom_css || '', min_height: s.min_height || 0 }; })).split('/').join(String.fromCharCode(92) + '/') %>,
+      sections: <%- JSON.stringify(sections.map(function (s) {
+        return {
+          id: s.id, type: s.type, fields: s.fields, hidden: !!s.hidden,
+          custom_class: s.custom_class || '', custom_css: s.custom_css || '', min_height: s.min_height || 0,
+          hide_desktop: !!s.hide_desktop, hide_tablet: !!s.hide_tablet, hide_mobile: !!s.hide_mobile,
+          margin_top: s.margin_top || 0, margin_bottom: s.margin_bottom || 0,
+          padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
+        };
+      })).split('/').join(String.fromCharCode(92) + '/') %>,
       products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>,
       categories: <%- JSON.stringify(categories).split('/').join(String.fromCharCode(92) + '/') %>
     };

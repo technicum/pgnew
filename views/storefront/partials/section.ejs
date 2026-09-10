@@ -1,6 +1,23 @@
 <% var pzId = 'pz-section-' + section.id; %>
-<% var pzExtra = section.custom_class ? ' ' + section.custom_class : ''; %>
-<% var pzHeightStyle = section.min_height && section.min_height > 0 ? ('min-height:' + section.min_height + 'px;display:flex;flex-direction:column;justify-content:center;') : ''; %>
+<%
+  var pzHideClasses = '';
+  if (section.hide_desktop) pzHideClasses += ' pz-hide-desktop';
+  if (section.hide_tablet) pzHideClasses += ' pz-hide-tablet';
+  if (section.hide_mobile) pzHideClasses += ' pz-hide-mobile';
+%>
+<% var pzExtra = (section.custom_class ? ' ' + section.custom_class : '') + pzHideClasses; %>
+<%
+  var pzHeightStyle = section.min_height && section.min_height > 0
+    ? ('min-height:' + section.min_height + 'px;display:flex;flex-direction:column;justify-content:center;')
+    : '';
+  // Vertical spacing set from the builder's Section settings: margin (the
+  // gap before/after this section, dragged from the gutter handles on the
+  // canvas) and padding (inset from its own top/bottom edge, numeric-only).
+  if (section.margin_top) pzHeightStyle += 'margin-top:' + section.margin_top + 'px;';
+  if (section.margin_bottom) pzHeightStyle += 'margin-bottom:' + section.margin_bottom + 'px;';
+  if (section.padding_top) pzHeightStyle += 'padding-top:' + section.padding_top + 'px;';
+  if (section.padding_bottom) pzHeightStyle += 'padding-bottom:' + section.padding_bottom + 'px;';
+%>
 <% if (section.type === 'hero') { %>
   <section id="<%= pzId %>" class="hero<%= pzExtra %>" style="<%= pzHeightStyle %>">
     <h1><%= section.fields.heading %></h1>

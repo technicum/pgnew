@@ -201,6 +201,13 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   custom_class VARCHAR(100) NULL,
   custom_css TEXT NULL,
   min_height INT NOT NULL DEFAULT 0,
+  hide_desktop TINYINT(1) NOT NULL DEFAULT 0,
+  hide_tablet TINYINT(1) NOT NULL DEFAULT 0,
+  hide_mobile TINYINT(1) NOT NULL DEFAULT 0,
+  margin_top INT NOT NULL DEFAULT 0,
+  margin_bottom INT NOT NULL DEFAULT 0,
+  padding_top INT NOT NULL DEFAULT 0,
+  padding_bottom INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
   INDEX idx_page_position (page_id, position)
@@ -504,6 +511,36 @@ async function migratePageSectionSettings(conn) {
   // height exactly as before.
   if (!(await columnExists(conn, TABLES.pageSections, 'min_height'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN min_height INT NOT NULL DEFAULT 0`);
+  }
+  // Per-section responsive visibility — independent of `hidden` above
+  // (which hides a section everywhere): each of these hides it only on
+  // that one device class, both in the builder's canvas preview and via a
+  // real CSS media query on the live storefront.
+  if (!(await columnExists(conn, TABLES.pageSections, 'hide_desktop'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN hide_desktop TINYINT(1) NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'hide_tablet'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN hide_tablet TINYINT(1) NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'hide_mobile'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN hide_mobile TINYINT(1) NOT NULL DEFAULT 0`);
+  }
+  // Vertical spacing around/inside a section — margin (the gap before/after
+  // it, adjustable via the gutter drag handles on the canvas) and padding
+  // (inset from its own top/bottom edge, numeric-only in the inspector).
+  // Left/right aren't offered: sections are full-width blocks here, so
+  // horizontal margin/padding on the section itself has no visual meaning.
+  if (!(await columnExists(conn, TABLES.pageSections, 'margin_top'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN margin_top INT NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'margin_bottom'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN margin_bottom INT NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'padding_top'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN padding_top INT NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'padding_bottom'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN padding_bottom INT NOT NULL DEFAULT 0`);
   }
 }
 

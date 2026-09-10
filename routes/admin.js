@@ -405,6 +405,98 @@ router.post('/pages/:id/sections/reorder', async (req, res, next) => {
   }
 });
 
+// Undo/redo, from the builder's own history stack (public/js/admin-builder.js)
+// rather than the browser's — every edit here is an immediate real save
+// (see the file-top comment there), so "undo" means replaying an earlier
+// full snapshot of this page's sections against the database, not reverting
+// some in-memory draft. The client keeps an array of past section-list
+// snapshots and posts whichever one it's moving to; this endpoint reconciles
+// the database to match it exactly:
+//   - a snapshot row with an id that still exists on this page -> updated
+//     in place (content + position)
+//   - a snapshot row with no id, or an id that's gone (e.g. undoing back
+//     past a delete) -> re-inserted as a new row
+//   - any current row not present in the snapshot (e.g. undoing an add,
+//     or redoing past a delete) -> removed
+// It always returns the resulting section list fresh from the database, so
+// the client can just replace its local state wholesale rather than trying
+// to reconcile ids itself.
+// NOTE: this route must stay ABOVE /pages/:id/sections/:sectionId below —
+// otherwise "restore" gets swallowed as a :sectionId value by that route
+// instead, since Express matches routes in registration order.
+router.post('/pages/:id/sections/restore', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+
+    const incoming = Array.isArray(req.body.sections) ? req.body.sections.slice(0, 200) : [];
+
+    const [existingRows] = await pool.query(`SELECT id FROM ${TABLES.pageSections} WHERE page_id = ?`, [page.id]);
+    const existingIds = new Set(existingRows.map((r) => r.id));
+    const keepIds = new Set();
+
+    for (let i = 0; i < incoming.length; i++) {
+      const item = incoming[i] || {};
+      if (!SECTION_TYPE_KEYS.includes(item.type)) continue;
+
+      const fields = sanitizeFields(item.type, {}, item.fields);
+      const settings = sanitizeSectionSettings(item);
+      const hidden = item.hidden ? 1 : 0;
+      const customClass = settings.custom_class || null;
+      const customCss = settings.custom_css || null;
+      const minHeight = settings.min_height || 0;
+      const hideDesktop = settings.hide_desktop || 0;
+      const hideTablet = settings.hide_tablet || 0;
+      const hideMobile = settings.hide_mobile || 0;
+      const marginTop = settings.margin_top || 0;
+      const marginBottom = settings.margin_bottom || 0;
+      const paddingTop = settings.padding_top || 0;
+      const paddingBottom = settings.padding_bottom || 0;
+
+      const incomingId = Number.isInteger(item.id) ? item.id : parseInt(item.id, 10);
+      if (incomingId && existingIds.has(incomingId)) {
+        keepIds.add(incomingId);
+        await pool.query(
+          `UPDATE ${TABLES.pageSections}
+             SET position = ?, fields = ?, hidden = ?, custom_class = ?, custom_css = ?, min_height = ?,
+                 hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
+                 margin_top = ?, margin_bottom = ?, padding_top = ?, padding_bottom = ?
+           WHERE id = ?`,
+          [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
+            marginTop, marginBottom, paddingTop, paddingBottom, incomingId]
+        );
+      } else {
+        const [result] = await pool.query(
+          `INSERT INTO ${TABLES.pageSections}
+             (page_id, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
+              margin_top, margin_bottom, padding_top, padding_bottom)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [page.id, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
+            marginTop, marginBottom, paddingTop, paddingBottom]
+        );
+        keepIds.add(result.insertId);
+      }
+    }
+
+    const toDelete = [...existingIds].filter((id) => !keepIds.has(id));
+    if (toDelete.length) {
+      await pool.query(
+        `DELETE FROM ${TABLES.pageSections} WHERE id IN (${toDelete.map(() => '?').join(',')})`,
+        toDelete
+      );
+    }
+
+    const [rawSections] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE page_id = ? ORDER BY position ASC`, [page.id]);
+    const sections = rawSections.map((s) => ({
+      ...s,
+      fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
+    }));
+    res.json({ ok: true, sections });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/pages/:id/sections/:sectionId', async (req, res, next) => {
   try {
     const page = await loadOwnedPage(req.store.id, req.params.id);
@@ -440,13 +532,37 @@ router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) =>
     if (patch.custom_class !== undefined) { sets.push('custom_class = ?'); values.push(patch.custom_class || null); }
     if (patch.custom_css !== undefined) { sets.push('custom_css = ?'); values.push(patch.custom_css || null); }
     if (patch.min_height !== undefined) { sets.push('min_height = ?'); values.push(patch.min_height); }
+    if (patch.hide_desktop !== undefined) { sets.push('hide_desktop = ?'); values.push(patch.hide_desktop); }
+    if (patch.hide_tablet !== undefined) { sets.push('hide_tablet = ?'); values.push(patch.hide_tablet); }
+    if (patch.hide_mobile !== undefined) { sets.push('hide_mobile = ?'); values.push(patch.hide_mobile); }
+    if (patch.margin_top !== undefined) { sets.push('margin_top = ?'); values.push(patch.margin_top); }
+    if (patch.margin_bottom !== undefined) { sets.push('margin_bottom = ?'); values.push(patch.margin_bottom); }
+    if (patch.padding_top !== undefined) { sets.push('padding_top = ?'); values.push(patch.padding_top); }
+    if (patch.padding_bottom !== undefined) { sets.push('padding_bottom = ?'); values.push(patch.padding_bottom); }
     if (sets.length) {
       values.push(section.id);
       await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
     }
 
-    const [[updated]] = await pool.query(`SELECT custom_class, custom_css, min_height FROM ${TABLES.pageSections} WHERE id = ?`, [section.id]);
-    res.json({ ok: true, custom_class: updated.custom_class || '', custom_css: updated.custom_css || '', min_height: updated.min_height || 0 });
+    const [[updated]] = await pool.query(
+      `SELECT custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
+              margin_top, margin_bottom, padding_top, padding_bottom
+       FROM ${TABLES.pageSections} WHERE id = ?`,
+      [section.id]
+    );
+    res.json({
+      ok: true,
+      custom_class: updated.custom_class || '',
+      custom_css: updated.custom_css || '',
+      min_height: updated.min_height || 0,
+      hide_desktop: !!updated.hide_desktop,
+      hide_tablet: !!updated.hide_tablet,
+      hide_mobile: !!updated.hide_mobile,
+      margin_top: updated.margin_top || 0,
+      margin_bottom: updated.margin_bottom || 0,
+      padding_top: updated.padding_top || 0,
+      padding_bottom: updated.padding_bottom || 0,
+    });
   } catch (err) {
     next(err);
   }

@@ -105,7 +105,13 @@ async function renderStorePage(req, res, next, page) {
 
     const sections = rawSections.map((s) => {
       const fields = typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields;
-      const section = { id: s.id, type: s.type, fields, custom_class: s.custom_class || '', custom_css: s.custom_css || '', min_height: s.min_height || 0 };
+      const section = {
+        id: s.id, type: s.type, fields,
+        custom_class: s.custom_class || '', custom_css: s.custom_css || '', min_height: s.min_height || 0,
+        hide_desktop: !!s.hide_desktop, hide_tablet: !!s.hide_tablet, hide_mobile: !!s.hide_mobile,
+        margin_top: s.margin_top || 0, margin_bottom: s.margin_bottom || 0,
+        padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
+      };
       if (s.type === 'products') {
         section.products = allProducts.slice(0, fields.limit || 12);
       }

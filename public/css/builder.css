@@ -85,6 +85,12 @@ body.builder-body button { font-family: inherit; }
 .b-viewport-toggle button svg { width: 15px; height: 15px; }
 .b-viewport-toggle button.active { background: var(--b-surface); color: var(--b-ink); box-shadow: var(--b-shadow-sm); }
 
+.b-history-toggle { display: flex; align-items: center; gap: 2px; margin-left: 6px; padding-left: 12px; border-left: 1px solid var(--b-line); }
+.b-history-toggle button { width: 28px; height: 28px; border: none; background: transparent; border-radius: 6px; color: var(--b-ink); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.b-history-toggle button svg { width: 15px; height: 15px; }
+.b-history-toggle button:hover:not(:disabled) { background: var(--b-surface-3); }
+.b-history-toggle button:disabled { color: var(--b-line); cursor: default; }
+
 .b-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .b-save-indicator { font-size: 11.5px; color: var(--b-muted); font-family: var(--b-font-mono); margin: 0 4px; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
 .b-save-dot { width: 6px; height: 6px; border-radius: 50%; background: #2F9E58; flex-shrink: 0; }
@@ -117,6 +123,27 @@ body.builder-body button { font-family: inherit; }
 .b-csec { position: relative; border-top: 1px solid transparent; }
 .b-csec.is-selected { outline: 2px solid var(--b-accent); outline-offset: -2px; z-index: 1; }
 .b-csec.is-hidden-sec { opacity: .45; }
+
+/* Dims a section on the canvas when it's hidden on whichever device the
+   desktop/tablet/mobile viewport switcher is currently previewing — a
+   different, per-device flag from is-hidden-sec above (hidden everywhere). */
+.b-canvas-frame[data-vp="desktop"] .b-csec[data-hide-desktop="1"],
+.b-canvas-frame[data-vp="tablet"] .b-csec[data-hide-tablet="1"],
+.b-canvas-frame[data-vp="mobile"] .b-csec[data-hide-mobile="1"] { opacity: .35; }
+.b-canvas-frame[data-vp="desktop"] .b-csec[data-hide-desktop="1"]::after,
+.b-canvas-frame[data-vp="tablet"] .b-csec[data-hide-tablet="1"]::after,
+.b-canvas-frame[data-vp="mobile"] .b-csec[data-hide-mobile="1"]::after {
+  content: "Hidden on this device";
+  position: absolute; top: 8px; left: 8px; z-index: 6;
+  background: var(--b-ink); color: var(--b-paper); font-size: 10px; font-weight: 700;
+  letter-spacing: .03em; text-transform: uppercase; padding: 4px 8px; border-radius: 6px;
+}
+
+.b-check-row { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.b-spacing-pair { display: flex; gap: 10px; }
+.b-spacing-pair label { flex: 1; font-size: 11px; color: var(--b-muted); display: flex; flex-direction: column; gap: 4px; }
+.b-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--b-ink); cursor: pointer; }
+.b-check input { margin: 0; cursor: pointer; }
 .b-csec.is-drop-target-before::before, .b-csec.is-drop-target-after::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; background: var(--b-accent); border-radius: 2px; z-index: 5; }
 .b-csec.is-drop-target-before::before { top: -2px; }
 .b-csec.is-drop-target-after::after { bottom: -2px; }
@@ -133,6 +160,20 @@ body.builder-body button { font-family: inherit; }
 .b-csec.is-selected .b-csec-resize, .b-csec:hover .b-csec-resize { opacity: 1; }
 .b-csec-resize span { width: 44px; height: 5px; border-radius: 3px; background: var(--b-accent); box-shadow: 0 1px 4px rgba(33,30,27,.35); }
 .b-csec-resize:hover span, .b-csec-resize:active span { background: var(--b-accent-ink); }
+
+/* Margin gutter handles — a second, outer pair of drag zones distinct from
+   the height handle above (which sits right on the border): these sit
+   further out, in the gap before/after the section, and stretch
+   margin-top/margin-bottom instead of min-height. Same hover/selected
+   reveal pattern, so only the hovered section's own pair ever shows even
+   though a neighboring section's handle occupies the same shared pixel
+   band when both sit at zero margin. */
+.b-csec-margin { position: absolute; left: 8px; right: 8px; height: 10px; cursor: row-resize; touch-action: none; z-index: 6; opacity: 0; transition: opacity .12s; }
+.b-csec-margin::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
+.b-csec.is-selected .b-csec-margin, .b-csec:hover .b-csec-margin { opacity: .85; }
+.b-csec-margin:hover, .b-csec-margin:active { opacity: 1 !important; }
+.b-csec-margin-top { top: -17px; }
+.b-csec-margin-bottom { bottom: -17px; }
 
 [contenteditable="true"] { outline: none; border-radius: 3px; }
 [contenteditable="true"]:hover { box-shadow: 0 0 0 1px var(--b-line); }

@@ -48,8 +48,9 @@
 
   /* ---------------------------------------------------------------
      State — server data is the source of truth; every mutation below
-     also fires the matching API call. No localStorage, no undo stack:
-     there is nothing "unsaved" to lose.
+     also fires the matching API call, so "undo" (below) isn't a normal
+     in-memory undo either: it replays an earlier snapshot of the section
+     list against the database through POST .../sections/restore.
   --------------------------------------------------------------- */
   var state = { sections: DATA.sections.slice(), selectedId: null };
 
@@ -66,7 +67,73 @@
 
   function persistOrder() {
     setSaving(true);
-    return api(BASE + "/reorder", { order: state.sections.map(function (s) { return s.id; }) }).finally(function () { setSaving(false); });
+    return api(BASE + "/reorder", { order: state.sections.map(function (s) { return s.id; }) })
+      .then(function (res) { commitHistory(); return res; })
+      .finally(function () { setSaving(false); });
+  }
+
+  /* ---------------------------------------------------------------
+     Undo / redo — a stack of full section-list snapshots. Every
+     mutating action (add/duplicate/delete/reorder/field edit/settings
+     edit) calls commitHistory() once it has settled locally, which
+     snapshots state.sections and pushes it on (truncating any redo
+     branch first). Undo/redo just walk the stack and replay the target
+     snapshot through /sections/restore, then adopt whatever section
+     list the server hands back — no client-side id bookkeeping needed.
+  --------------------------------------------------------------- */
+  var history = { stack: [cloneSections(state.sections)], index: 0, restoring: false };
+  var MAX_HISTORY = 60;
+
+  function cloneSections(arr) {
+    return JSON.parse(JSON.stringify(arr));
+  }
+
+  function commitHistory() {
+    if (history.restoring) return;
+    var snap = cloneSections(state.sections);
+    // Skip a no-op push (e.g. a reorder drag that ends back where it started).
+    if (JSON.stringify(snap) === JSON.stringify(history.stack[history.index])) return;
+    history.stack = history.stack.slice(0, history.index + 1);
+    history.stack.push(snap);
+    if (history.stack.length > MAX_HISTORY) history.stack.shift();
+    history.index = history.stack.length - 1;
+    updateHistoryButtons();
+  }
+
+  function restoreSnapshot(snapshot, successMsg) {
+    history.restoring = true;
+    setSaving(true);
+    return api(BASE + "/restore", { sections: snapshot }).then(function (res) {
+      setSaving(false);
+      history.restoring = false;
+      if (!res || !res.ok) { toast("Could not undo/redo that change.", true); return; }
+      state.sections = res.sections.map(function (s) {
+        return Object.assign({}, s, { fields: typeof s.fields === "string" ? JSON.parse(s.fields) : s.fields });
+      });
+      if (state.selectedId && !findSection(state.selectedId)) state.selectedId = null;
+      renderAll();
+      updateHistoryButtons();
+      if (successMsg) toast(successMsg);
+    });
+  }
+
+  function undo() {
+    if (history.index <= 0) return;
+    history.index--;
+    restoreSnapshot(history.stack[history.index], "Undid last change");
+  }
+
+  function redo() {
+    if (history.index >= history.stack.length - 1) return;
+    history.index++;
+    restoreSnapshot(history.stack[history.index], "Redid change");
+  }
+
+  function updateHistoryButtons() {
+    var undoBtn = document.getElementById("bUndoBtn");
+    var redoBtn = document.getElementById("bRedoBtn");
+    if (undoBtn) undoBtn.disabled = history.index <= 0;
+    if (redoBtn) redoBtn.disabled = history.index >= history.stack.length - 1;
   }
 
   function setSaving(on) {
@@ -254,6 +321,21 @@
     return wrap ? wrap.firstElementChild : null;
   }
 
+  // Same root element as heightRootEl (the section's own top-level tag) --
+  // named separately since margin/padding are a distinct concern from
+  // min-height, wired up through their own gutter drag handles below.
+  function spacingRootEl(id) {
+    return heightRootEl(id);
+  }
+
+  function applySpacingStyle(rootEl, sec) {
+    if (!rootEl) return;
+    rootEl.style.marginTop = sec.margin_top ? sec.margin_top + "px" : "";
+    rootEl.style.marginBottom = sec.margin_bottom ? sec.margin_bottom + "px" : "";
+    rootEl.style.paddingTop = sec.padding_top ? sec.padding_top + "px" : "";
+    rootEl.style.paddingBottom = sec.padding_bottom ? sec.padding_bottom + "px" : "";
+  }
+
   function renderCanvas() {
     var sortable = document.getElementById("bSortable");
     sortable.innerHTML = "";
@@ -265,11 +347,19 @@
       var wrap = el('<div class="b-csec" data-id="' + sec.id + '"></div>');
       wrap.innerHTML = renderSectionInner(sec);
       var resizable = !NO_RESIZE_TYPES[sec.type];
-      if (resizable) applyHeightStyle(wrap.firstElementChild, sec.min_height);
+      if (resizable) {
+        applyHeightStyle(wrap.firstElementChild, sec.min_height);
+        applySpacingStyle(wrap.firstElementChild, sec);
+      }
       var label = (SECTION_TYPES[sec.type] && SECTION_TYPES[sec.type].name) || sec.type;
+      var hiddenDevices = [];
+      if (sec.hide_desktop) hiddenDevices.push("desktop");
+      if (sec.hide_tablet) hiddenDevices.push("tablet");
+      if (sec.hide_mobile) hiddenDevices.push("mobile");
+      var visibilityTag = hiddenDevices.length ? " · hidden on " + hiddenDevices.join(", ") : "";
       var toolbar = el(
         '<div class="b-csec-toolbar">' +
-          '<span class="b-csec-tag">' + esc(label) + (sec.hidden ? " · hidden" : "") + '</span>' +
+          '<span class="b-csec-tag">' + esc(label) + (sec.hidden ? " · hidden" : "") + esc(visibilityTag) + '</span>' +
           '<button class="b-drag-handle" data-action="drag" title="Drag to reorder">' + icon("drag") + '</button>' +
           '<button data-action="dup" title="Duplicate">' + icon("dup") + '</button>' +
           '<button data-action="toggle" title="' + (sec.hidden ? "Show on storefront" : "Hide from storefront") + '">' + icon(sec.hidden ? "eyeOff" : "eye") + '</button>' +
@@ -279,9 +369,14 @@
       wrap.appendChild(toolbar);
       if (resizable) {
         wrap.appendChild(el('<div class="b-csec-resize" data-action="resize" title="Drag to resize this section’s height"><span></span></div>'));
+        wrap.appendChild(el('<div class="b-csec-margin b-csec-margin-top" data-action="margin-top" title="Drag to add space above this section"></div>'));
+        wrap.appendChild(el('<div class="b-csec-margin b-csec-margin-bottom" data-action="margin-bottom" title="Drag to add space below this section"></div>'));
       }
       if (sec.id === state.selectedId) wrap.classList.add("is-selected");
       if (sec.hidden) wrap.classList.add("is-hidden-sec");
+      if (sec.hide_desktop) wrap.dataset.hideDesktop = "1";
+      if (sec.hide_tablet) wrap.dataset.hideTablet = "1";
+      if (sec.hide_mobile) wrap.dataset.hideMobile = "1";
       sortable.appendChild(wrap);
     });
   }
@@ -319,6 +414,44 @@
       var input = liveInput();
       if (input) input.value = finalHeight;
       saveSettings(sec.id, { min_height: finalHeight });
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  // Drag-to-stretch for the gutter margin handles above/below a section --
+  // its own small pointer session, parallel to startResize above but for a
+  // different property (margin-top/margin-bottom instead of min-height) and
+  // a different sign (dragging the TOP handle further up should grow
+  // margin-top, the opposite direction from dragging the bottom one down).
+  function startMarginDrag(e, sec, rootEl, side) {
+    if (!rootEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var startY = e.clientY;
+    var key = side === "top" ? "margin_top" : "margin_bottom";
+    var startVal = sec[key] || 0;
+    var sign = side === "top" ? -1 : 1;
+
+    function clamp(n) { return Math.max(0, Math.min(400, Math.round(n))); }
+    function liveInput() { return document.querySelector('input[type="number"][data-field="__' + key + '"]'); }
+
+    function apply(v) {
+      sec[key] = v;
+      applySpacingStyle(rootEl, sec);
+      var input = liveInput();
+      if (input) input.value = v;
+    }
+    function onMove(ev) {
+      var p = ev.touches ? ev.touches[0] : ev;
+      apply(clamp(startVal + sign * (p.clientY - startY)));
+    }
+    function onUp() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      var patch = {};
+      patch[key] = sec[key] || 0;
+      saveSettings(sec.id, patch);
     }
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
@@ -467,14 +600,39 @@
   // content fields: a custom CSS class and a raw custom CSS box. Saved
   // through a separate endpoint (saveSettings, below) and separate columns
   // from `fields`, since these apply identically regardless of type.
+  function checkHtml(name, checked, labelText) {
+    return '<label class="b-check"><input type="checkbox" data-field="' + name + '" ' + (checked ? "checked" : "") + ' /> ' + esc(labelText) + '</label>';
+  }
+
+  function spacingPairHtml(topField, bottomField, topVal, bottomVal) {
+    return '<div class="b-spacing-pair">' +
+      '<label>Top<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="' + topField + '" value="' + (topVal || 0) + '" /></label>' +
+      '<label>Bottom<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="' + bottomField + '" value="' + (bottomVal || 0) + '" /></label>' +
+    '</div>';
+  }
+
   function sectionSettingsHtml(sec) {
-    var heightRow = NO_RESIZE_TYPES[sec.type]
-      ? ""
-      : field("Height", '<input class="b-text-native" type="number" min="0" max="1200" step="10" data-field="__min_height" value="' + (sec.min_height || 0) + '" />' +
-          '<div class="b-field-hint">Drag the handle at the bottom of the section on the canvas, or type a height in pixels. 0 keeps it at its natural height.</div>');
+    var resizable = !NO_RESIZE_TYPES[sec.type];
+    var heightRow = resizable
+      ? field("Height", '<input class="b-text-native" type="number" min="0" max="1200" step="10" data-field="__min_height" value="' + (sec.min_height || 0) + '" />' +
+          '<div class="b-field-hint">Drag the handle at the bottom of the section on the canvas, or type a height in pixels. 0 keeps it at its natural height.</div>')
+      : "";
+    var visibilityRow = field("Show on", '<div class="b-check-row">' +
+        checkHtml("__show_desktop", !sec.hide_desktop, "Desktop") +
+        checkHtml("__show_tablet", !sec.hide_tablet, "Tablet") +
+        checkHtml("__show_mobile", !sec.hide_mobile, "Mobile") +
+      '</div>' +
+      '<div class="b-field-hint">Uncheck a device to hide this section there only. Preview it with the desktop/tablet/mobile switcher above the canvas.</div>');
+    var spacingRows = resizable
+      ? field("Margin (space around this section)", spacingPairHtml("__margin_top", "__margin_bottom", sec.margin_top, sec.margin_bottom) +
+          '<div class="b-field-hint">Drag the thin handles just above/below the section on the canvas, or type pixels here.</div>') +
+        field("Padding (space inside its own edges)", spacingPairHtml("__padding_top", "__padding_bottom", sec.padding_top, sec.padding_bottom))
+      : "";
     return '<div class="b-inspector-divider"></div>' +
       '<div class="b-inspector-section-label">Section settings</div>' +
+      visibilityRow +
       heightRow +
+      spacingRows +
       field("Custom CSS class", textHtml("__custom_class", sec.custom_class, "e.g. my-hero-tweak")) +
       field("Custom CSS", textareaHtml("__custom_css", sec.custom_css, "#" + pzSelector(sec.id) + " {\n  \n}")) +
       field("", '<div class="b-inspector-hint">Applies only to this section on your live storefront. Target it with <code>#' + pzSelector(sec.id) + '</code> to keep changes scoped there.</div>');
@@ -549,7 +707,7 @@
   }
 
   function deleteSection(id) {
-    if (!confirm("Delete this section? This can't be undone.")) return;
+    if (!confirm("Delete this section? You can undo it with the undo button (or Ctrl+Z) right after.")) return;
     setSaving(true);
     api(BASE + "/" + id + "/delete").then(function (res) {
       setSaving(false);
@@ -558,6 +716,7 @@
       if (idx >= 0) state.sections.splice(idx, 1);
       if (state.selectedId === id) state.selectedId = null;
       renderAll();
+      commitHistory();
       toast("Section deleted");
     });
   }
@@ -571,6 +730,7 @@
       if (!res || !res.ok) return toast("Could not update that section.", true);
       sec.hidden = !sec.hidden;
       renderAll();
+      commitHistory();
       toast(sec.hidden ? "Hidden from your storefront" : "Now visible on your storefront");
     });
   }
@@ -582,6 +742,7 @@
       if (res && res.ok) {
         var sec = findSection(id);
         if (sec) sec.fields = res.fields;
+        commitHistory();
       } else {
         toast("Could not save that change.", true);
       }
@@ -601,7 +762,16 @@
           if (patch.custom_class !== undefined) sec.custom_class = res.custom_class;
           if (patch.custom_css !== undefined) sec.custom_css = res.custom_css;
           if (patch.min_height !== undefined) sec.min_height = res.min_height;
+          if (patch.hide_desktop !== undefined) sec.hide_desktop = res.hide_desktop;
+          if (patch.hide_tablet !== undefined) sec.hide_tablet = res.hide_tablet;
+          if (patch.hide_mobile !== undefined) sec.hide_mobile = res.hide_mobile;
+          if (patch.margin_top !== undefined) sec.margin_top = res.margin_top;
+          if (patch.margin_bottom !== undefined) sec.margin_bottom = res.margin_bottom;
+          if (patch.padding_top !== undefined) sec.padding_top = res.padding_top;
+          if (patch.padding_bottom !== undefined) sec.padding_bottom = res.padding_bottom;
+          renderCanvas();
         }
+        commitHistory();
       } else {
         toast("Could not save that change.", true);
       }
@@ -728,6 +898,16 @@
         startResize(e, sec, rhost.firstElementChild);
         return;
       }
+      var marginHandle = e.target.closest('[data-action="margin-top"], [data-action="margin-bottom"]');
+      if (marginHandle) {
+        var mhost = e.target.closest(".b-csec");
+        if (!mhost) return;
+        var msec = findSection(mhost.dataset.id);
+        if (!msec) return;
+        var side = marginHandle.dataset.action === "margin-top" ? "top" : "bottom";
+        startMarginDrag(e, msec, mhost.firstElementChild, side);
+        return;
+      }
       var handle = e.target.closest('[data-action="drag"]');
       if (!handle) return;
       var host = e.target.closest(".b-csec");
@@ -746,7 +926,7 @@
         if (action === "dup") return duplicateSection(id);
         if (action === "del") return deleteSection(id);
         if (action === "toggle") return toggleHidden(id);
-        if (action === "drag" || action === "resize") return;
+        if (action === "drag" || action === "resize" || action === "margin-top" || action === "margin-bottom") return;
       }
       selectSection(id);
     });
@@ -839,6 +1019,30 @@
         sec.min_height = h;
         applyHeightStyle(heightRootEl(sec.id), h);
         saveSettings(sec.id, { min_height: h });
+        return;
+      }
+      var spacingIn = e.target.closest('input[type="number"][data-field^="__margin_"], input[type="number"][data-field^="__padding_"]');
+      if (spacingIn) {
+        var sKey = spacingIn.dataset.field.slice(2); // "__margin_top" -> "margin_top"
+        var sVal = Math.max(0, Math.min(400, parseInt(spacingIn.value, 10) || 0));
+        spacingIn.value = sVal;
+        sec[sKey] = sVal;
+        applySpacingStyle(spacingRootEl(sec.id), sec);
+        var sPatch = {};
+        sPatch[sKey] = sVal;
+        saveSettings(sec.id, sPatch);
+        return;
+      }
+      // "Show on Desktop/Tablet/Mobile" checkboxes are the positive framing
+      // on screen, but stored/sent as the inverse hide_* flags.
+      var showBox = e.target.closest('input[type="checkbox"][data-field^="__show_"]');
+      if (showBox) {
+        var device = showBox.dataset.field.replace("__show_", "");
+        var hideKey = "hide_" + device;
+        sec[hideKey] = !showBox.checked;
+        var patch3 = {};
+        patch3[hideKey] = !showBox.checked;
+        saveSettings(sec.id, patch3);
       }
     });
     document.getElementById("bInspectorBody").addEventListener("focusout", function (e) {
@@ -878,6 +1082,25 @@
   }
 
   function wireTopbar() {
+    document.getElementById("bUndoBtn").addEventListener("click", undo);
+    document.getElementById("bRedoBtn").addEventListener("click", redo);
+
+    // Ctrl/Cmd+Z and Ctrl+Y (or Shift+Ctrl/Cmd+Z) drive the builder's own
+    // undo stack -- but only when focus isn't inside a text field or
+    // contenteditable heading/body, where the same shortcut should keep
+    // doing the browser's normal per-keystroke text undo instead.
+    document.addEventListener("keydown", function (e) {
+      var mod = e.ctrlKey || e.metaKey;
+      if (!mod || e.key.toLowerCase() !== "z" && e.key.toLowerCase() !== "y") return;
+      var active = document.activeElement;
+      var inTextField = active && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
+      if (inTextField) return;
+      var key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if (key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+      else if (key === "y") { e.preventDefault(); redo(); }
+    });
+
     document.getElementById("bViewportToggle").addEventListener("click", function (e) {
       var btn = e.target.closest("button");
       if (!btn) return;
