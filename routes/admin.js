@@ -704,7 +704,7 @@ router.post('/store/themes/:storeThemeId/activate', async (req, res, next) => {
 router.get('/store/themes/:storeThemeId/customize', async (req, res, next) => {
   try {
     const [[storeTheme]] = await pool.query(
-      `SELECT st.id AS store_theme_id, st.token_overrides, t.name
+      `SELECT st.id AS store_theme_id, st.token_overrides, t.name, t.slug
        FROM ${TABLES.storeThemes} st
        JOIN ${TABLES.themes} t ON t.id = st.theme_id
        WHERE st.id = ? AND st.store_id = ?`,
@@ -720,7 +720,7 @@ router.get('/store/themes/:storeThemeId/customize', async (req, res, next) => {
     res.render('admin/store-theme-customize', {
       title: `Customize ${storeTheme.name}`,
       storeTheme,
-      tokens: resolveTokens(overrides),
+      tokens: resolveTokens(overrides, storeTheme.slug),
       radiusOptions: RADIUS_PX,
     });
   } catch (err) {

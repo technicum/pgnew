@@ -1,0 +1,18 @@
+{
+  "slug": "default",
+  "name": "Default",
+  "version": "1.0.0",
+  "author": "PageZaper",
+  "description": "PageZaper's built-in storefront theme.",
+  "price_cents": 0,
+  "tokens": {
+    "color_primary": "#16a34a",
+    "color_primary_dark": "#15803d",
+    "color_bg": "#fafafa",
+    "color_surface": "#ffffff",
+    "color_text": "#1a1a1a",
+    "color_muted": "#6b7280",
+    "color_border": "#e5e7eb",
+    "radius_style": "soft"
+  }
+}

@@ -53,15 +53,17 @@ router.use(async (req, res, next) => {
        LIMIT 1`,
       [req.store.id]
     );
-    req.themeViewPrefix = themeViewPrefix(activeTheme ? activeTheme.slug : DEFAULT_THEME_SLUG);
+    const activeSlug = activeTheme ? activeTheme.slug : DEFAULT_THEME_SLUG;
+    req.themeViewPrefix = themeViewPrefix(activeSlug);
     const overrides = activeTheme && activeTheme.token_overrides
       ? (typeof activeTheme.token_overrides === 'string' ? JSON.parse(activeTheme.token_overrides) : activeTheme.token_overrides)
       : null;
     // Emitted on <body style="..."> by the theme's header partial — see
     // lib/themeTokens.js for why inline style is how a merchant's color/
-    // radius customization wins over both the theme's own CSS and the
-    // older pz_stores.theme preset class.
-    res.locals.themeTokenStyle = tokensToInlineStyle(resolveTokens(overrides));
+    // radius customization wins over both the theme's own defaults and the
+    // older pz_stores.theme preset class. resolveTokens reads this theme's
+    // OWN defaults from its theme.json manifest, not a shared global one.
+    res.locals.themeTokenStyle = tokensToInlineStyle(resolveTokens(overrides, activeSlug));
   } catch (err) {
     req.themeViewPrefix = themeViewPrefix(DEFAULT_THEME_SLUG);
     res.locals.themeTokenStyle = '';
