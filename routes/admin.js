@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { pool, TABLES, THEMES } = require('../db/database');
 const { requireAdmin, requireAdminRole } = require('../middleware/auth');
 const { rootUrl, adminPortalUrl } = require('../middleware/tenant');
-const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields } = require('../lib/sections');
+const { SECTION_TYPES, SECTION_TYPE_KEYS, defaultFields, sanitizeFields, sanitizeSectionSettings } = require('../lib/sections');
 
 function slugify(str) {
   return str
@@ -417,6 +417,34 @@ router.post('/pages/:id/sections/:sectionId', async (req, res, next) => {
     const nextFields = sanitizeFields(section.type, currentFields, req.body.fields);
     await pool.query(`UPDATE ${TABLES.pageSections} SET fields = ? WHERE id = ?`, [JSON.stringify(nextFields), section.id]);
     res.json({ ok: true, fields: nextFields });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Universal "module settings" (custom CSS class + custom CSS), same for
+// every section type — kept on their own columns and their own endpoint
+// rather than folded into the type-specific /sections/:sectionId above.
+router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page) return res.status(404).json({ error: 'Page not found' });
+
+    const [[section]] = await pool.query(`SELECT id FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+
+    const patch = sanitizeSectionSettings(req.body);
+    const sets = [];
+    const values = [];
+    if (patch.custom_class !== undefined) { sets.push('custom_class = ?'); values.push(patch.custom_class || null); }
+    if (patch.custom_css !== undefined) { sets.push('custom_css = ?'); values.push(patch.custom_css || null); }
+    if (sets.length) {
+      values.push(section.id);
+      await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
+    }
+
+    const [[updated]] = await pool.query(`SELECT custom_class, custom_css FROM ${TABLES.pageSections} WHERE id = ?`, [section.id]);
+    res.json({ ok: true, custom_class: updated.custom_class || '', custom_css: updated.custom_css || '' });
   } catch (err) {
     next(err);
   }

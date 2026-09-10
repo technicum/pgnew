@@ -20,18 +20,11 @@
   --b-font-display: 'Manrope', system-ui, sans-serif;
   --b-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  body.builder-body:not([data-theme="light"]) {
-    --b-ink: #F2ECE0; --b-paper: #17140F; --b-surface: #1E1A14; --b-surface-2: #262019; --b-surface-3: #322A1E;
-    --b-line: #3A3226; --b-muted: #A79C88; --b-accent: #FFC24D; --b-accent-ink: #17140F; --b-accent-soft: #3A2C12;
-    --b-danger: #E86A6A; --b-shadow: 0 16px 40px -14px rgba(0,0,0,.6); --b-shadow-sm: 0 6px 18px -8px rgba(0,0,0,.55);
-  }
-}
-body.builder-body[data-theme="dark"] {
-  --b-ink: #F2ECE0; --b-paper: #17140F; --b-surface: #1E1A14; --b-surface-2: #262019; --b-surface-3: #322A1E;
-  --b-line: #3A3226; --b-muted: #A79C88; --b-accent: #FFC24D; --b-accent-ink: #17140F; --b-accent-soft: #3A2C12;
-  --b-danger: #E86A6A; --b-shadow: 0 16px 40px -14px rgba(0,0,0,.6); --b-shadow-sm: 0 6px 18px -8px rgba(0,0,0,.55);
-}
+/* The builder always renders in this one light theme regardless of the
+   visitor's OS setting — there's no in-app toggle for it, so following
+   prefers-color-scheme here would strand a system-dark visitor with no way
+   to switch back. (The storefront itself is unrelated to this and isn't
+   affected — see public/css/style.css.) */
 
 body.builder-body { margin: 0; height: 100vh; overflow: hidden; background: var(--b-paper); color: var(--b-ink); font-family: 'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 body.builder-body * { box-sizing: border-box; }
@@ -99,6 +92,8 @@ body.builder-body button { font-family: inherit; }
 .b-btn-outline, .b-btn-solid { font-size: 13px; font-weight: 600; border-radius: 8px; padding: 7px 13px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; }
 .b-btn-outline { background: transparent; border: 1px solid var(--b-line); color: var(--b-ink); }
 .b-btn-outline:hover { background: var(--b-surface-2); }
+.b-exit-btn { gap: 6px; }
+.b-exit-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
 .b-btn-solid { background: var(--b-accent); border: 1px solid var(--b-accent); color: var(--b-accent-ink); }
 .b-btn-solid:hover { filter: brightness(0.96); }
 .b-btn-solid.is-published { background: var(--b-surface); color: var(--b-ink); border-color: var(--b-line); }
@@ -252,7 +247,11 @@ body.builder-body button { font-family: inherit; }
 .b-seg button.active { background: var(--b-surface); color: var(--b-ink); box-shadow: var(--b-shadow-sm); }
 .b-select-native, .b-text-native { width: 100%; padding: 8px 10px; border: 1px solid var(--b-line); border-radius: 7px; background: var(--b-surface); color: var(--b-ink); font-size: 13px; font-family: inherit; }
 .b-inspector-hint { font-size: 12px; color: var(--b-muted); line-height: 1.55; background: var(--b-surface-2); padding: 12px; border-radius: 8px; }
+.b-inspector-hint code { font-family: var(--b-font-mono); background: var(--b-surface-3); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
 .b-inspector-empty { padding: 40px 20px; text-align: center; color: var(--b-muted); font-size: 12.5px; }
+.b-inspector-divider { border-top: 1px solid var(--b-line); margin: 4px 0 20px; }
+.b-inspector-section-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--b-muted); margin: -8px 0 16px; }
+textarea[data-field="__custom_css"] { font-family: var(--b-font-mono); font-size: 12px; line-height: 1.5; min-height: 110px; }
 
 .b-drag-ghost { position: fixed; z-index: 999; pointer-events: none; background: var(--b-ink); color: var(--b-paper); font-size: 12.5px; font-weight: 600; padding: 9px 14px; border-radius: 8px; box-shadow: var(--b-shadow); display: flex; align-items: center; gap: 8px; transform: translate(-50%,-50%); }
 .b-drag-ghost svg { width: 14px; height: 14px; }

@@ -1,11 +1,12 @@
+<% var pzId = 'pz-section-' + section.id; var pzExtra = section.custom_class ? ' ' + section.custom_class : ''; %>
 <% if (section.type === 'hero') { %>
-  <section class="hero">
+  <section id="<%= pzId %>" class="hero<%= pzExtra %>">
     <h1><%= section.fields.heading %></h1>
     <p><%= section.fields.subheading %></p>
   </section>
 
 <% } else if (section.type === 'products') { %>
-  <section class="product-grid-section">
+  <section id="<%= pzId %>" class="product-grid-section<%= pzExtra %>">
     <h2 class="section-title"><%= section.fields.heading %></h2>
     <div class="product-grid">
       <% if (section.products.length === 0) { %>
@@ -28,7 +29,7 @@
   </section>
 
 <% } else if (section.type === 'text_image') { %>
-  <section class="text-image text-image-<%= section.fields.side === 'left' ? 'left' : 'right' %>">
+  <section id="<%= pzId %>" class="text-image text-image-<%= section.fields.side === 'left' ? 'left' : 'right' %><%= pzExtra %>">
     <div class="text-image-media" style="<%= section.fields.image_url ? `background-image:url('${section.fields.image_url}')` : '' %>"></div>
     <div class="text-image-copy">
       <h2><%= section.fields.heading %></h2>
@@ -37,7 +38,7 @@
   </section>
 
 <% } else if (section.type === 'testimonials') { %>
-  <section class="testimonials">
+  <section id="<%= pzId %>" class="testimonials<%= pzExtra %>">
     <h2 class="section-title"><%= section.fields.heading %></h2>
     <div class="testimonial-grid">
       <% section.fields.quotes.forEach(function(q) { %>
@@ -50,7 +51,7 @@
   </section>
 
 <% } else if (section.type === 'newsletter') { %>
-  <section class="newsletter">
+  <section id="<%= pzId %>" class="newsletter<%= pzExtra %>">
     <h2><%= section.fields.heading %></h2>
     <p><%= section.fields.subtext %></p>
     <form class="newsletter-form" action="/newsletter" method="POST">
@@ -60,13 +61,13 @@
   </section>
 
 <% } else if (section.type === 'richtext') { %>
-  <section class="richtext richtext-<%= section.fields.width === 'wide' ? 'wide' : 'narrow' %>" style="text-align:<%= section.fields.align === 'left' ? 'left' : 'center' %>;">
+  <section id="<%= pzId %>" class="richtext richtext-<%= section.fields.width === 'wide' ? 'wide' : 'narrow' %><%= pzExtra %>" style="text-align:<%= section.fields.align === 'left' ? 'left' : 'center' %>;">
     <h2><%= section.fields.heading %></h2>
     <p><%= section.fields.body %></p>
   </section>
 
 <% } else if (section.type === 'gallery' && section.fields.images && section.fields.images.length) { %>
-  <section class="gallery">
+  <section id="<%= pzId %>" class="gallery<%= pzExtra %>">
     <h2 class="section-title"><%= section.fields.heading %></h2>
     <div class="gallery-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
       <% section.fields.images.forEach(function(url) { %>
@@ -76,7 +77,7 @@
   </section>
 
 <% } else if (section.type === 'video' && section.fields.embed_url) { %>
-  <section class="video-section">
+  <section id="<%= pzId %>" class="video-section<%= pzExtra %>">
     <h2 class="section-title"><%= section.fields.heading %></h2>
     <div class="video-frame">
       <iframe src="<%= section.fields.embed_url %>" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
@@ -84,7 +85,7 @@
   </section>
 
 <% } else if (section.type === 'spotlight' && section.product) { %>
-  <section class="spotlight spotlight-<%= section.fields.side === 'left' ? 'left' : 'right' %>">
+  <section id="<%= pzId %>" class="spotlight spotlight-<%= section.fields.side === 'left' ? 'left' : 'right' %><%= pzExtra %>">
     <div class="spotlight-media" style="<%= section.product.image_url ? `background-image:url('${section.product.image_url}')` : '' %>"></div>
     <div class="spotlight-copy">
       <h2><%= section.product.title %></h2>
@@ -98,7 +99,7 @@
   </section>
 
 <% } else if (section.type === 'collections' && typeof categories !== 'undefined' && categories.length) { %>
-  <section class="collections">
+  <section id="<%= pzId %>" class="collections<%= pzExtra %>">
     <h2 class="section-title"><%= section.fields.heading %></h2>
     <div class="collections-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
       <% categories.forEach(function(c) { %>
@@ -107,26 +108,13 @@
     </div>
   </section>
 
-<% } else if (section.type === 'testimonials') { %>
-  <section class="testimonials">
-    <h2 class="section-title"><%= section.fields.heading %></h2>
-    <div class="testimonial-grid">
-      <% section.fields.quotes.forEach(function(q) { %>
-        <blockquote class="testimonial-card">
-          <p>&ldquo;<%= q.quote %>&rdquo;</p>
-          <cite>&mdash; <%= q.author %></cite>
-        </blockquote>
-      <% }); %>
-    </div>
-  </section>
-
 <% } else if (section.type === 'logos' && section.fields.names && section.fields.names.length) { %>
-  <section class="logostrip">
+  <section id="<%= pzId %>" class="logostrip<%= pzExtra %>">
     <% section.fields.names.forEach(function(n) { %><span><%= n %></span><% }); %>
   </section>
 
 <% } else if (section.type === 'faq' && section.fields.items && section.fields.items.length) { %>
-  <section class="faq">
+  <section id="<%= pzId %>" class="faq<%= pzExtra %>">
     <h2 class="section-title"><%= section.fields.heading %></h2>
     <% section.fields.items.forEach(function(f) { %>
       <details class="faq-item">
@@ -137,7 +125,7 @@
   </section>
 
 <% } else if (section.type === 'countdown' && section.fields.end_at) { %>
-  <section class="countdown" data-end="<%= section.fields.end_at %>">
+  <section id="<%= pzId %>" class="countdown<%= pzExtra %>" data-end="<%= section.fields.end_at %>">
     <h2><%= section.fields.heading %></h2>
     <div class="countdown-timers">
       <div><b data-u="d">00</b><small>Days</small></div>
@@ -173,12 +161,20 @@
   </script>
 
 <% } else if (section.type === 'spacer') { %>
-  <div class="section-spacer section-spacer-<%= section.fields.height %>"></div>
+  <div id="<%= pzId %>" class="section-spacer section-spacer-<%= section.fields.height %><%= pzExtra %>"></div>
 
 <% } else if (section.type === 'divider') { %>
   <% if (section.fields.style === 'dots') { %>
-    <div class="section-divider section-divider-dots">&bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;</div>
+    <div id="<%= pzId %>" class="section-divider section-divider-dots<%= pzExtra %>">&bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;</div>
   <% } else { %>
-    <hr class="section-divider" />
+    <hr id="<%= pzId %>" class="section-divider<%= pzExtra %>" />
   <% } %>
+<% } %>
+
+<% if (section.custom_css) { %>
+  <style id="<%= pzId %>-css"></style>
+  <script>
+    document.getElementById(<%- JSON.stringify(pzId + '-css').split('/').join(String.fromCharCode(92) + '/') %>).textContent =
+      <%- JSON.stringify(section.custom_css).split('/').join(String.fromCharCode(92) + '/') %>;
+  </script>
 <% } %>

@@ -396,6 +396,19 @@
     }
   }
 
+  // Universal "module settings" every section type gets, below its own
+  // content fields: a custom CSS class and a raw custom CSS box. Saved
+  // through a separate endpoint (saveSettings, below) and separate columns
+  // from `fields`, since these apply identically regardless of type.
+  function sectionSettingsHtml(sec) {
+    return '<div class="b-inspector-divider"></div>' +
+      '<div class="b-inspector-section-label">Section settings</div>' +
+      field("Custom CSS class", textHtml("__custom_class", sec.custom_class, "e.g. my-hero-tweak")) +
+      field("Custom CSS", textareaHtml("__custom_css", sec.custom_css, "#" + pzSelector(sec.id) + " {\n  \n}")) +
+      field("", '<div class="b-inspector-hint">Applies only to this section on your live storefront. Target it with <code>#' + pzSelector(sec.id) + '</code> to keep changes scoped there.</div>');
+  }
+  function pzSelector(id) { return "pz-section-" + id; }
+
   function renderInspector() {
     var panel = document.getElementById("bInspector");
     var sec = state.selectedId ? findSection(state.selectedId) : null;
@@ -405,7 +418,7 @@
     document.getElementById("bInspectorIcon").innerHTML = icon(sec.type);
     document.getElementById("bInspectorTitle").textContent = label;
     document.getElementById("bInspectorType").textContent = "section · " + sec.type + (sec.hidden ? " · hidden" : "");
-    document.getElementById("bInspectorBody").innerHTML = inspectorFieldsFor(sec);
+    document.getElementById("bInspectorBody").innerHTML = inspectorFieldsFor(sec) + sectionSettingsHtml(sec);
   }
 
   /* ---------------------------------------------------------------
@@ -497,6 +510,25 @@
       if (res && res.ok) {
         var sec = findSection(id);
         if (sec) sec.fields = res.fields;
+      } else {
+        toast("Could not save that change.", true);
+      }
+    });
+  }
+
+  // Universal module settings (custom_class / custom_css) — separate
+  // endpoint and columns from saveField()/fields above, since these are the
+  // same for every section type rather than type-specific.
+  function saveSettings(id, patch) {
+    setSaving(true);
+    return api(BASE + "/" + id + "/settings", patch).then(function (res) {
+      setSaving(false);
+      if (res && res.ok) {
+        var sec = findSection(id);
+        if (sec) {
+          if (patch.custom_class !== undefined) sec.custom_class = res.custom_class;
+          if (patch.custom_css !== undefined) sec.custom_css = res.custom_css;
+        }
       } else {
         toast("Could not save that change.", true);
       }
@@ -723,6 +755,13 @@
       if (!sec) return;
       var ta = e.target.closest('textarea.b-textarea-native[data-field]');
       if (ta) {
+        // "__custom_css" is a universal module setting, not a type field:
+        // saved raw (no line-splitting) through saveSettings(), not saveField().
+        if (ta.dataset.field === "__custom_css") {
+          sec.custom_css = ta.value;
+          saveSettings(sec.id, { custom_css: ta.value });
+          return;
+        }
         var lines = ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
         var patch = {};
         patch[ta.dataset.field] = lines;
@@ -733,6 +772,11 @@
       }
       var input = e.target.closest('input.b-text-native[data-field]');
       if (input && input.type !== "datetime-local") {
+        if (input.dataset.field === "__custom_class") {
+          sec.custom_class = input.value;
+          saveSettings(sec.id, { custom_class: input.value });
+          return;
+        }
         var patch2 = {};
         patch2[input.dataset.field] = input.value;
         sec.fields[input.dataset.field] = input.value;
@@ -782,13 +826,6 @@
         document.getElementById("bPanelLibrary").hidden = which !== "library";
         document.getElementById("bPanelLayers").hidden = which !== "layers";
       });
-    });
-    document.getElementById("bThemeToggle").addEventListener("click", function () {
-      var root = document.body;
-      var cur = root.getAttribute("data-theme");
-      var sysDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      var next = !cur ? (sysDark ? "light" : "dark") : (cur === "dark" ? "light" : "dark");
-      root.setAttribute("data-theme", next);
     });
   }
 

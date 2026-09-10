@@ -198,6 +198,8 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   position INT NOT NULL DEFAULT 0,
   fields JSON NOT NULL,
   hidden TINYINT(1) NOT NULL DEFAULT 0,
+  custom_class VARCHAR(100) NULL,
+  custom_css TEXT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
   INDEX idx_page_position (page_id, position)
@@ -482,6 +484,22 @@ async function migrateOrderDiscountColumns(conn) {
   }
 }
 
+// Adds per-section custom_class / custom_css columns — universal "module
+// settings" every section type gets alongside its own type-specific fields,
+// so a merchant can nudge one section's look without a whole new theme.
+// custom_css is trusted, unfiltered CSS text (same trust level as any other
+// admin-entered value); the storefront neutralizes it at render time via a
+// textContent assignment rather than input filtering — see the "custom CSS"
+// block in views/storefront/partials/section.ejs.
+async function migratePageSectionSettings(conn) {
+  if (!(await columnExists(conn, TABLES.pageSections, 'custom_class'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN custom_class VARCHAR(100) NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'custom_css'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN custom_css TEXT NULL`);
+  }
+}
+
 // Adds customer_id to orders so a checkout can be linked to a pz_customers
 // account. Nullable and ON DELETE SET NULL — guest checkout (no account)
 // stays fully supported, and deleting a customer account never deletes
@@ -558,6 +576,7 @@ async function init() {
 
     const demoStoreId = await migrateMultiTenancy(conn);
     await migratePagesForExistingStores(conn);
+    await migratePageSectionSettings(conn);
     await migrateOrderDiscountColumns(conn);
     await migrateOrderCustomerColumn(conn);
     await migrateAdminsToUsers(conn);
