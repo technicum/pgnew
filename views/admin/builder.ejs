@@ -1,32 +1,111 @@
-<%- include('partials/header') %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · <%= store.name %> Admin</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/css/builder.css" />
+</head>
+<body class="builder-body">
+  <div class="b-app" id="bApp">
+    <aside class="b-rail">
+      <a href="/admin" class="b-rail-logo" title="Back to admin">Z</a>
+      <button class="b-rail-btn active" data-panel="library" title="Add sections" aria-label="Section library">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="6" height="6" rx="1.2"/><rect x="11" y="3" width="6" height="6" rx="1.2"/><rect x="3" y="11" width="6" height="6" rx="1.2"/><rect x="11" y="11" width="6" height="6" rx="1.2"/></svg>
+      </button>
+      <button class="b-rail-btn" data-panel="layers" title="Page layers" aria-label="Page layers">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2.5 3 6.5l7 4 7-4-7-4Z"/><path d="M3 10.2 10 14l7-3.8"/><path d="M3 13.8 10 17.5l7-3.7"/></svg>
+      </button>
+      <div class="b-rail-spacer"></div>
+      <button class="b-rail-btn" id="bThemeToggle" title="Toggle light / dark" aria-label="Toggle theme">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v2M10 15v2M3 10h2M15 10h2M5.2 5.2l1.4 1.4M13.4 13.4l1.4 1.4M5.2 14.8l1.4-1.4M13.4 6.6l1.4-1.4"/><circle cx="10" cy="10" r="3.4"/></svg>
+      </button>
+    </aside>
 
-<div class="builder-layout">
-  <aside class="builder-sidebar">
-    <h2>Add a section</h2>
-    <div class="builder-add-list">
-      <% Object.keys(sectionTypes).forEach(function(key) { %>
-        <button type="button" class="builder-add-btn" data-type="<%= key %>"><%= sectionTypes[key].name %></button>
-      <% }); %>
+    <div class="b-side-panel" id="bPanelLibrary">
+      <div class="b-side-panel-head">
+        <h2>Add a section</h2>
+        <p>Drag a block onto the page</p>
+      </div>
+      <div class="b-side-panel-body" id="bLibraryBody"></div>
     </div>
-    <div class="builder-page-meta">
-      <p><strong>Path:</strong> <%= page.path %></p>
-      <% if (page.is_home) { %>
-        <p class="builder-home-badge">This is your store's Home page</p>
-      <% } %>
-      <a href="<%= page.is_home ? '/' : '/pages' + page.path %>" target="_blank" class="btn btn-block" style="border:1px solid var(--color-border);">Preview &#8599;</a>
-    </div>
-  </aside>
 
-  <div class="builder-canvas" id="builder-canvas" data-page-id="<%= page.id %>">
-    <% sections.forEach(function(section) { %>
-      <%- include('partials/builder-section-card', { section: section, sectionTypes: sectionTypes }) %>
-    <% }); %>
-    <% if (sections.length === 0) { %>
-      <p class="empty-state">No sections yet &mdash; add one from the left.</p>
-    <% } %>
+    <div class="b-side-panel" id="bPanelLayers" hidden>
+      <div class="b-side-panel-head">
+        <h2>Page structure</h2>
+        <p>Drag to reorder</p>
+      </div>
+      <div class="b-side-panel-body" id="bLayersBody"></div>
+    </div>
+
+    <div class="b-main">
+      <header class="b-topbar">
+        <div class="b-topbar-left">
+          <a class="b-icon-btn" href="/admin/pages" title="Back to Pages" aria-label="Back to Pages">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
+          </a>
+          <div class="b-crumb"><span class="b-crumb-store"><%= store.name %></span><span class="b-crumb-sep">/</span><span class="b-crumb-page"><%= page.name %></span></div>
+        </div>
+        <div class="b-topbar-center">
+          <div class="b-viewport-toggle" id="bViewportToggle">
+            <button data-vp="desktop" class="active" title="Desktop" aria-label="Desktop preview">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="15" height="9.5" rx="1.3"/><path d="M7 17h6M10 13.5V17"/></svg>
+            </button>
+            <button data-vp="tablet" title="Tablet" aria-label="Tablet preview">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4.5" y="2.5" width="11" height="15" rx="1.6"/><path d="M9 15.2h2"/></svg>
+            </button>
+            <button data-vp="mobile" title="Mobile" aria-label="Mobile preview">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="6" y="1.8" width="8" height="16.4" rx="1.6"/><path d="M9 15.6h2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="b-topbar-right">
+          <span class="b-save-indicator" id="bSaveIndicator"><span class="b-save-dot"></span><span id="bSaveText">Saved</span></span>
+          <a class="b-btn-outline" id="bPreviewLink" href="<%= page.is_home ? '/' : '/pages' + page.path %>" target="_blank">Preview</a>
+          <button class="b-btn-solid" id="bPublishBtn"></button>
+        </div>
+      </header>
+
+      <div class="b-canvas-scroll">
+        <div class="b-canvas-frame" id="bCanvasFrame" data-vp="desktop">
+          <div class="b-canvas" id="bCanvas">
+            <div class="b-canvas-chrome b-canvas-chrome-header">
+              <div><%= store.name %></div>
+              <div class="b-ch-nav"><span>Shop all</span><span>About</span><span>Contact</span></div>
+              <div class="b-ch-cart">Cart (0)</div>
+            </div>
+            <div id="bSortable"></div>
+            <div class="b-canvas-chrome b-canvas-chrome-footer" style="padding-top:22px;padding-bottom:22px;">© <%= new Date().getFullYear() %> <%= store.name %>. Powered by PageZaper.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="b-inspector" id="bInspector" hidden>
+      <div class="b-inspector-head">
+        <div class="b-inspector-head-icon" id="bInspectorIcon"></div>
+        <div>
+          <h3 id="bInspectorTitle">Section</h3>
+          <p id="bInspectorType">type</p>
+        </div>
+      </div>
+      <div class="b-inspector-body" id="bInspectorBody"></div>
+    </aside>
   </div>
-</div>
 
-<script src="/js/builder.js"></script>
+  <div class="b-drag-ghost" id="bDragGhost" hidden></div>
+  <div class="b-toast" id="bToast"><span class="b-toast-dot"></span><span id="bToastText"></span></div>
 
-<%- include('partials/footer') %>
+  <script>
+    window.__BUILDER__ = {
+      page: <%- JSON.stringify({ id: page.id, name: page.name, path: page.path, is_home: !!page.is_home, status: page.status }).split('/').join(String.fromCharCode(92) + '/') %>,
+      store: <%- JSON.stringify({ name: store.name }).split('/').join(String.fromCharCode(92) + '/') %>,
+      sectionTypes: <%- JSON.stringify(sectionTypes).split('/').join(String.fromCharCode(92) + '/') %>,
+      sections: <%- JSON.stringify(sections.map(function (s) { return { id: s.id, type: s.type, fields: s.fields, hidden: !!s.hidden }; })).split('/').join(String.fromCharCode(92) + '/') %>,
+      products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>
+    };
+  </script>
+  <script src="/js/admin-builder.js"></script>
+</body>
+</html>

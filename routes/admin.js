@@ -312,7 +312,16 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       ...s,
       fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
     }));
-    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES });
+    // A handful of the store's real products, so the "Product grid" section
+    // previews actual catalog items on the canvas instead of placeholders —
+    // the live storefront always renders the true current catalog regardless
+    // of what's fetched here.
+    const [rawProducts] = await pool.query(
+      `SELECT id, title, price, image_url, stock FROM ${TABLES.products} WHERE store_id = ? ORDER BY created_at DESC LIMIT 24`,
+      [req.store.id]
+    );
+    const products = rawProducts.map((p) => ({ ...p, price: Number(p.price) }));
+    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, products });
   } catch (err) {
     next(err);
   }
