@@ -25,13 +25,23 @@
         <h2>Add a section</h2>
         <p>Drag a block onto the page</p>
       </div>
+      <div class="b-side-search">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M16.5 16.5l-3.8-3.8"/></svg>
+        <input type="text" id="bLibSearch" placeholder="Search sections…" autocomplete="off" aria-label="Search sections" />
+        <button type="button" class="b-side-search-clear" id="bLibSearchClear" title="Clear search" hidden>&times;</button>
+      </div>
       <div class="b-side-panel-body" id="bLibraryBody"></div>
     </div>
 
     <div class="b-side-panel" id="bPanelLayers" hidden>
       <div class="b-side-panel-head">
         <h2>Page structure</h2>
-        <p>Drag to reorder</p>
+        <p>Drag to reorder, or search to jump to one</p>
+      </div>
+      <div class="b-side-search">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M16.5 16.5l-3.8-3.8"/></svg>
+        <input type="text" id="bLayerSearch" placeholder="Search this page's sections…" autocomplete="off" aria-label="Search page sections" />
+        <button type="button" class="b-side-search-clear" id="bLayerSearchClear" title="Clear search" hidden>&times;</button>
       </div>
       <div class="b-side-panel-body" id="bLayersBody"></div>
     </div>

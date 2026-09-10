@@ -38,6 +38,11 @@
       <p style="<%= pzElStyle('subheading') %>"><%= b.fields.subheading %></p>
     </div>
 
+  <% } else if (b.type === 'heading') { %>
+    <div class="pz-heading pz-heading-<%= b.fields.size || 'l' %>" style="text-align:<%= b.fields.align || 'left' %>;">
+      <h2 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+    </div>
+
   <% } else if (b.type === 'richtext') { %>
     <div class="richtext richtext-<%= b.fields.width === 'wide' ? 'wide' : 'narrow' %>" style="text-align:<%= b.fields.align === 'left' ? 'left' : 'center' %>;">
       <h2 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>

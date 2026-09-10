@@ -421,6 +421,14 @@ main.container {
   font-size: 0.92rem;
 }
 
+/* Standalone heading */
+.pz-heading { padding: 32px 0; }
+.pz-heading h2 { margin: 0; }
+.pz-heading-s h2 { font-size: 1.25rem; }
+.pz-heading-m h2 { font-size: 1.75rem; }
+.pz-heading-l h2 { font-size: 2.25rem; }
+.pz-heading-xl h2 { font-size: 3rem; }
+
 /* Rich text */
 .richtext { padding: 40px 0; }
 .richtext-narrow { max-width: 640px; margin: 0 auto; }
@@ -489,6 +497,7 @@ main.container {
 .pz-row-col { min-width: 0; }
 .pz-block + .pz-block { margin-top: 24px; }
 .pz-block .hero,
+.pz-block .pz-heading,
 .pz-block .richtext,
 .pz-block .testimonials,
 .pz-block .newsletter,

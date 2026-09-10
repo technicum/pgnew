@@ -62,6 +62,11 @@
     <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
   </section>
 
+<% } else if (section.type === 'heading') { %>
+  <section id="<%= pzId %>" class="pz-heading pz-heading-<%= section.fields.size || 'l' %><%= pzExtra %>" style="<%= pzHeightStyle %>text-align:<%= section.fields.align || 'left' %>;">
+    <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+  </section>
+
 <% } else if (section.type === 'products') { %>
   <section id="<%= pzId %>" class="product-grid-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>

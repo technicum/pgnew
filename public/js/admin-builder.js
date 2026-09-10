@@ -35,6 +35,7 @@
   --------------------------------------------------------------- */
   var ICON = {
     hero: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="13" rx="1.3"/><path d="M6 12.5h8M7.5 9.5h5"/></svg>',
+    heading: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 4v12M13 4v12M4 10h9"/><path d="M15.5 8.5V13"/></svg>',
     products: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6" rx="1"/><rect x="11.5" y="2.5" width="6" height="6" rx="1"/><rect x="2.5" y="11.5" width="6" height="6" rx="1"/><rect x="11.5" y="11.5" width="6" height="6" rx="1"/></svg>',
     text_image: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="7" height="13" rx="1.1"/><path d="M13 6h4.5M13 9h4.5M13 12h3"/></svg>',
     testimonials: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6.5 6.5c-2 0-3 1.4-3 3.4S4.5 13 6.5 13"/><path d="M13.5 6.5c-2 0-3 1.4-3 3.4S11.5 13 13.5 13"/></svg>',
@@ -196,6 +197,27 @@
   function el(html) { var d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstChild; }
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
   function money(n) { return "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  // Wraps the first case-insensitive match of `query` inside `text` in
+  // <mark>, HTML-escaping both the matched and unmatched parts — used by
+  // the library and page-sections search boxes.
+  function highlight(text, query) {
+    if (!query) return esc(text);
+    var i = text.toLowerCase().indexOf(query.toLowerCase());
+    if (i === -1) return esc(text);
+    return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + query.length)) + "</mark>" + esc(text.slice(i + query.length));
+  }
+  // A pointer-based drag that ends somewhere other than where it started
+  // still makes the browser fire one native "click" at the release point
+  // once pointerup finishes. If that point happens to be a button with its
+  // own click handler (e.g. a column's "+" add-block button), the stray
+  // click re-fires that handler right after the drag's own drop logic —
+  // duplicating or clobbering what the drop just did. Call this at the
+  // start of a drop handler to swallow that one trailing click.
+  function swallowNextClick() {
+    var fn = function (ce) { ce.stopPropagation(); document.removeEventListener("click", fn, true); };
+    document.addEventListener("click", fn, true);
+    setTimeout(function () { document.removeEventListener("click", fn, true); }, 600);
+  }
 
   // For dropping a merchant-supplied URL into a single-quoted CSS url() or a
   // double-quoted attribute: esc() alone only neutralizes & < >, so this
@@ -228,6 +250,10 @@
         return '<div class="b-sec-pad b-sec-hero">' +
           '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
           '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p></div>';
+
+      case "heading":
+        return '<div class="b-sec-pad b-heading b-heading-' + (d.size || "l") + '" style="text-align:' + (d.align || "left") + ';">' +
+          '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2></div>';
 
       case "text_image":
         var imgStyle = d.image_url ? ' style="background-image:url(\'' + esc(d.image_url).replace(/'/g, "%27") + '\');"' : "";
@@ -951,6 +977,10 @@
 
   function renderLibrary() {
     var body = document.getElementById("bLibraryBody");
+    var clearBtn = document.getElementById("bLibSearchClear");
+    var q = (document.getElementById("bLibSearch") || {}).value || "";
+    q = q.trim();
+    if (clearBtn) clearBtn.hidden = !q;
     body.innerHTML = "";
     var byGroup = {};
     Object.keys(SECTION_TYPES).forEach(function (type) {
@@ -958,42 +988,74 @@
       (byGroup[g] = byGroup[g] || []).push(type);
     });
     var groups = LIB_GROUP_ORDER.concat(Object.keys(byGroup).filter(function (g) { return LIB_GROUP_ORDER.indexOf(g) === -1; }));
+    var anyVisible = false;
     groups.forEach(function (g) {
       var types = byGroup[g];
       if (!types || !types.length) return;
+      var matchingTypes = types.filter(function (type) {
+        return !q || SECTION_TYPES[type].name.toLowerCase().indexOf(q.toLowerCase()) !== -1;
+      });
+      if (!matchingTypes.length) return;
+      anyVisible = true;
       var groupEl = el('<div class="b-lib-group"><div class="b-lib-group-label">' + esc(g) + '</div></div>');
-      types.forEach(function (type) {
+      matchingTypes.forEach(function (type) {
         var row = el(
           '<div class="b-lib-item" data-type="' + type + '">' +
             '<div class="b-lib-item-icon">' + icon(type) + '</div>' +
-            '<div class="b-lib-item-label">' + esc(SECTION_TYPES[type].name) + '</div>' +
+            '<div class="b-lib-item-label">' + highlight(SECTION_TYPES[type].name, q) + '</div>' +
           '</div>'
         );
         groupEl.appendChild(row);
       });
       body.appendChild(groupEl);
     });
-    body.appendChild(el('<div class="b-lib-note">More section types are on the way — new ones will show up in this list as they ship.</div>'));
+    if (!anyVisible) {
+      body.appendChild(el('<div class="b-side-no-results">No sections match “' + esc(q) + '”.</div>'));
+    } else if (!q) {
+      body.appendChild(el('<div class="b-lib-note">More section types are on the way — new ones will show up in this list as they ship.</div>'));
+    }
   }
 
   function renderLayers() {
     var body = document.getElementById("bLayersBody");
+    var clearBtn = document.getElementById("bLayerSearchClear");
+    var q = (document.getElementById("bLayerSearch") || {}).value || "";
+    q = q.trim();
+    if (clearBtn) clearBtn.hidden = !q;
     body.innerHTML = "";
     if (!state.sections.length) {
       body.innerHTML = '<div class="b-layer-empty">No sections yet</div>';
       return;
     }
+    var anyVisible = false;
     state.sections.forEach(function (sec) {
       var label = (SECTION_TYPES[sec.type] && SECTION_TYPES[sec.type].name) || sec.type;
+      var matches = !q || label.toLowerCase().indexOf(q.toLowerCase()) !== -1;
+      if (!matches) return;
+      anyVisible = true;
       var row = el(
         '<div class="b-layer-row ' + (sec.id === state.selectedId ? "selected" : "") + ' ' + (sec.hidden ? "is-hidden" : "") + '" data-id="' + sec.id + '">' +
           '<span class="b-drag-handle" data-action="drag">' + icon("drag") + '</span>' +
           '<span class="b-layer-row-icon">' + icon(sec.type) + '</span>' +
-          '<span class="b-layer-row-label">' + esc(label) + '</span>' +
+          '<span class="b-layer-row-label">' + highlight(label, q) + '</span>' +
         '</div>'
       );
       body.appendChild(row);
     });
+    if (!anyVisible) {
+      body.appendChild(el('<div class="b-side-no-results">No sections on this page match “' + esc(q) + '”.</div>'));
+    }
+  }
+
+  // Scrolls the canvas to a section (used when a Page sections search
+  // result or row is clicked) and gives it a brief highlight flash so the
+  // jump is visible even when the section was already on screen.
+  function jumpToSection(id) {
+    var wrap = document.querySelector('.b-csec[data-id="' + id + '"]');
+    if (!wrap) return;
+    wrap.scrollIntoView({ behavior: "smooth", block: "center" });
+    wrap.classList.add("is-flash-target");
+    setTimeout(function () { wrap.classList.remove("is-flash-target"); }, 900);
   }
 
   function renderAll() {
@@ -1035,6 +1097,10 @@
     switch (sec.type) {
       case "hero":
         return field("", '<div class="b-inspector-hint">Click the heading or subheading on the canvas to edit it.</div>');
+      case "heading":
+        return field("Size", selectHtml("size", [{ val: "s", label: "Small" }, { val: "m", label: "Medium" }, { val: "l", label: "Large" }, { val: "xl", label: "Extra large" }], d.size || "l")) +
+          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left")) +
+          field("", '<div class="b-inspector-hint">Click the heading on the canvas to edit it.</div>');
       case "text_image":
         return field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side)) +
           field("Image URL", textHtml("image_url", d.image_url, "https://…")) +
@@ -1456,6 +1522,29 @@
     if (info.targetEl) info.targetEl.classList.add(info.before ? "is-drop-target-before" : "is-drop-target-after");
   }
 
+  // Same idea as computeDropIndex/showDropMarker above, but scoped to the
+  // Page structure (Layers) panel's own row list — lets a section be
+  // reordered by dragging its row up/down inside that panel, without the
+  // pointer ever having to cross over the canvas. Only counts rows the
+  // current layer search hasn't hidden, and only while that search is
+  // empty (see the guard at the call site) — a filtered subset can't map
+  // cleanly back onto the full section array's indices.
+  function layerRowEls() { return Array.prototype.slice.call(document.querySelectorAll("#bLayersBody .b-layer-row:not([hidden])")); }
+  function clearLayerDropMarkers() { document.querySelectorAll(".b-layer-row").forEach(function (n) { n.classList.remove("is-drop-target-before", "is-drop-target-after"); }); }
+  function computeLayerDropIndex(clientY, excludeId) {
+    var els = layerRowEls().filter(function (n) { return n.dataset.id !== String(excludeId); });
+    if (!els.length) return { index: 0, targetEl: null, before: true };
+    for (var i = 0; i < els.length; i++) {
+      var r = els[i].getBoundingClientRect();
+      if (clientY < r.top + r.height / 2) return { index: i, targetEl: els[i], before: true };
+    }
+    return { index: els.length, targetEl: els[els.length - 1], before: false };
+  }
+  function showLayerDropMarker(info) {
+    clearLayerDropMarkers();
+    if (info.targetEl) info.targetEl.classList.add(info.before ? "is-drop-target-before" : "is-drop-target-after");
+  }
+
   function startDrag(e, kind, payload) {
     e.preventDefault();
     var ghost = document.getElementById("bDragGhost");
@@ -1491,6 +1580,25 @@
         }
       }
       clearColDropMarkers();
+
+      // A reorder drag started from the Layers panel's own grip handle can
+      // be dropped right there, without the pointer crossing into the
+      // canvas — as long as that panel's search box is empty (a filtered
+      // row list can't map back onto the full section array by position).
+      if (drag.kind === "reorder") {
+        var layersBody = document.getElementById("bLayersBody");
+        var layerSearchEl = document.getElementById("bLayerSearch");
+        var layerSearchEmpty = !layerSearchEl || !layerSearchEl.value.trim();
+        var lRect = layersBody ? layersBody.getBoundingClientRect() : null;
+        if (layerSearchEmpty && lRect && lRect.width && p.clientX >= lRect.left && p.clientX <= lRect.right && p.clientY >= lRect.top && p.clientY <= lRect.bottom) {
+          drag.dropInfo = computeLayerDropIndex(p.clientY, drag.payload);
+          clearDropMarkers();
+          showLayerDropMarker(drag.dropInfo);
+          return;
+        }
+      }
+      clearLayerDropMarkers();
+
       var canvasEl = document.getElementById("bCanvas");
       var r = canvasEl.getBoundingClientRect();
       if (p.clientX >= r.left - 40 && p.clientX <= r.right + 40 && p.clientY >= r.top - 20 && p.clientY <= r.bottom + 20) {
@@ -1508,6 +1616,7 @@
       ghost.hidden = true;
       clearDropMarkers();
       clearColDropMarkers();
+      clearLayerDropMarkers();
       finishDrag();
       drag = null;
     }
@@ -1524,6 +1633,12 @@
 
   function finishDrag() {
     if (!drag) return;
+    // The drop may release the mouse over a clickable control that belongs
+    // to a different section than the one being dragged (a column's "+"
+    // button, another section's duplicate/delete/toggle icon) — swallow the
+    // native click the browser is about to fire at that point so it can't
+    // re-trigger that control right after the drop's own logic runs below.
+    swallowNextClick();
     if (drag.kind === "insert" && drag.colDropInfo) {
       return insertBlockIntoColumn(drag.colDropInfo.sectionId, drag.colDropInfo.colIndex, drag.payload);
     }
@@ -1549,6 +1664,10 @@
       if (!item) return;
       startDrag(e, "insert", item.dataset.type);
     });
+    var search = document.getElementById("bLibSearch");
+    var clearBtn = document.getElementById("bLibSearchClear");
+    if (search) search.addEventListener("input", renderLibrary);
+    if (clearBtn) clearBtn.addEventListener("click", function () { search.value = ""; renderLibrary(); search.focus(); });
   }
 
   function wireLayers() {
@@ -1563,7 +1682,14 @@
       var row = e.target.closest(".b-layer-row");
       if (!row || e.target.closest('[data-action="drag"]')) return;
       selectSection(row.dataset.id);
+      jumpToSection(row.dataset.id);
+      row.classList.add("is-flash");
+      setTimeout(function () { row.classList.remove("is-flash"); }, 500);
     });
+    var search = document.getElementById("bLayerSearch");
+    var clearBtn = document.getElementById("bLayerSearchClear");
+    if (search) search.addEventListener("input", renderLayers);
+    if (clearBtn) clearBtn.addEventListener("click", function () { search.value = ""; renderLayers(); search.focus(); });
   }
 
   function wireCanvas() {
