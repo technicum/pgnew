@@ -61,7 +61,12 @@
   // individually sub-selected within the selected section (e.g. "heading"),
   // for the per-element spacing panel in the inspector — null when just the
   // section itself is selected. Always scoped to state.selectedId's section.
-  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null };
+  // inspectorTab: "content" (type-specific fields + the sub-selected
+  // element's spacing panel) or "settings" (universal section settings —
+  // visibility, height, margin/padding, custom class/CSS). Sticky across
+  // selections; selectSection() forces it to "content" when a field is
+  // freshly sub-selected, since that's where its panel lives.
+  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, inspectorTab: "content" };
 
   function findSection(id) { return state.sections.find(function (s) { return String(s.id) === String(id); }); }
   function indexOf(id) { return state.sections.findIndex(function (s) { return String(s.id) === String(id); }); }
@@ -341,21 +346,32 @@
     if (!rootEl) return;
     rootEl.style.marginTop = sec.margin_top ? sec.margin_top + "px" : "";
     rootEl.style.marginBottom = sec.margin_bottom ? sec.margin_bottom + "px" : "";
+    rootEl.style.marginLeft = sec.margin_left ? sec.margin_left + "px" : "";
+    rootEl.style.marginRight = sec.margin_right ? sec.margin_right + "px" : "";
     rootEl.style.paddingTop = sec.padding_top ? sec.padding_top + "px" : "";
     rootEl.style.paddingBottom = sec.padding_bottom ? sec.padding_bottom + "px" : "";
+    rootEl.style.paddingLeft = sec.padding_left ? sec.padding_left + "px" : "";
+    rootEl.style.paddingRight = sec.padding_right ? sec.padding_right + "px" : "";
   }
 
-  // Per-element spacing: margin/padding on one text field inside a section
-  // (e.g. just the Hero heading), applied straight to that field's own
-  // contenteditable node — independent of applySpacingStyle above, which is
-  // for the section as a whole.
+  // Per-element spacing: margin/padding/height on one text field inside a
+  // section (e.g. just the Hero heading), applied straight to that field's
+  // own contenteditable node — independent of applySpacingStyle above,
+  // which is for the section as a whole. Unlike section-level spacing,
+  // elements get left/right too (shifting one piece of text within its
+  // section is a real thing to want, unlike a full-width section).
   function applyElStyleToNode(node, st) {
     if (!node) return;
     st = st || {};
     node.style.marginTop = st.margin_top ? st.margin_top + "px" : "";
     node.style.marginBottom = st.margin_bottom ? st.margin_bottom + "px" : "";
+    node.style.marginLeft = st.margin_left ? st.margin_left + "px" : "";
+    node.style.marginRight = st.margin_right ? st.margin_right + "px" : "";
     node.style.paddingTop = st.padding_top ? st.padding_top + "px" : "";
     node.style.paddingBottom = st.padding_bottom ? st.padding_bottom + "px" : "";
+    node.style.paddingLeft = st.padding_left ? st.padding_left + "px" : "";
+    node.style.paddingRight = st.padding_right ? st.padding_right + "px" : "";
+    node.style.minHeight = st.min_height ? st.min_height + "px" : "";
   }
   function applyElementSpacingStyle(sectionId, fieldKey, st) {
     var wrap = document.querySelector('.b-csec[data-id="' + sectionId + '"]');
@@ -403,6 +419,8 @@
         wrap.appendChild(el('<div class="b-csec-resize" data-action="resize" title="Drag to resize this section’s height"><span></span></div>'));
         wrap.appendChild(el('<div class="b-csec-margin b-csec-margin-top" data-action="margin-top" title="Drag to add space above this section"></div>'));
         wrap.appendChild(el('<div class="b-csec-margin b-csec-margin-bottom" data-action="margin-bottom" title="Drag to add space below this section"></div>'));
+        wrap.appendChild(el('<div class="b-csec-margin-v b-csec-margin-left" data-action="margin-left" title="Drag to add space to the left of this section"></div>'));
+        wrap.appendChild(el('<div class="b-csec-margin-v b-csec-margin-right" data-action="margin-right" title="Drag to add space to the right of this section"></div>'));
       }
       if (sec.id === state.selectedId) {
         wrap.classList.add("is-selected");
@@ -417,6 +435,11 @@
       if (sec.hide_mobile) wrap.dataset.hideMobile = "1";
       sortable.appendChild(wrap);
     });
+    // The element-handle overlay lives inside whichever .b-csec currently
+    // has a sub-selected field — but renderCanvas just rebuilt every .b-csec
+    // from scratch, so it needs to be re-parented and repositioned onto the
+    // fresh node for that field.
+    positionElementHandles();
   }
 
   // Drag-to-resize: distinct from the reorder/insert drag system above (no
@@ -440,6 +463,7 @@
       var p = ev.touches ? ev.touches[0] : ev;
       var h = clamp(startHeight + (p.clientY - startY));
       applyHeightStyle(rootEl, h);
+      positionElementHandles();
       var input = liveInput();
       if (input) input.value = h;
     }
@@ -449,6 +473,7 @@
       var finalHeight = clamp(parseFloat(rootEl.style.minHeight) || 0);
       applyHeightStyle(rootEl, finalHeight);
       sec.min_height = finalHeight;
+      positionElementHandles();
       var input = liveInput();
       if (input) input.value = finalHeight;
       saveSettings(sec.id, { min_height: finalHeight });
@@ -457,19 +482,26 @@
     document.addEventListener("pointerup", onUp);
   }
 
-  // Drag-to-stretch for the gutter margin handles above/below a section --
+  // A drag handle's direction maps to which mouse axis drives it and which
+  // way along that axis grows the value — shared by both the section-level
+  // margin handles below and the per-element ones further down. Dragging
+  // the TOP/LEFT handle further up/left grows that side's spacing; dragging
+  // BOTTOM/RIGHT further down/right grows that side.
+  function spacingAxis(direction) { return (direction === "left" || direction === "right") ? "x" : "y"; }
+  function spacingSign(direction) { return (direction === "top" || direction === "left") ? -1 : 1; }
+
+  // Drag-to-stretch for the gutter/edge margin handles around a section --
   // its own small pointer session, parallel to startResize above but for a
-  // different property (margin-top/margin-bottom instead of min-height) and
-  // a different sign (dragging the TOP handle further up should grow
-  // margin-top, the opposite direction from dragging the bottom one down).
-  function startMarginDrag(e, sec, rootEl, side) {
+  // different property (margin-top/bottom/left/right instead of min-height).
+  function startMarginDrag(e, sec, rootEl, direction) {
     if (!rootEl) return;
     e.preventDefault();
     e.stopPropagation();
-    var startY = e.clientY;
-    var key = side === "top" ? "margin_top" : "margin_bottom";
+    var axis = spacingAxis(direction);
+    var startPos = axis === "x" ? e.clientX : e.clientY;
+    var key = "margin_" + direction;
     var startVal = sec[key] || 0;
-    var sign = side === "top" ? -1 : 1;
+    var sign = spacingSign(direction);
 
     function clamp(n) { return Math.max(0, Math.min(400, Math.round(n))); }
     function liveInput() { return document.querySelector('input[type="number"][data-field="__' + key + '"]'); }
@@ -477,12 +509,14 @@
     function apply(v) {
       sec[key] = v;
       applySpacingStyle(rootEl, sec);
+      positionElementHandles();
       var input = liveInput();
       if (input) input.value = v;
     }
     function onMove(ev) {
       var p = ev.touches ? ev.touches[0] : ev;
-      apply(clamp(startVal + sign * (p.clientY - startY)));
+      var pos = axis === "x" ? p.clientX : p.clientY;
+      apply(clamp(startVal + sign * (pos - startPos)));
     }
     function onUp() {
       document.removeEventListener("pointermove", onMove);
@@ -494,6 +528,143 @@
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
   }
+
+  /* ---------------------------------------------------------------
+     Per-element spacing overlay — a small floating set of drag handles
+     that tracks whichever text element is currently sub-selected
+     (state.selectedFieldKey). Built once at boot and re-parented onto the
+     live field node whenever the selection or the canvas DOM changes,
+     rather than inserted as a sibling of the text itself: these fields sit
+     inside all sorts of surrounding layouts (flex rows next to other
+     content, grids, etc), and a handle spliced into that flow would
+     visually disrupt it. An absolutely-positioned overlay, sized to match
+     the field's own bounding box each time, works regardless of what's
+     around it and never touches the field's own (contenteditable) DOM.
+  --------------------------------------------------------------- */
+  var elementHandles = el(
+    '<div class="b-el-handles" id="bElementHandles" hidden>' +
+      '<div class="b-el-margin b-el-margin-top" data-el-action="margin-top" title="Drag to add space above"></div>' +
+      '<div class="b-el-margin b-el-margin-bottom" data-el-action="margin-bottom" title="Drag to add space below"></div>' +
+      '<div class="b-el-margin-v b-el-margin-left" data-el-action="margin-left" title="Drag to add space to the left"></div>' +
+      '<div class="b-el-margin-v b-el-margin-right" data-el-action="margin-right" title="Drag to add space to the right"></div>' +
+      '<div class="b-el-resize" data-el-action="resize" title="Drag to increase this text’s height"><span></span></div>' +
+    '</div>'
+  );
+  document.body.appendChild(elementHandles);
+
+  function selectedFieldNode() {
+    if (!state.selectedId || !state.selectedFieldKey) return null;
+    var sec = findSection(state.selectedId);
+    if (!sec || !isTextElementField(sec.type, state.selectedFieldKey)) return null;
+    var wrap = document.querySelector('.b-csec[data-id="' + state.selectedId + '"]');
+    return wrap ? wrap.querySelector('[data-field="' + state.selectedFieldKey + '"]') : null;
+  }
+
+  // Moves/sizes the overlay to exactly cover the sub-selected field's own
+  // box. Both rects are viewport-relative, so their difference is correct
+  // regardless of how the canvas is scrolled — no scroll-container math
+  // needed, same trick sections' own position:relative handles rely on.
+  function positionElementHandles() {
+    var node = selectedFieldNode();
+    if (!node) { elementHandles.hidden = true; return; }
+    var wrap = node.closest(".b-csec");
+    if (!wrap) { elementHandles.hidden = true; return; }
+    if (elementHandles.parentNode !== wrap) wrap.appendChild(elementHandles);
+    var wrapRect = wrap.getBoundingClientRect();
+    var nodeRect = node.getBoundingClientRect();
+    elementHandles.style.top = (nodeRect.top - wrapRect.top) + "px";
+    elementHandles.style.left = (nodeRect.left - wrapRect.left) + "px";
+    elementHandles.style.width = nodeRect.width + "px";
+    elementHandles.style.height = nodeRect.height + "px";
+    elementHandles.hidden = false;
+  }
+
+  function startElementSpacingDrag(e, sec, fieldKey, node, direction) {
+    if (!node) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var axis = spacingAxis(direction);
+    var startPos = axis === "x" ? e.clientX : e.clientY;
+    var key = "margin_" + direction;
+    var current = (sec.element_styles && sec.element_styles[fieldKey] && sec.element_styles[fieldKey][key]) || 0;
+    var sign = spacingSign(direction);
+
+    function clamp(n) { return Math.max(0, Math.min(400, Math.round(n))); }
+    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_' + key + '"][data-el-field="' + fieldKey + '"]'); }
+
+    function apply(v) {
+      sec.element_styles = sec.element_styles || {};
+      var entry = Object.assign({}, sec.element_styles[fieldKey] || {});
+      entry[key] = v;
+      sec.element_styles[fieldKey] = entry;
+      applyElStyleToNode(node, entry);
+      positionElementHandles();
+      var input = liveInput();
+      if (input) input.value = v;
+    }
+    function onMove(ev) {
+      var p = ev.touches ? ev.touches[0] : ev;
+      var pos = axis === "x" ? p.clientX : p.clientY;
+      apply(clamp(current + sign * (pos - startPos)));
+    }
+    function onUp() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      var entry = (sec.element_styles && sec.element_styles[fieldKey]) || {};
+      var patch = { field: fieldKey };
+      patch[key] = entry[key] || 0;
+      saveElementStyle(sec.id, patch);
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  function startElementResize(e, sec, fieldKey, node) {
+    if (!node) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var startY = e.clientY;
+    var startHeight = node.getBoundingClientRect().height;
+
+    function clamp(n) { return Math.max(0, Math.min(800, Math.round(n))); }
+    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_min_height"][data-el-field="' + fieldKey + '"]'); }
+
+    function apply(v) {
+      sec.element_styles = sec.element_styles || {};
+      var entry = Object.assign({}, sec.element_styles[fieldKey] || {});
+      entry.min_height = v;
+      sec.element_styles[fieldKey] = entry;
+      applyElStyleToNode(node, entry);
+      positionElementHandles();
+      var input = liveInput();
+      if (input) input.value = v;
+    }
+    function onMove(ev) {
+      var p = ev.touches ? ev.touches[0] : ev;
+      apply(clamp(startHeight + (p.clientY - startY)));
+    }
+    function onUp() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      var entry = (sec.element_styles && sec.element_styles[fieldKey]) || {};
+      saveElementStyle(sec.id, { field: fieldKey, min_height: entry.min_height || 0 });
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  elementHandles.addEventListener("pointerdown", function (e) {
+    var actionEl = e.target.closest("[data-el-action]");
+    if (!actionEl) return;
+    e.stopPropagation();
+    var sec = state.selectedId ? findSection(state.selectedId) : null;
+    var fieldKey = state.selectedFieldKey;
+    var node = selectedFieldNode();
+    if (!sec || !fieldKey || !node) return;
+    var action = actionEl.dataset.elAction;
+    if (action === "resize") return startElementResize(e, sec, fieldKey, node);
+    startElementSpacingDrag(e, sec, fieldKey, node, action.replace("margin-", ""));
+  });
 
   var LIB_GROUP_ORDER = ["Content", "Commerce", "Engagement", "Layout"];
 
@@ -642,34 +813,51 @@
     return '<label class="b-check"><input type="checkbox" data-field="' + name + '" ' + (checked ? "checked" : "") + ' /> ' + esc(labelText) + '</label>';
   }
 
-  function spacingPairHtml(topField, bottomField, topVal, bottomVal) {
-    return '<div class="b-spacing-pair">' +
-      '<label>Top<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="' + topField + '" value="' + (topVal || 0) + '" /></label>' +
-      '<label>Bottom<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="' + bottomField + '" value="' + (bottomVal || 0) + '" /></label>' +
+  // Four-way spacing grid (Top/Bottom/Left/Right), reused for both a
+  // section's own margin/padding and a sub-selected element's — the caller
+  // supplies each input's data-field name and current value.
+  function spacingQuadHtml(topField, bottomField, leftField, rightField, topVal, bottomVal, leftVal, rightVal) {
+    function inp(name, val) {
+      return '<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="' + name + '" value="' + (val || 0) + '" />';
+    }
+    return '<div class="b-spacing-quad">' +
+      '<label>Top' + inp(topField, topVal) + '</label>' +
+      '<label>Bottom' + inp(bottomField, bottomVal) + '</label>' +
+      '<label>Left' + inp(leftField, leftVal) + '</label>' +
+      '<label>Right' + inp(rightField, rightVal) + '</label>' +
     '</div>';
   }
 
   // Per-element spacing panel — shown only while a text field inside the
-  // selected section is itself sub-selected (state.selectedFieldKey), below
-  // its content fields and above the section-wide "Section settings" below.
-  // Reuses spacingPairHtml's layout with distinct "__elm_..." data-field
-  // names (plus data-el-field naming which field they belong to) so
-  // wireInspector's change handler can tell them apart from the
-  // section-level "__margin_"/"__padding_" inputs.
-  function elementSpacingPairHtml(fieldKey, topKey, bottomKey, topVal, bottomVal) {
-    return '<div class="b-spacing-pair">' +
-      '<label>Top<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="__elm_' + topKey + '" data-el-field="' + esc(fieldKey) + '" value="' + (topVal || 0) + '" /></label>' +
-      '<label>Bottom<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="__elm_' + bottomKey + '" data-el-field="' + esc(fieldKey) + '" value="' + (bottomVal || 0) + '" /></label>' +
+  // selected section is itself sub-selected (state.selectedFieldKey), on
+  // the Content tab where the click-to-select interaction lives. Its
+  // inputs use distinct "__elm_..." data-field names (plus data-el-field
+  // naming which field they belong to) so wireInspector's change handler
+  // can tell them apart from the section-level "__margin_"/"__padding_"
+  // inputs on the Settings tab.
+  function elementSpacingQuadHtml(fieldKey, prefix, st) {
+    function name(k) { return '__elm_' + prefix + '_' + k; }
+    function inp(k) {
+      return '<input class="b-text-native" type="number" min="0" max="400" step="4" data-field="' + name(k) + '" data-el-field="' + esc(fieldKey) + '" value="' + (st[prefix + '_' + k] || 0) + '" />';
+    }
+    return '<div class="b-spacing-quad">' +
+      '<label>Top' + inp("top") + '</label>' +
+      '<label>Bottom' + inp("bottom") + '</label>' +
+      '<label>Left' + inp("left") + '</label>' +
+      '<label>Right' + inp("right") + '</label>' +
     '</div>';
   }
   function elementSettingsHtml(sec, fieldKey) {
     var st = (sec.element_styles && sec.element_styles[fieldKey]) || {};
     var label = fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1);
     return '<div class="b-inspector-divider"></div>' +
-      '<div class="b-inspector-section-label">“' + esc(label) + '” text spacing</div>' +
-      field("Margin", elementSpacingPairHtml(fieldKey, "margin_top", "margin_bottom", st.margin_top, st.margin_bottom)) +
-      field("Padding", elementSpacingPairHtml(fieldKey, "padding_top", "padding_bottom", st.padding_top, st.padding_bottom)) +
-      field("", '<div class="b-inspector-hint">Just this text — on top of the section’s own margin/padding below. Click elsewhere on the canvas to go back to section settings.</div>');
+      '<div class="b-inspector-section-label">“' + esc(label) + '” spacing</div>' +
+      field("Height", '<input class="b-text-native" type="number" min="0" max="800" step="10" data-field="__elm_min_height" data-el-field="' + esc(fieldKey) + '" value="' + (st.min_height || 0) + '" />' +
+        '<div class="b-field-hint">Drag the handle below the selected text on the canvas, or type a height in pixels.</div>') +
+      field("Margin", elementSpacingQuadHtml(fieldKey, "margin", st) +
+        '<div class="b-field-hint">Drag the thin handles around the selected text on the canvas, or type pixels here.</div>') +
+      field("Padding", elementSpacingQuadHtml(fieldKey, "padding", st)) +
+      field("", '<div class="b-inspector-hint">Just this text — on top of the section’s own margin/padding in Settings. Click elsewhere on the canvas to deselect it.</div>');
   }
 
   function sectionSettingsHtml(sec) {
@@ -685,13 +873,11 @@
       '</div>' +
       '<div class="b-field-hint">Uncheck a device to hide this section there only. Preview it with the desktop/tablet/mobile switcher above the canvas.</div>');
     var spacingRows = resizable
-      ? field("Margin (space around this section)", spacingPairHtml("__margin_top", "__margin_bottom", sec.margin_top, sec.margin_bottom) +
-          '<div class="b-field-hint">Drag the thin handles just above/below the section on the canvas, or type pixels here.</div>') +
-        field("Padding (space inside its own edges)", spacingPairHtml("__padding_top", "__padding_bottom", sec.padding_top, sec.padding_bottom))
+      ? field("Margin (space around this section)", spacingQuadHtml("__margin_top", "__margin_bottom", "__margin_left", "__margin_right", sec.margin_top, sec.margin_bottom, sec.margin_left, sec.margin_right) +
+          '<div class="b-field-hint">Drag the thin handles around the section on the canvas, or type pixels here. Left/right inset the section from the page edge.</div>') +
+        field("Padding (space inside its own edges)", spacingQuadHtml("__padding_top", "__padding_bottom", "__padding_left", "__padding_right", sec.padding_top, sec.padding_bottom, sec.padding_left, sec.padding_right))
       : "";
-    return '<div class="b-inspector-divider"></div>' +
-      '<div class="b-inspector-section-label">Section settings</div>' +
-      visibilityRow +
+    return visibilityRow +
       heightRow +
       spacingRows +
       field("Custom CSS class", textHtml("__custom_class", sec.custom_class, "e.g. my-hero-tweak")) +
@@ -700,6 +886,12 @@
   }
   function pzSelector(id) { return "pz-section-" + id; }
 
+  // Content tab = what this section (or its sub-selected text element) can
+  // do/say — type-specific fields plus the per-element spacing panel.
+  // Settings tab = universal section-wide settings — visibility, height,
+  // margin/padding, custom class/CSS. Tab choice is sticky across
+  // selections (state.inspectorTab) except selectSection() pins it to
+  // "content" the moment a field gets freshly sub-selected.
   function renderInspector() {
     var panel = document.getElementById("bInspector");
     var sec = state.selectedId ? findSection(state.selectedId) : null;
@@ -710,8 +902,16 @@
     document.getElementById("bInspectorTitle").textContent = label;
     document.getElementById("bInspectorType").textContent = "section · " + sec.type + (sec.hidden ? " · hidden" : "");
     var fieldSel = (state.selectedFieldKey && isTextElementField(sec.type, state.selectedFieldKey)) ? state.selectedFieldKey : null;
+    var tab = state.inspectorTab === "settings" ? "settings" : "content";
+    var contentPane = inspectorFieldsFor(sec) + (fieldSel ? elementSettingsHtml(sec, fieldSel) : "");
+    var tabsHtml = '<div class="b-inspector-tabs">' +
+      '<button type="button" class="b-inspector-tab ' + (tab === "content" ? "active" : "") + '" data-tab="content">Content</button>' +
+      '<button type="button" class="b-inspector-tab ' + (tab === "settings" ? "active" : "") + '" data-tab="settings">Settings</button>' +
+    '</div>';
     document.getElementById("bInspectorBody").innerHTML =
-      inspectorFieldsFor(sec) + (fieldSel ? elementSettingsHtml(sec, fieldSel) : "") + sectionSettingsHtml(sec);
+      tabsHtml +
+      '<div class="b-inspector-pane" data-pane="content"' + (tab === "content" ? "" : " hidden") + '>' + contentPane + '</div>' +
+      '<div class="b-inspector-pane" data-pane="settings"' + (tab === "settings" ? "" : " hidden") + '>' + sectionSettingsHtml(sec) + '</div>';
   }
 
   /* ---------------------------------------------------------------
@@ -730,6 +930,10 @@
       var match = state.selectedFieldKey && host && host.dataset.id === String(id) && n.dataset.field === state.selectedFieldKey;
       n.classList.toggle("is-field-selected", !!match);
     });
+    // Sub-selecting a field is what the user is here to work on — make sure
+    // the Content tab (where its spacing panel lives) is the one showing.
+    if (state.selectedFieldKey) state.inspectorTab = "content";
+    positionElementHandles();
     renderInspector();
   }
 
@@ -990,14 +1194,14 @@
         startResize(e, sec, rhost.firstElementChild);
         return;
       }
-      var marginHandle = e.target.closest('[data-action="margin-top"], [data-action="margin-bottom"]');
+      var marginHandle = e.target.closest('[data-action="margin-top"], [data-action="margin-bottom"], [data-action="margin-left"], [data-action="margin-right"]');
       if (marginHandle) {
         var mhost = e.target.closest(".b-csec");
         if (!mhost) return;
         var msec = findSection(mhost.dataset.id);
         if (!msec) return;
-        var side = marginHandle.dataset.action === "margin-top" ? "top" : "bottom";
-        startMarginDrag(e, msec, mhost.firstElementChild, side);
+        var direction = marginHandle.dataset.action.replace("margin-", "");
+        startMarginDrag(e, msec, mhost.firstElementChild, direction);
         return;
       }
       var handle = e.target.closest('[data-action="drag"]');
@@ -1008,6 +1212,13 @@
     });
 
     canvas.addEventListener("click", function (e) {
+      // The element-handle overlay (drag handles for the sub-selected
+      // text field's own margin/padding/height) manages selection itself
+      // via its own pointerdown listener — a click bubbling up from it
+      // must not reach the generic field-click logic below, which would
+      // otherwise immediately clear the sub-selection a drag just set.
+      if (e.target.closest("[data-el-action]")) return;
+
       var actionBtn = e.target.closest("[data-action]");
       var host = e.target.closest(".b-csec");
       if (!host) return;
@@ -1018,7 +1229,7 @@
         if (action === "dup") return duplicateSection(id);
         if (action === "del") return deleteSection(id);
         if (action === "toggle") return toggleHidden(id);
-        if (action === "drag" || action === "resize" || action === "margin-top" || action === "margin-bottom") return;
+        if (action.indexOf("margin-") === 0 || action === "drag" || action === "resize") return;
       }
 
       // Clicking directly into one of this section's own text elements
@@ -1073,12 +1284,26 @@
       }
       saveField(sec.id, patch);
     });
+
+    // Typing into the sub-selected field can change its own height (text
+    // wrapping to a new line) — keep the element-handle overlay tracking it
+    // live rather than only on the next full render.
+    canvas.addEventListener("input", function (e) {
+      var f = e.target.closest("[data-field]");
+      if (f && state.selectedFieldKey && f.dataset.field === state.selectedFieldKey) positionElementHandles();
+    });
   }
 
   function wireInspector() {
     document.getElementById("bInspectorBody").addEventListener("click", function (e) {
       var sec = state.selectedId ? findSection(state.selectedId) : null;
       if (!sec) return;
+      var tabBtn = e.target.closest(".b-inspector-tab");
+      if (tabBtn) {
+        state.inspectorTab = tabBtn.dataset.tab === "settings" ? "settings" : "content";
+        renderInspector();
+        return;
+      }
       var segBtn = e.target.closest(".b-seg button");
       if (segBtn) {
         var wrap = segBtn.closest(".b-seg");
@@ -1124,20 +1349,23 @@
         hin.value = h;
         sec.min_height = h;
         applyHeightStyle(heightRootEl(sec.id), h);
+        positionElementHandles();
         saveSettings(sec.id, { min_height: h });
         return;
       }
       var elIn = e.target.closest('input[type="number"][data-field^="__elm_"]');
       if (elIn) {
-        var elKey = elIn.dataset.field.slice(6); // "__elm_margin_top" -> "margin_top"
+        var elKey = elIn.dataset.field.slice(6); // "__elm_margin_top" -> "margin_top"; "__elm_min_height" -> "min_height"
         var targetField = elIn.dataset.elField;
-        var elVal = Math.max(0, Math.min(400, parseInt(elIn.value, 10) || 0));
+        var elMax = elKey === "min_height" ? 800 : 400;
+        var elVal = Math.max(0, Math.min(elMax, parseInt(elIn.value, 10) || 0));
         elIn.value = elVal;
         sec.element_styles = sec.element_styles || {};
         var nextEntry = Object.assign({}, sec.element_styles[targetField] || {});
         nextEntry[elKey] = elVal;
         sec.element_styles[targetField] = nextEntry;
         applyElementSpacingStyle(sec.id, targetField, nextEntry);
+        positionElementHandles();
         var elPatch = { field: targetField };
         elPatch[elKey] = elVal;
         saveElementStyle(sec.id, elPatch);
@@ -1150,6 +1378,7 @@
         spacingIn.value = sVal;
         sec[sKey] = sVal;
         applySpacingStyle(spacingRootEl(sec.id), sec);
+        positionElementHandles();
         var sPatch = {};
         sPatch[sKey] = sVal;
         saveSettings(sec.id, sPatch);
@@ -1229,7 +1458,13 @@
       document.querySelectorAll("#bViewportToggle button").forEach(function (b) { b.classList.remove("active"); });
       btn.classList.add("active");
       document.getElementById("bCanvasFrame").dataset.vp = btn.dataset.vp;
+      // The frame's width change animates (CSS transition), so reposition
+      // the element-handle overlay once now and again once it's settled.
+      positionElementHandles();
+      setTimeout(positionElementHandles, 260);
     });
+
+    window.addEventListener("resize", positionElementHandles);
 
     var publishBtn = document.getElementById("bPublishBtn");
     function paintPublishBtn() {

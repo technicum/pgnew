@@ -15,8 +15,12 @@
   // canvas) and padding (inset from its own top/bottom edge, numeric-only).
   if (section.margin_top) pzHeightStyle += 'margin-top:' + section.margin_top + 'px;';
   if (section.margin_bottom) pzHeightStyle += 'margin-bottom:' + section.margin_bottom + 'px;';
+  if (section.margin_left) pzHeightStyle += 'margin-left:' + section.margin_left + 'px;';
+  if (section.margin_right) pzHeightStyle += 'margin-right:' + section.margin_right + 'px;';
   if (section.padding_top) pzHeightStyle += 'padding-top:' + section.padding_top + 'px;';
   if (section.padding_bottom) pzHeightStyle += 'padding-bottom:' + section.padding_bottom + 'px;';
+  if (section.padding_left) pzHeightStyle += 'padding-left:' + section.padding_left + 'px;';
+  if (section.padding_right) pzHeightStyle += 'padding-right:' + section.padding_right + 'px;';
 %>
 <%
   // Per-element spacing: margin/padding on a single text field inside this
@@ -28,10 +32,15 @@
     var st = section.element_styles && section.element_styles[field];
     if (!st) return '';
     var s = '';
+    if (st.min_height) s += 'min-height:' + st.min_height + 'px;';
     if (st.margin_top) s += 'margin-top:' + st.margin_top + 'px;';
     if (st.margin_bottom) s += 'margin-bottom:' + st.margin_bottom + 'px;';
+    if (st.margin_left) s += 'margin-left:' + st.margin_left + 'px;';
+    if (st.margin_right) s += 'margin-right:' + st.margin_right + 'px;';
     if (st.padding_top) s += 'padding-top:' + st.padding_top + 'px;';
     if (st.padding_bottom) s += 'padding-bottom:' + st.padding_bottom + 'px;';
+    if (st.padding_left) s += 'padding-left:' + st.padding_left + 'px;';
+    if (st.padding_right) s += 'padding-right:' + st.padding_right + 'px;';
     return s;
   }
 %>

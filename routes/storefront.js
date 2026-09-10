@@ -110,7 +110,9 @@ async function renderStorePage(req, res, next, page) {
         custom_class: s.custom_class || '', custom_css: s.custom_css || '', min_height: s.min_height || 0,
         hide_desktop: !!s.hide_desktop, hide_tablet: !!s.hide_tablet, hide_mobile: !!s.hide_mobile,
         margin_top: s.margin_top || 0, margin_bottom: s.margin_bottom || 0,
+        margin_left: s.margin_left || 0, margin_right: s.margin_right || 0,
         padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
+        padding_left: s.padding_left || 0, padding_right: s.padding_right || 0,
         element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
       };
       if (s.type === 'products') {

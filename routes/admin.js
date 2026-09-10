@@ -460,8 +460,12 @@ router.post('/pages/:id/sections/restore', async (req, res, next) => {
       const hideMobile = settings.hide_mobile || 0;
       const marginTop = settings.margin_top || 0;
       const marginBottom = settings.margin_bottom || 0;
+      const marginLeft = settings.margin_left || 0;
+      const marginRight = settings.margin_right || 0;
       const paddingTop = settings.padding_top || 0;
       const paddingBottom = settings.padding_bottom || 0;
+      const paddingLeft = settings.padding_left || 0;
+      const paddingRight = settings.padding_right || 0;
       const elementStyles = sanitizeAllElementStyles(item.type, item.element_styles);
       const elementStylesJson = Object.keys(elementStyles).length ? JSON.stringify(elementStyles) : null;
 
@@ -472,19 +476,23 @@ router.post('/pages/:id/sections/restore', async (req, res, next) => {
           `UPDATE ${TABLES.pageSections}
              SET position = ?, fields = ?, hidden = ?, custom_class = ?, custom_css = ?, min_height = ?,
                  hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
-                 margin_top = ?, margin_bottom = ?, padding_top = ?, padding_bottom = ?, element_styles = ?
+                 margin_top = ?, margin_bottom = ?, margin_left = ?, margin_right = ?,
+                 padding_top = ?, padding_bottom = ?, padding_left = ?, padding_right = ?, element_styles = ?
            WHERE id = ?`,
           [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
-            marginTop, marginBottom, paddingTop, paddingBottom, elementStylesJson, incomingId]
+            marginTop, marginBottom, marginLeft, marginRight,
+            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson, incomingId]
         );
       } else {
         const [result] = await pool.query(
           `INSERT INTO ${TABLES.pageSections}
              (page_id, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
-              margin_top, margin_bottom, padding_top, padding_bottom, element_styles)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              margin_top, margin_bottom, margin_left, margin_right,
+              padding_top, padding_bottom, padding_left, padding_right, element_styles)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [page.id, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
-            marginTop, marginBottom, paddingTop, paddingBottom, elementStylesJson]
+            marginTop, marginBottom, marginLeft, marginRight,
+            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson]
         );
         keepIds.add(result.insertId);
       }
@@ -550,8 +558,12 @@ router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) =>
     if (patch.hide_mobile !== undefined) { sets.push('hide_mobile = ?'); values.push(patch.hide_mobile); }
     if (patch.margin_top !== undefined) { sets.push('margin_top = ?'); values.push(patch.margin_top); }
     if (patch.margin_bottom !== undefined) { sets.push('margin_bottom = ?'); values.push(patch.margin_bottom); }
+    if (patch.margin_left !== undefined) { sets.push('margin_left = ?'); values.push(patch.margin_left); }
+    if (patch.margin_right !== undefined) { sets.push('margin_right = ?'); values.push(patch.margin_right); }
     if (patch.padding_top !== undefined) { sets.push('padding_top = ?'); values.push(patch.padding_top); }
     if (patch.padding_bottom !== undefined) { sets.push('padding_bottom = ?'); values.push(patch.padding_bottom); }
+    if (patch.padding_left !== undefined) { sets.push('padding_left = ?'); values.push(patch.padding_left); }
+    if (patch.padding_right !== undefined) { sets.push('padding_right = ?'); values.push(patch.padding_right); }
     if (sets.length) {
       values.push(section.id);
       await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
@@ -559,7 +571,8 @@ router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) =>
 
     const [[updated]] = await pool.query(
       `SELECT custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
-              margin_top, margin_bottom, padding_top, padding_bottom
+              margin_top, margin_bottom, margin_left, margin_right,
+              padding_top, padding_bottom, padding_left, padding_right
        FROM ${TABLES.pageSections} WHERE id = ?`,
       [section.id]
     );
@@ -573,8 +586,12 @@ router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) =>
       hide_mobile: !!updated.hide_mobile,
       margin_top: updated.margin_top || 0,
       margin_bottom: updated.margin_bottom || 0,
+      margin_left: updated.margin_left || 0,
+      margin_right: updated.margin_right || 0,
       padding_top: updated.padding_top || 0,
       padding_bottom: updated.padding_bottom || 0,
+      padding_left: updated.padding_left || 0,
+      padding_right: updated.padding_right || 0,
     });
   } catch (err) {
     next(err);

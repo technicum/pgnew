@@ -206,8 +206,12 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   hide_mobile TINYINT(1) NOT NULL DEFAULT 0,
   margin_top INT NOT NULL DEFAULT 0,
   margin_bottom INT NOT NULL DEFAULT 0,
+  margin_left INT NOT NULL DEFAULT 0,
+  margin_right INT NOT NULL DEFAULT 0,
   padding_top INT NOT NULL DEFAULT 0,
   padding_bottom INT NOT NULL DEFAULT 0,
+  padding_left INT NOT NULL DEFAULT 0,
+  padding_right INT NOT NULL DEFAULT 0,
   element_styles JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
@@ -526,22 +530,34 @@ async function migratePageSectionSettings(conn) {
   if (!(await columnExists(conn, TABLES.pageSections, 'hide_mobile'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN hide_mobile TINYINT(1) NOT NULL DEFAULT 0`);
   }
-  // Vertical spacing around/inside a section — margin (the gap before/after
-  // it, adjustable via the gutter drag handles on the canvas) and padding
-  // (inset from its own top/bottom edge, numeric-only in the inspector).
-  // Left/right aren't offered: sections are full-width blocks here, so
-  // horizontal margin/padding on the section itself has no visual meaning.
+  // Spacing around/inside a section — margin (the gap before/after/beside
+  // it, adjustable via the gutter/edge drag handles on the canvas) and
+  // padding (inset from its own edges, numeric-only in the inspector).
+  // Sections are full-width blocks, so left/right margin insets the section
+  // itself from the page edge (a "boxed" look) rather than repositioning it.
   if (!(await columnExists(conn, TABLES.pageSections, 'margin_top'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN margin_top INT NOT NULL DEFAULT 0`);
   }
   if (!(await columnExists(conn, TABLES.pageSections, 'margin_bottom'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN margin_bottom INT NOT NULL DEFAULT 0`);
   }
+  if (!(await columnExists(conn, TABLES.pageSections, 'margin_left'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN margin_left INT NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'margin_right'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN margin_right INT NOT NULL DEFAULT 0`);
+  }
   if (!(await columnExists(conn, TABLES.pageSections, 'padding_top'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN padding_top INT NOT NULL DEFAULT 0`);
   }
   if (!(await columnExists(conn, TABLES.pageSections, 'padding_bottom'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN padding_bottom INT NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'padding_left'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN padding_left INT NOT NULL DEFAULT 0`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'padding_right'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN padding_right INT NOT NULL DEFAULT 0`);
   }
   // Per-element spacing (margin/padding on one text field inside a section,
   // e.g. just the Hero heading, independent of the section-level spacing

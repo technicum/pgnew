@@ -140,10 +140,17 @@ body.builder-body button { font-family: inherit; }
 }
 
 .b-check-row { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.b-spacing-pair { display: flex; gap: 10px; }
-.b-spacing-pair label { flex: 1; font-size: 11px; color: var(--b-muted); display: flex; flex-direction: column; gap: 4px; }
+.b-spacing-quad { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.b-spacing-quad label { font-size: 11px; color: var(--b-muted); display: flex; flex-direction: column; gap: 4px; }
 .b-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--b-ink); cursor: pointer; }
 .b-check input { margin: 0; cursor: pointer; }
+
+/* Content / Settings tabs at the top of the inspector body. */
+.b-inspector-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--b-line); }
+.b-inspector-tab { border: none; background: transparent; font-size: 13px; font-weight: 600; color: var(--b-muted); padding: 8px 4px 10px; margin-bottom: -1px; border-bottom: 2px solid transparent; cursor: pointer; }
+.b-inspector-tab:hover { color: var(--b-ink); }
+.b-inspector-tab.active { color: var(--b-ink); border-bottom-color: var(--b-accent); }
+.b-inspector-pane[hidden] { display: none; }
 .b-csec.is-drop-target-before::before, .b-csec.is-drop-target-after::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; background: var(--b-accent); border-radius: 2px; z-index: 5; }
 .b-csec.is-drop-target-before::before { top: -2px; }
 .b-csec.is-drop-target-after::after { bottom: -2px; }
@@ -175,6 +182,19 @@ body.builder-body button { font-family: inherit; }
 .b-csec-margin-top { top: -17px; }
 .b-csec-margin-bottom { bottom: -17px; }
 
+/* Left/right margin handles — same idea as the top/bottom pair above, but
+   INSET from the edge (not protruding outward like top/bottom): a section
+   already touches the canvas's own left/right boundary, and the canvas
+   clips overflow for its rounded corners, so a handle poking past that
+   boundary would be unreachable. Sitting just inside the edge keeps it
+   clickable regardless. */
+.b-csec-margin-v { position: absolute; top: 8px; bottom: 8px; width: 10px; cursor: col-resize; touch-action: none; z-index: 6; opacity: 0; transition: opacity .12s; }
+.b-csec-margin-v::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
+.b-csec.is-selected .b-csec-margin-v, .b-csec:hover .b-csec-margin-v { opacity: .85; }
+.b-csec-margin-v:hover, .b-csec-margin-v:active { opacity: 1 !important; }
+.b-csec-margin-left { left: 4px; }
+.b-csec-margin-right { right: 4px; }
+
 [contenteditable="true"] { outline: none; border-radius: 3px; }
 [contenteditable="true"]:hover { box-shadow: 0 0 0 1px var(--b-line); }
 [contenteditable="true"]:focus { box-shadow: 0 0 0 2px var(--b-accent); }
@@ -184,6 +204,27 @@ body.builder-body button { font-family: inherit; }
    visible even once focus has moved into the inspector's numeric fields, so
    it's clear which element those fields are editing. */
 [data-field].is-field-selected { box-shadow: 0 0 0 2px var(--b-accent); outline: 2px dashed var(--b-accent-ink); outline-offset: 3px; }
+
+/* Per-element handle overlay — an absolutely-positioned box that JS sizes
+   to exactly cover the sub-selected text element (see positionElementHandles
+   in admin-builder.js) and re-parents onto whichever .b-csec that element
+   currently lives in. pointer-events:none on the box itself so it never
+   blocks clicking/typing into the text underneath; only the small handles
+   inside it re-enable pointer-events, and they sit just past its edge. */
+.b-el-handles { position: absolute; z-index: 8; pointer-events: none; }
+.b-el-margin, .b-el-margin-v, .b-el-resize { pointer-events: auto; }
+.b-el-margin { position: absolute; left: -6px; right: -6px; height: 9px; cursor: row-resize; touch-action: none; opacity: .85; }
+.b-el-margin::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
+.b-el-margin-top { top: -9px; }
+.b-el-margin-bottom { bottom: -9px; }
+.b-el-margin-v { position: absolute; top: -6px; bottom: -6px; width: 9px; cursor: col-resize; touch-action: none; opacity: .85; }
+.b-el-margin-v::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
+.b-el-margin-left { left: -9px; }
+.b-el-margin-right { right: -9px; }
+.b-el-margin:hover, .b-el-margin:active, .b-el-margin-v:hover, .b-el-margin-v:active { opacity: 1; }
+.b-el-resize { position: absolute; left: 0; right: 0; bottom: -14px; height: 12px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; touch-action: none; opacity: .85; }
+.b-el-resize span { width: 28px; height: 4px; border-radius: 2px; background: var(--b-accent); box-shadow: 0 1px 4px rgba(33,30,27,.35); }
+.b-el-resize:hover, .b-el-resize:active { opacity: 1; }
 
 .b-sec-pad { padding: 56px 48px; }
 .b-canvas-frame[data-vp="mobile"] .b-sec-pad { padding: 34px 20px; }
