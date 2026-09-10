@@ -1,0 +1,160 @@
+<%
+  // Renders one nested block inside a row's column (see the 'row' case in
+  // section.ejs, which includes this once per block). A block is a cut-down
+  // section: same per-type fields/rendering as a top-level section of that
+  // type, but no id-based hiding, no custom class/CSS, and no section-level
+  // margin/padding — those are top-level-only concerns. Only the types in
+  // lib/sections.js's NESTABLE_SECTION_TYPES can appear here (enforced by
+  // sanitizeRowBlock server-side), so this only ever needs to cover that
+  // subset, not all 16 section types.
+  //
+  // position:relative so a freely-positioned text field inside this block
+  // (see pzElStyle below) measures its left/top from the block's own box,
+  // the same way a top-level section does for its own text fields.
+  function pzElStyle(field) {
+    var st = b.element_styles && b.element_styles[field];
+    if (!st) return '';
+    var s = '';
+    if (st.positioned) {
+      s += 'position:absolute;left:' + (st.pos_left || 0) + 'px;top:' + (st.pos_top || 0) + 'px;margin:0;';
+      if (st.el_width) s += 'width:' + st.el_width + 'px;';
+    }
+    if (st.min_height) s += 'min-height:' + st.min_height + 'px;';
+    if (st.margin_top) s += 'margin-top:' + st.margin_top + 'px;';
+    if (st.margin_bottom) s += 'margin-bottom:' + st.margin_bottom + 'px;';
+    if (st.margin_left) s += 'margin-left:' + st.margin_left + 'px;';
+    if (st.margin_right) s += 'margin-right:' + st.margin_right + 'px;';
+    if (st.padding_top) s += 'padding-top:' + st.padding_top + 'px;';
+    if (st.padding_bottom) s += 'padding-bottom:' + st.padding_bottom + 'px;';
+    if (st.padding_left) s += 'padding-left:' + st.padding_left + 'px;';
+    if (st.padding_right) s += 'padding-right:' + st.padding_right + 'px;';
+    return s;
+  }
+%>
+<div class="pz-block pz-block-<%= b.type %>" style="position:relative;">
+  <% if (b.type === 'hero') { %>
+    <div class="hero">
+      <h1 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h1>
+      <p style="<%= pzElStyle('subheading') %>"><%= b.fields.subheading %></p>
+    </div>
+
+  <% } else if (b.type === 'richtext') { %>
+    <div class="richtext richtext-<%= b.fields.width === 'wide' ? 'wide' : 'narrow' %>" style="text-align:<%= b.fields.align === 'left' ? 'left' : 'center' %>;">
+      <h2 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <p style="<%= pzElStyle('body') %>"><%= b.fields.body %></p>
+    </div>
+
+  <% } else if (b.type === 'text_image') { %>
+    <div class="text-image text-image-<%= b.fields.side === 'left' ? 'left' : 'right' %>">
+      <div class="text-image-media" style="<%= b.fields.image_url ? `background-image:url('${b.fields.image_url}')` : '' %>"></div>
+      <div class="text-image-copy">
+        <h2 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+        <p style="<%= pzElStyle('body') %>"><%= b.fields.body %></p>
+      </div>
+    </div>
+
+  <% } else if (b.type === 'gallery' && b.fields.images && b.fields.images.length) { %>
+    <div class="gallery">
+      <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <div class="gallery-grid" data-cols="<%= b.fields.cols === '2' ? '2' : '3' %>">
+        <% b.fields.images.forEach(function(url) { %>
+          <div class="gallery-tile" style="background-image:url('<%= url %>')"></div>
+        <% }); %>
+      </div>
+    </div>
+
+  <% } else if (b.type === 'video' && b.fields.embed_url) { %>
+    <div class="video-section">
+      <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <div class="video-frame">
+        <iframe src="<%= b.fields.embed_url %>" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+
+  <% } else if (b.type === 'testimonials') { %>
+    <div class="testimonials">
+      <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <div class="testimonial-grid">
+        <% b.fields.quotes.forEach(function(q) { %>
+          <blockquote class="testimonial-card">
+            <p>&ldquo;<%= q.quote %>&rdquo;</p>
+            <cite>&mdash; <%= q.author %></cite>
+          </blockquote>
+        <% }); %>
+      </div>
+    </div>
+
+  <% } else if (b.type === 'logos' && b.fields.names && b.fields.names.length) { %>
+    <div class="logostrip">
+      <% b.fields.names.forEach(function(n) { %><span><%= n %></span><% }); %>
+    </div>
+
+  <% } else if (b.type === 'newsletter') { %>
+    <div class="newsletter">
+      <h2 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <p style="<%= pzElStyle('subtext') %>"><%= b.fields.subtext %></p>
+      <form class="newsletter-form" action="/newsletter" method="POST">
+        <input type="email" name="email" placeholder="you@example.com" required />
+        <button type="submit" class="btn btn-primary" style="<%= pzElStyle('button') %>"><%= b.fields.button %></button>
+      </form>
+    </div>
+
+  <% } else if (b.type === 'faq' && b.fields.items && b.fields.items.length) { %>
+    <div class="faq">
+      <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <% b.fields.items.forEach(function(f) { %>
+        <details class="faq-item">
+          <summary><%= f.q %></summary>
+          <p><%= f.a %></p>
+        </details>
+      <% }); %>
+    </div>
+
+  <% } else if (b.type === 'countdown' && b.fields.end_at) { %>
+    <div class="countdown" data-end="<%= b.fields.end_at %>">
+      <h2 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <div class="countdown-timers">
+        <div><b data-u="d">00</b><small>Days</small></div>
+        <div><b data-u="h">00</b><small>Hrs</small></div>
+        <div><b data-u="m">00</b><small>Min</small></div>
+        <div><b data-u="s">00</b><small>Sec</small></div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var els = document.querySelectorAll('.countdown[data-end]:not([data-pz-wired])');
+        Array.prototype.forEach.call(els, function (el) {
+          el.setAttribute('data-pz-wired', '1');
+          var end = new Date(el.dataset.end).getTime();
+          if (!end || isNaN(end)) return;
+          var d = el.querySelector('[data-u="d"]'), h = el.querySelector('[data-u="h"]'),
+              m = el.querySelector('[data-u="m"]'), s = el.querySelector('[data-u="s"]');
+          function tick() {
+            var diff = Math.max(0, end - Date.now());
+            var days = Math.floor(diff / 86400000);
+            var hrs = Math.floor((diff % 86400000) / 3600000);
+            var min = Math.floor((diff % 3600000) / 60000);
+            var sec = Math.floor((diff % 60000) / 1000);
+            d.textContent = String(days).padStart(2, '0');
+            h.textContent = String(hrs).padStart(2, '0');
+            m.textContent = String(min).padStart(2, '0');
+            s.textContent = String(sec).padStart(2, '0');
+            if (diff <= 0) { clearInterval(timer); el.classList.add('is-ended'); }
+          }
+          tick();
+          var timer = setInterval(tick, 1000);
+        });
+      })();
+    </script>
+
+  <% } else if (b.type === 'spacer') { %>
+    <div class="section-spacer section-spacer-<%= b.fields.height %>"></div>
+
+  <% } else if (b.type === 'divider') { %>
+    <% if (b.fields.style === 'dots') { %>
+      <div class="section-divider section-divider-dots">&bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;</div>
+    <% } else { %>
+      <hr class="section-divider" />
+    <% } %>
+  <% } %>
+</div>

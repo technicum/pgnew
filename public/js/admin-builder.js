@@ -21,6 +21,13 @@
   // TEXT_ELEMENT_FIELDS, the single source of truth this mirrors).
   var TEXT_ELEMENT_FIELDS = DATA.textElementFields || {};
   function isTextElementField(type, fieldKey) { return (TEXT_ELEMENT_FIELDS[type] || []).indexOf(fieldKey) !== -1; }
+  // Which section types a row's column will accept — mirrors lib/sections.js's
+  // NESTABLE_SECTION_TYPES (no nested rows, and the 3 types that need their
+  // own store-wide data fetch — products/spotlight/collections — are
+  // top-level only). Used to grey those out as column drop targets and keep
+  // the library-drag-into-column flow from offering them.
+  var NESTABLE_TYPES = DATA.nestableTypes || [];
+  function isNestable(type) { return NESTABLE_TYPES.indexOf(type) !== -1; }
   var BASE = "/admin/pages/" + PAGE.id + "/sections";
 
   /* ---------------------------------------------------------------
@@ -47,7 +54,10 @@
     faq: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="7.2"/><path d="M7.8 7.8a2.2 2.2 0 1 1 3.1 2c-.9.6-.9 1.1-.9 1.9"/><circle cx="10" cy="14" r=".2" fill="currentColor"/></svg>',
     countdown: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.2"/><path d="M10 6v4l3 2"/></svg>',
     spacer: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4h12M4 16h12M10 6.5v7"/></svg>',
-    divider: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 10h14"/></svg>'
+    divider: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 10h14"/></svg>',
+    row: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="6.2" height="12" rx="1"/><rect x="11.3" y="4" width="6.2" height="12" rx="1"/></svg>',
+    move: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M3 10h14M6 6 3.5 8.5M14 6l2.5 2.5M6 14l-2.5-2.5M14 14l2.5-2.5"/></svg>',
+    plus: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>'
   };
   function icon(name) { return ICON[name] || ""; }
 
@@ -66,10 +76,33 @@
   // visibility, height, margin/padding, custom class/CSS). Sticky across
   // selections; selectSection() forces it to "content" when a field is
   // freshly sub-selected, since that's where its panel lives.
-  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, inspectorTab: "content" };
+  // selectedBlockId: when the sub-selected field belongs to a block nested
+  // inside one of a row's columns (rather than a top-level section's own
+  // field), this holds that block's id and selectedFieldKey is scoped to it
+  // instead. Always cleared together with selectedFieldKey.
+  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, selectedBlockId: null, inspectorTab: "content" };
 
   function findSection(id) { return state.sections.find(function (s) { return String(s.id) === String(id); }); }
   function indexOf(id) { return state.sections.findIndex(function (s) { return String(s.id) === String(id); }); }
+
+  // Locates one block nested inside a row section's columns by id, wherever
+  // it lives — returns { block, col, colIndex, blockIndex } or null. A row's
+  // whole layout is small (<=4 columns, <=6 blocks each) so a linear scan
+  // here is plenty fast.
+  function findBlockInSection(sec, blockId) {
+    if (!sec || sec.type !== "row" || !blockId) return null;
+    var cols = (sec.fields && sec.fields.columns) || [];
+    for (var c = 0; c < cols.length; c++) {
+      var blocks = cols[c].blocks || [];
+      for (var b = 0; b < blocks.length; b++) {
+        if (String(blocks[b].id) === String(blockId)) {
+          return { block: blocks[b], col: cols[c], colIndex: c, blockIndex: b };
+        }
+      }
+    }
+    return null;
+  }
+  function genBlockId() { return "blk_" + Math.random().toString(36).slice(2, 11); }
 
   function api(url, body) {
     return fetch(url, {
@@ -306,9 +339,44 @@
       case "divider":
         return d.style === "dots" ? '<div class="b-divider-preview b-divider-dots">• • • • •</div>' : '<div class="b-divider-preview"><hr/></div>';
 
+      case "row": {
+        var cols = d.columns || [];
+        if (!cols.length) {
+          return '<div class="b-row-picker">' +
+            '<p>Pick a column layout to start</p>' +
+            '<div class="b-layout-opts">' +
+              rowLayoutOptHtml("1", "1 column") +
+              rowLayoutOptHtml("1,1", "2 equal") +
+              rowLayoutOptHtml("1,1,1", "3 equal") +
+              rowLayoutOptHtml("1.6,1", "60 / 40") +
+            '</div></div>';
+        }
+        var colsHtml = cols.map(function (col, ci) {
+          var blocksHtml = (col.blocks || []).map(function (blk) {
+            var blabel = (SECTION_TYPES[blk.type] && SECTION_TYPES[blk.type].name) || blk.type;
+            return '<div class="b-row-block" data-block-id="' + esc(blk.id) + '" data-col-index="' + ci + '">' +
+              '<span class="b-row-block-tag">' + esc(blabel) + '</span>' +
+              '<button class="b-row-block-del" data-block-action="del" title="Remove this block">' + icon("trash") + '</button>' +
+              renderSectionInner(blk) +
+              '</div>';
+          }).join("");
+          var addHtml = '<button class="b-row-col-add" data-col-add="' + ci + '" title="Add a rich text block — or drag any section from the library into this column">' +
+            icon("plus") + '<span>Add a section</span></button>';
+          return '<div class="b-row-col' + ((col.blocks || []).length ? "" : " is-empty") + '" data-col-drop="' + ci + '">' + blocksHtml + addHtml + '</div>';
+        }).join("");
+        var templ = cols.map(function (c) { return (c.width || 1) + "fr"; }).join(" ");
+        return '<div class="b-row-inner" style="grid-template-columns:' + templ + ';">' + colsHtml + '</div>';
+      }
+
       default:
         return '<div class="b-sec-pad"><div class="b-inspector-hint">Unknown section type "' + esc(sec.type) + '".</div></div>';
     }
+  }
+
+  function rowLayoutOptHtml(colsSpec, label) {
+    var parts = colsSpec.split(",");
+    var bars = parts.map(function (f) { return '<span style="flex:' + f + '"></span>'; }).join("");
+    return '<button type="button" class="b-layout-opt" data-row-layout="' + colsSpec + '"><span class="b-layout-bars">' + bars + '</span><label>' + label + '</label></button>';
   }
 
   // spacer/divider already have their own height concept, so they don't get
@@ -363,20 +431,30 @@
   function applyElStyleToNode(node, st) {
     if (!node) return;
     st = st || {};
-    node.style.marginTop = st.margin_top ? st.margin_top + "px" : "";
-    node.style.marginBottom = st.margin_bottom ? st.margin_bottom + "px" : "";
-    node.style.marginLeft = st.margin_left ? st.margin_left + "px" : "";
-    node.style.marginRight = st.margin_right ? st.margin_right + "px" : "";
+    // Free positioning (the move handle) takes the field out of normal flow
+    // entirely, so it supersedes margin — matches how the storefront's own
+    // pzElStyle renders the same field (see section.ejs/block.ejs).
+    if (st.positioned) {
+      node.style.position = "absolute";
+      node.style.left = (st.pos_left || 0) + "px";
+      node.style.top = (st.pos_top || 0) + "px";
+      node.style.width = st.el_width ? st.el_width + "px" : "";
+      node.style.margin = "0";
+    } else {
+      node.style.position = "";
+      node.style.left = "";
+      node.style.top = "";
+      node.style.width = "";
+      node.style.marginTop = st.margin_top ? st.margin_top + "px" : "";
+      node.style.marginBottom = st.margin_bottom ? st.margin_bottom + "px" : "";
+      node.style.marginLeft = st.margin_left ? st.margin_left + "px" : "";
+      node.style.marginRight = st.margin_right ? st.margin_right + "px" : "";
+    }
     node.style.paddingTop = st.padding_top ? st.padding_top + "px" : "";
     node.style.paddingBottom = st.padding_bottom ? st.padding_bottom + "px" : "";
     node.style.paddingLeft = st.padding_left ? st.padding_left + "px" : "";
     node.style.paddingRight = st.padding_right ? st.padding_right + "px" : "";
     node.style.minHeight = st.min_height ? st.min_height + "px" : "";
-  }
-  function applyElementSpacingStyle(sectionId, fieldKey, st) {
-    var wrap = document.querySelector('.b-csec[data-id="' + sectionId + '"]');
-    var node = wrap ? wrap.querySelector('[data-field="' + fieldKey + '"]') : null;
-    applyElStyleToNode(node, st);
   }
 
   function renderCanvas() {
@@ -397,6 +475,19 @@
       if (sec.element_styles) {
         Object.keys(sec.element_styles).forEach(function (fieldKey) {
           applyElStyleToNode(wrap.querySelector('[data-field="' + fieldKey + '"]'), sec.element_styles[fieldKey]);
+        });
+      }
+      // A row's own text fields (none) vs. its nested blocks' — each block
+      // gets its element_styles applied scoped to its own wrapper, since
+      // two blocks in the same row can share a field name (e.g. two Rich
+      // text blocks each have "heading"/"body").
+      if (sec.type === "row") {
+        wrap.querySelectorAll("[data-block-id]").forEach(function (blockEl) {
+          var found = findBlockInSection(sec, blockEl.dataset.blockId);
+          if (!found || !found.block.element_styles) return;
+          Object.keys(found.block.element_styles).forEach(function (fieldKey) {
+            applyElStyleToNode(blockEl.querySelector('[data-field="' + fieldKey + '"]'), found.block.element_styles[fieldKey]);
+          });
         });
       }
       var label = (SECTION_TYPES[sec.type] && SECTION_TYPES[sec.type].name) || sec.type;
@@ -425,8 +516,15 @@
       if (sec.id === state.selectedId) {
         wrap.classList.add("is-selected");
         if (state.selectedFieldKey) {
-          var selFieldEl = wrap.querySelector('[data-field="' + state.selectedFieldKey + '"]');
+          var selScope = state.selectedBlockId
+            ? wrap.querySelector('[data-block-id="' + state.selectedBlockId + '"]')
+            : wrap;
+          var selFieldEl = selScope ? selScope.querySelector('[data-field="' + state.selectedFieldKey + '"]') : null;
           if (selFieldEl) selFieldEl.classList.add("is-field-selected");
+          if (state.selectedBlockId) {
+            var selBlockWrap = wrap.querySelector('[data-block-id="' + state.selectedBlockId + '"]');
+            if (selBlockWrap) selBlockWrap.classList.add("is-block-selected");
+          }
         }
       }
       if (sec.hidden) wrap.classList.add("is-hidden-sec");
@@ -543,6 +641,7 @@
   --------------------------------------------------------------- */
   var elementHandles = el(
     '<div class="b-el-handles" id="bElementHandles" hidden>' +
+      '<div class="b-el-move" data-el-action="move" title="Drag to move this text anywhere in its section">' + icon("move") + '</div>' +
       '<div class="b-el-margin b-el-margin-top" data-el-action="margin-top" title="Drag to add space above"></div>' +
       '<div class="b-el-margin b-el-margin-bottom" data-el-action="margin-bottom" title="Drag to add space below"></div>' +
       '<div class="b-el-margin-v b-el-margin-left" data-el-action="margin-left" title="Drag to add space to the left"></div>' +
@@ -551,13 +650,39 @@
     '</div>'
   );
   document.body.appendChild(elementHandles);
+  // Center-snap guides for the move handle, shared across drags the same
+  // way elementHandles itself is — created once, shown/hidden/repositioned
+  // rather than inserted and removed each time.
+  var guideV = el('<div class="b-el-guide b-el-guide-v" hidden></div>');
+  var guideH = el('<div class="b-el-guide b-el-guide-h" hidden></div>');
+  document.body.appendChild(guideV);
+  document.body.appendChild(guideH);
 
+  // Resolves the sub-selected field to its live DOM node, whether it's a
+  // top-level section's own field or one nested inside a row block
+  // (state.selectedBlockId) — and, in the block case, that the block still
+  // exists (it may have just been removed).
   function selectedFieldNode() {
     if (!state.selectedId || !state.selectedFieldKey) return null;
     var sec = findSection(state.selectedId);
-    if (!sec || !isTextElementField(sec.type, state.selectedFieldKey)) return null;
+    if (!sec) return null;
     var wrap = document.querySelector('.b-csec[data-id="' + state.selectedId + '"]');
-    return wrap ? wrap.querySelector('[data-field="' + state.selectedFieldKey + '"]') : null;
+    if (!wrap) return null;
+    if (state.selectedBlockId) {
+      var found = findBlockInSection(sec, state.selectedBlockId);
+      if (!found || !isTextElementField(found.block.type, state.selectedFieldKey)) return null;
+      var blockWrap = wrap.querySelector('[data-block-id="' + state.selectedBlockId + '"]');
+      return blockWrap ? blockWrap.querySelector('[data-field="' + state.selectedFieldKey + '"]') : null;
+    }
+    if (!isTextElementField(sec.type, state.selectedFieldKey)) return null;
+    return wrap.querySelector('[data-field="' + state.selectedFieldKey + '"]');
+  }
+
+  // The box a moved/positioned element is confined to: a block's own
+  // wrapper when nested inside a row column (so its text can't wander over
+  // a sibling block in the same column), otherwise the whole section.
+  function elementBoundsEl(node) {
+    return node.closest("[data-block-id]") || node.closest(".b-csec");
   }
 
   // Moves/sizes the overlay to exactly cover the sub-selected field's own
@@ -567,7 +692,7 @@
   function positionElementHandles() {
     var node = selectedFieldNode();
     if (!node) { elementHandles.hidden = true; return; }
-    var wrap = node.closest(".b-csec");
+    var wrap = elementBoundsEl(node);
     if (!wrap) { elementHandles.hidden = true; return; }
     if (elementHandles.parentNode !== wrap) wrap.appendChild(elementHandles);
     var wrapRect = wrap.getBoundingClientRect();
@@ -579,24 +704,92 @@
     elementHandles.hidden = false;
   }
 
-  function startElementSpacingDrag(e, sec, fieldKey, node, direction) {
+  // Everything that reads/writes the sub-selected field's own element_styles
+  // and persists it — abstracted here because a top-level section's field
+  // and a row block's field are stored (and saved) differently: the former
+  // in that section's own element_styles column via the dedicated
+  // /element-style endpoint, the latter inside sec.fields.columns via the
+  // generic fields endpoint (see saveField). Returns null if nothing valid
+  // is currently sub-selected.
+  function elementStyleCtx() {
+    if (!state.selectedId || !state.selectedFieldKey) return null;
+    var sec = findSection(state.selectedId);
+    if (!sec) return null;
+    var fieldKey = state.selectedFieldKey;
+    if (state.selectedBlockId) {
+      var found = findBlockInSection(sec, state.selectedBlockId);
+      if (!found) return null;
+      return {
+        sec: sec, fieldKey: fieldKey,
+        getEntry: function () { return (found.block.element_styles && found.block.element_styles[fieldKey]) || {}; },
+        setEntry: function (entry) {
+          found.block.element_styles = found.block.element_styles || {};
+          found.block.element_styles[fieldKey] = entry;
+        },
+        persist: function () { saveField(sec.id, { columns: sec.fields.columns }); },
+      };
+    }
+    return {
+      sec: sec, fieldKey: fieldKey,
+      getEntry: function () { return (sec.element_styles && sec.element_styles[fieldKey]) || {}; },
+      setEntry: function (entry) {
+        sec.element_styles = sec.element_styles || {};
+        sec.element_styles[fieldKey] = entry;
+      },
+      persist: function (patch) { saveElementStyle(sec.id, Object.assign({ field: fieldKey }, patch)); },
+    };
+  }
+
+  // Which "fields" object and save path the inspector Content tab's
+  // structural controls (segmented buttons, selects, textareas, text
+  // inputs — not the per-element spacing/position panel above, which has
+  // its own elementStyleCtx) are currently pointed at: the selected
+  // section's own fields, or — when a row block is selected — that block's,
+  // saved back through the generic fields endpoint the same way any other
+  // columns edit is (see saveField/setRowLayout/insertBlockIntoColumn).
+  function inspectorFieldTarget() {
+    if (!state.selectedId) return null;
+    var sec = findSection(state.selectedId);
+    if (!sec) return null;
+    if (state.selectedBlockId) {
+      var found = findBlockInSection(sec, state.selectedBlockId);
+      if (!found) return null;
+      return {
+        fields: found.block.fields,
+        save: function (patch) {
+          Object.assign(found.block.fields, patch);
+          renderAll();
+          saveField(sec.id, { columns: sec.fields.columns });
+        },
+      };
+    }
+    return {
+      fields: sec.fields,
+      save: function (patch) {
+        Object.assign(sec.fields, patch);
+        renderAll();
+        saveField(sec.id, patch);
+      },
+    };
+  }
+
+  function startElementSpacingDrag(e, ctx, node, direction) {
     if (!node) return;
     e.preventDefault();
     e.stopPropagation();
     var axis = spacingAxis(direction);
     var startPos = axis === "x" ? e.clientX : e.clientY;
     var key = "margin_" + direction;
-    var current = (sec.element_styles && sec.element_styles[fieldKey] && sec.element_styles[fieldKey][key]) || 0;
+    var current = ctx.getEntry()[key] || 0;
     var sign = spacingSign(direction);
 
     function clamp(n) { return Math.max(0, Math.min(400, Math.round(n))); }
-    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_' + key + '"][data-el-field="' + fieldKey + '"]'); }
+    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_' + key + '"][data-el-field="' + ctx.fieldKey + '"]'); }
 
     function apply(v) {
-      sec.element_styles = sec.element_styles || {};
-      var entry = Object.assign({}, sec.element_styles[fieldKey] || {});
+      var entry = Object.assign({}, ctx.getEntry());
       entry[key] = v;
-      sec.element_styles[fieldKey] = entry;
+      ctx.setEntry(entry);
       applyElStyleToNode(node, entry);
       positionElementHandles();
       var input = liveInput();
@@ -610,16 +803,15 @@
     function onUp() {
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
-      var entry = (sec.element_styles && sec.element_styles[fieldKey]) || {};
-      var patch = { field: fieldKey };
-      patch[key] = entry[key] || 0;
-      saveElementStyle(sec.id, patch);
+      var patch = {};
+      patch[key] = ctx.getEntry()[key] || 0;
+      ctx.persist(patch);
     }
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
   }
 
-  function startElementResize(e, sec, fieldKey, node) {
+  function startElementResize(e, ctx, node) {
     if (!node) return;
     e.preventDefault();
     e.stopPropagation();
@@ -627,13 +819,12 @@
     var startHeight = node.getBoundingClientRect().height;
 
     function clamp(n) { return Math.max(0, Math.min(800, Math.round(n))); }
-    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_min_height"][data-el-field="' + fieldKey + '"]'); }
+    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_min_height"][data-el-field="' + ctx.fieldKey + '"]'); }
 
     function apply(v) {
-      sec.element_styles = sec.element_styles || {};
-      var entry = Object.assign({}, sec.element_styles[fieldKey] || {});
+      var entry = Object.assign({}, ctx.getEntry());
       entry.min_height = v;
-      sec.element_styles[fieldKey] = entry;
+      ctx.setEntry(entry);
       applyElStyleToNode(node, entry);
       positionElementHandles();
       var input = liveInput();
@@ -646,8 +837,86 @@
     function onUp() {
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
-      var entry = (sec.element_styles && sec.element_styles[fieldKey]) || {};
-      saveElementStyle(sec.id, { field: fieldKey, min_height: entry.min_height || 0 });
+      ctx.persist({ min_height: ctx.getEntry().min_height || 0 });
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  // Free move — drags the field out of normal flow onto an explicit spot
+  // anywhere inside its bounds (elementBoundsEl: the block it's nested in,
+  // or the whole section). Width is frozen at the moment it leaves flow (so
+  // the box doesn't shrink to fit its own text once nothing is stretching
+  // it), and dragging near the bounds' own center snaps to it, mirroring
+  // the concept preview this was built from.
+  function startElementMove(e, ctx, node) {
+    if (!node) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var bounds = elementBoundsEl(node);
+    if (!bounds) return;
+    var boundsRect = bounds.getBoundingClientRect();
+    var startRect = node.getBoundingClientRect();
+    var offX = e.clientX - startRect.left, offY = e.clientY - startRect.top;
+    var entryStart = Object.assign({}, ctx.getEntry());
+    if (!entryStart.positioned) {
+      entryStart.positioned = true;
+      entryStart.pos_left = Math.round(startRect.left - boundsRect.left);
+      entryStart.pos_top = Math.round(startRect.top - boundsRect.top);
+      entryStart.el_width = Math.round(startRect.width);
+      ctx.setEntry(entryStart);
+      applyElStyleToNode(node, entryStart);
+    }
+
+    function clampPos(n) { return Math.max(0, Math.min(4000, Math.round(n))); }
+    function liveInputs() {
+      return {
+        left: document.querySelector('input[type="number"][data-field="__elm_pos_left"][data-el-field="' + ctx.fieldKey + '"]'),
+        top: document.querySelector('input[type="number"][data-field="__elm_pos_top"][data-el-field="' + ctx.fieldKey + '"]'),
+      };
+    }
+    function apply(left, top, showGuides) {
+      var entry = Object.assign({}, ctx.getEntry());
+      entry.pos_left = left;
+      entry.pos_top = top;
+      ctx.setEntry(entry);
+      applyElStyleToNode(node, entry);
+      positionElementHandles();
+      var inputs = liveInputs();
+      if (inputs.left) inputs.left.value = left;
+      if (inputs.top) inputs.top.value = top;
+      if (showGuides) { showGuides.v.hidden = !showGuides.snapX; showGuides.h.hidden = !showGuides.snapY; }
+    }
+    function onMove(ev) {
+      var p = ev.touches ? ev.touches[0] : ev;
+      var br = bounds.getBoundingClientRect();
+      var w = node.offsetWidth, h = node.offsetHeight;
+      var left = p.clientX - br.left - offX;
+      var top = p.clientY - br.top - offY;
+      left = Math.max(0, Math.min(left, Math.max(0, br.width - w)));
+      top = Math.max(0, Math.min(top, Math.max(0, br.height - h)));
+      var centerX = br.width / 2, centerY = br.height / 2;
+      var snapX = Math.abs((left + w / 2) - centerX) < 8;
+      var snapY = Math.abs((top + h / 2) - centerY) < 8;
+      if (snapX) left = centerX - w / 2;
+      if (snapY) top = centerY - h / 2;
+      if (snapX) { guideV.style.left = (br.left + centerX) + "px"; guideV.style.top = br.top + "px"; guideV.style.height = br.height + "px"; }
+      if (snapY) { guideH.style.top = (br.top + centerY) + "px"; guideH.style.left = br.left + "px"; guideH.style.width = br.width + "px"; }
+      apply(clampPos(left), clampPos(top), { v: guideV, h: guideH, snapX: snapX, snapY: snapY });
+    }
+    function onUp() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      guideV.hidden = true;
+      guideH.hidden = true;
+      var entry = ctx.getEntry();
+      ctx.persist({ positioned: true, pos_left: entry.pos_left || 0, pos_top: entry.pos_top || 0, el_width: entry.el_width || 0 });
+      // The inspector's Position row (X/Y inputs, "Reset to normal
+      // position") only renders once st.positioned is true, so the very
+      // first move re-renders the inspector to bring it in — every drag
+      // after that already has it on screen.
+      renderInspector();
+      positionElementHandles();
     }
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
@@ -657,13 +926,25 @@
     var actionEl = e.target.closest("[data-el-action]");
     if (!actionEl) return;
     e.stopPropagation();
-    var sec = state.selectedId ? findSection(state.selectedId) : null;
-    var fieldKey = state.selectedFieldKey;
+    // A real drag ends with the pointer wherever it was released — not
+    // necessarily still over the handle it started on (the move handle
+    // especially: the field follows the cursor, but clamping against its
+    // bounds can leave the cursor just past the field's edge). The browser
+    // still fires a synthetic "click" at that release point once the
+    // pointerup completes, and canvas's own click handler would read that
+    // as "the user clicked this other spot" and clear/replace the very
+    // sub-selection this drag just set. Swallow exactly that one click,
+    // caught in the capture phase so it never reaches canvas's listener.
+    var swallowClick = function (ce) { ce.stopPropagation(); document.removeEventListener("click", swallowClick, true); };
+    document.addEventListener("click", swallowClick, true);
+    setTimeout(function () { document.removeEventListener("click", swallowClick, true); }, 600);
+    var ctx = elementStyleCtx();
     var node = selectedFieldNode();
-    if (!sec || !fieldKey || !node) return;
+    if (!ctx || !node) return;
     var action = actionEl.dataset.elAction;
-    if (action === "resize") return startElementResize(e, sec, fieldKey, node);
-    startElementSpacingDrag(e, sec, fieldKey, node, action.replace("margin-", ""));
+    if (action === "resize") return startElementResize(e, ctx, node);
+    if (action === "move") return startElementMove(e, ctx, node);
+    startElementSpacingDrag(e, ctx, node, action.replace("margin-", ""));
   });
 
   var LIB_GROUP_ORDER = ["Content", "Commerce", "Engagement", "Layout"];
@@ -800,6 +1081,12 @@
         return field("Height", segHtml("height", [{ val: "s", label: "S" }, { val: "m", label: "M" }, { val: "l", label: "L" }, { val: "xl", label: "XL" }], d.height));
       case "divider":
         return field("Style", segHtml("style", [{ val: "line", label: "Line" }, { val: "dots", label: "Dots" }], d.style));
+      case "row":
+        return field("", '<div class="b-inspector-hint">' +
+          (d.columns && d.columns.length
+            ? "Drag any section from the library into a column, or click its + button. Click any text inside a column to edit it — the same way you edit a top-level section."
+            : "Pick a column layout on the canvas to get started.") +
+          '</div>');
       default:
         return "";
     }
@@ -847,13 +1134,22 @@
       '<label>Right' + inp("right") + '</label>' +
     '</div>';
   }
-  function elementSettingsHtml(sec, fieldKey) {
-    var st = (sec.element_styles && sec.element_styles[fieldKey]) || {};
+  function elementSettingsHtml(sec, fieldKey, st) {
+    st = st || (sec.element_styles && sec.element_styles[fieldKey]) || {};
     var label = fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1);
+    var posRow = st.positioned
+      ? field("Position", '<div class="b-pos-row">' +
+          '<label>X<input class="b-text-native" type="number" min="0" max="4000" step="4" data-field="__elm_pos_left" data-el-field="' + esc(fieldKey) + '" value="' + (st.pos_left || 0) + '" /></label>' +
+          '<label>Y<input class="b-text-native" type="number" min="0" max="4000" step="4" data-field="__elm_pos_top" data-el-field="' + esc(fieldKey) + '" value="' + (st.pos_top || 0) + '" /></label>' +
+        '</div>' +
+        '<button type="button" class="b-btn-outline b-el-unpin" data-el-unpin="' + esc(fieldKey) + '" style="margin-top:8px;">Reset to normal position</button>' +
+        '<div class="b-field-hint">Dragged free of the normal layout — drag the dark handle on the canvas to move it, or type pixels here.</div>')
+      : field("", '<div class="b-field-hint">Drag the dark handle on the selected text to move it anywhere inside its section.</div>');
     return '<div class="b-inspector-divider"></div>' +
-      '<div class="b-inspector-section-label">“' + esc(label) + '” spacing</div>' +
+      '<div class="b-inspector-section-label">“' + esc(label) + '” spacing & position</div>' +
+      posRow +
       field("Height", '<input class="b-text-native" type="number" min="0" max="800" step="10" data-field="__elm_min_height" data-el-field="' + esc(fieldKey) + '" value="' + (st.min_height || 0) + '" />' +
-        '<div class="b-field-hint">Drag the handle below the selected text on the canvas, or type a height in pixels.</div>') +
+        '<div class="b-field-hint">Drag the amber handle below the selected text on the canvas, or type a height in pixels.</div>') +
       field("Margin", elementSpacingQuadHtml(fieldKey, "margin", st) +
         '<div class="b-field-hint">Drag the thin handles around the selected text on the canvas, or type pixels here.</div>') +
       field("Padding", elementSpacingQuadHtml(fieldKey, "padding", st)) +
@@ -897,13 +1193,19 @@
     var sec = state.selectedId ? findSection(state.selectedId) : null;
     if (!sec) { panel.hidden = true; return; }
     panel.hidden = false;
-    var label = (SECTION_TYPES[sec.type] && SECTION_TYPES[sec.type].name) || sec.type;
-    document.getElementById("bInspectorIcon").innerHTML = icon(sec.type);
+    var selBlock = state.selectedBlockId ? findBlockInSection(sec, state.selectedBlockId) : null;
+    var titleType = selBlock ? selBlock.block.type : sec.type;
+    var label = (SECTION_TYPES[titleType] && SECTION_TYPES[titleType].name) || titleType;
+    document.getElementById("bInspectorIcon").innerHTML = icon(titleType);
     document.getElementById("bInspectorTitle").textContent = label;
-    document.getElementById("bInspectorType").textContent = "section · " + sec.type + (sec.hidden ? " · hidden" : "");
-    var fieldSel = (state.selectedFieldKey && isTextElementField(sec.type, state.selectedFieldKey)) ? state.selectedFieldKey : null;
+    document.getElementById("bInspectorType").textContent = selBlock
+      ? "inside row · column " + (selBlock.colIndex + 1)
+      : "section · " + sec.type + (sec.hidden ? " · hidden" : "");
+    var fieldOwnerType = selBlock ? selBlock.block.type : sec.type;
+    var fieldSel = (state.selectedFieldKey && isTextElementField(fieldOwnerType, state.selectedFieldKey)) ? state.selectedFieldKey : null;
+    var fieldSt = fieldSel ? ((selBlock ? selBlock.block.element_styles : sec.element_styles) || {})[fieldSel] : null;
     var tab = state.inspectorTab === "settings" ? "settings" : "content";
-    var contentPane = inspectorFieldsFor(sec) + (fieldSel ? elementSettingsHtml(sec, fieldSel) : "");
+    var contentPane = inspectorFieldsFor(selBlock ? selBlock.block : sec) + (fieldSel ? elementSettingsHtml(sec, fieldSel, fieldSt) : "");
     var tabsHtml = '<div class="b-inspector-tabs">' +
       '<button type="button" class="b-inspector-tab ' + (tab === "content" ? "active" : "") + '" data-tab="content">Content</button>' +
       '<button type="button" class="b-inspector-tab ' + (tab === "settings" ? "active" : "") + '" data-tab="settings">Settings</button>' +
@@ -920,14 +1222,20 @@
   // fieldKey (optional): sub-selects one text element within this section
   // for the per-element spacing panel — pass null/omit to select just the
   // section itself (e.g. clicking blank canvas space, or a layer row).
-  function selectSection(id, fieldKey) {
+  function selectSection(id, fieldKey, blockId) {
     state.selectedId = id;
     state.selectedFieldKey = fieldKey || null;
+    state.selectedBlockId = blockId || null;
     document.querySelectorAll(".b-csec").forEach(function (n) { n.classList.toggle("is-selected", n.dataset.id === String(id)); });
     document.querySelectorAll(".b-layer-row").forEach(function (n) { n.classList.toggle("selected", n.dataset.id === String(id)); });
+    document.querySelectorAll("[data-block-id]").forEach(function (n) {
+      n.classList.toggle("is-block-selected", state.selectedBlockId ? n.dataset.blockId === String(state.selectedBlockId) : false);
+    });
     document.querySelectorAll(".b-csec [data-field]").forEach(function (n) {
       var host = n.closest(".b-csec");
-      var match = state.selectedFieldKey && host && host.dataset.id === String(id) && n.dataset.field === state.selectedFieldKey;
+      var blockHost = n.closest("[data-block-id]");
+      var sameBlock = state.selectedBlockId ? (blockHost && blockHost.dataset.blockId === String(state.selectedBlockId)) : !blockHost;
+      var match = state.selectedFieldKey && host && host.dataset.id === String(id) && sameBlock && n.dataset.field === state.selectedFieldKey;
       n.classList.toggle("is-field-selected", !!match);
     });
     // Sub-selecting a field is what the user is here to work on — make sure
@@ -962,6 +1270,58 @@
       var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
       persistOrder().then(function () { toast(label + " added"); });
     });
+  }
+
+  // Picking (or re-picking) a row's column layout. widths e.g. [1,1] or
+  // [1.6,1]. Existing columns keep their blocks where an index still
+  // exists after the resize; columns beyond the new count are dropped —
+  // confirmed first if any of them actually held content, since that's
+  // the one destructive edge of this control.
+  function setRowLayout(sectionId, widths) {
+    var sec = findSection(sectionId);
+    if (!sec) return;
+    var cols = sec.fields.columns || [];
+    var dropped = cols.slice(widths.length).some(function (c) { return (c.blocks || []).length; });
+    if (dropped && !confirm("Switching to " + widths.length + " column" + (widths.length === 1 ? "" : "s") + " will remove the content in the column(s) that no longer fit. Continue?")) return;
+    var nextCols = widths.map(function (w, i) { return { width: w, blocks: (cols[i] && cols[i].blocks) || [] }; });
+    sec.fields.columns = nextCols;
+    if (state.selectedBlockId && !findBlockInSection(sec, state.selectedBlockId)) {
+      state.selectedBlockId = null;
+      state.selectedFieldKey = null;
+    }
+    renderAll();
+    saveField(sec.id, { columns: nextCols }).then(function () { renderAll(); });
+  }
+
+  function insertBlockIntoColumn(sectionId, colIndex, type) {
+    var sec = findSection(sectionId);
+    if (!sec || !isNestable(type)) return;
+    var col = (sec.fields.columns || [])[colIndex];
+    if (!col) return;
+    col.blocks = col.blocks || [];
+    var blockId = genBlockId();
+    col.blocks.push({ id: blockId, type: type, fields: {}, element_styles: {} });
+    renderAll();
+    setSaving(true);
+    saveField(sec.id, { columns: sec.fields.columns }).then(function () {
+      renderAll();
+      var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
+      toast(label + " added to the column");
+    });
+  }
+
+  function removeBlock(sectionId, blockId) {
+    var sec = findSection(sectionId);
+    if (!sec) return;
+    var found = findBlockInSection(sec, blockId);
+    if (!found) return;
+    found.col.blocks.splice(found.blockIndex, 1);
+    if (state.selectedBlockId === blockId) {
+      state.selectedBlockId = null;
+      state.selectedFieldKey = null;
+    }
+    renderAll();
+    saveField(sec.id, { columns: sec.fields.columns });
   }
 
   function duplicateSection(id) {
@@ -1108,9 +1468,29 @@
     drag = { kind: kind, payload: payload };
     moveGhost(e.clientX, e.clientY);
 
+    function clearColDropMarkers() { document.querySelectorAll(".b-row-col").forEach(function (n) { n.classList.remove("is-drop-target"); }); }
+
     function onMove(ev) {
       var p = ev.touches ? ev.touches[0] : ev;
       moveGhost(p.clientX, p.clientY);
+      // Dragging a nestable library item over a row's column drops it into
+      // that column instead of at the top level — checked first since a
+      // column sits visually inside the section list computeDropIndex
+      // already scans.
+      drag.colDropInfo = null;
+      if (drag.kind === "insert" && isNestable(drag.payload)) {
+        var overEl = document.elementFromPoint(p.clientX, p.clientY);
+        var colEl = overEl && overEl.closest("[data-col-drop]");
+        if (colEl) {
+          var rowWrap = colEl.closest(".b-csec");
+          drag.colDropInfo = { sectionId: rowWrap.dataset.id, colIndex: parseInt(colEl.dataset.colDrop, 10) };
+          clearColDropMarkers();
+          colEl.classList.add("is-drop-target");
+          clearDropMarkers();
+          return;
+        }
+      }
+      clearColDropMarkers();
       var canvasEl = document.getElementById("bCanvas");
       var r = canvasEl.getBoundingClientRect();
       if (p.clientX >= r.left - 40 && p.clientX <= r.right + 40 && p.clientY >= r.top - 20 && p.clientY <= r.bottom + 20) {
@@ -1127,6 +1507,7 @@
       document.removeEventListener("pointerup", onUp);
       ghost.hidden = true;
       clearDropMarkers();
+      clearColDropMarkers();
       finishDrag();
       drag = null;
     }
@@ -1142,7 +1523,11 @@
   }
 
   function finishDrag() {
-    if (!drag || !drag.dropInfo) return;
+    if (!drag) return;
+    if (drag.kind === "insert" && drag.colDropInfo) {
+      return insertBlockIntoColumn(drag.colDropInfo.sectionId, drag.colDropInfo.colIndex, drag.payload);
+    }
+    if (!drag.dropInfo) return;
     if (drag.kind === "insert") {
       addSectionAt(drag.payload, drag.dropInfo.index);
     } else if (drag.kind === "reorder") {
@@ -1213,17 +1598,32 @@
 
     canvas.addEventListener("click", function (e) {
       // The element-handle overlay (drag handles for the sub-selected
-      // text field's own margin/padding/height) manages selection itself
-      // via its own pointerdown listener — a click bubbling up from it
-      // must not reach the generic field-click logic below, which would
+      // text field's own margin/padding/height/position) manages selection
+      // itself via its own pointerdown listener — a click bubbling up from
+      // it must not reach the generic field-click logic below, which would
       // otherwise immediately clear the sub-selection a drag just set.
       if (e.target.closest("[data-el-action]")) return;
 
-      var actionBtn = e.target.closest("[data-action]");
       var host = e.target.closest(".b-csec");
       if (!host) return;
       var id = host.dataset.id;
+      var sec = findSection(id);
+      if (!sec) return;
 
+      var layoutBtn = e.target.closest("[data-row-layout]");
+      if (layoutBtn) return setRowLayout(id, layoutBtn.dataset.rowLayout.split(",").map(Number));
+
+      var colAddBtn = e.target.closest("[data-col-add]");
+      if (colAddBtn) return insertBlockIntoColumn(id, parseInt(colAddBtn.dataset.colAdd, 10), "richtext");
+
+      var blockDelBtn = e.target.closest('[data-block-action="del"]');
+      if (blockDelBtn) {
+        var delBlockHost = blockDelBtn.closest("[data-block-id]");
+        if (delBlockHost) removeBlock(id, delBlockHost.dataset.blockId);
+        return;
+      }
+
+      var actionBtn = e.target.closest("[data-action]");
       if (actionBtn) {
         var action = actionBtn.dataset.action;
         if (action === "dup") return duplicateSection(id);
@@ -1232,20 +1632,25 @@
         if (action.indexOf("margin-") === 0 || action === "drag" || action === "resize") return;
       }
 
-      // Clicking directly into one of this section's own text elements
-      // (not an array-item field like a testimonial quote, and only when
-      // that field is one lib/sections.js's TEXT_ELEMENT_FIELDS allows)
-      // additionally sub-selects it, surfacing its own margin/padding panel
-      // in the inspector — on top of the normal click-to-edit-text behavior,
-      // which the browser handles on its own since these are contenteditable.
-      var sec = findSection(id);
+      // Clicking directly into a text element (not an array-item field like
+      // a testimonial quote, and only when that field is one
+      // lib/sections.js's TEXT_ELEMENT_FIELDS allows) additionally
+      // sub-selects it, surfacing its own margin/padding/position panel in
+      // the inspector — on top of the normal click-to-edit-text behavior,
+      // which the browser handles on its own since these are
+      // contenteditable. A field nested inside a row block resolves against
+      // that block's own type, and carries its block id along.
       var fieldEl = e.target.closest("[data-field]");
       var fieldKey = null;
-      if (sec && fieldEl && fieldEl.isContentEditable) {
+      var clickedBlockHost = e.target.closest("[data-block-id]");
+      var blockId = clickedBlockHost ? clickedBlockHost.dataset.blockId : null;
+      if (fieldEl && fieldEl.isContentEditable) {
         var fk = fieldEl.dataset.field;
-        if (fk.indexOf(".") === -1 && isTextElementField(sec.type, fk)) fieldKey = fk;
+        var found = clickedBlockHost ? findBlockInSection(sec, clickedBlockHost.dataset.blockId) : null;
+        var ownerType = found ? found.block.type : sec.type;
+        if (fk.indexOf(".") === -1 && isTextElementField(ownerType, fk)) fieldKey = fk;
       }
-      selectSection(id, fieldKey);
+      selectSection(id, fieldKey, blockId);
     });
 
     canvas.addEventListener("focusout", function (e) {
@@ -1256,6 +1661,36 @@
       if (!sec) return;
       var key = f.dataset.field;
       var value = f.textContent.trim();
+      var blockHost = f.closest("[data-block-id]");
+
+      if (blockHost) {
+        // Same array-item-rebuild trick as below, scoped to this one block's
+        // own fields rather than the section's — then the whole row's
+        // columns tree is saved through the generic fields endpoint, since
+        // a block's content lives inside sec.fields.columns, not its own row.
+        var found = findBlockInSection(sec, blockHost.dataset.blockId);
+        if (!found) return;
+        if (key.indexOf(".") !== -1) {
+          var bparts = key.split(".");
+          var bArrayKey = bparts[0], bIdx = parseInt(bparts[1], 10), bSubKey = bparts[2];
+          var bExisting = found.block.fields[bArrayKey] || [];
+          var bNewArr = bExisting.map(function (item, i) {
+            var out = Object.assign({}, item);
+            Object.keys(item).forEach(function (k) {
+              var sibling = blockHost.querySelector('[data-field="' + bArrayKey + '.' + i + '.' + k + '"]');
+              if (sibling) out[k] = sibling.textContent.trim();
+            });
+            return out;
+          });
+          if (bNewArr[bIdx]) bNewArr[bIdx][bSubKey] = value;
+          found.block.fields[bArrayKey] = bNewArr;
+        } else {
+          found.block.fields[key] = value;
+        }
+        saveField(sec.id, { columns: sec.fields.columns });
+        return;
+      }
+
       var patch;
       if (key.indexOf(".") !== -1) {
         // "arrayKey.idx.subKey" (e.g. "quotes.0.author" or "items.2.a") ->
@@ -1287,10 +1722,15 @@
 
     // Typing into the sub-selected field can change its own height (text
     // wrapping to a new line) — keep the element-handle overlay tracking it
-    // live rather than only on the next full render.
+    // live rather than only on the next full render. Guarded to the same
+    // block as the current selection, since two blocks can share a field
+    // name (e.g. two Rich text blocks both have "heading").
     canvas.addEventListener("input", function (e) {
       var f = e.target.closest("[data-field]");
-      if (f && state.selectedFieldKey && f.dataset.field === state.selectedFieldKey) positionElementHandles();
+      if (!f || !state.selectedFieldKey || f.dataset.field !== state.selectedFieldKey) return;
+      var blockHost = f.closest("[data-block-id]");
+      var sameBlock = state.selectedBlockId ? (blockHost && blockHost.dataset.blockId === String(state.selectedBlockId)) : !blockHost;
+      if (sameBlock) positionElementHandles();
     });
   }
 
@@ -1304,14 +1744,30 @@
         renderInspector();
         return;
       }
+      var unpinBtn = e.target.closest("[data-el-unpin]");
+      if (unpinBtn) {
+        var unpinCtx = elementStyleCtx();
+        if (!unpinCtx) return;
+        var resetEntry = Object.assign({}, unpinCtx.getEntry());
+        resetEntry.positioned = false;
+        resetEntry.pos_left = 0;
+        resetEntry.pos_top = 0;
+        resetEntry.el_width = 0;
+        unpinCtx.setEntry(resetEntry);
+        applyElStyleToNode(selectedFieldNode(), resetEntry);
+        positionElementHandles();
+        renderInspector();
+        unpinCtx.persist({ positioned: false, pos_left: 0, pos_top: 0, el_width: 0 });
+        return;
+      }
       var segBtn = e.target.closest(".b-seg button");
       if (segBtn) {
+        var target = inspectorFieldTarget();
+        if (!target) return;
         var wrap = segBtn.closest(".b-seg");
         var patch = {};
         patch[wrap.dataset.field] = segBtn.dataset.val;
-        sec.fields[wrap.dataset.field] = segBtn.dataset.val;
-        renderAll();
-        saveField(sec.id, patch);
+        target.save(patch);
       }
     });
     document.getElementById("bInspectorBody").addEventListener("change", function (e) {
@@ -1319,11 +1775,11 @@
       if (!sec) return;
       var sel = e.target.closest("select[data-field]");
       if (sel) {
+        var target = inspectorFieldTarget();
+        if (!target) return;
         var patch = {};
         patch[sel.dataset.field] = sel.value;
-        sec.fields[sel.dataset.field] = sel.value;
-        renderAll();
-        saveField(sec.id, patch);
+        target.save(patch);
         return;
       }
       // datetime-local reports the admin's own local wall-clock time; convert
@@ -1331,6 +1787,8 @@
       // real moment for every visitor, whatever timezone they're in.
       var dt = e.target.closest('input[type="datetime-local"][data-field]');
       if (dt) {
+        var dtTarget = inspectorFieldTarget();
+        if (!dtTarget) return;
         var iso = "";
         if (dt.value) {
           var parsed = new Date(dt.value);
@@ -1338,9 +1796,7 @@
         }
         var patch2 = {};
         patch2[dt.dataset.field] = iso;
-        sec.fields[dt.dataset.field] = iso;
-        renderAll();
-        saveField(sec.id, patch2);
+        dtTarget.save(patch2);
         return;
       }
       var hin = e.target.closest('input[type="number"][data-field="__min_height"]');
@@ -1355,20 +1811,21 @@
       }
       var elIn = e.target.closest('input[type="number"][data-field^="__elm_"]');
       if (elIn) {
-        var elKey = elIn.dataset.field.slice(6); // "__elm_margin_top" -> "margin_top"; "__elm_min_height" -> "min_height"
-        var targetField = elIn.dataset.elField;
-        var elMax = elKey === "min_height" ? 800 : 400;
+        // "__elm_margin_top" -> "margin_top"; "__elm_min_height" -> "min_height"; "__elm_pos_left" -> "pos_left"
+        var elKey = elIn.dataset.field.slice(6);
+        var elMax = elKey === "min_height" ? 800 : (elKey === "pos_left" || elKey === "pos_top") ? 4000 : 400;
         var elVal = Math.max(0, Math.min(elMax, parseInt(elIn.value, 10) || 0));
         elIn.value = elVal;
-        sec.element_styles = sec.element_styles || {};
-        var nextEntry = Object.assign({}, sec.element_styles[targetField] || {});
+        var elCtx = elementStyleCtx();
+        if (!elCtx) return;
+        var nextEntry = Object.assign({}, elCtx.getEntry());
         nextEntry[elKey] = elVal;
-        sec.element_styles[targetField] = nextEntry;
-        applyElementSpacingStyle(sec.id, targetField, nextEntry);
+        elCtx.setEntry(nextEntry);
+        applyElStyleToNode(selectedFieldNode(), nextEntry);
         positionElementHandles();
-        var elPatch = { field: targetField };
+        var elPatch = {};
         elPatch[elKey] = elVal;
-        saveElementStyle(sec.id, elPatch);
+        elCtx.persist(elPatch);
         return;
       }
       var spacingIn = e.target.closest('input[type="number"][data-field^="__margin_"], input[type="number"][data-field^="__padding_"]');
@@ -1408,12 +1865,12 @@
           saveSettings(sec.id, { custom_css: ta.value });
           return;
         }
+        var taTarget = inspectorFieldTarget();
+        if (!taTarget) return;
         var lines = ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
         var patch = {};
         patch[ta.dataset.field] = lines;
-        sec.fields[ta.dataset.field] = lines;
-        renderAll();
-        saveField(sec.id, patch);
+        taTarget.save(patch);
         return;
       }
       var input = e.target.closest('input.b-text-native[data-field]');
@@ -1423,11 +1880,11 @@
           saveSettings(sec.id, { custom_class: input.value });
           return;
         }
+        var inTarget = inspectorFieldTarget();
+        if (!inTarget) return;
         var patch2 = {};
         patch2[input.dataset.field] = input.value;
-        sec.fields[input.dataset.field] = input.value;
-        renderCanvas();
-        saveField(sec.id, patch2);
+        inTarget.save(patch2);
       }
     });
   }

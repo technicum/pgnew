@@ -108,6 +108,7 @@
       page: <%- JSON.stringify({ id: page.id, name: page.name, path: page.path, is_home: !!page.is_home, status: page.status }).split('/').join(String.fromCharCode(92) + '/') %>,
       store: <%- JSON.stringify({ name: store.name }).split('/').join(String.fromCharCode(92) + '/') %>,
       sectionTypes: <%- JSON.stringify(sectionTypes).split('/').join(String.fromCharCode(92) + '/') %>,
+      nestableTypes: <%- JSON.stringify(nestableTypes).split('/').join(String.fromCharCode(92) + '/') %>,
       textElementFields: <%- JSON.stringify(textElementFields).split('/').join(String.fromCharCode(92) + '/') %>,
       sections: <%- JSON.stringify(sections.map(function (s) {
         return {

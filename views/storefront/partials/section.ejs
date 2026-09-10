@@ -7,7 +7,11 @@
 %>
 <% var pzExtra = (section.custom_class ? ' ' + section.custom_class : '') + pzHideClasses; %>
 <%
-  var pzHeightStyle = section.min_height && section.min_height > 0
+  // position:relative unconditionally — it's the anchor a freely-positioned
+  // text element inside this section (see pzElStyle below) measures its
+  // left/top from, and it's a no-op for every section that doesn't have one.
+  var pzHeightStyle = 'position:relative;';
+  pzHeightStyle += section.min_height && section.min_height > 0
     ? ('min-height:' + section.min_height + 'px;display:flex;flex-direction:column;justify-content:center;')
     : '';
   // Vertical spacing set from the builder's Section settings: margin (the
@@ -32,6 +36,14 @@
     var st = section.element_styles && section.element_styles[field];
     if (!st) return '';
     var s = '';
+    // Free positioning — dragged off the normal flow onto an explicit spot
+    // inside this section (see the move handle in the builder). Width is
+    // frozen at the moment it left flow so the box doesn't shrink to fit
+    // its own text once it's no longer stretched by its siblings.
+    if (st.positioned) {
+      s += 'position:absolute;left:' + (st.pos_left || 0) + 'px;top:' + (st.pos_top || 0) + 'px;margin:0;';
+      if (st.el_width) s += 'width:' + st.el_width + 'px;';
+    }
     if (st.min_height) s += 'min-height:' + st.min_height + 'px;';
     if (st.margin_top) s += 'margin-top:' + st.margin_top + 'px;';
     if (st.margin_bottom) s += 'margin-bottom:' + st.margin_bottom + 'px;';
@@ -204,6 +216,23 @@
       });
     })();
   </script>
+
+<% } else if (section.type === 'row') { %>
+  <%
+    var pzCols = Array.isArray(section.fields.columns) ? section.fields.columns : [];
+    var pzTemplate = pzCols.map(function (c) { return (c.width || 1) + 'fr'; }).join(' ') || '1fr';
+  %>
+  <section id="<%= pzId %>" class="pz-row<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <div class="pz-row-inner" style="grid-template-columns:<%= pzTemplate %>;">
+      <% pzCols.forEach(function (col) { %>
+        <div class="pz-row-col">
+          <% (col.blocks || []).forEach(function (b) { %>
+            <%- include('block', { b: b }) %>
+          <% }); %>
+        </div>
+      <% }); %>
+    </div>
+  </section>
 
 <% } else if (section.type === 'spacer') { %>
   <div id="<%= pzId %>" class="section-spacer section-spacer-<%= section.fields.height %><%= pzExtra %>"></div>

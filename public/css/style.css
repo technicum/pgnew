@@ -483,6 +483,25 @@ main.container {
 .countdown-timers small { font-size: 0.7rem; opacity: .8; letter-spacing: .06em; text-transform: uppercase; }
 .countdown.is-ended { opacity: .6; }
 
+/* Row / columns */
+.pz-row { padding: 40px 0; }
+.pz-row-inner { display: grid; gap: 32px; align-items: start; }
+.pz-row-col { min-width: 0; }
+.pz-block + .pz-block { margin-top: 24px; }
+.pz-block .hero,
+.pz-block .richtext,
+.pz-block .testimonials,
+.pz-block .newsletter,
+.pz-block .faq,
+.pz-block .gallery,
+.pz-block .video-section,
+.pz-block .countdown { padding: 0; }
+.pz-block .text-image,
+.pz-block .text-image-left { flex-direction: column; }
+@media (max-width: 720px) {
+  .pz-row-inner { grid-template-columns: 1fr !important; }
+}
+
 /* Spacer / divider */
 .section-spacer-s { height: 20px; }
 .section-spacer-m { height: 48px; }

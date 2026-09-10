@@ -7,6 +7,7 @@ const { rootUrl, adminPortalUrl } = require('../middleware/tenant');
 const {
   SECTION_TYPES,
   SECTION_TYPE_KEYS,
+  NESTABLE_SECTION_TYPES,
   TEXT_ELEMENT_FIELDS,
   defaultFields,
   sanitizeFields,
@@ -338,7 +339,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       `SELECT id, name FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`,
       [req.store.id]
     );
-    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, textElementFields: TEXT_ELEMENT_FIELDS, products, categories });
+    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, nestableTypes: NESTABLE_SECTION_TYPES, textElementFields: TEXT_ELEMENT_FIELDS, products, categories });
   } catch (err) {
     next(err);
   }

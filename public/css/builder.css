@@ -212,7 +212,7 @@ body.builder-body button { font-family: inherit; }
    blocks clicking/typing into the text underneath; only the small handles
    inside it re-enable pointer-events, and they sit just past its edge. */
 .b-el-handles { position: absolute; z-index: 8; pointer-events: none; }
-.b-el-margin, .b-el-margin-v, .b-el-resize { pointer-events: auto; }
+.b-el-margin, .b-el-margin-v, .b-el-resize, .b-el-move { pointer-events: auto; }
 .b-el-margin { position: absolute; left: -6px; right: -6px; height: 9px; cursor: row-resize; touch-action: none; opacity: .85; }
 .b-el-margin::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
 .b-el-margin-top { top: -9px; }
@@ -225,6 +225,19 @@ body.builder-body button { font-family: inherit; }
 .b-el-resize { position: absolute; left: 0; right: 0; bottom: -14px; height: 12px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; touch-action: none; opacity: .85; }
 .b-el-resize span { width: 28px; height: 4px; border-radius: 2px; background: var(--b-accent); box-shadow: 0 1px 4px rgba(33,30,27,.35); }
 .b-el-resize:hover, .b-el-resize:active { opacity: 1; }
+
+/* Move handle — drags the sub-selected text out of normal flow onto any
+   spot inside its bounds (elementBoundsEl in admin-builder.js: the row
+   block it's nested in, or the whole section). Distinct dark styling from
+   the amber spacing handles since it's a different kind of action. */
+.b-el-move { position: absolute; top: -13px; left: -13px; width: 26px; height: 26px; border-radius: 7px; background: var(--b-ink); color: var(--b-paper); display: flex; align-items: center; justify-content: center; cursor: move; touch-action: none; box-shadow: var(--b-shadow-sm); opacity: .9; }
+.b-el-move svg { width: 13px; height: 13px; }
+.b-el-move:hover, .b-el-move:active { opacity: 1; }
+.b-el-guide { position: fixed; background: var(--b-accent); opacity: .8; pointer-events: none; z-index: 20; }
+.b-el-guide-v { width: 1px; }
+.b-el-guide-h { height: 1px; }
+.b-pos-row { display: flex; gap: 10px; }
+.b-pos-row label { flex: 1; font-size: 11px; color: var(--b-muted); display: flex; flex-direction: column; gap: 4px; }
 
 .b-sec-pad { padding: 56px 48px; }
 .b-canvas-frame[data-vp="mobile"] .b-sec-pad { padding: 34px 20px; }
@@ -324,6 +337,42 @@ body.builder-body button { font-family: inherit; }
 .b-divider-preview { padding: 20px 48px; }
 .b-divider-preview hr { border: none; border-top: 1px solid var(--b-line); margin: 0; }
 .b-divider-preview.b-divider-dots { text-align: center; letter-spacing: 10px; color: var(--b-line); font-size: 11px; padding: 20px 48px; }
+
+/* Row / columns — a "row" section's fields.columns holds its own nested
+   blocks (see lib/sections.js's NESTABLE_SECTION_TYPES), each rendered by
+   re-entering renderSectionInner() with that block in place of a section. */
+.b-row-picker { padding: 40px 32px; text-align: center; }
+.b-row-picker p { font-size: 12.5px; color: var(--b-muted); margin: 0 0 16px; }
+.b-layout-opts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.b-layout-opt { border: 1px solid var(--b-line); background: var(--b-surface); border-radius: 9px; padding: 10px 12px 8px; cursor: pointer; width: 100px; font-family: inherit; }
+.b-layout-opt:hover { border-color: var(--b-accent); background: var(--b-accent-soft); }
+.b-layout-bars { display: flex; gap: 3px; height: 26px; margin-bottom: 7px; }
+.b-layout-bars span { background: var(--b-surface-3); border-radius: 3px; display: block; }
+.b-layout-opt label { font-size: 10.5px; color: var(--b-muted); font-weight: 600; cursor: pointer; }
+
+.b-row-inner { display: grid; gap: 20px; padding: 32px 28px; align-items: start; }
+.b-row-col { position: relative; min-width: 0; min-height: 90px; border-radius: 8px; transition: background .12s; }
+.b-row-col.is-drop-target { background: var(--b-accent-soft); outline: 2px dashed var(--b-accent); outline-offset: 2px; }
+.b-row-col.is-empty { border: 1px dashed var(--b-line); display: flex; align-items: center; justify-content: center; }
+.b-row-col-add { display: none; align-items: center; gap: 6px; border: 1px dashed var(--b-line); background: var(--b-surface); color: var(--b-muted); font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 7px; cursor: pointer; margin-top: 10px; }
+.b-row-col-add svg { width: 12px; height: 12px; }
+.b-row-col-add:hover { border-color: var(--b-accent); background: var(--b-accent-soft); color: var(--b-ink); }
+.b-row-col.is-empty .b-row-col-add { display: inline-flex; margin-top: 0; }
+.b-csec:hover .b-row-col-add, .b-row-col.is-drop-target .b-row-col-add { display: inline-flex; }
+
+.b-row-block { position: relative; border-radius: 8px; }
+.b-row-block + .b-row-block { margin-top: 18px; }
+.b-row-block:hover, .b-row-block.is-block-selected { outline: 1.5px dashed var(--b-line); outline-offset: 4px; }
+.b-row-block.is-block-selected { outline-color: var(--b-accent); }
+.b-row-block-tag { position: absolute; top: -9px; left: 6px; font-family: var(--b-font-mono); font-size: 9.5px; background: var(--b-ink); color: var(--b-paper); padding: 2px 7px; border-radius: 5px; opacity: 0; transition: opacity .12s; z-index: 7; }
+.b-row-block:hover .b-row-block-tag, .b-row-block.is-block-selected .b-row-block-tag { opacity: .85; }
+.b-row-block-del { position: absolute; top: -10px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 6px; background: var(--b-ink); color: var(--b-paper); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .12s; z-index: 7; }
+.b-row-block-del svg { width: 11px; height: 11px; }
+.b-row-block:hover .b-row-block-del { opacity: .85; }
+.b-row-block-del:hover { opacity: 1 !important; background: var(--b-danger); }
+.b-row-block .b-sec-pad { padding: 0; }
+.b-row-block .b-divider-preview { padding: 20px 0; }
+.b-row-block .b-spacer-preview { border-top: none; }
 
 .b-inspector { grid-column: 4; width: 300px; background: var(--b-surface); border-left: 1px solid var(--b-line); display: flex; flex-direction: column; overflow: hidden; }
 .b-inspector[hidden] { display: none; }
