@@ -486,15 +486,20 @@
           '</div>';
 
       case "nav_menu": {
-        var navLinks = (d.links || []).slice();
-        if (d.auto_categories) navLinks.push({ label: "(your categories)", url: "", children: [] });
-        if (d.auto_pages) navLinks.push({ label: "(your pages)", url: "", children: [] });
-        var navHtml = navLinks.length
-          ? navLinks.map(function (l) {
-              var kids = (l.children || []).length ? ' <span class="b-nav-caret">▾</span>' : "";
-              return '<span class="b-nav-link">' + esc(l.label || "(untitled link)") + kids + '</span>';
+        // Previews the actual picked menu (see routes/admin.js's
+        // loadMenuContext + lib/menus.js's resolveMenu) — already resolved
+        // to real labels the moment the page loaded, so switching the
+        // picker re-renders instantly with no round trip, the same as the
+        // product-grid/collection-list previews above.
+        var menuItems = (d.menu_id && DATA.resolvedMenus && DATA.resolvedMenus[d.menu_id]) || [];
+        var navHtml = menuItems.length
+          ? menuItems.map(function (item) {
+              var kids = (item.children || []).length ? ' <span class="b-nav-caret">▾</span>' : "";
+              return '<span class="b-nav-link">' + esc(item.label || "(untitled)") + kids + '</span>';
             }).join("")
-          : '<span class="b-prod-empty" style="padding:0;">No links yet — add some from the panel on the right.</span>';
+          : d.menu_id
+          ? '<span class="b-prod-empty" style="padding:0;">This menu has no items yet — add some from its editor.</span>'
+          : '<span class="b-prod-empty" style="padding:0;">No menu picked yet — choose one from the panel on the right.</span>';
         var navIcons = [];
         if (d.show_search) navIcons.push("Search");
         if (d.show_account) navIcons.push("Account");
@@ -1333,40 +1338,14 @@
   }
 
   // ---- Text <-> structured-data helpers for the header/footer link
-  // fields (nav_menu.links, link_columns.columns, social_icons.links).
-  // Each is edited as plain lines in a textarea rather than a repeating
-  // add-row UI, then parsed back into the shape lib/sections.js expects
-  // on focusout (see wireInspector below).
+  // fields (link_columns.columns, social_icons.links). Each is edited as
+  // plain lines in a textarea rather than a repeating add-row UI, then
+  // parsed back into the shape lib/sections.js expects on focusout (see
+  // wireInspector below). nav_menu used to have one here too, but it now
+  // just points at a saved menu (see the "nav_menu" case above) built on
+  // its own screen (views/admin/menu-edit.ejs), so there's no more
+  // text-editing of its links here.
   var SOCIAL_PLATFORMS = ["instagram", "facebook", "twitter", "youtube", "tiktok", "pinterest", "linkedin", "custom"];
-
-  // nav_menu links — "Label | url" per line; a line indented with leading
-  // whitespace becomes a one-level-deep dropdown child of the nearest
-  // non-indented line above it.
-  function parseLinksText(text) {
-    var out = [];
-    (text || "").split("\n").forEach(function (raw) {
-      if (!raw.trim()) return;
-      var indented = /^\s/.test(raw);
-      var parts = raw.trim().split("|");
-      var link = { label: (parts[0] || "").trim(), url: (parts[1] || "").trim() };
-      if (indented && out.length) {
-        var parent = out[out.length - 1];
-        parent.children = parent.children || [];
-        parent.children.push(link);
-      } else {
-        link.children = [];
-        out.push(link);
-      }
-    });
-    return out;
-  }
-  function linksToText(links) {
-    return (links || []).map(function (l) {
-      var line = (l.label || "") + " | " + (l.url || "");
-      var kids = (l.children || []).map(function (c) { return "  " + (c.label || "") + " | " + (c.url || ""); });
-      return [line].concat(kids).join("\n");
-    }).join("\n");
-  }
 
   // link_columns — a "# Heading" line starts a new column, followed by
   // its "Label | url" link lines.
@@ -1500,14 +1479,19 @@
         return field("Image URL", textHtml("image_url", d.image_url, "https://…")) +
           field("Height (px)", textHtml("height", d.height, "32")) +
           field("", '<div class="b-inspector-hint">No upload yet — paste a hosted image URL. Leave it blank to show your store name as text instead.</div>');
-      case "nav_menu":
-        return field("Links", textareaHtml("links", linksToText(d.links), "Shop | /shop\n  Hoodies | /shop/hoodies\nAbout | /pages/about")) +
-          field("", '<div class="b-inspector-hint">One link per line as “Label | URL”. Indent a line with a space to nest it as a dropdown under the link above it.</div>') +
-          field("", checkHtml("auto_categories", !!d.auto_categories, "Add your categories automatically")) +
-          field("", checkHtml("auto_pages", !!d.auto_pages, "Add your pages automatically")) +
+      case "nav_menu": {
+        var menuOptions = [{ val: "", label: "— No menu picked —" }].concat(
+          (DATA.menus || []).map(function (m) { return { val: String(m.id), label: esc(m.name) }; })
+        );
+        var menuHint = (DATA.menus || []).length
+          ? 'Pick which saved menu this shows. <a href="/admin/menus" target="_blank" rel="noopener">Manage menus</a> to add, remove, or reorder its links — changes there show up here and on your storefront automatically.'
+          : 'You don’t have any menus yet. <a href="/admin/menus" target="_blank" rel="noopener">Create one</a>, then come back and pick it here.';
+        return field("Menu", selectHtml("menu_id", menuOptions, String(d.menu_id || ""))) +
+          field("", '<div class="b-inspector-hint">' + menuHint + '</div>') +
           field("", checkHtml("show_search", !!d.show_search, "Show search icon")) +
           field("", checkHtml("show_account", !!d.show_account, "Show account icon")) +
           field("", checkHtml("show_cart", !!d.show_cart, "Show cart icon"));
+      }
       case "promo_bar":
         return field("Link URL (optional)", textHtml("link_url", d.link_url, "https://…")) +
           field("Link text", textHtml("link_text", d.link_text, "Shop now")) +
@@ -2503,25 +2487,19 @@
           rawTarget.save(rawPatch);
           return;
         }
-        // "links" is shared by nav_menu (label/url/children) and
-        // social_icons (platform/url) — resolve the *effective* type (the
-        // sub-selected row block's, when one is selected, same as
-        // renderInspector()) to pick the right parser. "columns" only
-        // belongs to link_columns, but is parsed the same structured way
-        // rather than falling through to the plain one-line-per-item split
-        // below.
+        // "links" belongs to social_icons (platform/url) now that nav_menu
+        // just points at a saved menu instead of storing its own. "columns"
+        // only belongs to link_columns, but is parsed the same structured
+        // way rather than falling through to the plain one-line-per-item
+        // split below.
         if (ta.dataset.field === "links" || ta.dataset.field === "columns") {
           var structTarget = inspectorFieldTarget();
           if (!structTarget) return;
-          var structSelBlock = state.selectedBlockId ? findBlockInSection(sec, state.selectedBlockId) : null;
-          var structType = structSelBlock ? structSelBlock.block.type : sec.type;
           var structPatch = {};
           if (ta.dataset.field === "columns") {
             structPatch.columns = parseColumnsText(ta.value);
-          } else if (structType === "social_icons") {
-            structPatch.links = parseSocialText(ta.value);
           } else {
-            structPatch.links = parseLinksText(ta.value);
+            structPatch.links = parseSocialText(ta.value);
           }
           structTarget.save(structPatch);
           return;

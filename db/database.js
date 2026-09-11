@@ -66,6 +66,12 @@ const TABLES = {
   // their store without rebuilding it from scratch each time — the section
   // builder's "component library" (public/js/admin-builder.js).
   pageComponents: `${PREFIX}page_components`,
+  // WordPress-style saved navigation menus (lib/menus.js) — a menu is a
+  // named, reusable tree of items a merchant builds once on the Menus
+  // screen; a nav_menu section then just references one by id instead of
+  // storing its own links inline. See pz_menu_items below for the items.
+  menus: `${PREFIX}menus`,
+  menuItems: `${PREFIX}menu_items`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -318,6 +324,44 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageComponents} (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   INDEX idx_store_created (store_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A named, reusable menu (WordPress-style) — e.g. "Main menu", "Footer
+-- links". A nav_menu section picks one of these by id (see pz_menu_items
+-- for its actual items) instead of storing links inline, so the same menu
+-- can be reused across the header, the footer, and any page override.
+CREATE TABLE IF NOT EXISTS ${TABLES.menus} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  INDEX idx_store_name (store_id, name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One item inside a menu. parent_id (self-referencing, one level deep by
+-- app-level convention — the editor only lets you nest under a top-level
+-- item) makes the item a dropdown child. 'type' says what the item points
+-- to; 'target_id' is that row's id for page/category/product items (no DB
+-- FK, since it conditionally points at three different tables — resolved
+-- at render time by lib/menus.js, which also drops items whose target was
+-- deleted/unpublished) and is NULL for a 'custom' link. 'label' is always
+-- stored so a custom link has a title and a page/category/product item can
+-- carry an override label; 'url' is only used by 'custom' items.
+CREATE TABLE IF NOT EXISTS ${TABLES.menuItems} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  menu_id INT NOT NULL,
+  parent_id INT NULL,
+  position INT NOT NULL DEFAULT 0,
+  type ENUM('page', 'category', 'product', 'custom') NOT NULL,
+  target_id INT NULL,
+  label VARCHAR(150) NOT NULL,
+  url VARCHAR(500) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (menu_id) REFERENCES ${TABLES.menus}(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_id) REFERENCES ${TABLES.menuItems}(id) ON DELETE CASCADE,
+  INDEX idx_menu_parent_position (menu_id, parent_id, position)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -689,6 +733,41 @@ async function migrateHeaderFooterSections(conn) {
   }
 }
 
+// A starter "Main menu" (pz_menus/pz_menu_items — see lib/menus.js) built
+// from whatever the store's catalog looks like right now: its published
+// pages, then its categories. Used to seed a brand new store's default nav
+// with something rather than nothing; the merchant is free to rebuild it
+// from the Menus screen afterward like any other menu. Reused (not
+// recreated) if a "Main menu" already exists for the store, so calling this
+// more than once is harmless.
+async function seedStarterMenu(conn, storeId) {
+  const [[existing]] = await conn.query(`SELECT id FROM ${TABLES.menus} WHERE store_id = ? AND name = 'Main menu' LIMIT 1`, [storeId]);
+  if (existing) return existing.id;
+
+  const [menuResult] = await conn.query(`INSERT INTO ${TABLES.menus} (store_id, name) VALUES (?, 'Main menu')`, [storeId]);
+  const menuId = menuResult.insertId;
+
+  let position = 0;
+  const [pages] = await conn.query(
+    `SELECT id, name FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 0 AND status = 'published' ORDER BY name`,
+    [storeId]
+  );
+  for (const p of pages) {
+    await conn.query(
+      `INSERT INTO ${TABLES.menuItems} (menu_id, parent_id, position, type, target_id, label) VALUES (?, NULL, ?, 'page', ?, ?)`,
+      [menuId, position++, p.id, p.name]
+    );
+  }
+  const [categories] = await conn.query(`SELECT id, name FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [storeId]);
+  for (const c of categories) {
+    await conn.query(
+      `INSERT INTO ${TABLES.menuItems} (menu_id, parent_id, position, type, target_id, label) VALUES (?, NULL, ?, 'category', ?, ?)`,
+      [menuId, position++, c.id, c.name]
+    );
+  }
+  return menuId;
+}
+
 // Every store needs a global header and footer (page_id NULL) to fall back
 // on — pages created before this feature existed, and brand new stores,
 // have none yet. Seeds sections that reproduce today's hardcoded header/
@@ -706,7 +785,8 @@ async function migrateDefaultHeaderFooter(conn) {
     );
     if (!existingHeader) {
       const logoFields = defaultFields('logo');
-      const navFields = { ...defaultFields('nav_menu'), show_search: false, show_account: true, show_cart: true, auto_categories: true, auto_pages: true, links: [] };
+      const starterMenuId = await seedStarterMenu(conn, store.id);
+      const navFields = { ...defaultFields('nav_menu'), show_search: false, show_account: true, show_cart: true, menu_id: starterMenuId };
       await conn.query(
         `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'logo', 0, ?)`,
         [store.id, JSON.stringify(logoFields)]
@@ -732,6 +812,99 @@ async function migrateDefaultHeaderFooter(conn) {
         [store.id, JSON.stringify(copyrightFields)]
       );
     }
+  }
+}
+
+// nav_menu sections created before the WordPress-style Menus feature stored
+// their links inline (fields.links, plus auto_categories/auto_pages flags)
+// instead of pointing at a saved menu (fields.menu_id — see lib/menus.js).
+// This converts each such section's old data into a real menu and points
+// the section at it, so nothing a merchant already built goes blank the
+// moment this ships. A store with more than one stale section (its header
+// and its footer both had auto_categories, say) gets ONE shared migrated
+// menu, not a duplicate per section, since they almost always want the
+// same nav. Idempotent: a section that already has menu_id set (new
+// sections, or ones already migrated) is left alone; a section with no
+// links and both auto flags off is left alone too (menu_id stays null,
+// same as if a merchant had never picked one).
+async function migrateNavMenuSections(conn) {
+  const [rows] = await conn.query(`SELECT id, store_id, fields FROM ${TABLES.pageSections} WHERE type = 'nav_menu'`);
+
+  const staleByStore = new Map(); // store_id -> [{ id, fields }]
+  for (const row of rows) {
+    const fields = typeof row.fields === 'string' ? JSON.parse(row.fields) : row.fields;
+    if (!fields || fields.menu_id) continue;
+    const hasOldData = (Array.isArray(fields.links) && fields.links.length) || fields.auto_categories || fields.auto_pages;
+    if (!hasOldData) continue;
+    if (!staleByStore.has(row.store_id)) staleByStore.set(row.store_id, []);
+    staleByStore.get(row.store_id).push({ id: row.id, fields });
+  }
+  if (!staleByStore.size) return;
+
+  for (const [storeId, sections] of staleByStore) {
+    const wantsCategories = sections.some((s) => s.fields.auto_categories);
+    const wantsPages = sections.some((s) => s.fields.auto_pages);
+    // Union of every stale section's manual links for this store, de-duped
+    // by label+url so header and footer sections that happened to share
+    // links don't produce two copies of each.
+    const customLinks = [];
+    const seenLinkKey = new Set();
+    sections.forEach((s) => {
+      (s.fields.links || []).forEach((l) => {
+        const key = (l.label || '') + '|' + (l.url || '');
+        if (seenLinkKey.has(key)) return;
+        seenLinkKey.add(key);
+        customLinks.push(l);
+      });
+    });
+
+    const [menuResult] = await conn.query(`INSERT INTO ${TABLES.menus} (store_id, name) VALUES (?, 'Main menu')`, [storeId]);
+    const menuId = menuResult.insertId;
+    let position = 0;
+
+    // Same order the old rendering used (categories, then pages, then
+    // manual links — see the pre-migration 'nav_menu' case in
+    // partials/section.ejs), so a migrated nav looks the same as before.
+    if (wantsCategories) {
+      const [categories] = await conn.query(`SELECT id, name FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [storeId]);
+      for (const c of categories) {
+        await conn.query(
+          `INSERT INTO ${TABLES.menuItems} (menu_id, parent_id, position, type, target_id, label) VALUES (?, NULL, ?, 'category', ?, ?)`,
+          [menuId, position++, c.id, c.name]
+        );
+      }
+    }
+    if (wantsPages) {
+      const [pages] = await conn.query(
+        `SELECT id, name FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 0 AND status = 'published' ORDER BY name`,
+        [storeId]
+      );
+      for (const p of pages) {
+        await conn.query(
+          `INSERT INTO ${TABLES.menuItems} (menu_id, parent_id, position, type, target_id, label) VALUES (?, NULL, ?, 'page', ?, ?)`,
+          [menuId, position++, p.id, p.name]
+        );
+      }
+    }
+    for (const l of customLinks) {
+      const [itemResult] = await conn.query(
+        `INSERT INTO ${TABLES.menuItems} (menu_id, parent_id, position, type, target_id, label, url) VALUES (?, NULL, ?, 'custom', NULL, ?, ?)`,
+        [menuId, position++, (l.label || 'Link').slice(0, 150), (l.url || '#').slice(0, 500)]
+      );
+      let childPos = 0;
+      for (const c of l.children || []) {
+        await conn.query(
+          `INSERT INTO ${TABLES.menuItems} (menu_id, parent_id, position, type, target_id, label, url) VALUES (?, ?, ?, 'custom', NULL, ?, ?)`,
+          [menuId, itemResult.insertId, childPos++, (c.label || 'Link').slice(0, 150), (c.url || '#').slice(0, 500)]
+        );
+      }
+    }
+
+    for (const s of sections) {
+      const nextFields = { ...s.fields, menu_id: menuId };
+      await conn.query(`UPDATE ${TABLES.pageSections} SET fields = ? WHERE id = ?`, [JSON.stringify(nextFields), s.id]);
+    }
+    console.log(`Migrated ${sections.length} nav_menu section(s) in store ${storeId} to a new "Main menu".`);
   }
 }
 
@@ -901,6 +1074,7 @@ async function init() {
     await migratePageSectionSettings(conn);
     await migrateHeaderFooterSections(conn);
     await migrateDefaultHeaderFooter(conn);
+    await migrateNavMenuSections(conn);
     await migrateOrderDiscountColumns(conn);
     await migrateOrderCustomerColumn(conn);
     await migrateAdminsToUsers(conn);

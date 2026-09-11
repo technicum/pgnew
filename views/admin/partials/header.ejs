@@ -18,13 +18,15 @@
         <a href="/admin/customers" class="<%= title === 'Customers' ? 'active' : '' %>">Customers</a>
         <a href="/admin/discounts" class="<%= title && (title === 'Discounts' || title === 'New Discount') ? 'active' : '' %>">Discounts</a>
 
-        <% var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Pages' || title === 'New Page' || title.startsWith('Edit ') || title === 'Header' || title === 'Footer' || title.indexOf(' override — ') !== -1); %>
+        <% var isMenusScreen = title && (title === 'Menus' || title.startsWith('Edit menu: ')); %>
+        <% var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Pages' || title === 'New Page' || (title.startsWith('Edit ') && !isMenusScreen) || title === 'Header' || title === 'Footer' || title.indexOf(' override — ') !== -1 || isMenusScreen); %>
         <a href="/admin/store/themes" class="<%= editStoreOpen ? 'active' : '' %>">Edit Store</a>
         <% if (editStoreOpen) { %>
           <a href="/admin/store/themes" class="admin-nav-sub <%= title && (title === 'Themes' || title.startsWith('Customize ')) ? 'active' : '' %>">Themes</a>
-          <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || title.startsWith('Edit ')) ? 'active' : '' %>">Pages</a>
+          <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || (title.startsWith('Edit ') && !isMenusScreen)) ? 'active' : '' %>">Pages</a>
           <a href="/admin/layout/header" class="admin-nav-sub <%= title === 'Header' ? 'active' : '' %>">Header</a>
           <a href="/admin/layout/footer" class="admin-nav-sub <%= title === 'Footer' ? 'active' : '' %>">Footer</a>
+          <a href="/admin/menus" class="admin-nav-sub <%= isMenusScreen ? 'active' : '' %>">Menus</a>
           <a href="/" target="_blank" class="admin-nav-sub">View store ↗</a>
         <% } %>
 

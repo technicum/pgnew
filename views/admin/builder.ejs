@@ -220,7 +220,15 @@
       })).split('/').join(String.fromCharCode(92) + '/') %>,
       products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>,
       categories: <%- JSON.stringify(categories).split('/').join(String.fromCharCode(92) + '/') %>,
-      components: <%- JSON.stringify(components).split('/').join(String.fromCharCode(92) + '/') %>
+      components: <%- JSON.stringify(components).split('/').join(String.fromCharCode(92) + '/') %>,
+      // The store's saved menus (id/name, for the nav_menu inspector's
+      // picker) and each one's items already resolved to real labels/urls
+      // (lib/menus.js's resolveMenu, keyed by menu id) -- so the canvas can
+      // preview whichever menu is picked instantly, the same way the
+      // product-grid/collection-list previews above don't need a round
+      // trip either. See routes/admin.js's loadMenuContext.
+      menus: <%- JSON.stringify(menus || []).split('/').join(String.fromCharCode(92) + '/') %>,
+      resolvedMenus: <%- JSON.stringify(resolvedMenus || {}).split('/').join(String.fromCharCode(92) + '/') %>
     };
   </script>
   <script src="/js/admin-builder.js"></script>

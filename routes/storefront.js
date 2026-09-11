@@ -7,6 +7,7 @@ const { requireCustomer } = require('../middleware/auth');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('../lib/themes');
 const { resolveTokens, tokensToInlineStyle, themeDefaultTokens } = require('../lib/themeTokens');
 const { readManifest } = require('../lib/themeManifest');
+const menusLib = require('../lib/menus');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -148,6 +149,25 @@ async function resolveRegionSections(storeId, pageId, region) {
   return rows.map(toRenderSection);
 }
 
+// A nav_menu section (header or footer) points at a saved menu by id
+// (lib/menus.js) instead of storing its own links — resolve every menu
+// actually referenced by THIS request's header/footer sections once here
+// (not once per section, since a header and footer commonly point at the
+// same menu), so section.ejs/block.ejs's 'nav_menu' case can just look up
+// the ready { label, url, children } tree instead of hitting the database
+// mid-render. An id with nothing left to resolve to (menu deleted, or
+// never picked) simply has no entry — the partial treats that as no menu.
+async function loadResolvedMenus(storeId, sections) {
+  const menuIds = [...new Set(
+    sections.filter((s) => s.type === 'nav_menu' && s.fields && s.fields.menu_id).map((s) => s.fields.menu_id)
+  )];
+  const resolvedMenus = {};
+  await Promise.all(menuIds.map(async (id) => {
+    resolvedMenus[id] = await menusLib.resolveMenu(storeId, id);
+  }));
+  return resolvedMenus;
+}
+
 // Store-wide header/footer, available to every view in this router — every
 // theme's header.ejs/footer.ejs partial loops over these instead of the old
 // hardcoded markup (see views/storefront/themes/*/partials/header.ejs).
@@ -162,9 +182,11 @@ router.use(async (req, res, next) => {
     ]);
     res.locals.headerSections = headerSections;
     res.locals.footerSections = footerSections;
+    res.locals.resolvedMenus = await loadResolvedMenus(req.store.id, [...headerSections, ...footerSections]);
   } catch (err) {
     res.locals.headerSections = [];
     res.locals.footerSections = [];
+    res.locals.resolvedMenus = {};
   }
   next();
 });
@@ -197,6 +219,10 @@ async function renderStorePage(req, res, next, page) {
     ]);
     res.locals.headerSections = headerSections;
     res.locals.footerSections = footerSections;
+    // Re-resolve for THIS page's own header/footer (it may override with a
+    // different menu than the store-wide default the earlier middleware
+    // already resolved).
+    res.locals.resolvedMenus = await loadResolvedMenus(storeId, [...headerSections, ...footerSections]);
 
     // ?q= comes from the optional search box a nav_menu section can turn on
     // (show_search — see partials/section.ejs's 'nav_menu' case); a plain

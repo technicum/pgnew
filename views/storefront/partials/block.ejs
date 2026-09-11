@@ -181,28 +181,22 @@
   <% } else if (b.type === 'nav_menu') { %>
     <nav class="pz-nav-block">
       <div class="pz-nav-links">
-        <% if (b.fields.auto_categories && typeof categories !== 'undefined') { %>
-          <% categories.forEach(function (c) { %>
-            <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
-          <% }); %>
-        <% } %>
-        <% if (b.fields.auto_pages && typeof storePages !== 'undefined') { %>
-          <% storePages.forEach(function (pg) { %>
-            <a href="/pages<%= pg.path %>"><%= pg.name %></a>
-          <% }); %>
-        <% } %>
-        <% (b.fields.links || []).forEach(function (l) { %>
-          <% if (l.children && l.children.length) { %>
+        <% // See partials/section.ejs's 'nav_menu' case -- same resolved-menu
+           // lookup, just reached via `b.fields` since this is a block
+           // (nested inside a row) rather than a top-level section. %>
+        <% var pzMenuItems = (b.fields.menu_id && typeof resolvedMenus !== 'undefined' && resolvedMenus[b.fields.menu_id]) || []; %>
+        <% pzMenuItems.forEach(function (item) { %>
+          <% if (item.children && item.children.length) { %>
             <div class="pz-nav-dropdown">
-              <a href="<%= l.url || '#' %>"><%= l.label %> <span class="pz-nav-caret">&#9662;</span></a>
+              <a href="<%= item.url || '#' %>"><%= item.label %> <span class="pz-nav-caret">&#9662;</span></a>
               <div class="pz-nav-dropdown-menu">
-                <% l.children.forEach(function (c) { %>
+                <% item.children.forEach(function (c) { %>
                   <a href="<%= c.url || '#' %>"><%= c.label %></a>
                 <% }); %>
               </div>
             </div>
           <% } else { %>
-            <a href="<%= l.url || '#' %>"><%= l.label %></a>
+            <a href="<%= item.url || '#' %>"><%= item.label %></a>
           <% } %>
         <% }); %>
       </div>

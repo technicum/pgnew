@@ -19,6 +19,7 @@ const {
   sectionAllowedInContext,
 } = require('../lib/sections');
 const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
+const menusLib = require('../lib/menus');
 
 function slugify(str) {
   return str
@@ -263,6 +264,24 @@ router.post('/products/:id/delete', async (req, res, next) => {
 async function loadOwnedPage(storeId, pageId) {
   const [[page]] = await pool.query(`SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND id = ?`, [storeId, pageId]);
   return page;
+}
+
+// The store's saved menus, plus each one's items already resolved to real
+// labels/urls (lib/menus.js's resolveMenu) — for the builder canvas to
+// preview a nav_menu section's picked menu with the merchant's actual
+// pages/categories/products/links instantly, the moment they change the
+// picker, without a round trip per keystroke (same instant-preview
+// philosophy every other section's fields already get). Every builder
+// screen a nav_menu section can appear on (header, footer, and a page's own
+// header/footer override) needs this, not just the page-body screen, which
+// is why it's shared here.
+async function loadMenuContext(storeId) {
+  const menus = await menusLib.listMenus(storeId);
+  const resolvedMenus = {};
+  await Promise.all(menus.map(async (m) => {
+    resolvedMenus[m.id] = await menusLib.resolveMenu(storeId, m.id);
+  }));
+  return { menus, resolvedMenus };
 }
 
 // ---- Shared section-canvas engine ----
@@ -669,6 +688,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       [page.id]
     );
     const overrideRegions = overrideRows.map((r) => r.region);
+    const { menus, resolvedMenus } = await loadMenuContext(req.store.id);
     res.render('admin/builder', {
       title: `Edit ${page.name}`,
       page,
@@ -681,6 +701,8 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       products,
       categories,
       components,
+      menus,
+      resolvedMenus,
       layoutOverrides: { header: overrideRegions.includes('header'), footer: overrideRegions.includes('footer') },
     });
   } catch (err) {
@@ -745,6 +767,7 @@ router.get('/layout/:region', async (req, res, next) => {
       [req.store.id]
     );
     const components = rawComponents.map((c) => ({ id: c.id, name: c.name, block: typeof c.block === 'string' ? JSON.parse(c.block) : c.block }));
+    const { menus, resolvedMenus } = await loadMenuContext(req.store.id);
     res.render('admin/builder', {
       title: region === 'header' ? 'Header' : 'Footer',
       page: null,
@@ -757,6 +780,8 @@ router.get('/layout/:region', async (req, res, next) => {
       products: [],
       categories: [],
       components,
+      menus,
+      resolvedMenus,
       layoutOverrides: null,
     });
   } catch (err) {
@@ -796,6 +821,7 @@ router.get('/pages/:id/layout/:region/edit', async (req, res, next) => {
       [req.store.id]
     );
     const components = rawComponents.map((c) => ({ id: c.id, name: c.name, block: typeof c.block === 'string' ? JSON.parse(c.block) : c.block }));
+    const { menus, resolvedMenus } = await loadMenuContext(req.store.id);
     res.render('admin/builder', {
       title: `${region === 'header' ? 'Header' : 'Footer'} override — ${page.name}`,
       page,
@@ -808,6 +834,8 @@ router.get('/pages/:id/layout/:region/edit', async (req, res, next) => {
       products: [],
       categories: [],
       components,
+      menus,
+      resolvedMenus,
       layoutOverrides: null,
     });
   } catch (err) {
@@ -911,6 +939,116 @@ router.post('/components', async (req, res, next) => {
 router.post('/components/:componentId/delete', async (req, res, next) => {
   try {
     await pool.query(`DELETE FROM ${TABLES.pageComponents} WHERE id = ? AND store_id = ?`, [req.params.componentId, req.store.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Menus (WordPress-style saved navigation menus) ----------
+// A menu is a named, reusable tree of items (lib/menus.js) that a nav_menu
+// section picks by id instead of storing links inline — see lib/menus.js's
+// header comment for the full picture. The list/editor pages below are the
+// "Menus" screen linked from the admin sidebar; everything under
+// /menus/:id/items is the JSON API the drag-and-drop editor
+// (public/js/admin-menus.js, added in a later step) talks to.
+
+router.get('/menus', async (req, res, next) => {
+  try {
+    const menus = await menusLib.listMenus(req.store.id);
+    res.render('admin/menus', { title: 'Menus', menus });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/menus', async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    if (!name) {
+      req.flash('error', 'Give the menu a name.');
+      return res.redirect('/admin/menus');
+    }
+    const menuId = await menusLib.createMenu(req.store.id, name);
+    req.flash('success', 'Menu created.');
+    res.redirect(`/admin/menus/${menuId}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/menus/:id', async (req, res, next) => {
+  try {
+    const menu = await menusLib.getMenu(req.store.id, req.params.id);
+    if (!menu) {
+      req.flash('error', 'Menu not found.');
+      return res.redirect('/admin/menus');
+    }
+    const [items, sources] = await Promise.all([
+      menusLib.getMenuItemsTree(req.store.id, menu.id),
+      menusLib.listAddableSources(req.store.id),
+    ]);
+    res.render('admin/menu-edit', { title: `Edit menu: ${menu.name}`, menu, items, sources });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/menus/:id/rename', async (req, res, next) => {
+  try {
+    const ok = await menusLib.renameMenu(req.store.id, req.params.id, req.body.name);
+    if (!ok) return res.status(400).json({ error: 'Give the menu a name.' });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin only — a Manager can build/edit a menu but not delete it, matching
+// the pages/:id/delete restriction above.
+router.post('/menus/:id/delete', requireAdminRole, async (req, res, next) => {
+  try {
+    await menusLib.deleteMenu(req.store.id, req.params.id);
+    req.flash('success', 'Menu deleted.');
+    res.redirect('/admin/menus');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/menus/:id/items', async (req, res, next) => {
+  try {
+    const result = await menusLib.addItem(req.store.id, req.params.id, req.body);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json({ ok: true, id: result.id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/menus/:id/items/structure', async (req, res, next) => {
+  try {
+    const result = await menusLib.saveStructure(req.store.id, req.params.id, req.body.structure);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/menus/:id/items/:itemId', async (req, res, next) => {
+  try {
+    const result = await menusLib.updateItem(req.store.id, req.params.id, req.params.itemId, req.body);
+    if (result.error) return res.status(400).json({ error: result.error });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/menus/:id/items/:itemId/delete', async (req, res, next) => {
+  try {
+    await menusLib.deleteItem(req.store.id, req.params.id, req.params.itemId);
     res.json({ ok: true });
   } catch (err) {
     next(err);

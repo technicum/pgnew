@@ -1,0 +1,86 @@
+<%- include('partials/header') %>
+
+<div class="menu-editor-top">
+  <form id="menuRenameForm" class="menu-rename-form">
+    <input type="text" id="menuNameInput" value="<%= menu.name %>" maxlength="100" required />
+    <button type="submit" class="btn btn-secondary">Rename</button>
+  </form>
+  <div class="menu-editor-top-actions">
+    <span id="menuSaveStatus" class="menu-save-status"></span>
+    <a href="/admin/menus" class="link-btn">← All menus</a>
+  </div>
+</div>
+
+<p class="menu-editor-hint">Add pages, categories, products, or custom links from the left. Drag items on the right to reorder — drop one just under and slightly right of another to nest it as a dropdown (one level deep).</p>
+
+<div class="menu-editor-layout">
+  <div class="panel menu-source-panel">
+    <h2>Add menu items</h2>
+    <div class="menu-src-tabs">
+      <button type="button" class="menu-src-tab-btn active" data-tab="pages">Pages</button>
+      <button type="button" class="menu-src-tab-btn" data-tab="categories">Categories</button>
+      <button type="button" class="menu-src-tab-btn" data-tab="products">Products</button>
+      <button type="button" class="menu-src-tab-btn" data-tab="custom">Custom Link</button>
+    </div>
+
+    <div class="menu-src-tab-panel" data-tab-panel="pages">
+      <div class="menu-src-checklist" data-checklist="page">
+        <% sources.pages.forEach(function (p) { %>
+          <label class="menu-src-check"><input type="checkbox" value="<%= p.id %>" data-label="<%= p.name %>" /> <%= p.name %></label>
+        <% }); %>
+        <% if (!sources.pages.length) { %><p class="menu-src-empty">No published pages yet.</p><% } %>
+      </div>
+      <button type="button" class="btn btn-secondary menu-src-add" data-type="page">Add to menu</button>
+    </div>
+
+    <div class="menu-src-tab-panel" data-tab-panel="categories" hidden>
+      <div class="menu-src-checklist" data-checklist="category">
+        <% sources.categories.forEach(function (c) { %>
+          <label class="menu-src-check"><input type="checkbox" value="<%= c.id %>" data-label="<%= c.name %>" /> <%= c.name %></label>
+        <% }); %>
+        <% if (!sources.categories.length) { %><p class="menu-src-empty">No categories yet.</p><% } %>
+      </div>
+      <button type="button" class="btn btn-secondary menu-src-add" data-type="category">Add to menu</button>
+    </div>
+
+    <div class="menu-src-tab-panel" data-tab-panel="products" hidden>
+      <input type="text" class="menu-src-filter" data-filter="product" placeholder="Search products…" />
+      <div class="menu-src-checklist" data-checklist="product">
+        <% sources.products.forEach(function (p) { %>
+          <label class="menu-src-check"><input type="checkbox" value="<%= p.id %>" data-label="<%= p.title %>" /> <%= p.title %></label>
+        <% }); %>
+        <% if (!sources.products.length) { %><p class="menu-src-empty">No products yet.</p><% } %>
+      </div>
+      <button type="button" class="btn btn-secondary menu-src-add" data-type="product">Add to menu</button>
+    </div>
+
+    <div class="menu-src-tab-panel" data-tab-panel="custom" hidden>
+      <label class="menu-src-field">Link text
+        <input type="text" id="customLinkLabel" maxlength="150" placeholder="e.g. Contact us" />
+      </label>
+      <label class="menu-src-field">URL
+        <input type="text" id="customLinkUrl" maxlength="500" placeholder="https:// or /pages/..." />
+      </label>
+      <button type="button" class="btn btn-secondary menu-src-add" data-type="custom">Add to menu</button>
+    </div>
+  </div>
+
+  <div class="panel menu-structure-panel">
+    <h2>Menu structure</h2>
+    <ul id="menuStructure" class="menu-structure-list"></ul>
+    <p id="menuStructureEmpty" class="menu-src-empty" hidden>This menu has no items yet — add some from the left.</p>
+    <button type="button" id="saveArrangement" class="btn btn-primary">Save arrangement</button>
+  </div>
+</div>
+
+<script>
+  window.__MENU_EDITOR__ = {
+    menu: <%- JSON.stringify({ id: menu.id, name: menu.name }) %>,
+    items: <%- JSON.stringify(items).split('/').join(String.fromCharCode(92) + '/') %>,
+    itemsBase: <%- JSON.stringify(`/admin/menus/${menu.id}/items`) %>,
+    renameUrl: <%- JSON.stringify(`/admin/menus/${menu.id}/rename`) %>
+  };
+</script>
+<script src="/js/admin-menus.js"></script>
+
+<%- include('partials/footer') %>

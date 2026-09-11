@@ -291,28 +291,24 @@
 <% } else if (section.type === 'nav_menu') { %>
   <nav id="<%= pzId %>" class="pz-nav-block<%= pzExtra %>" style="<%= pzHeightStyle %>">
     <div class="pz-nav-links">
-      <% if (section.fields.auto_categories && typeof categories !== 'undefined') { %>
-        <% categories.forEach(function (c) { %>
-          <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
-        <% }); %>
-      <% } %>
-      <% if (section.fields.auto_pages && typeof storePages !== 'undefined') { %>
-        <% storePages.forEach(function (pg) { %>
-          <a href="/pages<%= pg.path %>"><%= pg.name %></a>
-        <% }); %>
-      <% } %>
-      <% (section.fields.links || []).forEach(function (l) { %>
-        <% if (l.children && l.children.length) { %>
+      <% // The picked menu, already resolved to real page/category/product/
+         // custom-link urls by routes/storefront.js's loadResolvedMenus (see
+         // lib/menus.js's resolveMenu) -- nothing left to look up here, just
+         // render it. No entry (no menu picked, or it's since been deleted)
+         // renders an empty nav rather than erroring. %>
+      <% var pzMenuItems = (section.fields.menu_id && typeof resolvedMenus !== 'undefined' && resolvedMenus[section.fields.menu_id]) || []; %>
+      <% pzMenuItems.forEach(function (item) { %>
+        <% if (item.children && item.children.length) { %>
           <div class="pz-nav-dropdown">
-            <a href="<%= l.url || '#' %>"><%= l.label %> <span class="pz-nav-caret">&#9662;</span></a>
+            <a href="<%= item.url || '#' %>"><%= item.label %> <span class="pz-nav-caret">&#9662;</span></a>
             <div class="pz-nav-dropdown-menu">
-              <% l.children.forEach(function (c) { %>
+              <% item.children.forEach(function (c) { %>
                 <a href="<%= c.url || '#' %>"><%= c.label %></a>
               <% }); %>
             </div>
           </div>
         <% } else { %>
-          <a href="<%= l.url || '#' %>"><%= l.label %></a>
+          <a href="<%= item.url || '#' %>"><%= item.label %></a>
         <% } %>
       <% }); %>
     </div>
