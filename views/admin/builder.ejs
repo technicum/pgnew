@@ -111,18 +111,31 @@
       </header>
 
       <% if (context === 'page') { %>
-        <div class="b-layout-override-bar">
+        <div class="b-layout-bar">
           <% ['header', 'footer'].forEach(function (region) { %>
-            <div class="b-layout-override-item">
-              <span class="b-layout-override-label"><%= region === 'header' ? 'Header' : 'Footer' %>:</span>
-              <% if (layoutOverrides[region]) { %>
-                <span class="b-layout-override-state">Custom for this page</span>
-                <a class="b-btn-text" href="/admin/pages/<%= page.id %>/layout/<%= region %>/edit">Edit</a>
-                <button type="button" class="b-btn-text" data-layout-disable="<%= region %>">Use global instead</button>
-              <% } else { %>
-                <span class="b-layout-override-state">Using global <%= region %></span>
-                <button type="button" class="b-btn-text" data-layout-enable="<%= region %>">Customize for this page</button>
-              <% } %>
+            <% var isCustom = !!layoutOverrides[region]; %>
+            <div class="b-layout-bar-item">
+              <div class="b-layout-bar-icon">
+                <% if (region === 'header') { %>
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2.5" y="3.5" width="15" height="3.6" rx="1"/><path d="M2.5 11h15M2.5 14.5h9"/></svg>
+                <% } else { %>
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 5.5h9M2.5 9h15"/><rect x="2.5" y="12.9" width="15" height="3.6" rx="1"/></svg>
+                <% } %>
+              </div>
+              <div class="b-layout-bar-copy">
+                <span class="b-layout-bar-title"><%= region === 'header' ? 'Header' : 'Footer' %></span>
+                <span class="b-layout-bar-badge<%= isCustom ? ' is-custom' : '' %>">
+                  <i></i><%= isCustom ? 'Custom for this page' : 'Using global ' + region %>
+                </span>
+              </div>
+              <div class="b-layout-bar-actions">
+                <% if (isCustom) { %>
+                  <a class="b-btn-outline b-btn-sm" href="/admin/pages/<%= page.id %>/layout/<%= region %>/edit">Edit</a>
+                  <button type="button" class="b-btn-text b-btn-text-muted" data-layout-disable="<%= region %>">Use global instead</button>
+                <% } else { %>
+                  <button type="button" class="b-btn-outline b-btn-sm" data-layout-enable="<%= region %>">Customize for this page</button>
+                <% } %>
+              </div>
             </div>
           <% }); %>
         </div>
