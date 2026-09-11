@@ -40,7 +40,6 @@
   background: color-mix(in srgb, var(--color-primary) 12%, #fff);
   color: #111827;
   font-weight: 600;
-  box-shadow: inset 3px 0 var(--color-primary);
 }
 .admin-nav a.admin-nav-sub { padding-left: 28px; font-size: 0.86rem; }
 
