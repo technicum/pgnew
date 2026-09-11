@@ -115,26 +115,33 @@
           <% ['header', 'footer'].forEach(function (region) { %>
             <% var isCustom = !!layoutOverrides[region]; %>
             <div class="b-layout-bar-item">
-              <div class="b-layout-bar-icon">
-                <% if (region === 'header') { %>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2.5" y="3.5" width="15" height="3.6" rx="1"/><path d="M2.5 11h15M2.5 14.5h9"/></svg>
-                <% } else { %>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 5.5h9M2.5 9h15"/><rect x="2.5" y="12.9" width="15" height="3.6" rx="1"/></svg>
-                <% } %>
-              </div>
-              <div class="b-layout-bar-copy">
-                <span class="b-layout-bar-title"><%= region === 'header' ? 'Header' : 'Footer' %></span>
-                <span class="b-layout-bar-badge<%= isCustom ? ' is-custom' : '' %>">
-                  <i></i><%= isCustom ? 'Custom for this page' : 'Using global ' + region %>
-                </span>
+              <div class="b-layout-bar-info">
+                <div class="b-layout-bar-icon">
+                  <% if (region === 'header') { %>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2.5" y="3.5" width="15" height="3.6" rx="1"/><path d="M2.5 11h15M2.5 14.5h9"/></svg>
+                  <% } else { %>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 5.5h9M2.5 9h15"/><rect x="2.5" y="12.9" width="15" height="3.6" rx="1"/></svg>
+                  <% } %>
+                </div>
+                <div class="b-layout-bar-copy">
+                  <span class="b-layout-bar-title"><%= region === 'header' ? 'Header' : 'Footer' %></span>
+                  <span class="b-layout-bar-badge<%= isCustom ? ' is-custom' : '' %>">
+                    <i></i><%= isCustom ? 'Custom for this page' : 'Using global ' + region %>
+                  </span>
+                </div>
               </div>
               <div class="b-layout-bar-actions">
                 <% if (isCustom) { %>
-                  <a class="b-btn-outline b-btn-sm" href="/admin/pages/<%= page.id %>/layout/<%= region %>/edit">Edit</a>
+                  <a class="b-btn-outline b-btn-sm" href="/admin/pages/<%= page.id %>/layout/<%= region %>/edit">Edit page override</a>
                   <button type="button" class="b-btn-text b-btn-text-muted" data-layout-disable="<%= region %>">Use global instead</button>
                 <% } else { %>
                   <button type="button" class="b-btn-outline b-btn-sm" data-layout-enable="<%= region %>">Customize for this page</button>
                 <% } %>
+                <%# Always available regardless of override state — this page's
+                    body builder is often the fastest place to notice the
+                    global header/footer needs a tweak, so it shouldn't take a
+                    trip back out to Edit Store > Header/Footer to get there. %>
+                <a class="b-btn-text b-btn-text-muted b-layout-bar-global-link" href="/admin/layout/<%= region %>">Edit global <%= region %></a>
               </div>
             </div>
           <% }); %>

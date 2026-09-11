@@ -176,12 +176,19 @@ body.builder-body button { font-family: inherit; }
 .b-layout-bar-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  column-gap: 12px;
   padding: 11px 16px;
-  flex: 1 1 260px;
+  flex: 1 1 340px;
   min-width: 0;
 }
 .b-layout-bar-item + .b-layout-bar-item { border-left: 1px solid var(--b-line); }
+/* Icon + title/badge as one unit that never shrinks below readable width —
+   if the actions on the right don't fit alongside it, THEY wrap to a second
+   line below (see .b-layout-bar-actions), rather than this text getting
+   squeezed into a sliver and overflowing into the buttons next to it. */
+.b-layout-bar-info { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; min-width: 170px; }
 .b-layout-bar-icon {
   flex-shrink: 0;
   width: 30px;
@@ -195,8 +202,8 @@ body.builder-body button { font-family: inherit; }
   justify-content: center;
 }
 .b-layout-bar-icon svg { width: 16px; height: 16px; }
-.b-layout-bar-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1 1 auto; }
-.b-layout-bar-title { font-size: 12.5px; font-weight: 700; color: var(--b-ink); }
+.b-layout-bar-copy { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.b-layout-bar-title { font-size: 12.5px; font-weight: 700; color: var(--b-ink); white-space: nowrap; }
 .b-layout-bar-badge {
   display: inline-flex;
   align-items: center;
@@ -205,14 +212,24 @@ body.builder-body button { font-family: inherit; }
   font-size: 11.5px;
   font-weight: 600;
   color: var(--b-muted);
+  white-space: nowrap;
 }
 .b-layout-bar-badge i { width: 6px; height: 6px; border-radius: 50%; background: var(--b-line); flex-shrink: 0; }
 .b-layout-bar-badge.is-custom { color: var(--b-accent); }
 .b-layout-bar-badge.is-custom i { background: var(--b-accent); }
-.b-layout-bar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.b-layout-bar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; flex-shrink: 0; }
+/* Separated from the page-override actions before it (Customize/Edit/Use
+   global instead) with its own left border + extra gap — a distinct,
+   always-available escape hatch to the global editor, not another option
+   in that same page-override group. */
+.b-layout-bar-global-link { margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--b-line); white-space: nowrap; }
 
 @media (max-width: 860px) {
   .b-layout-bar-item + .b-layout-bar-item { border-left: none; border-top: 1px solid var(--b-line); }
+}
+@media (max-width: 520px) {
+  .b-layout-bar-actions { flex-basis: 100%; }
+  .b-layout-bar-global-link { margin-left: 0; padding-left: 0; border-left: none; }
 }
 
 .b-canvas-empty { padding: 90px 24px; text-align: center; color: var(--b-muted); font-size: 13.5px; border: 2px dashed var(--b-line); margin: 16px; border-radius: 10px; }
