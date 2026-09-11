@@ -51,6 +51,9 @@ const TABLES = {
   orderItems: `${PREFIX}order_items`,
   pages: `${PREFIX}pages`,
   pageSections: `${PREFIX}page_sections`,
+  // WordPress-style save history for the section builder — see the CREATE
+  // TABLE comment below for the full scoping/pruning story.
+  pageSectionRevisions: `${PREFIX}page_section_revisions`,
   newsletterSubscribers: `${PREFIX}newsletter_subscribers`,
   platformAdmins: `${PREFIX}platform_admins`,
   discounts: `${PREFIX}discounts`,
@@ -245,6 +248,32 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   INDEX idx_page_position (page_id, position),
   INDEX idx_store_region_page (store_id, region, page_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- WordPress-style save history for the page/header/footer builder — one row
+-- per explicit "Save" click (and one more per revision restore, which is
+-- itself treated as a new save so nothing is ever lost), holding a full
+-- JSON snapshot of that scope's sections at that moment. Scoped exactly
+-- like pz_page_sections itself (see scopeWhere in routes/admin.js): page_id
+-- NULL + region for a store's global header/footer, page_id set + region
+-- 'body' for a page's own content, page_id set + region 'header'/'footer'
+-- for a page's own override. Pruned to the most recent MAX_REVISIONS_PER_SCOPE
+-- rows per scope on every save (see pruneScopeRevisions in routes/admin.js)
+-- so this never grows without bound.
+CREATE TABLE IF NOT EXISTS ${TABLES.pageSectionRevisions} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  page_id INT NULL,
+  region VARCHAR(10) NOT NULL,
+  sections_json LONGTEXT NOT NULL,
+  section_count INT NOT NULL DEFAULT 0,
+  created_by INT NULL,
+  created_by_name VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
+  INDEX idx_scope_created (store_id, page_id, region, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS ${TABLES.newsletterSubscribers} (

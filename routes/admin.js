@@ -295,6 +295,18 @@ async function loadMenuContext(storeId) {
 // settings/element-style/toggle/delete) is implemented once here, against a
 // scope, and reused by all three sets of routes below — so the three
 // canvases can never quietly drift apart in behavior.
+// Every section type's blank-slate fields, keyed by type — handed to the
+// client once as window.__BUILDER__.sectionDefaultFields so the builder can
+// construct a brand-new section (and give it a real `fields` object)
+// entirely in the browser, without a round trip to the server, now that
+// adding/duplicating a section is a local edit that only reaches the
+// database when the merchant clicks Save (see scopeSaveSections and
+// admin-builder.js's addSectionAt/duplicateSection/insertComponent).
+const SECTION_DEFAULT_FIELDS = Object.keys(SECTION_TYPES).reduce((acc, type) => {
+  acc[type] = defaultFields(type);
+  return acc;
+}, {});
+
 function scopeWhere(scope) {
   return scope.pageId != null
     ? { sql: 'page_id = ? AND region = ?', params: [scope.pageId, scope.region] }
@@ -359,13 +371,21 @@ async function scopeReorderSections(scope, req, res, next) {
   }
 }
 
-async function scopeRestoreSections(scope, req, res, next) {
-  try {
-    const incoming = Array.isArray(req.body.sections) ? req.body.sections.slice(0, 200) : [];
-    const context = scopeContext(scope);
-    const { sql, params } = scopeWhere(scope);
+// Shared core of the "replace this scope's sections with exactly this
+// incoming array" operation — diffs incoming ids against what's currently in
+// the DB, UPDATEs matches, INSERTs anything new (including client-only ids
+// like "tmp_xxx", which simply never match an existing numeric id and so
+// always fall into the insert branch), and DELETEs whatever isn't present in
+// the incoming array. Used by the legacy /sections/restore route below, by
+// the explicit Save button's /sections/save route, and by revision restore —
+// all three are really the same "make this the live state" operation, just
+// with different callers/side-effects around it (see scopeSaveSections and
+// scopeRestoreRevision).
+async function applySectionsDiff(scope, incoming) {
+  const context = scopeContext(scope);
+  const { sql, params } = scopeWhere(scope);
 
-    const [existingRows] = await pool.query(`SELECT id FROM ${TABLES.pageSections} WHERE ${sql}`, params);
+  const [existingRows] = await pool.query(`SELECT id FROM ${TABLES.pageSections} WHERE ${sql}`, params);
     const existingIds = new Set(existingRows.map((r) => r.id));
     const keepIds = new Set();
 
@@ -422,15 +442,105 @@ async function scopeRestoreSections(scope, req, res, next) {
       }
     }
 
-    const toDelete = [...existingIds].filter((id) => !keepIds.has(id));
-    if (toDelete.length) {
-      await pool.query(
-        `DELETE FROM ${TABLES.pageSections} WHERE id IN (${toDelete.map(() => '?').join(',')})`,
-        toDelete
-      );
-    }
+  const toDelete = [...existingIds].filter((id) => !keepIds.has(id));
+  if (toDelete.length) {
+    await pool.query(
+      `DELETE FROM ${TABLES.pageSections} WHERE id IN (${toDelete.map(() => '?').join(',')})`,
+      toDelete
+    );
+  }
+}
 
+// Kept for back-compat (nothing in the builder calls this anymore now that
+// undo/redo is purely client-side — see admin-builder.js's history stack —
+// but it's a harmless, still-correct "make this the live state" primitive,
+// and removing a working route earns nothing). Does NOT record a revision;
+// only an explicit Save (scopeSaveSections) or a revision restore
+// (scopeRestoreRevision) does that.
+async function scopeRestoreSections(scope, req, res, next) {
+  try {
+    const incoming = Array.isArray(req.body.sections) ? req.body.sections.slice(0, 200) : [];
+    await applySectionsDiff(scope, incoming);
     res.json({ ok: true, sections: await scopeListSections(scope) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// How many past saves/restores to keep on file per scope (per page's body,
+// per store's global header, per store's global footer, per page's own
+// header/footer override) — mirrors a WordPress site keeping a bounded,
+// not unlimited, revision list. Pruned on every save; see pruneScopeRevisions.
+const MAX_REVISIONS_PER_SCOPE = 30;
+
+// The explicit Save button's endpoint — applies the incoming full sections
+// tree (built entirely client-side since edits stopped autosaving; see
+// admin-builder.js) the same way applySectionsDiff always has, then records
+// the resulting state as a new revision so it shows up in "Revision
+// history" and can be restored later.
+async function scopeSaveSections(scope, req, res, next) {
+  try {
+    const incoming = Array.isArray(req.body.sections) ? req.body.sections.slice(0, 200) : [];
+    await applySectionsDiff(scope, incoming);
+    const sections = await scopeListSections(scope);
+    await recordRevision(scope, sections, req);
+    res.json({ ok: true, sections });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function recordRevision(scope, sections, req) {
+  const admin = (req && req.session && req.session.admin) || {};
+  await pool.query(
+    `INSERT INTO ${TABLES.pageSectionRevisions} (store_id, page_id, region, sections_json, section_count, created_by, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [scope.storeId, scope.pageId, scope.region, JSON.stringify(sections), sections.length, admin.id || null, admin.name || null]
+  );
+  await pruneScopeRevisions(scope);
+}
+
+async function pruneScopeRevisions(scope) {
+  const { sql, params } = scopeWhere(scope);
+  const [rows] = await pool.query(
+    `SELECT id FROM ${TABLES.pageSectionRevisions} WHERE ${sql} ORDER BY created_at DESC, id DESC`,
+    params
+  );
+  if (rows.length <= MAX_REVISIONS_PER_SCOPE) return;
+  const staleIds = rows.slice(MAX_REVISIONS_PER_SCOPE).map((r) => r.id);
+  await pool.query(`DELETE FROM ${TABLES.pageSectionRevisions} WHERE id IN (${staleIds.map(() => '?').join(',')})`, staleIds);
+}
+
+async function scopeListRevisions(scope, req, res, next) {
+  try {
+    const { sql, params } = scopeWhere(scope);
+    const [rows] = await pool.query(
+      `SELECT id, section_count, created_by_name, created_at FROM ${TABLES.pageSectionRevisions}
+       WHERE ${sql} ORDER BY created_at DESC, id DESC LIMIT ${MAX_REVISIONS_PER_SCOPE}`,
+      params
+    );
+    res.json({ ok: true, revisions: rows });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Makes an older saved revision the live state again — itself recorded as a
+// brand-new revision (WordPress does the same: restoring never destroys
+// history, it just adds "restored to <date>" as the newest entry) so a
+// merchant can never lose work by restoring the wrong thing.
+async function scopeRestoreRevision(scope, revisionId, req, res, next) {
+  try {
+    const { sql, params } = scopeWhere(scope);
+    const [[row]] = await pool.query(
+      `SELECT sections_json FROM ${TABLES.pageSectionRevisions} WHERE id = ? AND ${sql}`,
+      [revisionId, ...params]
+    );
+    if (!row) return res.status(404).json({ error: 'Revision not found' });
+    const incoming = JSON.parse(row.sections_json);
+    await applySectionsDiff(scope, incoming);
+    const sections = await scopeListSections(scope);
+    await recordRevision(scope, sections, req);
+    res.json({ ok: true, sections });
   } catch (err) {
     next(err);
   }
@@ -571,6 +681,24 @@ function mountSectionRoutes(routePrefix, resolveScope) {
     if (!scope) return;
     return scopeRestoreSections(scope, req, res, next);
   });
+  // Explicit Save — see scopeSaveSections. This is the only route the
+  // builder's Save button ever calls; every other mutation below happens
+  // purely in the browser until Save is clicked.
+  router.post(`${routePrefix}/sections/save`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeSaveSections(scope, req, res, next);
+  });
+  router.get(`${routePrefix}/revisions`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeListRevisions(scope, req, res, next);
+  });
+  router.post(`${routePrefix}/revisions/:revisionId/restore`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeRestoreRevision(scope, req.params.revisionId, req, res, next);
+  });
   router.post(`${routePrefix}/sections/:sectionId`, async (req, res, next) => {
     const scope = await resolveScope(req, res);
     if (!scope) return;
@@ -696,6 +824,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       sectionsBase: `/admin/pages/${page.id}/sections`,
       sections,
       sectionTypes: SECTION_TYPES,
+      sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
       products,
@@ -775,6 +904,7 @@ router.get('/layout/:region', async (req, res, next) => {
       sectionsBase: `/admin/layout/${region}/sections`,
       sections,
       sectionTypes: SECTION_TYPES,
+      sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
       products: [],
@@ -829,6 +959,7 @@ router.get('/pages/:id/layout/:region/edit', async (req, res, next) => {
       sectionsBase: `/admin/pages/${page.id}/layout/${region}/sections`,
       sections,
       sectionTypes: SECTION_TYPES,
+      sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
       products: [],

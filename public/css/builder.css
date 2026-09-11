@@ -1,7 +1,10 @@
 /* Page builder — full-screen app shell, separate from the regular admin
    layout (see views/admin/builder.ejs, which does not use the admin header
    partial). Talks to the JSON API in routes/admin.js via public/js/admin-
-   builder.js; every action here is a real save, there is no draft state. */
+   builder.js; edits build up in the browser only (a WordPress-style draft)
+   until the Save button commits them, and every Save is kept as a browsable,
+   restorable revision — see admin-builder.js's state.dirty and the
+   Revisions modal (#bRevisionsOverlay) below. */
 
 :root {
   --b-ink: #211E1B;
@@ -124,17 +127,41 @@ body.builder-body button { font-family: inherit; }
 .b-history-toggle button:disabled { color: var(--b-line); cursor: default; }
 
 .b-topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.b-save-indicator { font-size: 11.5px; color: var(--b-muted); font-family: var(--b-font-mono); margin: 0 4px; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+.b-dirty-indicator { font-size: 11.5px; color: var(--b-muted); font-family: var(--b-font-mono); margin: 0 4px; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
 .b-save-dot { width: 6px; height: 6px; border-radius: 50%; background: #2F9E58; flex-shrink: 0; }
-.b-save-indicator.saving .b-save-dot { background: var(--b-accent); }
-.b-btn-outline, .b-btn-solid { font-size: 13px; font-weight: 600; border-radius: 8px; padding: 7px 13px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; }
-.b-btn-outline { background: transparent; border: 1px solid var(--b-line); color: var(--b-ink); }
+.b-dirty-indicator.is-dirty .b-save-dot { background: var(--b-accent); }
+.b-dirty-indicator.is-saving .b-save-dot { background: var(--b-accent); animation: bDotPulse 1s ease-in-out infinite; }
+@keyframes bDotPulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.b-btn-outline, .b-btn-solid { font-size: 13px; font-weight: 600; border-radius: 8px; padding: 7px 13px; cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; border: 1px solid transparent; }
+.b-btn-outline { background: transparent; border-color: var(--b-line); color: var(--b-ink); }
 .b-btn-outline:hover { background: var(--b-surface-2); }
 .b-exit-btn { gap: 6px; }
 .b-exit-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
-.b-btn-solid { background: var(--b-accent); border: 1px solid var(--b-accent); color: var(--b-accent-ink); }
+.b-btn-solid { background: var(--b-accent); border-color: var(--b-accent); color: var(--b-accent-ink); }
 .b-btn-solid:hover { filter: brightness(0.96); }
 .b-btn-solid.is-published { background: var(--b-surface); color: var(--b-ink); border-color: var(--b-line); }
+#bSaveBtn:disabled { background: var(--b-surface-2); border-color: var(--b-line); color: var(--b-muted); cursor: default; filter: none; }
+
+/* Revisions modal — WordPress-style "Browse revisions" list, newest save
+   first; each row can be restored, which itself becomes a fresh revision. */
+.b-modal-overlay { position: fixed; inset: 0; background: rgba(33,30,27,.4); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.b-modal-overlay[hidden] { display: none; }
+.b-modal { width: 100%; max-width: 480px; max-height: min(640px, 86vh); background: var(--b-surface); border-radius: 14px; box-shadow: var(--b-shadow); display: flex; flex-direction: column; overflow: hidden; }
+.b-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid var(--b-line); flex-shrink: 0; }
+.b-modal-head h2 { font-size: 16px; }
+.b-modal-close { width: 28px; height: 28px; border: none; background: transparent; border-radius: 7px; font-size: 18px; line-height: 1; color: var(--b-muted); cursor: pointer; }
+.b-modal-close:hover { background: var(--b-surface-2); color: var(--b-ink); }
+.b-modal-body { overflow-y: auto; padding: 6px; }
+.b-rev-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; border-radius: 9px; }
+.b-rev-row:hover { background: var(--b-surface-2); }
+.b-rev-row.is-current { background: var(--b-accent-soft); }
+.b-rev-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.b-rev-when { font-size: 13px; font-weight: 700; }
+.b-rev-meta { font-size: 11.5px; color: var(--b-muted); font-family: var(--b-font-mono); }
+.b-rev-current-tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--b-accent-ink); background: var(--b-accent); border-radius: 5px; padding: 2px 6px; flex-shrink: 0; }
+.b-rev-restore { font-size: 12px; font-weight: 600; border: 1px solid var(--b-line); background: var(--b-surface); border-radius: 7px; padding: 5px 10px; cursor: pointer; flex-shrink: 0; }
+.b-rev-restore:hover { background: var(--b-surface-2); }
+.b-rev-empty { padding: 32px 16px; text-align: center; color: var(--b-muted); font-size: 12.5px; }
 
 .b-canvas-scroll { flex: 1; overflow-y: auto; overflow-x: auto; display: flex; justify-content: center; padding: 28px 24px 80px; }
 .b-canvas-frame { width: 100%; max-width: 1180px; transition: max-width .22s ease; }

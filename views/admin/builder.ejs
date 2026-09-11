@@ -102,8 +102,10 @@
           </div>
         </div>
         <div class="b-topbar-right">
-          <span class="b-save-indicator" id="bSaveIndicator"><span class="b-save-dot"></span><span id="bSaveText">Saved</span></span>
+          <span class="b-dirty-indicator" id="bDirtyIndicator"><span class="b-save-dot"></span><span id="bDirtyText">All changes saved</span></span>
+          <button class="b-btn-outline" id="bHistoryBtn" title="Revision history">History</button>
           <a class="b-btn-outline" id="bPreviewLink" href="<%= previewHref %>" target="_blank">Preview</a>
+          <button class="b-btn-solid" id="bSaveBtn" disabled>Save</button>
           <% if (context === 'page') { %>
             <button class="b-btn-solid" id="bPublishBtn"></button>
           <% } %>
@@ -197,6 +199,19 @@
   <div class="b-drag-ghost" id="bDragGhost" hidden></div>
   <div class="b-toast" id="bToast"><span class="b-toast-dot"></span><span id="bToastText"></span></div>
 
+  <!-- WordPress-style "Browse revisions" — one row per explicit Save (or
+       per restore, which is itself logged as a fresh save), newest first.
+       Populated/opened by wireRevisions() in admin-builder.js. -->
+  <div class="b-modal-overlay" id="bRevisionsOverlay" hidden>
+    <div class="b-modal">
+      <div class="b-modal-head">
+        <h2>Revision history</h2>
+        <button class="b-modal-close" id="bRevisionsClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="b-modal-body" id="bRevisionsBody"></div>
+    </div>
+  </div>
+
   <script>
     window.__BUILDER__ = {
       page: <%- JSON.stringify(page ? { id: page.id, name: page.name, path: page.path, is_home: !!page.is_home, status: page.status } : null).split('/').join(String.fromCharCode(92) + '/') %>,
@@ -204,6 +219,7 @@
       context: <%- JSON.stringify(context) %>,
       sectionsBase: <%- JSON.stringify(sectionsBase) %>,
       sectionTypes: <%- JSON.stringify(sectionTypes).split('/').join(String.fromCharCode(92) + '/') %>,
+      sectionDefaultFields: <%- JSON.stringify(sectionDefaultFields).split('/').join(String.fromCharCode(92) + '/') %>,
       nestableTypes: <%- JSON.stringify(nestableTypes).split('/').join(String.fromCharCode(92) + '/') %>,
       textElementFields: <%- JSON.stringify(textElementFields).split('/').join(String.fromCharCode(92) + '/') %>,
       sections: <%- JSON.stringify(sections.map(function (s) {

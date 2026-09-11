@@ -20,6 +20,13 @@
   // on the canvas for their own margin/padding (see lib/sections.js's
   // TEXT_ELEMENT_FIELDS, the single source of truth this mirrors).
   var TEXT_ELEMENT_FIELDS = DATA.textElementFields || {};
+  // Every section type's blank-slate fields (lib/sections.js's own
+  // defaultFields, mirrored server-side into window.__BUILDER__ — see
+  // routes/admin.js's SECTION_DEFAULT_FIELDS) — lets addSectionAt/
+  // insertComponent construct a brand-new section entirely client-side now
+  // that adding one no longer round-trips to the server (see the Draft /
+  // Save architecture below).
+  var DEFAULT_FIELDS = DATA.sectionDefaultFields || {};
   function isTextElementField(type, fieldKey) { return (TEXT_ELEMENT_FIELDS[type] || []).indexOf(fieldKey) !== -1; }
   // Which section types a row's column will accept — mirrors lib/sections.js's
   // NESTABLE_SECTION_TYPES (no nested rows, and the 3 types that need their
@@ -107,7 +114,10 @@
   // inside one of a row's columns (rather than a top-level section's own
   // field), this holds that block's id and selectedFieldKey is scoped to it
   // instead. Always cleared together with selectedFieldKey.
-  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, selectedBlockId: null, inspectorTab: "content", components: (DATA.components || []).slice() };
+  // dirty: true once any edit has been made since the page loaded (or since
+  // the last successful Save) — drives the "Unsaved changes" indicator and
+  // the Save button's enabled state (see updateDirtyUI/doSave below).
+  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, selectedBlockId: null, inspectorTab: "content", components: (DATA.components || []).slice(), dirty: false };
 
   function findSection(id) { return state.sections.find(function (s) { return String(s.id) === String(id); }); }
   function indexOf(id) { return state.sections.findIndex(function (s) { return String(s.id) === String(id); }); }
@@ -200,24 +210,45 @@
     }).then(function (r) { return r.json(); });
   }
 
+  // Reordering is a purely local edit now (see the WordPress-style Save
+  // button architecture below) — this just records the new order in the
+  // undo/redo history and marks the draft dirty; the array's own order IS
+  // the order, sent as-is whenever Save runs.
   function persistOrder() {
-    setSaving(true);
-    return api(BASE + "/reorder", { order: state.sections.map(function (s) { return s.id; }) })
-      .then(function (res) { commitHistory(); return res; })
-      .finally(function () { setSaving(false); });
+    commitHistory();
+    return Promise.resolve();
   }
 
   /* ---------------------------------------------------------------
-     Undo / redo — a stack of full section-list snapshots. Every
-     mutating action (add/duplicate/delete/reorder/field edit/settings
-     edit) calls commitHistory() once it has settled locally, which
-     snapshots state.sections and pushes it on (truncating any redo
-     branch first). Undo/redo just walk the stack and replay the target
-     snapshot through /sections/restore, then adopt whatever section
-     list the server hands back — no client-side id bookkeeping needed.
+     Draft / Save architecture
+     ---------------------------------------------------------------
+     Every edit below (add/duplicate/delete/reorder/field/settings/style)
+     mutates state.sections in the browser ONLY — nothing reaches the
+     database until the merchant clicks the Save button (doSave, wired in
+     wireTopbar). This is the WordPress-style trade: no more autosave, an
+     explicit "Unsaved changes" / "All changes saved" indicator, and a
+     single POST .../sections/save on Save that both persists the whole
+     section tree and records it as a new, browsable/restorable revision
+     (see wireRevisions and routes/admin.js's scopeSaveSections).
+
+     Undo/redo is a stack of full section-list snapshots, exactly as
+     before, except it's now pure client-side state — no network round
+     trip — since nothing is live until Save anyway. Every mutating action
+     calls commitHistory() once it has settled locally, which snapshots
+     state.sections and pushes it on (truncating any redo branch first).
+     The undo/redo stack itself is reset to a single checkpoint every time
+     Save succeeds (see doSave) — once a change is saved it can't be
+     undone past, the same way most editors treat a save as a checkpoint.
   --------------------------------------------------------------- */
   var history = { stack: [cloneSections(state.sections)], index: 0, restoring: false };
   var MAX_HISTORY = 60;
+
+  // A brand-new, not-yet-saved section/component gets one of these instead
+  // of a real database id — applySectionsDiff on the server never matches
+  // it against an existing row, so it always inserts a fresh one and hands
+  // back the real id in the Save response (see doSave). Safe to compare
+  // with String(...) === String(...) everywhere ids are already compared.
+  function genSectionId() { return "tmp_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 9); }
 
   function cloneSections(arr) {
     return JSON.parse(JSON.stringify(arr));
@@ -232,36 +263,35 @@
     history.stack.push(snap);
     if (history.stack.length > MAX_HISTORY) history.stack.shift();
     history.index = history.stack.length - 1;
+    state.dirty = true;
     updateHistoryButtons();
+    updateDirtyUI();
   }
 
-  function restoreSnapshot(snapshot, successMsg) {
+  function restoreSnapshot(snapshot) {
     history.restoring = true;
-    setSaving(true);
-    return api(BASE + "/restore", { sections: snapshot }).then(function (res) {
-      setSaving(false);
-      history.restoring = false;
-      if (!res || !res.ok) { toast("Could not undo/redo that change.", true); return; }
-      state.sections = res.sections.map(function (s) {
-        return Object.assign({}, s, { fields: typeof s.fields === "string" ? JSON.parse(s.fields) : s.fields });
-      });
-      if (state.selectedId && !findSection(state.selectedId)) { state.selectedId = null; state.selectedFieldKey = null; }
-      renderAll();
-      updateHistoryButtons();
-      if (successMsg) toast(successMsg);
-    });
+    state.sections = cloneSections(snapshot);
+    if (state.selectedId && !findSection(state.selectedId)) {
+      state.selectedId = null; state.selectedFieldKey = null; state.selectedBlockId = null;
+    }
+    renderAll();
+    updateHistoryButtons();
+    updateDirtyUI();
+    history.restoring = false;
   }
 
   function undo() {
     if (history.index <= 0) return;
     history.index--;
-    restoreSnapshot(history.stack[history.index], "Undid last change");
+    restoreSnapshot(history.stack[history.index]);
+    toast("Undid last change");
   }
 
   function redo() {
     if (history.index >= history.stack.length - 1) return;
     history.index++;
-    restoreSnapshot(history.stack[history.index], "Redid change");
+    restoreSnapshot(history.stack[history.index]);
+    toast("Redid change");
   }
 
   function updateHistoryButtons() {
@@ -271,11 +301,66 @@
     if (redoBtn) redoBtn.disabled = history.index >= history.stack.length - 1;
   }
 
-  function setSaving(on) {
-    var ind = document.getElementById("bSaveIndicator");
-    var txt = document.getElementById("bSaveText");
-    ind.classList.toggle("saving", on);
-    txt.textContent = on ? "Saving…" : "Saved";
+  // Paints the "Unsaved changes" / "All changes saved" indicator and
+  // enables/disables the Save button to match state.dirty. Once any edit
+  // is made this stays "Unsaved changes" until an explicit Save succeeds —
+  // undoing back to the original content doesn't clear it (the same
+  // conservative call most editors make), so Save is always safe to click.
+  function updateDirtyUI() {
+    var ind = document.getElementById("bDirtyIndicator");
+    var txt = document.getElementById("bDirtyText");
+    var btn = document.getElementById("bSaveBtn");
+    if (ind) ind.classList.toggle("is-dirty", !!state.dirty);
+    if (txt && !ind.classList.contains("is-saving")) txt.textContent = state.dirty ? "Unsaved changes" : "All changes saved";
+    if (btn) btn.disabled = !state.dirty;
+  }
+
+  // Only toggled around the actual Save network call (see doSave) — a
+  // distinct, momentary "Saving…" state layered on top of updateDirtyUI's
+  // dirty/clean painting.
+  function setSavingUI(on) {
+    var ind = document.getElementById("bDirtyIndicator");
+    var txt = document.getElementById("bDirtyText");
+    if (ind) ind.classList.toggle("is-saving", on);
+    if (on && txt) txt.textContent = "Saving…";
+  }
+
+  // The Save button's handler — the only place any of this screen's
+  // content edits ever reach the server. Sends the full current section
+  // tree (including any client-only "tmp_..." ids from sections added or
+  // duplicated since the last save) to the scope's /sections/save route,
+  // which persists it and records the result as a new revision; adopts the
+  // server's response (now carrying real database ids for anything new)
+  // as the live state and resets the undo/redo stack to that checkpoint.
+  function doSave() {
+    if (!state.dirty) return Promise.resolve();
+    var btn = document.getElementById("bSaveBtn");
+    if (btn) btn.disabled = true;
+    setSavingUI(true);
+    return api(BASE + "/save", { sections: state.sections }).then(function (res) {
+      setSavingUI(false);
+      if (!res || !res.ok) {
+        toast(res && res.error ? res.error : "Could not save your changes.", true);
+        updateDirtyUI();
+        return;
+      }
+      state.sections = res.sections.map(function (s) {
+        return Object.assign({}, s, { fields: typeof s.fields === "string" ? JSON.parse(s.fields) : s.fields });
+      });
+      if (state.selectedId && !findSection(state.selectedId)) {
+        state.selectedId = null; state.selectedFieldKey = null; state.selectedBlockId = null;
+      }
+      state.dirty = false;
+      history = { stack: [cloneSections(state.sections)], index: 0, restoring: false };
+      updateHistoryButtons();
+      updateDirtyUI();
+      renderAll();
+      toast("Saved");
+    }).catch(function () {
+      setSavingUI(false);
+      updateDirtyUI();
+      toast("Could not save your changes — check your connection.", true);
+    });
   }
 
   /* ---------------------------------------------------------------
@@ -1680,18 +1765,32 @@
     }, 2000);
   }
 
+  // Every field this section type shape needs, blank — mirrors the plain
+  // { id, type, fields, hidden, ...settings, element_styles } row shape the
+  // server hands back for a saved section (see builder.ejs's window.__BUILDER__
+  // and scopeListSections), just with a client-only id and no history yet.
+  function blankSection(type, fields, elementStyles) {
+    return {
+      id: genSectionId(), type: type, fields: fields, hidden: false,
+      custom_class: "", custom_css: "", min_height: 0,
+      hide_desktop: false, hide_tablet: false, hide_mobile: false,
+      margin_top: 0, margin_bottom: 0, margin_left: 0, margin_right: 0,
+      padding_top: 0, padding_bottom: 0, padding_left: 0, padding_right: 0,
+      element_styles: elementStyles || {},
+    };
+  }
+
   function addSectionAt(type, index) {
-    setSaving(true);
-    api(BASE, { type: type }).then(function (res) {
-      if (!res || !res.ok) { setSaving(false); return toast(res && res.error ? res.error : "Could not add that section.", true); }
-      var sec = res.section;
-      state.sections.splice(index, 0, sec);
-      state.selectedId = sec.id;
-      state.selectedFieldKey = null;
-      renderAll();
-      var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
-      persistOrder().then(function () { toast(label + " added"); });
-    });
+    var fields = JSON.parse(JSON.stringify(DEFAULT_FIELDS[type] || {}));
+    var sec = blankSection(type, fields);
+    state.sections.splice(index, 0, sec);
+    state.selectedId = sec.id;
+    state.selectedFieldKey = null;
+    state.selectedBlockId = null;
+    renderAll();
+    commitHistory();
+    var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
+    toast(label + " added");
   }
 
   // Resolves which columns array a row-targeted action should act on: the
@@ -1729,11 +1828,11 @@
       state.selectedBlockId = null;
       state.selectedFieldKey = null;
     }
-    renderAll();
     // Always send the whole top-level tree — when rowBlockId is set,
     // rowFields is a nested object reached BY REFERENCE from sec.fields, so
     // the edit above is already part of it.
-    saveField(sec.id, { columns: sec.fields.columns }).then(function () { renderAll(); });
+    saveField(sec.id, { columns: sec.fields.columns });
+    renderAll();
   }
 
   // rowBlockId: null/falsy to insert into the top-level section's own
@@ -1753,13 +1852,10 @@
     col.blocks = col.blocks || [];
     var blockId = genBlockId();
     col.blocks.push({ id: blockId, type: type, fields: {}, element_styles: {} });
+    saveField(sec.id, { columns: sec.fields.columns });
     renderAll();
-    setSaving(true);
-    saveField(sec.id, { columns: sec.fields.columns }).then(function () {
-      renderAll();
-      var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
-      toast(label + " added to the column");
-    });
+    var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
+    toast(label + " added to the column");
   }
 
   // Inserts a saved component as a new TOP-LEVEL section at the end of the
@@ -1772,21 +1868,15 @@
   // on the canvas it's just an ordinary section — drag it anywhere with the
   // normal reorder handle.
   function insertComponent(component) {
-    setSaving(true);
-    api(BASE, { type: component.block.type }).then(function (res) {
-      if (!res || !res.ok) { setSaving(false); return toast(res && res.error ? res.error : "Could not insert that component.", true); }
-      var newSec = res.section;
-      var freshFields = cloneWithFreshIds(component.block).fields;
-      return api(BASE + "/" + newSec.id, { fields: freshFields }).then(function (fres) {
-        newSec.fields = (fres && fres.ok) ? fres.fields : newSec.fields;
-        state.sections.push(newSec);
-        state.selectedId = newSec.id;
-        state.selectedFieldKey = null;
-        state.selectedBlockId = null;
-        renderAll();
-        return persistOrder().then(function () { toast('"' + component.name + '" added to the page'); });
-      });
-    });
+    var fresh = cloneWithFreshIds(component.block);
+    var sec = blankSection(component.block.type, fresh.fields, fresh.element_styles);
+    state.sections.push(sec);
+    state.selectedId = sec.id;
+    state.selectedFieldKey = null;
+    state.selectedBlockId = null;
+    renderAll();
+    commitHistory();
+    toast('"' + component.name + '" added to the page');
   }
 
   // Prompts for a name and saves `block` (a top-level section's own
@@ -1799,9 +1889,7 @@
     if (name === null) return;
     name = name.trim();
     if (!name) return toast("Give it a name to save it.", true);
-    setSaving(true);
     api(COMPONENTS_BASE, { name: name, block: { id: block.id, type: block.type, fields: block.fields, element_styles: block.element_styles || {} } }).then(function (res) {
-      setSaving(false);
       if (!res || !res.ok) return toast(res && res.error ? res.error : "Could not save that component.", true);
       state.components.unshift(res.component);
       renderComponents();
@@ -1811,9 +1899,7 @@
 
   function deleteComponent(id) {
     if (!confirm("Remove this component from your library? Copies already on your pages are unaffected.")) return;
-    setSaving(true);
     api(COMPONENTS_BASE + "/" + id + "/delete").then(function (res) {
-      setSaving(false);
       if (!res || !res.ok) return toast("Could not remove that component.", true);
       state.components = state.components.filter(function (c) { return String(c.id) !== String(id); });
       renderComponents();
@@ -1835,114 +1921,94 @@
     saveField(sec.id, { columns: sec.fields.columns });
   }
 
+  // Duplicates every attribute of the source section — type, fields, all
+  // universal settings (custom class/CSS, spacing, per-device visibility)
+  // and element styles — not just fields+hidden the way this used to only
+  // copy fields (the rest came back blank from the create-then-patch round
+  // trip): a duplicate should be a true copy, the same way WordPress's own
+  // "Duplicate" is.
   function duplicateSection(id) {
     var idx = indexOf(id);
     if (idx < 0) return;
     var src = state.sections[idx];
-    setSaving(true);
-    api(BASE, { type: src.type }).then(function (res) {
-      if (!res || !res.ok) { setSaving(false); return toast("Could not duplicate that section.", true); }
-      var newSec = res.section;
-      return api(BASE + "/" + newSec.id, { fields: src.fields }).then(function (fres) {
-        newSec.fields = (fres && fres.ok) ? fres.fields : newSec.fields;
-        newSec.hidden = src.hidden;
-        state.sections.splice(idx + 1, 0, newSec);
-        state.selectedId = newSec.id;
-        state.selectedFieldKey = null;
-        renderAll();
-        return persistOrder().then(function () { toast("Section duplicated"); });
-      });
-    });
+    var newSec = Object.assign(cloneSections(src), { id: genSectionId() });
+    state.sections.splice(idx + 1, 0, newSec);
+    state.selectedId = newSec.id;
+    state.selectedFieldKey = null;
+    state.selectedBlockId = null;
+    renderAll();
+    commitHistory();
+    toast("Section duplicated");
   }
 
   function deleteSection(id) {
     if (!confirm("Delete this section? You can undo it with the undo button (or Ctrl+Z) right after.")) return;
-    setSaving(true);
-    api(BASE + "/" + id + "/delete").then(function (res) {
-      setSaving(false);
-      if (!res || !res.ok) return toast("Could not delete that section.", true);
-      var idx = indexOf(id);
-      if (idx >= 0) state.sections.splice(idx, 1);
-      if (state.selectedId === id) { state.selectedId = null; state.selectedFieldKey = null; }
-      renderAll();
-      commitHistory();
-      toast("Section deleted");
-    });
+    var idx = indexOf(id);
+    if (idx < 0) return;
+    state.sections.splice(idx, 1);
+    if (state.selectedId === id) { state.selectedId = null; state.selectedFieldKey = null; state.selectedBlockId = null; }
+    renderAll();
+    commitHistory();
+    toast("Section deleted");
   }
 
   function toggleHidden(id) {
     var sec = findSection(id);
     if (!sec) return;
-    setSaving(true);
-    api(BASE + "/" + id + "/toggle").then(function (res) {
-      setSaving(false);
-      if (!res || !res.ok) return toast("Could not update that section.", true);
-      sec.hidden = !sec.hidden;
-      renderAll();
-      commitHistory();
-      toast(sec.hidden ? "Hidden from your storefront" : "Now visible on your storefront");
-    });
+    sec.hidden = !sec.hidden;
+    renderAll();
+    commitHistory();
+    toast(sec.hidden ? "Hidden from your storefront" : "Now visible on your storefront");
   }
 
+  // The three functions below no longer talk to the network at all — every
+  // edit accumulates in state.sections until the Save button (doSave, in
+  // the Draft / Save architecture above) sends the whole tree at once. Each
+  // still returns a resolved Promise purely so call sites written as
+  // saveField(...).then(...) keep working unchanged.
   function saveField(id, patch) {
-    setSaving(true);
-    return api(BASE + "/" + id, { fields: patch }).then(function (res) {
-      setSaving(false);
-      if (res && res.ok) {
-        var sec = findSection(id);
-        if (sec) sec.fields = res.fields;
-        commitHistory();
-      } else {
-        toast("Could not save that change.", true);
-      }
-    });
+    var sec = findSection(id);
+    if (sec) Object.assign(sec.fields, patch);
+    commitHistory();
+    return Promise.resolve();
   }
 
-  // Universal module settings (custom_class / custom_css) — separate
-  // endpoint and columns from saveField()/fields above, since these are the
-  // same for every section type rather than type-specific.
+  // Universal module settings (custom_class / custom_css / spacing /
+  // per-device visibility) — same shape as a section's own top-level
+  // columns, just applied directly onto the section object rather than
+  // nested under `fields`.
   function saveSettings(id, patch) {
-    setSaving(true);
-    return api(BASE + "/" + id + "/settings", patch).then(function (res) {
-      setSaving(false);
-      if (res && res.ok) {
-        var sec = findSection(id);
-        if (sec) {
-          if (patch.custom_class !== undefined) sec.custom_class = res.custom_class;
-          if (patch.custom_css !== undefined) sec.custom_css = res.custom_css;
-          if (patch.min_height !== undefined) sec.min_height = res.min_height;
-          if (patch.hide_desktop !== undefined) sec.hide_desktop = res.hide_desktop;
-          if (patch.hide_tablet !== undefined) sec.hide_tablet = res.hide_tablet;
-          if (patch.hide_mobile !== undefined) sec.hide_mobile = res.hide_mobile;
-          if (patch.margin_top !== undefined) sec.margin_top = res.margin_top;
-          if (patch.margin_bottom !== undefined) sec.margin_bottom = res.margin_bottom;
-          if (patch.padding_top !== undefined) sec.padding_top = res.padding_top;
-          if (patch.padding_bottom !== undefined) sec.padding_bottom = res.padding_bottom;
-          renderCanvas();
-        }
-        commitHistory();
-      } else {
-        toast("Could not save that change.", true);
-      }
-    });
+    var sec = findSection(id);
+    if (sec) {
+      Object.assign(sec, patch);
+      // Mirrors the old server-round-trip version, which always
+      // re-rendered the canvas once a settings patch landed — most
+      // callers already patch the specific bit of DOM they touched
+      // (applyHeightStyle/applySpacingStyle) as a live-drag preview, but
+      // custom_class/custom_css/per-device visibility don't, so this stays
+      // unconditional rather than piecemeal per call site.
+      renderCanvas();
+    }
+    commitHistory();
+    return Promise.resolve();
   }
 
-  // Per-element spacing (margin/padding on one text field inside a section)
-  // — its own endpoint/column, parallel to saveSettings() above but scoped
-  // to a single field rather than the whole section. `patch` is
-  // { field: "heading", margin_top?: n, ... }.
+  // Per-element spacing (margin/padding/position on one text field inside a
+  // section) — `patch` is { field: "heading", margin_top?: n, ... }. The
+  // caller (elementStyleCtx.persist, see above) has always already applied
+  // the same values via setEntry() before calling this, so this mainly just
+  // records the change in history; the merge below is a defensive no-op
+  // mirror of that, kept so this function is correct standalone too.
   function saveElementStyle(id, patch) {
-    setSaving(true);
-    return api(BASE + "/" + id + "/element-style", patch).then(function (res) {
-      setSaving(false);
-      if (res && res.ok) {
-        var sec = findSection(id);
-        if (sec) sec.element_styles = res.element_styles;
-        commitHistory();
-      } else {
-        toast("Could not save that change.", true);
-      }
-    });
+    var sec = findSection(id);
+    if (sec && patch && patch.field) {
+      sec.element_styles = sec.element_styles || {};
+      var entry = Object.assign({}, sec.element_styles[patch.field] || {});
+      Object.keys(patch).forEach(function (k) { if (k !== "field") entry[k] = patch[k]; });
+      sec.element_styles[patch.field] = entry;
+    }
+    commitHistory();
+    return Promise.resolve();
   }
 
   /* ---------------------------------------------------------------
@@ -2531,21 +2597,34 @@
   function wireTopbar() {
     document.getElementById("bUndoBtn").addEventListener("click", undo);
     document.getElementById("bRedoBtn").addEventListener("click", redo);
+    document.getElementById("bSaveBtn").addEventListener("click", doSave);
 
     // Ctrl/Cmd+Z and Ctrl+Y (or Shift+Ctrl/Cmd+Z) drive the builder's own
     // undo stack -- but only when focus isn't inside a text field or
     // contenteditable heading/body, where the same shortcut should keep
-    // doing the browser's normal per-keystroke text undo instead.
+    // doing the browser's normal per-keystroke text undo instead. Ctrl/Cmd+S
+    // saves — everywhere, even inside a text field, since a merchant reaching
+    // for the browser's own save-page shortcut clearly means "save my work".
     document.addEventListener("keydown", function (e) {
       var mod = e.ctrlKey || e.metaKey;
-      if (!mod || e.key.toLowerCase() !== "z" && e.key.toLowerCase() !== "y") return;
+      if (!mod) return;
+      var key = e.key.toLowerCase();
+      if (key === "s") { e.preventDefault(); doSave(); return; }
+      if (key !== "z" && key !== "y") return;
       var active = document.activeElement;
       var inTextField = active && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
       if (inTextField) return;
-      var key = e.key.toLowerCase();
       if (key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       else if (key === "y") { e.preventDefault(); redo(); }
+    });
+
+    // Warn before leaving the page (closing the tab, navigating away, even
+    // the Preview link opening in the same tab) while there's unsaved work.
+    window.addEventListener("beforeunload", function (e) {
+      if (!state.dirty) return;
+      e.preventDefault();
+      e.returnValue = "";
     });
 
     document.getElementById("bViewportToggle").addEventListener("click", function (e) {
@@ -2637,6 +2716,78 @@
     });
   }
 
+  // WordPress-style "Browse revisions" modal — one row per explicit Save
+  // (or per restore, itself logged as a fresh save), newest first. The
+  // scope's revisions live at a sibling route of BASE: BASE is always
+  // ".../sections" (see sectionsBase in routes/admin.js's three builder
+  // render calls), so swapping that last segment reaches ".../revisions"
+  // without needing a second value threaded through window.__BUILDER__.
+  function wireRevisions() {
+    var REVISIONS_BASE = BASE.replace(/\/sections$/, "/revisions");
+    var overlay = document.getElementById("bRevisionsOverlay");
+    var body = document.getElementById("bRevisionsBody");
+    if (!overlay || !body) return;
+
+    function closeModal() { overlay.hidden = true; }
+
+    function openModal() {
+      overlay.hidden = false;
+      body.innerHTML = '<p class="b-rev-empty">Loading…</p>';
+      fetch(REVISIONS_BASE).then(function (r) { return r.json(); }).then(function (res) {
+        if (!res || !res.ok || !res.revisions || !res.revisions.length) {
+          body.innerHTML = '<p class="b-rev-empty">No saves yet — click Save to start keeping a history.</p>';
+          return;
+        }
+        body.innerHTML = res.revisions.map(function (rev, i) {
+          var when = new Date(rev.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+          var who = rev.created_by_name ? (" · " + esc(rev.created_by_name)) : "";
+          var count = rev.section_count + (rev.section_count === 1 ? " section" : " sections");
+          var right = i === 0
+            ? '<span class="b-rev-current-tag">Current</span>'
+            : '<button type="button" class="b-rev-restore" data-restore="' + rev.id + '">Restore</button>';
+          return '<div class="b-rev-row' + (i === 0 ? ' is-current' : '') + '" data-id="' + rev.id + '">' +
+            '<div class="b-rev-info"><span class="b-rev-when">' + esc(when) + '</span><span class="b-rev-meta">' + esc(count + who) + '</span></div>' +
+            right + '</div>';
+        }).join("");
+      }).catch(function () {
+        body.innerHTML = '<p class="b-rev-empty">Could not load revision history.</p>';
+      });
+    }
+
+    document.getElementById("bHistoryBtn").addEventListener("click", openModal);
+    document.getElementById("bRevisionsClose").addEventListener("click", closeModal);
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) closeModal(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !overlay.hidden) closeModal(); });
+
+    body.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-restore]");
+      if (!btn) return;
+      if (state.dirty && !confirm("You have unsaved changes on the canvas that restoring will overwrite. Restore this version anyway?")) return;
+      if (!state.dirty && !confirm("Restore this saved version? Your current content is kept in history too, so nothing is lost.")) return;
+      btn.disabled = true;
+      btn.textContent = "Restoring…";
+      api(REVISIONS_BASE + "/" + btn.dataset.restore + "/restore", {}).then(function (res) {
+        if (!res || !res.ok) {
+          toast(res && res.error ? res.error : "Could not restore that revision.", true);
+          btn.disabled = false;
+          btn.textContent = "Restore";
+          return;
+        }
+        state.sections = res.sections.map(function (s) {
+          return Object.assign({}, s, { fields: typeof s.fields === "string" ? JSON.parse(s.fields) : s.fields });
+        });
+        state.selectedId = null; state.selectedFieldKey = null; state.selectedBlockId = null;
+        state.dirty = false;
+        history = { stack: [cloneSections(state.sections)], index: 0, restoring: false };
+        updateHistoryButtons();
+        updateDirtyUI();
+        renderAll();
+        closeModal();
+        toast("Restored — this is now the current, saved version");
+      });
+    });
+  }
+
   /* ---------------------------------------------------------------
      Boot
   --------------------------------------------------------------- */
@@ -2650,4 +2801,7 @@
   wireInspector();
   wireTopbar();
   wireRail();
+  wireRevisions();
+  updateHistoryButtons();
+  updateDirtyUI();
 })();
