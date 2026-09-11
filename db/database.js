@@ -1145,31 +1145,39 @@ async function migrateThemeDemoStores(conn, demoStoreId) {
   // 'demo-' prefix is blocked at signup (see RESERVED_SUBDOMAINS /
   // isReservedSubdomain below), so this is safe for any number of future
   // per-theme demo stores without having to name each one individually.
-  //
-  // An earlier version of this migration seeded the bare 'leafbloom'
-  // subdomain (no prefix) before that reservation existed. If a server
-  // already ran that version, self-heal by renaming the existing row in
-  // place instead of creating a second, duplicate demo store — this must
-  // run before the existence check below, and only when nothing has
-  // already claimed 'demo-leafbloom' (extremely unlikely, but don't
-  // clobber a real row if it has).
-  const [[legacyLeafBloom]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'leafbloom'`);
-  if (legacyLeafBloom) {
-    const [[demoLeafBloomTaken]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'demo-leafbloom'`);
-    if (!demoLeafBloomTaken) {
-      await conn.query(`UPDATE ${TABLES.stores} SET subdomain = 'demo-leafbloom' WHERE id = ?`, [legacyLeafBloom.id]);
-      console.log(`Renamed legacy demo store subdomain 'leafbloom' -> 'demo-leafbloom' (store_id=${legacyLeafBloom.id}).`);
+  // Named after the theme's own slug ('pz-starter' -> 'demo-pzstarter'),
+  // not the store's brand name, so it's obvious at a glance which theme a
+  // demo subdomain belongs to.
+  const LEAFBLOOM_SUBDOMAIN = 'demo-pzstarter';
+
+  // Naming has moved twice as this convention settled: bare 'leafbloom'
+  // (before the 'demo-' prefix reservation existed), then 'demo-leafbloom'
+  // (brand name instead of theme slug), now 'demo-pzstarter'. Self-heal
+  // from EITHER legacy name by renaming the existing row in place — so
+  // this works no matter which earlier version of this migration last ran
+  // on a given server — instead of creating a duplicate demo store. Only
+  // renames when nothing has already claimed the current name (extremely
+  // unlikely, but never clobber a real row).
+  for (const legacySubdomain of ['leafbloom', 'demo-leafbloom']) {
+    const [[legacyRow]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = ?`, [legacySubdomain]);
+    if (!legacyRow) continue;
+    const [[targetTaken]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = ?`, [LEAFBLOOM_SUBDOMAIN]);
+    if (!targetTaken) {
+      await conn.query(`UPDATE ${TABLES.stores} SET subdomain = ? WHERE id = ?`, [LEAFBLOOM_SUBDOMAIN, legacyRow.id]);
+      console.log(`Renamed legacy demo store subdomain '${legacySubdomain}' -> '${LEAFBLOOM_SUBDOMAIN}' (store_id=${legacyRow.id}).`);
     }
+    break; // only one legacy row can exist at a time in practice
   }
 
-  const [[existingLeafBloom]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'demo-leafbloom'`);
+  const [[existingLeafBloom]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = ?`, [LEAFBLOOM_SUBDOMAIN]);
   let leafBloomId = existingLeafBloom && existingLeafBloom.id;
 
   if (!leafBloomId) {
     console.log('Building "Leaf & Bloom" — the PZ Starter theme\'s dedicated demo store...');
 
     const [storeResult] = await conn.query(
-      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES ('Leaf & Bloom', 'demo-leafbloom', 'default', 'free', 'active')`
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES ('Leaf & Bloom', ?, 'default', 'free', 'active')`,
+      [LEAFBLOOM_SUBDOMAIN]
     );
     leafBloomId = storeResult.insertId;
 
@@ -1294,7 +1302,7 @@ async function migrateThemeDemoStores(conn, demoStoreId) {
       [leafBloomId, JSON.stringify({ ...defaultFields('copyright'), text: '', show_powered_by: true, show_admin_link: true })]
     );
 
-    console.log(`"Leaf & Bloom" demo store created (store_id=${leafBloomId}, subdomain=demo-leafbloom, owner ${demoOwnerEmail} / leafbloom-demo).`);
+    console.log(`"Leaf & Bloom" demo store created (store_id=${leafBloomId}, subdomain=${LEAFBLOOM_SUBDOMAIN}, owner ${demoOwnerEmail} / leafbloom-demo).`);
   }
 
   await conn.query(`UPDATE ${TABLES.themes} SET demo_store_id = ? WHERE id = ? AND demo_store_id IS NULL`, [leafBloomId, pzStarterTheme.id]);
