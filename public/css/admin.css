@@ -6,7 +6,7 @@
 }
 
 .admin-sidebar {
-  width: 230px;
+  width: 250px;
   background: #111827;
   color: #d1d5db;
   display: flex;
@@ -25,7 +25,10 @@
 
 .admin-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .admin-nav a {
-  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 8px 14px;
   border-radius: 8px;
   font-size: 0.92rem;
   font-weight: 500;
@@ -33,7 +36,7 @@
 }
 .admin-nav a:hover { background: #1f2937; color: #fff; }
 .admin-nav a.active { background: var(--color-primary); color: #fff; }
-.admin-nav a.admin-nav-sub { padding-left: 24px; font-size: 0.86rem; }
+.admin-nav a.admin-nav-sub { padding-left: 28px; font-size: 0.86rem; }
 
 .admin-nav-divider { height: 1px; background: #1f2937; margin: 10px 4px; }
 .admin-nav-group-label {
