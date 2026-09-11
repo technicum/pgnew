@@ -30,7 +30,20 @@ const RESERVED_SUBDOMAINS = new Set([
   // views/marketplace-coming-soon.ejs. ('app' singular was already
   // reserved above; 'apps' plural is the actual subdomain these use.)
   'themes', 'apps',
+  // The platform's own long-running showcase store (Default theme's demo,
+  // see migrateThemeDemoStores below) — this one bare word, plus the whole
+  // 'demo-' prefix checked in isReservedSubdomain, keep any current or
+  // future per-theme demo store's address off-limits to real merchants.
+  'demo',
 ]);
+
+// A merchant's chosen subdomain is rejected if it's one of the fixed words
+// above, OR starts with 'demo-' — the prefix every per-theme demo store
+// (see migrateThemeDemoStores) uses for its subdomain, so a merchant can
+// never grab one out from under a demo store, including ones added later.
+function isReservedSubdomain(subdomain) {
+  return RESERVED_SUBDOMAINS.has(subdomain) || subdomain.startsWith('demo-');
+}
 
 // All table names go through this prefix, so PageZaper's tables are easy to
 // pick out if this database is ever shared with another app. Every route
@@ -1127,14 +1140,36 @@ async function migrateThemeDemoStores(conn, demoStoreId) {
   const [[pzStarterTheme]] = await conn.query(`SELECT id, demo_store_id FROM ${TABLES.themes} WHERE slug = 'pz-starter'`);
   if (!pzStarterTheme) return; // theme not registered yet (no themes/pz-starter/theme.json) — nothing to link up
 
-  const [[existingLeafBloom]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'leafbloom'`);
+  // Subdomain carries a 'demo-' prefix — never a bare word like 'leafbloom' —
+  // so it can't collide with a merchant's own store address. The whole
+  // 'demo-' prefix is blocked at signup (see RESERVED_SUBDOMAINS /
+  // isReservedSubdomain below), so this is safe for any number of future
+  // per-theme demo stores without having to name each one individually.
+  //
+  // An earlier version of this migration seeded the bare 'leafbloom'
+  // subdomain (no prefix) before that reservation existed. If a server
+  // already ran that version, self-heal by renaming the existing row in
+  // place instead of creating a second, duplicate demo store — this must
+  // run before the existence check below, and only when nothing has
+  // already claimed 'demo-leafbloom' (extremely unlikely, but don't
+  // clobber a real row if it has).
+  const [[legacyLeafBloom]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'leafbloom'`);
+  if (legacyLeafBloom) {
+    const [[demoLeafBloomTaken]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'demo-leafbloom'`);
+    if (!demoLeafBloomTaken) {
+      await conn.query(`UPDATE ${TABLES.stores} SET subdomain = 'demo-leafbloom' WHERE id = ?`, [legacyLeafBloom.id]);
+      console.log(`Renamed legacy demo store subdomain 'leafbloom' -> 'demo-leafbloom' (store_id=${legacyLeafBloom.id}).`);
+    }
+  }
+
+  const [[existingLeafBloom]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'demo-leafbloom'`);
   let leafBloomId = existingLeafBloom && existingLeafBloom.id;
 
   if (!leafBloomId) {
     console.log('Building "Leaf & Bloom" — the PZ Starter theme\'s dedicated demo store...');
 
     const [storeResult] = await conn.query(
-      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES ('Leaf & Bloom', 'leafbloom', 'default', 'free', 'active')`
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES ('Leaf & Bloom', 'demo-leafbloom', 'default', 'free', 'active')`
     );
     leafBloomId = storeResult.insertId;
 
@@ -1259,7 +1294,7 @@ async function migrateThemeDemoStores(conn, demoStoreId) {
       [leafBloomId, JSON.stringify({ ...defaultFields('copyright'), text: '', show_powered_by: true, show_admin_link: true })]
     );
 
-    console.log(`"Leaf & Bloom" demo store created (store_id=${leafBloomId}, subdomain=leafbloom, owner ${demoOwnerEmail} / leafbloom-demo).`);
+    console.log(`"Leaf & Bloom" demo store created (store_id=${leafBloomId}, subdomain=demo-leafbloom, owner ${demoOwnerEmail} / leafbloom-demo).`);
   }
 
   await conn.query(`UPDATE ${TABLES.themes} SET demo_store_id = ? WHERE id = ? AND demo_store_id IS NULL`, [leafBloomId, pzStarterTheme.id]);
@@ -1372,4 +1407,4 @@ async function init() {
   }
 }
 
-module.exports = { pool, init, THEMES, PLANS, RESERVED_SUBDOMAINS, TABLES };
+module.exports = { pool, init, THEMES, PLANS, RESERVED_SUBDOMAINS, isReservedSubdomain, TABLES };

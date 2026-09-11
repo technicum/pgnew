@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
-const { pool, THEMES, RESERVED_SUBDOMAINS, TABLES } = require('../db/database');
+const { pool, THEMES, isReservedSubdomain, TABLES } = require('../db/database');
 const { storeUrl, rootUrl, adminPortalUrl } = require('../middleware/tenant');
 const { defaultFields } = require('../lib/sections');
 
@@ -61,7 +61,7 @@ router.post('/signup', async (req, res, next) => {
 
   if (!subdomain || !SUBDOMAIN_RE.test(subdomain) || subdomain.length < 3) {
     errors.push('Store address must be 3-63 characters: lowercase letters, numbers and hyphens, and cannot start or end with a hyphen.');
-  } else if (RESERVED_SUBDOMAINS.has(subdomain)) {
+  } else if (isReservedSubdomain(subdomain)) {
     errors.push(`"${subdomain}" is reserved — please choose a different store address.`);
   }
 
@@ -289,7 +289,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
   if (!storeName) errors.push('Store name is required.');
   if (!subdomain || !SUBDOMAIN_RE.test(subdomain) || subdomain.length < 3) {
     errors.push('Store address must be 3-63 characters: lowercase letters, numbers and hyphens, and cannot start or end with a hyphen.');
-  } else if (RESERVED_SUBDOMAINS.has(subdomain)) {
+  } else if (isReservedSubdomain(subdomain)) {
     errors.push(`"${subdomain}" is reserved — please choose a different store address.`);
   }
 
