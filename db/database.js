@@ -61,6 +61,11 @@ const TABLES = {
   // recolored.
   themes: `${PREFIX}themes`,
   storeThemes: `${PREFIX}store_themes`,
+  // Saved, reusable page-builder blocks (usually a configured row — see
+  // lib/sections.js's sanitizeRowBlock) a merchant can drop into any page on
+  // their store without rebuilding it from scratch each time — the section
+  // builder's "component library" (public/js/admin-builder.js).
+  pageComponents: `${PREFIX}page_components`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -294,6 +299,21 @@ CREATE TABLE IF NOT EXISTS ${TABLES.storeThemes} (
   FOREIGN KEY (theme_id) REFERENCES ${TABLES.themes}(id) ON DELETE RESTRICT,
   UNIQUE KEY uniq_store_theme (store_id, theme_id),
   INDEX idx_store_active (store_id, is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One saved builder block per row -- the "block" column is the same
+-- { id, type, fields, element_styles } shape a page section or a row's
+-- nested block already is (see lib/sections.js), just stored on its own
+-- instead of inside a page, so it can be cloned (with fresh ids) into any
+-- page's section list. Scoped per store, never shared across stores.
+CREATE TABLE IF NOT EXISTS ${TABLES.pageComponents} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  block JSON NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  INDEX idx_store_created (store_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 

@@ -260,6 +260,23 @@
     </div>
   </section>
 
+<% } else if (section.type === 'html' && (section.fields.html || section.fields.css)) { %>
+  <%
+    // Escaped (not raw) on purpose: EJS's escaping output tag HTML-entity-
+    // encodes the merchant's markup/CSS so it can sit safely inside the
+    // srcdoc="..." attribute
+    // (entities keep a stray " from closing the attribute early) — the
+    // browser decodes those entities back out when it parses srcdoc as the
+    // iframe's own document, so the merchant's HTML/CSS renders normally
+    // inside the frame. sandbox="allow-scripts" (no allow-same-origin) gives
+    // that document a unique, opaque origin: any script in it can run, but
+    // can't reach this page's cookies, storage, or DOM.
+    var pzHtmlDoc = (section.fields.html || '') + (section.fields.css ? '<style>' + section.fields.css + '</style>' : '');
+  %>
+  <div id="<%= pzId %>" class="pz-html-block<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <iframe class="pz-html-frame" sandbox="allow-scripts" loading="lazy" title="Custom HTML block" srcdoc="<%= pzHtmlDoc %>"></iframe>
+  </div>
+
 <% } else if (section.type === 'spacer') { %>
   <div id="<%= pzId %>" class="section-spacer section-spacer-<%= section.fields.height %><%= pzExtra %>"></div>
 

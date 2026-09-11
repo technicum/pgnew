@@ -14,6 +14,7 @@ const {
   sanitizeSectionSettings,
   sanitizeElementStyle,
   sanitizeAllElementStyles,
+  sanitizeRowBlock,
 } = require('../lib/sections');
 const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
 
@@ -340,7 +341,15 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       `SELECT id, name FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`,
       [req.store.id]
     );
-    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, nestableTypes: NESTABLE_SECTION_TYPES, textElementFields: TEXT_ELEMENT_FIELDS, products, categories });
+    // Saved components (see the /components routes below) — loaded here so
+    // the builder's Components panel has them from the start rather than a
+    // separate fetch on every page load.
+    const [rawComponents] = await pool.query(
+      `SELECT id, name, block FROM ${TABLES.pageComponents} WHERE store_id = ? ORDER BY created_at DESC`,
+      [req.store.id]
+    );
+    const components = rawComponents.map((c) => ({ id: c.id, name: c.name, block: typeof c.block === 'string' ? JSON.parse(c.block) : c.block }));
+    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, nestableTypes: NESTABLE_SECTION_TYPES, textElementFields: TEXT_ELEMENT_FIELDS, products, categories, components });
   } catch (err) {
     next(err);
   }
@@ -649,6 +658,57 @@ router.post('/pages/:id/sections/:sectionId/delete', async (req, res, next) => {
     const page = await loadOwnedPage(req.store.id, req.params.id);
     if (!page) return res.status(404).json({ error: 'Page not found' });
     await pool.query(`DELETE FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Component library JSON API, used by public/js/admin-builder.js ----
+// A "component" is a saved builder block (almost always a configured row,
+// but any nestable block works — see sanitizeRowBlock) a merchant can drop
+// into any page on their store without rebuilding it from scratch. Not tied
+// to any one page: /pages/:id/edit loads the store's whole library
+// alongside that page's own sections (see above), and these two routes are
+// store-scoped, not page-scoped.
+const MAX_COMPONENTS_PER_STORE = 60;
+
+router.post('/components', async (req, res, next) => {
+  try {
+    const name = typeof req.body.name === 'string' ? req.body.name.trim().slice(0, 100) : '';
+    if (!name) return res.status(400).json({ error: 'Give this component a name.' });
+
+    // Sanitized the same way a block nested inside a row's column is
+    // (parentLevel 1, as if it were about to be dropped straight into a
+    // top-level row) — permissive enough to keep whatever nesting the
+    // source block already had, up to the normal depth cap. Re-sanitized
+    // again, against the ACTUAL insertion point, the moment it's cloned
+    // into a page (see /pages/:id/sections/:sectionId), so storing it
+    // slightly more permissively than its eventual home is safe.
+    const block = sanitizeRowBlock(req.body.block, 1);
+    if (!block) return res.status(400).json({ error: 'Could not save that as a component.' });
+
+    const [[{ c: existingCount }]] = await pool.query(
+      `SELECT COUNT(*) AS c FROM ${TABLES.pageComponents} WHERE store_id = ?`,
+      [req.store.id]
+    );
+    if (existingCount >= MAX_COMPONENTS_PER_STORE) {
+      return res.status(400).json({ error: `You've reached the ${MAX_COMPONENTS_PER_STORE}-component limit — delete one from your library first.` });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO ${TABLES.pageComponents} (store_id, name, block) VALUES (?, ?, ?)`,
+      [req.store.id, name, JSON.stringify(block)]
+    );
+    res.json({ ok: true, component: { id: result.insertId, name, block } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/components/:componentId/delete', async (req, res, next) => {
+  try {
+    await pool.query(`DELETE FROM ${TABLES.pageComponents} WHERE id = ? AND store_id = ?`, [req.params.componentId, req.store.id]);
     res.json({ ok: true });
   } catch (err) {
     next(err);

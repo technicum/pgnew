@@ -17,6 +17,9 @@
       <button class="b-rail-btn" data-panel="layers" title="Page layers" aria-label="Page layers">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2.5 3 6.5l7 4 7-4-7-4Z"/><path d="M3 10.2 10 14l7-3.8"/><path d="M3 13.8 10 17.5l7-3.7"/></svg>
       </button>
+      <button class="b-rail-btn" data-panel="components" title="Your saved components" aria-label="Component library">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m10 2.5 6.5 3.4v8.2L10 17.5l-6.5-3.4V5.9L10 2.5Z"/><path d="M3.5 5.9 10 9.3l6.5-3.4M10 9.3v8.2"/></svg>
+      </button>
       <div class="b-rail-spacer"></div>
     </aside>
 
@@ -44,6 +47,14 @@
         <button type="button" class="b-side-search-clear" id="bLayerSearchClear" title="Clear search" hidden>&times;</button>
       </div>
       <div class="b-side-panel-body" id="bLayersBody"></div>
+    </div>
+
+    <div class="b-side-panel" id="bPanelComponents" hidden>
+      <div class="b-side-panel-head">
+        <h2>Components</h2>
+        <p>Rows you've saved from any page — click Insert to add one here</p>
+      </div>
+      <div class="b-side-panel-body" id="bComponentsBody"></div>
     </div>
 
     <div class="b-main">
@@ -133,7 +144,8 @@
         };
       })).split('/').join(String.fromCharCode(92) + '/') %>,
       products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>,
-      categories: <%- JSON.stringify(categories).split('/').join(String.fromCharCode(92) + '/') %>
+      categories: <%- JSON.stringify(categories).split('/').join(String.fromCharCode(92) + '/') %>,
+      components: <%- JSON.stringify(components).split('/').join(String.fromCharCode(92) + '/') %>
     };
   </script>
   <script src="/js/admin-builder.js"></script>

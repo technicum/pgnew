@@ -531,9 +531,22 @@ main.container {
 .pz-block .countdown { padding: 0; }
 .pz-block .text-image,
 .pz-block .text-image-left { flex-direction: column; }
+/* A row nested inside another row's column (see block.ejs's own 'row' case)
+   is just a .pz-row-inner without the page-section padding .pz-row itself
+   carries — the outer .pz-block spacing above already separates it from
+   its siblings. */
+.pz-block-row > .pz-row-inner { padding: 0; }
 @media (max-width: 720px) {
   .pz-row-inner { grid-template-columns: 1fr !important; }
 }
+
+/* Custom HTML block — a fixed default height (merchants without a custom
+   Height set still get a sane frame instead of the browser's ~150px iframe
+   default); the section's own Height control (min-height on .pz-html-block)
+   can still make the section taller than this without stretching the frame
+   itself, which is harmless. */
+.pz-html-block { min-height: 80px; }
+.pz-html-frame { display: block; width: 100%; height: 300px; border: 0; }
 
 /* Spacer / divider */
 .section-spacer-s { height: 20px; }

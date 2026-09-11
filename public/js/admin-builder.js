@@ -29,6 +29,12 @@
   var NESTABLE_TYPES = DATA.nestableTypes || [];
   function isNestable(type) { return NESTABLE_TYPES.indexOf(type) !== -1; }
   var BASE = "/admin/pages/" + PAGE.id + "/sections";
+  var COMPONENTS_BASE = "/admin/components";
+  // How many row-in-row levels the builder will let a merchant nest —
+  // mirrors lib/sections.js's own MAX_ROW_DEPTH exactly (see
+  // findBlockInSection/canNestRowAt below); kept as a literal here rather
+  // than sent from the server since it's not expected to change independently.
+  var MAX_ROW_DEPTH = 3;
 
   /* ---------------------------------------------------------------
      Icons
@@ -57,6 +63,8 @@
     spacer: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4h12M4 16h12M10 6.5v7"/></svg>',
     divider: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 10h14"/></svg>',
     row: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="6.2" height="12" rx="1"/><rect x="11.3" y="4" width="6.2" height="12" rx="1"/></svg>',
+    html: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6 3 10l4 4M13 6l4 4-4 4M11.3 4.5 8.7 15.5"/></svg>',
+    component: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m10 2.5 6.5 3.4v8.2L10 17.5l-6.5-3.4V5.9L10 2.5Z"/><path d="M3.5 5.9 10 9.3l6.5-3.4M10 9.3v8.2"/></svg>',
     move: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M3 10h14M6 6 3.5 8.5M14 6l2.5 2.5M6 14l-2.5-2.5M14 14l2.5-2.5"/></svg>',
     plus: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>'
   };
@@ -81,29 +89,90 @@
   // inside one of a row's columns (rather than a top-level section's own
   // field), this holds that block's id and selectedFieldKey is scoped to it
   // instead. Always cleared together with selectedFieldKey.
-  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, selectedBlockId: null, inspectorTab: "content" };
+  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, selectedBlockId: null, inspectorTab: "content", components: (DATA.components || []).slice() };
 
   function findSection(id) { return state.sections.find(function (s) { return String(s.id) === String(id); }); }
   function indexOf(id) { return state.sections.findIndex(function (s) { return String(s.id) === String(id); }); }
 
   // Locates one block nested inside a row section's columns by id, wherever
-  // it lives — returns { block, col, colIndex, blockIndex } or null. A row's
-  // whole layout is small (<=4 columns, <=6 blocks each) so a linear scan
-  // here is plenty fast.
+  // it lives — a row can now nest inside another row's column, up to
+  // MAX_ROW_DEPTH deep, so this recurses into any block that is itself type
+  // "row" rather than only scanning the section's own top-level columns.
+  // Returns { block, col, colIndex, blockIndex, containerLevel } or null.
+  //
+  // containerLevel is the nesting level this exact block was (or would be)
+  // validated at server-side by lib/sections.js's sanitizeRowBlock — 1 for a
+  // block sitting directly in the top-level section's own columns, 2 for one
+  // nested inside a level-1 row's column, 3 for one nested inside a level-2
+  // row's column (the deepest MAX_ROW_DEPTH allows). Kept in exact lockstep
+  // with sections.js's own depth threading (see its comment) so the canvas
+  // never shows a drop as allowed that the server would then silently drop.
+  //
+  // A row's whole layout is small (<=4 columns, <=6 blocks each, <=3 levels
+  // deep) so a recursive scan here is plenty fast.
   function findBlockInSection(sec, blockId) {
-    if (!sec || sec.type !== "row" || !blockId) return null;
-    var cols = (sec.fields && sec.fields.columns) || [];
-    for (var c = 0; c < cols.length; c++) {
-      var blocks = cols[c].blocks || [];
-      for (var b = 0; b < blocks.length; b++) {
-        if (String(blocks[b].id) === String(blockId)) {
-          return { block: blocks[b], col: cols[c], colIndex: c, blockIndex: b };
+    if (!sec || sec.type !== "row" || !sec.fields || !Array.isArray(sec.fields.columns) || !blockId) return null;
+    function searchCols(cols, level) {
+      for (var c = 0; c < cols.length; c++) {
+        var blocks = cols[c].blocks || [];
+        for (var b = 0; b < blocks.length; b++) {
+          var blk = blocks[b];
+          if (String(blk.id) === String(blockId)) {
+            return { block: blk, col: cols[c], colIndex: c, blockIndex: b, containerLevel: level };
+          }
+          if (blk.type === "row" && blk.fields && Array.isArray(blk.fields.columns)) {
+            var found = searchCols(blk.fields.columns, level + 1);
+            if (found) return found;
+          }
         }
       }
+      return null;
     }
-    return null;
+    return searchCols(sec.fields.columns, 1);
   }
+
+  // Whether a "row" library item can be dropped into the column identified
+  // by (sectionId's row section, rowBlockId) without exceeding MAX_ROW_DEPTH
+  // — rowBlockId is null/falsy for the top-level section's own columns, or
+  // a nested row block's id for one of ITS columns. Mirrors
+  // lib/sections.js's sanitizeRowBlock reject condition exactly: a block
+  // dropped into a column evaluated at parentLevel only survives (if it's a
+  // row) when parentLevel < MAX_ROW_DEPTH.
+  function canNestRowAt(sec, rowBlockId) {
+    if (!rowBlockId) return 1 < MAX_ROW_DEPTH; // the top-level row's own columns
+    var found = findBlockInSection(sec, rowBlockId);
+    if (!found || found.block.type !== "row") return false;
+    var parentLevel = found.containerLevel + 1; // this row's own level == its columns' parentLevel
+    return parentLevel < MAX_ROW_DEPTH;
+  }
+
   function genBlockId() { return "blk_" + Math.random().toString(36).slice(2, 11); }
+
+  // Deep-clones a block (a row's own nested tree included) and regenerates
+  // every nested block's id — used when cloning a saved component into a
+  // page, so the copy can never collide with an id already used elsewhere
+  // on that page (or the component's own stored copy, if inserted twice).
+  // The clone's own outer id is left untouched by design: a component
+  // inserted at the top level becomes a brand-new page SECTION with a fresh
+  // database id assigned server-side (see insertComponent), and one inserted
+  // into a column gets a fresh id assigned by the caller — either way this
+  // function's caller decides the root id, this only has to guarantee no
+  // collisions among what's nested underneath it.
+  function cloneWithFreshIds(block) {
+    var copy = JSON.parse(JSON.stringify(block));
+    function walk(b) {
+      if (b.type === "row" && b.fields && Array.isArray(b.fields.columns)) {
+        b.fields.columns.forEach(function (col) {
+          (col.blocks || []).forEach(function (nb) {
+            nb.id = genBlockId();
+            walk(nb);
+          });
+        });
+      }
+    }
+    walk(copy);
+    return copy;
+  }
 
   function api(url, body) {
     return fetch(url, {
@@ -243,7 +312,14 @@
     return '<div class="b-ph ' + (extraClass || "") + '"' + (styleAttr || "") + '>' + icon("image") + "</div>";
   }
 
-  function renderSectionInner(sec) {
+  // ownerBlockId: undefined/null when `sec` is a top-level page section;
+  // otherwise the id of the row BLOCK this call is rendering (i.e. `sec` is
+  // itself one of a row's nested blocks, passed in recursively from the
+  // "row" case below). Only the "row" case reads it — it stamps
+  // data-row-owner onto its own column markup so click/drag handlers know
+  // which row (the top-level section, or this specific nested row block)
+  // a column belongs to, however deep it's nested.
+  function renderSectionInner(sec, ownerBlockId) {
     var d = sec.fields;
     switch (sec.type) {
       case "hero":
@@ -380,16 +456,20 @@
       case "divider":
         return d.style === "dots" ? '<div class="b-divider-preview b-divider-dots">• • • • •</div>' : '<div class="b-divider-preview"><hr/></div>';
 
+      case "html":
+        return '<div class="b-sec-pad"><div class="b-html-block-preview b-ph"><div>' + icon("html") +
+          '<div class="b-video-hint">Custom HTML/CSS — edit the code in the panel on the right, then use Preview (top bar) to see it rendered. Runs in a sandboxed frame on your live storefront.</div></div></div></div>';
+
       case "row": {
         var cols = d.columns || [];
         if (!cols.length) {
           return '<div class="b-row-picker">' +
             '<p>Pick a column layout to start</p>' +
             '<div class="b-layout-opts">' +
-              rowLayoutOptHtml("1", "1 column") +
-              rowLayoutOptHtml("1,1", "2 equal") +
-              rowLayoutOptHtml("1,1,1", "3 equal") +
-              rowLayoutOptHtml("1.6,1", "60 / 40") +
+              rowLayoutOptHtml("1", "1 column", ownerBlockId) +
+              rowLayoutOptHtml("1,1", "2 equal", ownerBlockId) +
+              rowLayoutOptHtml("1,1,1", "3 equal", ownerBlockId) +
+              rowLayoutOptHtml("1.6,1", "60 / 40", ownerBlockId) +
             '</div></div>';
         }
         var colsHtml = cols.map(function (col, ci) {
@@ -397,13 +477,14 @@
             var blabel = (SECTION_TYPES[blk.type] && SECTION_TYPES[blk.type].name) || blk.type;
             return '<div class="b-row-block" data-block-id="' + esc(blk.id) + '" data-col-index="' + ci + '">' +
               '<span class="b-row-block-tag">' + esc(blabel) + '</span>' +
+              '<button class="b-row-block-save" data-block-action="save-component" title="Save as a reusable component">' + icon("component") + '</button>' +
               '<button class="b-row-block-del" data-block-action="del" title="Remove this block">' + icon("trash") + '</button>' +
-              renderSectionInner(blk) +
+              renderSectionInner(blk, blk.id) +
               '</div>';
           }).join("");
-          var addHtml = '<button class="b-row-col-add" data-col-add="' + ci + '" title="Add a rich text block — or drag any section from the library into this column">' +
+          var addHtml = '<button class="b-row-col-add" data-col-add="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '" title="Add a rich text block — or drag any section from the library into this column">' +
             icon("plus") + '<span>Add a section</span></button>';
-          return '<div class="b-row-col' + ((col.blocks || []).length ? "" : " is-empty") + '" data-col-drop="' + ci + '">' + blocksHtml + addHtml + '</div>';
+          return '<div class="b-row-col' + ((col.blocks || []).length ? "" : " is-empty") + '" data-col-drop="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '">' + blocksHtml + addHtml + '</div>';
         }).join("");
         var templ = cols.map(function (c) { return (c.width || 1) + "fr"; }).join(" ");
         return '<div class="b-row-inner" style="grid-template-columns:' + templ + ';">' + colsHtml + '</div>';
@@ -414,10 +495,10 @@
     }
   }
 
-  function rowLayoutOptHtml(colsSpec, label) {
+  function rowLayoutOptHtml(colsSpec, label, ownerBlockId) {
     var parts = colsSpec.split(",");
     var bars = parts.map(function (f) { return '<span style="flex:' + f + '"></span>'; }).join("");
-    return '<button type="button" class="b-layout-opt" data-row-layout="' + colsSpec + '"><span class="b-layout-bars">' + bars + '</span><label>' + label + '</label></button>';
+    return '<button type="button" class="b-layout-opt" data-row-layout="' + colsSpec + '" data-row-owner="' + esc(ownerBlockId || "") + '"><span class="b-layout-bars">' + bars + '</span><label>' + label + '</label></button>';
   }
 
   // spacer/divider already have their own height concept, so they don't get
@@ -542,6 +623,7 @@
           '<span class="b-csec-tag">' + esc(label) + (sec.hidden ? " · hidden" : "") + esc(visibilityTag) + '</span>' +
           '<button class="b-drag-handle" data-action="drag" title="Drag to reorder">' + icon("drag") + '</button>' +
           '<button data-action="dup" title="Duplicate">' + icon("dup") + '</button>' +
+          '<button data-action="save-component" title="Save as a reusable component">' + icon("component") + '</button>' +
           '<button data-action="toggle" title="' + (sec.hidden ? "Show on storefront" : "Hide from storefront") + '">' + icon(sec.hidden ? "eyeOff" : "eye") + '</button>' +
           '<button data-action="del" title="Delete">' + icon("trash") + '</button>' +
         '</div>'
@@ -1062,6 +1144,50 @@
     }
   }
 
+  // The Components panel — saved, reusable blocks (almost always a
+  // configured row) a merchant built once and can drop onto any page on
+  // their store. See saveAsComponent (how they get here) and insertComponent
+  // (what "Insert" does) above.
+  function renderComponents() {
+    var body = document.getElementById("bComponentsBody");
+    if (!body) return;
+    body.innerHTML = "";
+    if (!state.components.length) {
+      body.innerHTML = '<div class="b-layer-empty">No components yet — save one from any section or row block’s own toolbar (the bookmark icon) to reuse it on other pages.</div>';
+      return;
+    }
+    state.components.forEach(function (comp) {
+      var label = (SECTION_TYPES[comp.block.type] && SECTION_TYPES[comp.block.type].name) || comp.block.type;
+      var row = el(
+        '<div class="b-comp-item">' +
+          '<div class="b-lib-item-icon">' + icon(comp.block.type) + '</div>' +
+          '<div class="b-comp-item-body">' +
+            '<div class="b-comp-item-name">' + esc(comp.name) + '</div>' +
+            '<div class="b-comp-item-type">' + esc(label) + '</div>' +
+          '</div>' +
+          '<button type="button" class="b-btn-outline b-comp-insert" data-comp-insert="' + comp.id + '">Insert</button>' +
+          '<button type="button" class="b-comp-del" data-comp-del="' + comp.id + '" title="Remove from your library">' + icon("trash") + '</button>' +
+        '</div>'
+      );
+      body.appendChild(row);
+    });
+  }
+
+  function wireComponents() {
+    var body = document.getElementById("bComponentsBody");
+    if (!body) return;
+    body.addEventListener("click", function (e) {
+      var insertBtn = e.target.closest("[data-comp-insert]");
+      if (insertBtn) {
+        var comp = state.components.filter(function (c) { return String(c.id) === insertBtn.dataset.compInsert; })[0];
+        if (comp) insertComponent(comp);
+        return;
+      }
+      var delBtn = e.target.closest("[data-comp-del]");
+      if (delBtn) deleteComponent(delBtn.dataset.compDel);
+    });
+  }
+
   // Scrolls the canvas to a section (used when a Page sections search
   // result or row is clicked) and gives it a brief highlight flash so the
   // jump is visible even when the section was already on screen.
@@ -1189,9 +1315,13 @@
       case "row":
         return field("", '<div class="b-inspector-hint">' +
           (d.columns && d.columns.length
-            ? "Drag any section from the library into a column, or click its + button. Click any text inside a column to edit it — the same way you edit a top-level section."
+            ? "Drag any section from the library into a column, or click its + button — including another Row, to nest layouts inside each other. Click any text inside a column to edit it, the same way you edit a top-level section."
             : "Pick a column layout on the canvas to get started.") +
           '</div>');
+      case "html":
+        return field("HTML", textareaHtml("html", d.html, "<div class=\"my-block\">…</div>")) +
+          field("CSS (optional)", textareaHtml("css", d.css, ".my-block { }")) +
+          field("", '<div class="b-inspector-hint">Renders in a sandboxed frame on your live storefront — scripts run isolated from the rest of your site and can’t read its cookies or data. For developers comfortable writing raw markup; there’s no visual preview here, use Preview (top bar) to see it rendered.</div>');
       default:
         return "";
     }
@@ -1377,31 +1507,61 @@
     });
   }
 
+  // Resolves which columns array a row-targeted action should act on: the
+  // top-level section's own (rowBlockId falsy), or a nested row block's own
+  // (rowBlockId set) — used by setRowLayout/insertBlockIntoColumn below so
+  // both work identically whether the row being edited is the section
+  // itself or one nested arbitrarily deep inside it. Returns null if
+  // rowBlockId was given but doesn't resolve to an actual row block.
+  function resolveRowFields(sec, rowBlockId) {
+    if (!rowBlockId) return sec.fields;
+    var found = findBlockInSection(sec, rowBlockId);
+    if (!found || found.block.type !== "row") return null;
+    found.block.fields = found.block.fields || { columns: [] };
+    return found.block.fields;
+  }
+
   // Picking (or re-picking) a row's column layout. widths e.g. [1,1] or
   // [1.6,1]. Existing columns keep their blocks where an index still
   // exists after the resize; columns beyond the new count are dropped —
   // confirmed first if any of them actually held content, since that's
-  // the one destructive edge of this control.
-  function setRowLayout(sectionId, widths) {
+  // the one destructive edge of this control. rowBlockId: null/falsy for
+  // the top-level section's own layout, or a nested row block's id for
+  // that row's own layout (see resolveRowFields).
+  function setRowLayout(sectionId, rowBlockId, widths) {
     var sec = findSection(sectionId);
     if (!sec) return;
-    var cols = sec.fields.columns || [];
+    var rowFields = resolveRowFields(sec, rowBlockId);
+    if (!rowFields) return;
+    var cols = rowFields.columns || [];
     var dropped = cols.slice(widths.length).some(function (c) { return (c.blocks || []).length; });
     if (dropped && !confirm("Switching to " + widths.length + " column" + (widths.length === 1 ? "" : "s") + " will remove the content in the column(s) that no longer fit. Continue?")) return;
     var nextCols = widths.map(function (w, i) { return { width: w, blocks: (cols[i] && cols[i].blocks) || [] }; });
-    sec.fields.columns = nextCols;
+    rowFields.columns = nextCols;
     if (state.selectedBlockId && !findBlockInSection(sec, state.selectedBlockId)) {
       state.selectedBlockId = null;
       state.selectedFieldKey = null;
     }
     renderAll();
-    saveField(sec.id, { columns: nextCols }).then(function () { renderAll(); });
+    // Always send the whole top-level tree — when rowBlockId is set,
+    // rowFields is a nested object reached BY REFERENCE from sec.fields, so
+    // the edit above is already part of it.
+    saveField(sec.id, { columns: sec.fields.columns }).then(function () { renderAll(); });
   }
 
-  function insertBlockIntoColumn(sectionId, colIndex, type) {
+  // rowBlockId: null/falsy to insert into the top-level section's own
+  // column, or a nested row block's id to insert into THAT row's column —
+  // see resolveRowFields. Dropping a "row" item is refused (rather than
+  // silently accepted and then discarded on save) once MAX_ROW_DEPTH would
+  // be exceeded, mirroring canNestRowAt's gating during drag-and-drop so a
+  // click on a column's own "+" button can't bypass the same limit.
+  function insertBlockIntoColumn(sectionId, rowBlockId, colIndex, type) {
     var sec = findSection(sectionId);
     if (!sec || !isNestable(type)) return;
-    var col = (sec.fields.columns || [])[colIndex];
+    if (type === "row" && !canNestRowAt(sec, rowBlockId)) return;
+    var rowFields = resolveRowFields(sec, rowBlockId);
+    if (!rowFields) return;
+    var col = (rowFields.columns || [])[colIndex];
     if (!col) return;
     col.blocks = col.blocks || [];
     var blockId = genBlockId();
@@ -1412,6 +1572,65 @@
       renderAll();
       var label = (SECTION_TYPES[type] && SECTION_TYPES[type].name) || type;
       toast(label + " added to the column");
+    });
+  }
+
+  // Inserts a saved component as a new TOP-LEVEL section at the end of the
+  // page — same two-step pattern duplicateSection() below already uses
+  // (create a blank section of the right type, then PATCH its fields),
+  // since the section-creation endpoint only ever hands back that type's
+  // plain defaults. Nested ids are regenerated (cloneWithFreshIds) so the
+  // copy can never collide with the component's own stored ids, or with
+  // another copy of the same component inserted earlier on this page. Once
+  // on the canvas it's just an ordinary section — drag it anywhere with the
+  // normal reorder handle.
+  function insertComponent(component) {
+    setSaving(true);
+    api(BASE, { type: component.block.type }).then(function (res) {
+      if (!res || !res.ok) { setSaving(false); return toast(res && res.error ? res.error : "Could not insert that component.", true); }
+      var newSec = res.section;
+      var freshFields = cloneWithFreshIds(component.block).fields;
+      return api(BASE + "/" + newSec.id, { fields: freshFields }).then(function (fres) {
+        newSec.fields = (fres && fres.ok) ? fres.fields : newSec.fields;
+        state.sections.push(newSec);
+        state.selectedId = newSec.id;
+        state.selectedFieldKey = null;
+        state.selectedBlockId = null;
+        renderAll();
+        return persistOrder().then(function () { toast('"' + component.name + '" added to the page'); });
+      });
+    });
+  }
+
+  // Prompts for a name and saves `block` (a top-level section's own
+  // {id,type,fields,element_styles}, or one found via findBlockInSection for
+  // a nested block) to the store's component library — see
+  // routes/admin.js's POST /admin/components.
+  function saveAsComponent(block) {
+    var defaultName = (SECTION_TYPES[block.type] && SECTION_TYPES[block.type].name) || block.type;
+    var name = window.prompt('Name this component (shown in your Components panel):', defaultName);
+    if (name === null) return;
+    name = name.trim();
+    if (!name) return toast("Give it a name to save it.", true);
+    setSaving(true);
+    api(COMPONENTS_BASE, { name: name, block: { id: block.id, type: block.type, fields: block.fields, element_styles: block.element_styles || {} } }).then(function (res) {
+      setSaving(false);
+      if (!res || !res.ok) return toast(res && res.error ? res.error : "Could not save that component.", true);
+      state.components.unshift(res.component);
+      renderComponents();
+      toast('Saved "' + res.component.name + '" to your components');
+    });
+  }
+
+  function deleteComponent(id) {
+    if (!confirm("Remove this component from your library? Copies already on your pages are unaffected.")) return;
+    setSaving(true);
+    api(COMPONENTS_BASE + "/" + id + "/delete").then(function (res) {
+      setSaving(false);
+      if (!res || !res.ok) return toast("Could not remove that component.", true);
+      state.components = state.components.filter(function (c) { return String(c.id) !== String(id); });
+      renderComponents();
+      toast("Component removed");
     });
   }
 
@@ -1596,7 +1815,7 @@
     drag = { kind: kind, payload: payload };
     moveGhost(e.clientX, e.clientY);
 
-    function clearColDropMarkers() { document.querySelectorAll(".b-row-col").forEach(function (n) { n.classList.remove("is-drop-target"); }); }
+    function clearColDropMarkers() { document.querySelectorAll(".b-row-col").forEach(function (n) { n.classList.remove("is-drop-target", "is-drop-blocked"); }); }
 
     function onMove(ev) {
       var p = ev.touches ? ev.touches[0] : ev;
@@ -1604,17 +1823,24 @@
       // Dragging a nestable library item over a row's column drops it into
       // that column instead of at the top level — checked first since a
       // column sits visually inside the section list computeDropIndex
-      // already scans.
+      // already scans. Dragging a "row" item specifically is additionally
+      // gated by canNestRowAt: shown as a blocked (not a normal) drop target
+      // once MAX_ROW_DEPTH would be exceeded, rather than accepting the drop
+      // and then silently discarding it on save — see lib/sections.js's
+      // sanitizeRowBlock for the server-side half of that same limit.
       drag.colDropInfo = null;
       if (drag.kind === "insert" && isNestable(drag.payload)) {
         var overEl = document.elementFromPoint(p.clientX, p.clientY);
         var colEl = overEl && overEl.closest("[data-col-drop]");
         if (colEl) {
           var rowWrap = colEl.closest(".b-csec");
-          drag.colDropInfo = { sectionId: rowWrap.dataset.id, colIndex: parseInt(colEl.dataset.colDrop, 10) };
+          var colSec = rowWrap ? findSection(rowWrap.dataset.id) : null;
+          var colOwner = colEl.dataset.rowOwner || null;
+          var colBlocked = drag.payload === "row" && (!colSec || !canNestRowAt(colSec, colOwner));
           clearColDropMarkers();
-          colEl.classList.add("is-drop-target");
+          colEl.classList.add(colBlocked ? "is-drop-blocked" : "is-drop-target");
           clearDropMarkers();
+          if (!colBlocked) drag.colDropInfo = { sectionId: rowWrap.dataset.id, rowBlockId: colOwner, colIndex: parseInt(colEl.dataset.colDrop, 10) };
           return;
         }
       }
@@ -1679,7 +1905,7 @@
     // re-trigger that control right after the drop's own logic runs below.
     swallowNextClick();
     if (drag.kind === "insert" && drag.colDropInfo) {
-      return insertBlockIntoColumn(drag.colDropInfo.sectionId, drag.colDropInfo.colIndex, drag.payload);
+      return insertBlockIntoColumn(drag.colDropInfo.sectionId, drag.colDropInfo.rowBlockId, drag.colDropInfo.colIndex, drag.payload);
     }
     if (!drag.dropInfo) return;
     if (drag.kind === "insert") {
@@ -1776,15 +2002,23 @@
       if (!sec) return;
 
       var layoutBtn = e.target.closest("[data-row-layout]");
-      if (layoutBtn) return setRowLayout(id, layoutBtn.dataset.rowLayout.split(",").map(Number));
+      if (layoutBtn) return setRowLayout(id, layoutBtn.dataset.rowOwner || null, layoutBtn.dataset.rowLayout.split(",").map(Number));
 
       var colAddBtn = e.target.closest("[data-col-add]");
-      if (colAddBtn) return insertBlockIntoColumn(id, parseInt(colAddBtn.dataset.colAdd, 10), "richtext");
+      if (colAddBtn) return insertBlockIntoColumn(id, colAddBtn.dataset.rowOwner || null, parseInt(colAddBtn.dataset.colAdd, 10), "richtext");
 
       var blockDelBtn = e.target.closest('[data-block-action="del"]');
       if (blockDelBtn) {
         var delBlockHost = blockDelBtn.closest("[data-block-id]");
         if (delBlockHost) removeBlock(id, delBlockHost.dataset.blockId);
+        return;
+      }
+
+      var blockSaveBtn = e.target.closest('[data-block-action="save-component"]');
+      if (blockSaveBtn) {
+        var saveBlockHost = blockSaveBtn.closest("[data-block-id]");
+        var foundForSave = saveBlockHost ? findBlockInSection(sec, saveBlockHost.dataset.blockId) : null;
+        if (foundForSave) saveAsComponent(foundForSave.block);
         return;
       }
 
@@ -1794,6 +2028,7 @@
         if (action === "dup") return duplicateSection(id);
         if (action === "del") return deleteSection(id);
         if (action === "toggle") return toggleHidden(id);
+        if (action === "save-component") return saveAsComponent(sec);
         if (action.indexOf("margin-") === 0 || action === "drag" || action === "resize") return;
       }
 
@@ -2051,6 +2286,20 @@
           saveSettings(sec.id, { custom_css: ta.value });
           return;
         }
+        // The "html"/"css" fields on an html-type section/block are one raw
+        // multi-line string each (the merchant's own markup/CSS) — unlike
+        // every other textarea here (gallery image URLs, logo names), which
+        // is really a list, one item per line. No other section type has a
+        // field named exactly "html" or "css", so this is an unambiguous way
+        // to tell the two apart without a third data attribute.
+        if (ta.dataset.field === "html" || ta.dataset.field === "css") {
+          var rawTarget = inspectorFieldTarget();
+          if (!rawTarget) return;
+          var rawPatch = {};
+          rawPatch[ta.dataset.field] = ta.value;
+          rawTarget.save(rawPatch);
+          return;
+        }
         var taTarget = inspectorFieldTarget();
         if (!taTarget) return;
         var lines = ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
@@ -2139,6 +2388,8 @@
         var which = btn.dataset.panel;
         document.getElementById("bPanelLibrary").hidden = which !== "library";
         document.getElementById("bPanelLayers").hidden = which !== "layers";
+        var compPanel = document.getElementById("bPanelComponents");
+        if (compPanel) compPanel.hidden = which !== "components";
       });
     });
   }
@@ -2147,9 +2398,11 @@
      Boot
   --------------------------------------------------------------- */
   renderLibrary();
+  renderComponents();
   renderAll();
   wireLibrary();
   wireLayers();
+  wireComponents();
   wireCanvas();
   wireInspector();
   wireTopbar();

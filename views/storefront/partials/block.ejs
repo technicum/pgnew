@@ -176,5 +176,39 @@
     <% } else { %>
       <hr class="section-divider" />
     <% } %>
+
+  <% } else if (b.type === 'row') { %>
+    <%
+      // A row nested inside another row's column — b.fields.columns has
+      // exactly the same shape as a top-level row section's own (see
+      // section.ejs's 'row' case), so this mirrors that case exactly, just
+      // rooted at `b` instead of `section`. Including this same block.ejs
+      // partial again for each of ITS blocks is what lets nesting go as many
+      // levels deep as lib/sections.js's sanitizeRowBlock allowed when this
+      // page was saved (MAX_ROW_DEPTH) — EJS includes can reference their
+      // own partial recursively without any special handling.
+      var pzNestedCols = Array.isArray(b.fields.columns) ? b.fields.columns : [];
+      var pzNestedTemplate = pzNestedCols.map(function (c) { return (c.width || 1) + 'fr'; }).join(' ') || '1fr';
+    %>
+    <div class="pz-row-inner" style="grid-template-columns:<%= pzNestedTemplate %>;">
+      <% pzNestedCols.forEach(function (col) { %>
+        <div class="pz-row-col">
+          <% (col.blocks || []).forEach(function (nb) { %>
+            <%- include('block', { b: nb }) %>
+          <% }); %>
+        </div>
+      <% }); %>
+    </div>
+
+  <% } else if (b.type === 'html' && (b.fields.html || b.fields.css)) { %>
+    <%
+      // Mirrors section.ejs's 'html' case — see the comment there for why
+      // the escaping output tag is the correct choice for a srcdoc
+      // attribute, and why sandbox="allow-scripts" alone is the safe default.
+      var pzNestedHtmlDoc = (b.fields.html || '') + (b.fields.css ? '<style>' + b.fields.css + '</style>' : '');
+    %>
+    <div class="pz-html-block">
+      <iframe class="pz-html-frame" sandbox="allow-scripts" loading="lazy" title="Custom HTML block" srcdoc="<%= pzNestedHtmlDoc %>"></iframe>
+    </div>
   <% } %>
 </div>

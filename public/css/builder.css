@@ -87,6 +87,18 @@ body.builder-body button { font-family: inherit; }
 .b-layer-row-icon svg { width: 12px; height: 12px; }
 .b-layer-row-label { font-size: 12.5px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .b-layer-row-label mark { background: var(--b-accent-soft); color: var(--b-ink); border-radius: 2px; padding: 0 1px; }
+
+/* Components panel — a saved, reusable block a merchant can drop onto any
+   page (see admin-builder.js's renderComponents/saveAsComponent). */
+.b-comp-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; }
+.b-comp-item:hover { background: var(--b-surface-2); }
+.b-comp-item-body { flex: 1; min-width: 0; }
+.b-comp-item-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-comp-item-type { font-size: 11px; color: var(--b-muted); }
+.b-comp-insert { flex-shrink: 0; padding: 5px 10px; font-size: 11.5px; }
+.b-comp-del { flex-shrink: 0; width: 26px; height: 26px; border: none; background: transparent; border-radius: 6px; color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.b-comp-del svg { width: 12px; height: 12px; }
+.b-comp-del:hover { background: var(--b-danger-soft, #fdecec); color: var(--b-danger); }
 .b-layer-empty { padding: 24px 10px; text-align: center; color: var(--b-muted); font-size: 12.5px; }
 
 .b-main { grid-column: 3; display: flex; flex-direction: column; min-width: 480px; min-height: 0; background: var(--b-surface-3); }
@@ -332,6 +344,9 @@ body.builder-body button { font-family: inherit; }
 .b-video-frame.b-ph { flex-direction: column; gap: 8px; }
 .b-video-hint { font-size: 11.5px; color: var(--b-muted); }
 
+.b-html-block-preview { min-height: 140px; border-radius: 10px; flex-direction: column; gap: 8px; text-align: center; padding: 24px; }
+.b-html-block-preview .b-video-hint { max-width: 360px; }
+
 .b-spotlight { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
 .b-spotlight.reverse { direction: rtl; }
 .b-spotlight.reverse > * { direction: ltr; }
@@ -387,7 +402,16 @@ body.builder-body button { font-family: inherit; }
 .b-row-inner { display: grid; gap: 20px; padding: 32px 28px; align-items: start; }
 .b-row-col { position: relative; min-width: 0; min-height: 90px; border-radius: 8px; transition: background .12s; }
 .b-row-col.is-drop-target { background: var(--b-accent-soft); outline: 2px dashed var(--b-accent); outline-offset: 2px; }
+/* A "Row" library item dragged over a column that's already nested as deep
+   as rows can go (MAX_ROW_DEPTH — see admin-builder.js's canNestRowAt) —
+   shown as refused rather than accepted-then-silently-discarded. */
+.b-row-col.is-drop-blocked { background: var(--b-danger-soft, #fdecec); outline: 2px dashed var(--b-danger); outline-offset: 2px; cursor: not-allowed; }
 .b-row-col.is-empty { border: 1px dashed var(--b-line); display: flex; align-items: center; justify-content: center; }
+/* A row nested inside another row's column renders its own .b-row-inner
+   (via renderSectionInner's recursive call) straight inside a .b-row-block
+   wrapper — trims that inner row's side padding since the .b-row-block
+   spacing (below) already separates it from its siblings. */
+.b-row-block > .b-row-inner { padding-left: 0; padding-right: 0; }
 .b-row-col-add { display: none; align-items: center; gap: 6px; border: 1px dashed var(--b-line); background: var(--b-surface); color: var(--b-muted); font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 7px; cursor: pointer; margin-top: 10px; }
 .b-row-col-add svg { width: 12px; height: 12px; }
 .b-row-col-add:hover { border-color: var(--b-accent); background: var(--b-accent-soft); color: var(--b-ink); }
@@ -404,6 +428,10 @@ body.builder-body button { font-family: inherit; }
 .b-row-block-del svg { width: 11px; height: 11px; }
 .b-row-block:hover .b-row-block-del { opacity: .85; }
 .b-row-block-del:hover { opacity: 1 !important; background: var(--b-danger); }
+.b-row-block-save { position: absolute; top: -10px; right: 30px; width: 22px; height: 22px; border: none; border-radius: 6px; background: var(--b-ink); color: var(--b-paper); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .12s; z-index: 7; }
+.b-row-block-save svg { width: 11px; height: 11px; }
+.b-row-block:hover .b-row-block-save { opacity: .85; }
+.b-row-block-save:hover { opacity: 1 !important; background: var(--b-accent); }
 .b-row-block .b-sec-pad { padding: 0; }
 .b-row-block .b-divider-preview { padding: 20px 0; }
 .b-row-block .b-spacer-preview { border-top: none; }
