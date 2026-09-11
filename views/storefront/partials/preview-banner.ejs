@@ -2,12 +2,22 @@
     after <body> (see views/storefront/themes/default/partials/header.ejs and
     .../pz-starter/partials/header.ejs). Only rendered when
     res.locals.previewingTheme is set by routes/storefront.js's theme-
-    resolution middleware, which only happens for a signed-in admin of this
-    exact store — so a regular visitor never sees this, and it never
-    reflects any real change to what's actually live. %>
+    resolution middleware — either a signed-in admin previewing their OWN
+    store (previewingTheme.isPublicDemo is falsy), or anyone at all viewing
+    the designated DEMO_STORE_SUBDOMAIN storefront via the public "View
+    demo" link on the admin Themes page (previewingTheme.isPublicDemo is
+    true). A regular visitor to any other store never sees this, and
+    neither variant reflects any real change to what's actually live. %>
 <% if (typeof previewingTheme !== 'undefined' && previewingTheme) { %>
-  <div class="pz-preview-banner">
-    <span>Previewing theme: <strong><%= previewingTheme.name %></strong> — this isn't live for your customers.</span>
-    <a href="/admin/store/themes">Back to admin</a>
-  </div>
+  <% if (previewingTheme.isPublicDemo) { %>
+    <div class="pz-preview-banner">
+      <span>You're viewing our demo store in the <strong><%= previewingTheme.name %></strong> theme.</span>
+      <a href="//<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %>/signup">Start your own store &rarr;</a>
+    </div>
+  <% } else { %>
+    <div class="pz-preview-banner">
+      <span>Previewing theme: <strong><%= previewingTheme.name %></strong> — this isn't live for your customers.</span>
+      <a href="/admin/store/themes">Back to admin</a>
+    </div>
+  <% } %>
 <% } %>

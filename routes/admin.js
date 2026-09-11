@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { pool, TABLES, THEMES } = require('../db/database');
 const { requireAdmin, requireAdminRole } = require('../middleware/auth');
-const { rootUrl, adminPortalUrl } = require('../middleware/tenant');
+const { rootUrl, adminPortalUrl, storeUrl, getDemoStoreSubdomain } = require('../middleware/tenant');
 const {
   SECTION_TYPES,
   SECTION_TYPE_KEYS,
@@ -1222,10 +1222,18 @@ router.get('/store/themes', async (req, res, next) => {
       const tokens = themeDefaultTokens(t.slug);
       return { ...t, swatchFrom: tokens.color_primary, swatchTo: tokens.color_primary_dark };
     };
+    // "View demo" on each theme card — opens that theme on the designated
+    // public showcase store (see middleware/tenant.js's getDemoStoreSubdomain)
+    // instead of this merchant's own (possibly empty) store, so a theme can
+    // be judged with realistic content even before anything's been built.
+    const demoSubdomain = getDemoStoreSubdomain();
+    const demoThemeUrl = (slug) => storeUrl(req, demoSubdomain, `/?preview_theme=${encodeURIComponent(slug)}`);
     res.render('admin/store-themes', {
       title: 'Themes',
       themes: installed.map(withSwatch),
       available: available.map(withSwatch),
+      demoThemeUrl,
+      isDemoStore: req.store.subdomain === demoSubdomain,
     });
   } catch (err) {
     next(err);

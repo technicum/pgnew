@@ -438,7 +438,7 @@
 .theme-card-body { padding: 16px; }
 .theme-card-name { font-weight: 700; font-size: 1rem; color: #111827; }
 .theme-card-desc { color: #6b7280; font-size: 0.85rem; line-height: 1.45; margin: 6px 0 0; }
-.theme-card-actions { display: flex; gap: 8px; margin-top: 14px; }
+.theme-card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 
 .theme-card-btn {
   display: inline-block;

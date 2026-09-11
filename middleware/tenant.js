@@ -26,6 +26,17 @@ function getBaseDomain() {
   return (process.env.BASE_DOMAIN || 'localhost').toLowerCase();
 }
 
+// The store whose subdomain matches this is the public "View demo" showcase
+// linked from every theme card on the admin Themes page (routes/admin.js's
+// /store/themes + views/admin/store-themes.ejs, honored by
+// routes/storefront.js's ?preview_theme= handling) — pick a store with
+// realistic content (products, hero, testimonials...) and either give it
+// this subdomain or set DEMO_STORE_SUBDOMAIN in .env to whatever subdomain
+// it already has. Falls back to 'demo', the convention used in local dev.
+function getDemoStoreSubdomain() {
+  return (process.env.DEMO_STORE_SUBDOMAIN || 'demo').toLowerCase();
+}
+
 function resolveStore(pool) {
   const baseDomain = getBaseDomain();
 
@@ -112,4 +123,4 @@ function adminPortalUrl(req, path = '/') {
   return `${req.protocol}://admin.${baseDomain}${port}${path}`;
 }
 
-module.exports = { resolveStore, storeUrl, rootUrl, adminPortalUrl, getBaseDomain };
+module.exports = { resolveStore, storeUrl, rootUrl, adminPortalUrl, getBaseDomain, getDemoStoreSubdomain };
