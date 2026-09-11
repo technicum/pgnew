@@ -20,6 +20,7 @@ const {
 } = require('../lib/sections');
 const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
 const menusLib = require('../lib/menus');
+const { importDemoContent } = require('../lib/demoImport');
 
 function slugify(str) {
   return str
@@ -1196,7 +1197,7 @@ router.post('/menus/:id/items/:itemId/delete', async (req, res, next) => {
 router.get('/store/themes', async (req, res, next) => {
   try {
     const [installed] = await pool.query(
-      `SELECT st.id AS store_theme_id, st.is_active, t.slug, t.name, t.description, t.price_cents
+      `SELECT st.id AS store_theme_id, st.is_active, t.id AS theme_id, t.slug, t.name, t.description, t.price_cents
        FROM ${TABLES.storeThemes} st
        JOIN ${TABLES.themes} t ON t.id = st.theme_id
        WHERE st.store_id = ?
@@ -1218,16 +1219,14 @@ router.get('/store/themes', async (req, res, next) => {
     // preview, same swatch regardless of what this particular store has
     // saved) so Default and PZ Starter read as visually distinct at a
     // glance without opening either one.
-    const withSwatch = (t) => {
-      const tokens = themeDefaultTokens(t.slug);
-      return { ...t, swatchFrom: tokens.color_primary, swatchTo: tokens.color_primary_dark };
-    };
     // "View demo" on each theme card — opens that theme's OWN dedicated
     // demo store (pz_themes.demo_store_id), built with content tailored to
     // that theme's sections and design, instead of this merchant's own
-    // (possibly empty) store. Not every catalog theme has one configured
-    // yet, so demoThemeUrl(slug) returns null when there's nothing to link
-    // to and the view hides the link in that case.
+    // (possibly empty) store. "Import demo content" (routes below) copies
+    // that same demo store's catalog/pages/sections into THIS store. Not
+    // every catalog theme has a demo configured yet, so both demoThemeUrl
+    // and hasDemo(slug) come back false/null when there's nothing there —
+    // the view hides both actions in that case.
     const [demoStores] = await pool.query(
       `SELECT t.slug, s.id AS demo_store_id, s.subdomain
        FROM ${TABLES.themes} t
@@ -1235,8 +1234,13 @@ router.get('/store/themes', async (req, res, next) => {
        WHERE t.demo_store_id IS NOT NULL`
     );
     const demoUrlBySlug = new Map(demoStores.map((d) => [d.slug, storeUrl(req, d.subdomain, '/')]));
+    const demoSlugs = new Set(demoStores.map((d) => d.slug));
     const demoStoreIds = new Set(demoStores.map((d) => d.demo_store_id));
     const demoThemeUrl = (slug) => demoUrlBySlug.get(slug) || null;
+    const withSwatch = (t) => {
+      const tokens = themeDefaultTokens(t.slug);
+      return { ...t, swatchFrom: tokens.color_primary, swatchTo: tokens.color_primary_dark, hasDemo: demoSlugs.has(t.slug) };
+    };
     res.render('admin/store-themes', {
       title: 'Themes',
       themes: installed.map(withSwatch),
@@ -1272,6 +1276,58 @@ router.post('/store/themes/install', async (req, res, next) => {
     res.redirect('/admin/store/themes');
   } catch (err) {
     next(err);
+  }
+});
+
+// "Import demo content" — installs the theme if it isn't already, activates
+// it, and copies its dedicated demo store's categories/products/pages/menus
+// /sections into THIS store (see lib/demoImport.js). Unlike a plain
+// install/activate, this overwrites the store's Home page, header and
+// footer content — the confirm() dialog on the button is what stands in
+// for the merchant's go-ahead on that, same pattern as "Activate theme"
+// below already uses for its own, smaller warning.
+router.post('/store/themes/import-demo', async (req, res, next) => {
+  const conn = await pool.getConnection();
+  try {
+    const themeId = Number(req.body.themeId);
+    const [[theme]] = await pool.query(
+      `SELECT id, name, demo_store_id FROM ${TABLES.themes} WHERE id = ? AND status = 'published'`,
+      [themeId]
+    );
+    if (!theme) {
+      req.flash('error', 'Theme not found.');
+      return res.redirect('/admin/store/themes');
+    }
+    if (!theme.demo_store_id) {
+      req.flash('error', `${theme.name} doesn't have demo content to import yet.`);
+      return res.redirect('/admin/store/themes');
+    }
+    if (theme.demo_store_id === req.store.id) {
+      req.flash('error', "This store is itself a demo store — nothing to import.");
+      return res.redirect('/admin/store/themes');
+    }
+
+    await conn.beginTransaction();
+    await conn.query(
+      `INSERT INTO ${TABLES.storeThemes} (store_id, theme_id, is_active) VALUES (?, ?, 1)
+       ON DUPLICATE KEY UPDATE store_id = store_id`,
+      [req.store.id, theme.id]
+    );
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 0 WHERE store_id = ? AND theme_id != ?`, [req.store.id, theme.id]);
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 1 WHERE store_id = ? AND theme_id = ?`, [req.store.id, theme.id]);
+    await conn.commit();
+
+    const result = await importDemoContent(pool, { demoStoreId: theme.demo_store_id, targetStoreId: req.store.id });
+    req.flash(
+      'success',
+      `${theme.name} is active with its demo content — ${result.productsAdded} product(s) and ${result.categoriesAdded} categor${result.categoriesAdded === 1 ? 'y' : 'ies'} added, ${result.pagesTouched} page(s) updated.`
+    );
+    res.redirect('/admin/store/themes');
+  } catch (err) {
+    try { await conn.rollback(); } catch (_) { /* connection may already be past the transaction */ }
+    next(err);
+  } finally {
+    conn.release();
   }
 });
 

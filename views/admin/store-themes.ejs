@@ -27,6 +27,12 @@
               <button type="submit" class="theme-card-btn primary">Activate</button>
             </form>
           <% } %>
+          <% if (t.hasDemo && !isDemoStore) { %>
+            <form action="/admin/store/themes/import-demo" method="POST" onsubmit="return confirm(<%- JSON.stringify('Import ' + t.name + '’s demo content? This activates ' + t.name + ' and REPLACES your Home page, header and footer with its demo content. Its sample products and categories are added to your catalog alongside whatever you already have (nothing of yours is deleted). Continue?') %>);">
+              <input type="hidden" name="themeId" value="<%= t.theme_id %>" />
+              <button type="submit" class="theme-card-btn">Import demo content</button>
+            </form>
+          <% } %>
         </div>
       </div>
     </div>
@@ -50,13 +56,19 @@
           <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
           <div class="theme-card-actions">
             <a href="/?preview_theme=<%= encodeURIComponent(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">Preview on my store ↗</a>
-            <% if (!isDemoStore) { %>
+            <% if (!isDemoStore && demoThemeUrl(t.slug)) { %>
               <a href="<%= demoThemeUrl(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">View demo ↗</a>
             <% } %>
             <form action="/admin/store/themes/install" method="POST">
               <input type="hidden" name="themeId" value="<%= t.theme_id %>" />
               <button type="submit" class="theme-card-btn primary">Install</button>
             </form>
+            <% if (t.hasDemo && !isDemoStore) { %>
+              <form action="/admin/store/themes/import-demo" method="POST" onsubmit="return confirm(<%- JSON.stringify('Install and activate ' + t.name + ' with its demo content? Its sample products, categories, pages and sections will be added to your store. Continue?') %>);">
+                <input type="hidden" name="themeId" value="<%= t.theme_id %>" />
+                <button type="submit" class="theme-card-btn">Install with demo content</button>
+              </form>
+            <% } %>
           </div>
         </div>
       </div>

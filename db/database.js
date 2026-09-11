@@ -526,7 +526,11 @@ async function findLegacyUniqueIndex(conn, table, column) {
      GROUP BY index_name`,
     [column, table]
   );
-  const hit = rows.find((r) => r.col_count === 1 && r.matches === 1);
+  // mysql2 returns COUNT(*) as a JS number but SUM(...) as a string (to
+  // avoid precision loss on large sums), so comparing r.matches with === 1
+  // silently never matches — Number(...) both sides so this actually finds
+  // the legacy index instead of always returning null.
+  const hit = rows.find((r) => Number(r.col_count) === 1 && Number(r.matches) === 1);
   return hit ? hit.index_name : null;
 }
 
