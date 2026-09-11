@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { pool, TABLES, THEMES } = require('../db/database');
 const { requireAdmin, requireAdminRole } = require('../middleware/auth');
-const { rootUrl, adminPortalUrl, storeUrl, getDemoStoreSubdomain } = require('../middleware/tenant');
+const { rootUrl, adminPortalUrl, storeUrl } = require('../middleware/tenant');
 const {
   SECTION_TYPES,
   SECTION_TYPE_KEYS,
@@ -1222,18 +1222,27 @@ router.get('/store/themes', async (req, res, next) => {
       const tokens = themeDefaultTokens(t.slug);
       return { ...t, swatchFrom: tokens.color_primary, swatchTo: tokens.color_primary_dark };
     };
-    // "View demo" on each theme card — opens that theme on the designated
-    // public showcase store (see middleware/tenant.js's getDemoStoreSubdomain)
-    // instead of this merchant's own (possibly empty) store, so a theme can
-    // be judged with realistic content even before anything's been built.
-    const demoSubdomain = getDemoStoreSubdomain();
-    const demoThemeUrl = (slug) => storeUrl(req, demoSubdomain, `/?preview_theme=${encodeURIComponent(slug)}`);
+    // "View demo" on each theme card — opens that theme's OWN dedicated
+    // demo store (pz_themes.demo_store_id), built with content tailored to
+    // that theme's sections and design, instead of this merchant's own
+    // (possibly empty) store. Not every catalog theme has one configured
+    // yet, so demoThemeUrl(slug) returns null when there's nothing to link
+    // to and the view hides the link in that case.
+    const [demoStores] = await pool.query(
+      `SELECT t.slug, s.id AS demo_store_id, s.subdomain
+       FROM ${TABLES.themes} t
+       JOIN ${TABLES.stores} s ON s.id = t.demo_store_id
+       WHERE t.demo_store_id IS NOT NULL`
+    );
+    const demoUrlBySlug = new Map(demoStores.map((d) => [d.slug, storeUrl(req, d.subdomain, '/')]));
+    const demoStoreIds = new Set(demoStores.map((d) => d.demo_store_id));
+    const demoThemeUrl = (slug) => demoUrlBySlug.get(slug) || null;
     res.render('admin/store-themes', {
       title: 'Themes',
       themes: installed.map(withSwatch),
       available: available.map(withSwatch),
       demoThemeUrl,
-      isDemoStore: req.store.subdomain === demoSubdomain,
+      isDemoStore: demoStoreIds.has(req.store.id),
     });
   } catch (err) {
     next(err);

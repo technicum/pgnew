@@ -1088,6 +1088,198 @@ async function migrateStoreThemes(conn) {
   }
 }
 
+// Each catalog theme can point at a real, fully-built store to use as its
+// public "View demo" showcase (see middleware/tenant.js's storeUrl usage in
+// routes/admin.js's /store/themes + views/admin/store-themes.ejs) — the same
+// idea as Shopify's Theme Store "View demo store" button, which opens an
+// actual merchant-style store built to show off that specific theme, not a
+// shared one just recolored. Adds the pz_themes.demo_store_id column, points
+// the 'default' theme at the existing seeded Demo Store, and — the first
+// time this runs — builds a second, dedicated store ("Leaf & Bloom", a small
+// plant shop) with its own categories/products/pages/header/footer and PZ
+// Starter active, tailored to show off that theme's circular category
+// badges, pill buttons, minimal product cards and sage-tinted sections.
+// Fully idempotent: every insert below is gated on "does this already
+// exist", so re-running on a later boot only fills in anything still
+// missing rather than duplicating content a merchant (or this function
+// itself, last boot) already created.
+async function migrateThemeDemoStores(conn, demoStoreId) {
+  const { defaultFields } = require('../lib/sections');
+
+  if (!(await columnExists(conn, TABLES.themes, 'demo_store_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.themes} ADD COLUMN demo_store_id INT NULL`);
+  }
+  if (!(await foreignKeyExists(conn, TABLES.themes, 'demo_store_id'))) {
+    await conn.query(
+      `ALTER TABLE ${TABLES.themes} ADD CONSTRAINT fk_${TABLES.themes}_demo_store FOREIGN KEY (demo_store_id) REFERENCES ${TABLES.stores}(id) ON DELETE SET NULL`
+    );
+  }
+
+  // 'default' theme's demo is simply the existing Demo Store — it's already
+  // a reasonably full generic catalog, and it's what a merchant sees first
+  // (Store Admin > Edit Store > Themes) so it doubles as a live example
+  // without building anything new.
+  await conn.query(
+    `UPDATE ${TABLES.themes} SET demo_store_id = ? WHERE slug = 'default' AND demo_store_id IS NULL`,
+    [demoStoreId]
+  );
+
+  const [[pzStarterTheme]] = await conn.query(`SELECT id, demo_store_id FROM ${TABLES.themes} WHERE slug = 'pz-starter'`);
+  if (!pzStarterTheme) return; // theme not registered yet (no themes/pz-starter/theme.json) — nothing to link up
+
+  const [[existingLeafBloom]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'leafbloom'`);
+  let leafBloomId = existingLeafBloom && existingLeafBloom.id;
+
+  if (!leafBloomId) {
+    console.log('Building "Leaf & Bloom" — the PZ Starter theme\'s dedicated demo store...');
+
+    const [storeResult] = await conn.query(
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES ('Leaf & Bloom', 'leafbloom', 'default', 'free', 'active')`
+    );
+    leafBloomId = storeResult.insertId;
+
+    // A real, logged-in-able owner account (documented password below) so
+    // this can still be opened and tweaked in the normal admin builder like
+    // any other store — same as how a theme partner maintains their own
+    // Shopify demo stores.
+    const demoOwnerEmail = 'demo+leafbloom@pagezaper.local';
+    const [[existingUser]] = await conn.query(`SELECT id FROM ${TABLES.users} WHERE email = ?`, [demoOwnerEmail]);
+    let ownerId;
+    if (existingUser) {
+      ownerId = existingUser.id;
+    } else {
+      const passwordHash = bcrypt.hashSync('leafbloom-demo', 10);
+      const [userResult] = await conn.query(
+        `INSERT INTO ${TABLES.users} (name, email, password_hash) VALUES ('Leaf & Bloom', ?, ?)`,
+        [demoOwnerEmail, passwordHash]
+      );
+      ownerId = userResult.insertId;
+    }
+    await conn.query(
+      `INSERT INTO ${TABLES.userRoles} (user_id, store_id, role) VALUES (?, ?, 'admin')
+       ON DUPLICATE KEY UPDATE role = role`,
+      [ownerId, leafBloomId]
+    );
+
+    // ---- Categories + products ----
+    const PLANT_PRODUCTS = [
+      { title: 'Monstera Deliciosa', slug: 'monstera-deliciosa', description: 'A statement Swiss-cheese-leaf plant that thrives in bright, indirect light.', price: 899, compare_at_price: 1099, image_url: 'https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=600', category: 'Houseplants', stock: 24 },
+      { title: 'Golden Pothos', slug: 'golden-pothos', description: 'The easiest houseplant there is — trailing vines that forgive a missed watering or two.', price: 449, compare_at_price: null, image_url: 'https://images.unsplash.com/photo-1602923668104-8f9e03e77c31?w=600', category: 'Houseplants', stock: 40 },
+      { title: 'Snake Plant', slug: 'snake-plant', description: 'Architectural, near-indestructible, and one of the best plants for low light.', price: 549, compare_at_price: 649, image_url: 'https://images.unsplash.com/photo-1572688484438-313a6e50c333?w=600', category: 'Houseplants', stock: 32 },
+      { title: 'String of Pearls', slug: 'string-of-pearls', description: 'Trailing bead-like succulent, beautiful spilling out of a hanging planter.', price: 399, compare_at_price: null, image_url: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?w=600', category: 'Succulents', stock: 28 },
+      { title: 'Echeveria Rosette', slug: 'echeveria-rosette', description: 'A classic blue-green rosette succulent that loves a sunny windowsill.', price: 349, compare_at_price: 429, image_url: 'https://images.unsplash.com/photo-1459156212016-c812468e2115?w=600', category: 'Succulents', stock: 45 },
+      { title: 'Fiddle Leaf Fig', slug: 'fiddle-leaf-fig', description: 'The showstopper — tall, glossy violin-shaped leaves for a bright corner.', price: 1599, compare_at_price: 1899, image_url: 'https://images.unsplash.com/photo-1597055181300-e3246d4d7b64?w=600', category: 'Outdoor Plants', stock: 12 },
+      { title: 'Lavender Bush', slug: 'lavender-bush', description: 'Fragrant, pollinator-friendly, and happiest in a sunny outdoor spot.', price: 429, compare_at_price: null, image_url: 'https://images.unsplash.com/photo-1499002238440-d264edd596ec?w=600', category: 'Outdoor Plants', stock: 22 },
+      { title: 'Barrel Cactus', slug: 'barrel-cactus', description: 'Low-maintenance desert charm — waters itself out of a neglect, basically.', price: 299, compare_at_price: null, image_url: 'https://images.unsplash.com/photo-1509937528035-ad76254b0356?w=600', category: 'Desert Bloom', stock: 30 },
+      { title: 'Terracotta Planter Set', slug: 'terracotta-planter-set', description: 'Set of 3 hand-thrown terracotta pots with drainage, in graduated sizes.', price: 699, compare_at_price: 899, image_url: 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=600', category: 'Desert Bloom', stock: 18 },
+    ];
+    const catIds = {};
+    for (const name of [...new Set(PLANT_PRODUCTS.map((p) => p.category))]) {
+      const [result] = await conn.query(`INSERT INTO ${TABLES.categories} (store_id, name) VALUES (?, ?)`, [leafBloomId, name]);
+      catIds[name] = result.insertId;
+    }
+    for (const p of PLANT_PRODUCTS) {
+      await conn.query(
+        `INSERT INTO ${TABLES.products} (store_id, title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+        [leafBloomId, p.title, p.slug, p.description, p.price, p.compare_at_price, p.image_url, catIds[p.category], p.stock]
+      );
+    }
+
+    // ---- Pages: Home (with body sections) + a simple About page ----
+    const [homeResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'Home', '/', 1, 'published')`,
+      [leafBloomId]
+    );
+    const homeId = homeResult.insertId;
+    const [aboutResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'About', '/about-us', 0, 'published')`,
+      [leafBloomId]
+    );
+    const aboutId = aboutResult.insertId;
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'richtext', 0, ?)`,
+      [aboutId, JSON.stringify({ ...defaultFields('richtext'), heading: 'Our story', body: 'Leaf & Bloom started on a single crowded windowsill and grew from there. Every plant we sell is nursery-raised, hand-inspected before it ships, and comes with a care card so it actually survives the trip home.', width: 'narrow', align: 'center' })]
+    );
+
+    const homeSections = [
+      { type: 'hero', fields: { ...defaultFields('hero'), heading: 'Bring the Outdoors In', subheading: 'Hand-picked houseplants, succulents and planters, delivered to your door.', bg_type: 'image', bg_image_url: 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=1600', bg_overlay: true, text_theme: 'light' } },
+      { type: 'row', fields: { columns: [
+        { width: 1, blocks: [{ id: 'blk_lb_badge1', type: 'richtext', fields: { heading: 'Free Shipping', body: 'On orders over ₹999', width: 'narrow', align: 'center' }, element_styles: {} }] },
+        { width: 1, blocks: [{ id: 'blk_lb_badge2', type: 'richtext', fields: { heading: 'Hand-Packed', body: 'Every plant boxed with care', width: 'narrow', align: 'center' }, element_styles: {} }] },
+        { width: 1, blocks: [{ id: 'blk_lb_badge3', type: 'richtext', fields: { heading: '30-Day Guarantee', body: 'Arrives healthy, or it’s replaced', width: 'narrow', align: 'center' }, element_styles: {} }] },
+        { width: 1, blocks: [{ id: 'blk_lb_badge4', type: 'richtext', fields: { heading: 'Real Plant People', body: 'Care advice, always free', width: 'narrow', align: 'center' }, element_styles: {} }] },
+      ] } },
+      { type: 'products', fields: { ...defaultFields('products'), heading: 'Trending Plants', limit: 8 } },
+      { type: 'hero', fields: { ...defaultFields('hero'), heading: '20% Off All Succulents This Week', subheading: "Use code SUCCULENT20 at checkout — while stock lasts.", bg_type: 'color', bg_color: '#233318', bg_overlay: false, text_theme: 'light' } },
+      { type: 'collections', fields: { ...defaultFields('collections'), heading: 'Shop by Category', cols: '3' } },
+      { type: 'text_image', fields: { ...defaultFields('text_image'), heading: 'Your Neighborhood Plant Shop', body: 'We believe a home isn’t finished until something in it is growing. Whether you’re a seasoned plant parent or killing your first pothos, our team picks every plant for how well it’ll actually do in a real home — not just how it looks on a shelf.', side: 'right', image_url: 'https://images.unsplash.com/photo-1526397751294-331021109fbd?w=900' } },
+      { type: 'testimonials', fields: { ...defaultFields('testimonials'), heading: 'What our customers say', quotes: [
+        { quote: 'My monstera arrived in perfect shape and is already pushing out a new leaf. Packaging was so thoughtful.', author: 'Priya S.' },
+        { quote: 'Finally a snake plant that didn’t show up half-dead. This is my third order.', author: 'Daniel K.' },
+        { quote: 'The care card alone is worth it — I’ve kept every plant alive for once.', author: 'Marisol T.' },
+      ] } },
+      { type: 'newsletter', fields: { ...defaultFields('newsletter'), heading: 'Get 10% off your first order', subtext: 'Plant care tips and new arrivals, straight to your inbox.', button: 'Subscribe' } },
+    ];
+    let pos = 0;
+    for (const s of homeSections) {
+      await conn.query(
+        `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, ?, ?, ?)`,
+        [homeId, s.type, pos++, JSON.stringify(s.fields)]
+      );
+    }
+
+    // ---- Header / footer (page_id NULL = store-wide default) ----
+    const menuId = await seedStarterMenu(conn, leafBloomId);
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'promo_bar', 0, ?)`,
+      [leafBloomId, JSON.stringify({ ...defaultFields('promo_bar'), text: 'Free shipping on orders over ₹999' })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'logo', 1, ?)`,
+      [leafBloomId, JSON.stringify(defaultFields('logo'))]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'nav_menu', 2, ?)`,
+      [leafBloomId, JSON.stringify({ ...defaultFields('nav_menu'), menu_id: menuId, show_search: false, show_account: true, show_cart: true })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'footer', 'link_columns', 0, ?)`,
+      [leafBloomId, JSON.stringify({ columns: [
+        { heading: 'Shop', links: [{ label: 'Houseplants', url: '/?category=Houseplants' }, { label: 'Succulents', url: '/?category=Succulents' }] },
+        { heading: 'Support', links: [{ label: 'About us', url: '/pages/about-us' }, { label: 'Contact', url: '/pages/about-us' }] },
+      ] })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'footer', 'social_icons', 1, ?)`,
+      [leafBloomId, JSON.stringify({ links: [{ platform: 'instagram', url: '#' }, { platform: 'pinterest', url: '#' }, { platform: 'facebook', url: '#' }] })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'footer', 'copyright', 2, ?)`,
+      [leafBloomId, JSON.stringify({ ...defaultFields('copyright'), text: '', show_powered_by: true, show_admin_link: true })]
+    );
+
+    console.log(`"Leaf & Bloom" demo store created (store_id=${leafBloomId}, subdomain=leafbloom, owner ${demoOwnerEmail} / leafbloom-demo).`);
+  }
+
+  await conn.query(`UPDATE ${TABLES.themes} SET demo_store_id = ? WHERE id = ? AND demo_store_id IS NULL`, [leafBloomId, pzStarterTheme.id]);
+
+  // Make sure PZ Starter is actually the ACTIVE theme on its own demo store
+  // (installed but inactive is not enough — a fresh install defaults to
+  // 'default') so the demo genuinely shows PZ Starter, not a fallback.
+  const [[pzStarterInstall]] = await conn.query(
+    `SELECT id, is_active FROM ${TABLES.storeThemes} WHERE store_id = ? AND theme_id = ?`,
+    [leafBloomId, pzStarterTheme.id]
+  );
+  if (!pzStarterInstall) {
+    await conn.query(`INSERT INTO ${TABLES.storeThemes} (store_id, theme_id, is_active) VALUES (?, ?, 1)`, [leafBloomId, pzStarterTheme.id]);
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 0 WHERE store_id = ? AND theme_id != ?`, [leafBloomId, pzStarterTheme.id]);
+  } else if (!pzStarterInstall.is_active) {
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 0 WHERE store_id = ?`, [leafBloomId]);
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 1 WHERE id = ?`, [pzStarterInstall.id]);
+  }
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
@@ -1109,6 +1301,7 @@ async function init() {
     await migrateAdminsToUsers(conn);
     await migrateThemesFromManifests(conn);
     await migrateStoreThemes(conn);
+    await migrateThemeDemoStores(conn, demoStoreId);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 

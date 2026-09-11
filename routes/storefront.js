@@ -4,14 +4,12 @@ const bcrypt = require('bcryptjs');
 const { pool, TABLES } = require('../db/database');
 const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
 const { requireCustomer } = require('../middleware/auth');
-const { getDemoStoreSubdomain } = require('../middleware/tenant');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('../lib/themes');
 const { resolveTokens, tokensToInlineStyle, themeDefaultTokens } = require('../lib/themeTokens');
 const { readManifest } = require('../lib/themeManifest');
 const menusLib = require('../lib/menus');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const DEMO_STORE_SUBDOMAIN = getDemoStoreSubdomain();
 
 function genOrderNumber() {
   const rand = Math.floor(1000 + Math.random() * 9000);
@@ -60,30 +58,18 @@ router.use(async (req, res, next) => {
     // token_overrides, which belong to whichever theme is actually
     // installed) — a preview shows the theme as its author intended it.
     //
-    // The one exception is the designated DEMO_STORE_SUBDOMAIN storefront:
-    // ?preview_theme=<slug> works there for ANYONE, signed in or not — it's
-    // the public "View demo" link on every theme card (routes/admin.js's
-    // /store/themes + views/admin/store-themes.ejs), the same idea as a
-    // theme marketplace's "view demo" button. Restricted to *published*
-    // catalog themes only, so a public visitor can't preview a draft theme
-    // an admin-only preview link could.
+    // Public "View demo" links (routes/admin.js's /store/themes +
+    // views/admin/store-themes.ejs) point at each theme's own dedicated
+    // demo store (pz_themes.demo_store_id) running that theme for real, so
+    // no query-param bypass is needed here for the public case.
     const previewSlug = typeof req.query.preview_theme === 'string' ? req.query.preview_theme.slice(0, 60) : null;
     const previewAsAdmin = !!(previewSlug && req.session.admin && req.session.admin.store_id === req.store.id);
-    const previewAsPublicDemo = !!(previewSlug && !previewAsAdmin && req.store.subdomain === DEMO_STORE_SUBDOMAIN);
-    if (previewAsAdmin || previewAsPublicDemo) {
+    if (previewAsAdmin) {
       const manifest = readManifest(previewSlug);
-      let manifestOk = !!manifest;
-      if (manifestOk && previewAsPublicDemo) {
-        const [[publishedTheme]] = await pool.query(
-          `SELECT id FROM ${TABLES.themes} WHERE slug = ? AND status = 'published' LIMIT 1`,
-          [previewSlug]
-        );
-        manifestOk = !!publishedTheme;
-      }
-      if (manifestOk) {
+      if (manifest) {
         req.themeViewPrefix = themeViewPrefix(previewSlug);
         res.locals.themeTokenStyle = tokensToInlineStyle(themeDefaultTokens(previewSlug));
-        res.locals.previewingTheme = { slug: previewSlug, name: manifest.name || previewSlug, isPublicDemo: previewAsPublicDemo };
+        res.locals.previewingTheme = { slug: previewSlug, name: manifest.name || previewSlug };
         return next();
       }
     }
