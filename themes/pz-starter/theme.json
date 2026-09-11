@@ -1,18 +1,18 @@
 {
   "slug": "pz-starter",
   "name": "PZ Starter",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "PageZaper",
-  "description": "A warm, organic storefront theme with a clean centered header and soft-rounded product cards.",
+  "description": "A fresh, botanical ecommerce look — olive-green accent, warm cream sections, pill buttons and circular category badges.",
   "price_cents": 0,
   "tokens": {
-    "color_primary": "#4a7c59",
-    "color_primary_dark": "#3a6247",
-    "color_bg": "#faf8f2",
+    "color_primary": "#8bae46",
+    "color_primary_dark": "#6e8f38",
+    "color_bg": "#fdfcf7",
     "color_surface": "#ffffff",
-    "color_text": "#2b2a25",
-    "color_muted": "#8a8478",
-    "color_border": "#e8e2d4",
+    "color_text": "#23291f",
+    "color_muted": "#767a67",
+    "color_border": "#e7e2d1",
     "radius_style": "soft"
   }
 }
