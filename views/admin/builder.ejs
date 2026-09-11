@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= title %> · <%= store.name %> Admin</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/builder.css" />
+  <link rel="stylesheet" href="/css/builder.css?v=<%= assetVersion %>" />
 </head>
 <body class="builder-body">
   <div class="b-app" id="bApp">
@@ -105,7 +105,7 @@
           <span class="b-dirty-indicator" id="bDirtyIndicator"><span class="b-save-dot"></span><span id="bDirtyText">All changes saved</span></span>
           <button class="b-btn-outline" id="bHistoryBtn" title="Revision history">History</button>
           <a class="b-btn-outline" id="bPreviewLink" href="<%= previewHref %>" target="_blank">Preview</a>
-          <button class="b-btn-solid" id="bSaveBtn" disabled>Save</button>
+          <button class="b-btn-solid is-clean" id="bSaveBtn">Save</button>
           <% if (context === 'page') { %>
             <button class="b-btn-solid" id="bPublishBtn"></button>
           <% } %>
@@ -247,6 +247,6 @@
       resolvedMenus: <%- JSON.stringify(resolvedMenus || {}).split('/').join(String.fromCharCode(92) + '/') %>
     };
   </script>
-  <script src="/js/admin-builder.js"></script>
+  <script src="/js/admin-builder.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

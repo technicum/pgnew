@@ -140,7 +140,13 @@ body.builder-body button { font-family: inherit; }
 .b-btn-solid { background: var(--b-accent); border-color: var(--b-accent); color: var(--b-accent-ink); }
 .b-btn-solid:hover { filter: brightness(0.96); }
 .b-btn-solid.is-published { background: var(--b-surface); color: var(--b-ink); border-color: var(--b-line); }
-#bSaveBtn:disabled { background: var(--b-surface-2); border-color: var(--b-line); color: var(--b-muted); cursor: default; filter: none; }
+/* .is-clean: nothing to save right now — a CSS-only dim, not the native
+   `disabled` attribute, so the button stays genuinely clickable (see
+   doSave's comment on why: clicking it is what commits a still-focused
+   contenteditable/input edit before checking whether there's anything to
+   save). :disabled below is only the brief moment an actual Save request
+   is in flight (see doSave), which gets its own dim for the same reason. */
+#bSaveBtn.is-clean, #bSaveBtn:disabled { background: var(--b-surface-2); border-color: var(--b-line); color: var(--b-muted); cursor: default; filter: none; }
 
 /* Revisions modal — WordPress-style "Browse revisions" list, newest save
    first; each row can be restored, which itself becomes a fresh revision. */

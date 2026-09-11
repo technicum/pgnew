@@ -22,6 +22,19 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('trust proxy', true);
 
+// A cache-busting value for static assets that change behavior, not just
+// looks (right now: the page/header/footer builder's own JS/CSS) — appended
+// as a "?v=" query param in views/admin/builder.ejs. Changes on every server
+// start, so a deploy (git pull + pm2 restart) always forces browsers to
+// fetch the new file instead of silently running a stale cached one against
+// an updated server — exactly what happened before this existed: the old
+// autosave-based admin-builder.js kept running in already-open tabs (and any
+// tab that loaded from cache) after the server switched to the explicit
+// Save + revisions model, so its "Saved"/"Save" UI looked present but the
+// click handlers behind it were the old ones (or missing entirely).
+// Available in every view via app.locals, no per-route wiring needed.
+app.locals.assetVersion = Date.now();
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use((req, res, next) => {

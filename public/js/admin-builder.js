@@ -301,18 +301,28 @@
     if (redoBtn) redoBtn.disabled = history.index >= history.stack.length - 1;
   }
 
-  // Paints the "Unsaved changes" / "All changes saved" indicator and
-  // enables/disables the Save button to match state.dirty. Once any edit
-  // is made this stays "Unsaved changes" until an explicit Save succeeds —
-  // undoing back to the original content doesn't clear it (the same
-  // conservative call most editors make), so Save is always safe to click.
+  // Paints the "Unsaved changes" / "All changes saved" indicator and dims
+  // the Save button to match state.dirty. Once any edit is made this stays
+  // "Unsaved changes" until an explicit Save succeeds — undoing back to the
+  // original content doesn't clear it (the same conservative call most
+  // editors make), so Save is always safe to click.
+  //
+  // Deliberately a CSS class (is-clean), never the native `disabled`
+  // attribute: a still-focused contenteditable heading or inspector field
+  // hasn't committed its edit yet (that happens on blur — see the canvas
+  // "focusout" listener and wireInspector's) and so state.dirty can still
+  // be false right up to the moment Save is clicked. A genuinely disabled
+  // button refuses the click outright in every browser — doSave() never
+  // even runs to blur the field and pick up that last edit — which is
+  // exactly the bug this fixes: clicking Save right after typing looked
+  // like it did nothing, because it truly did nothing.
   function updateDirtyUI() {
     var ind = document.getElementById("bDirtyIndicator");
     var txt = document.getElementById("bDirtyText");
     var btn = document.getElementById("bSaveBtn");
     if (ind) ind.classList.toggle("is-dirty", !!state.dirty);
     if (txt && !ind.classList.contains("is-saving")) txt.textContent = state.dirty ? "Unsaved changes" : "All changes saved";
-    if (btn) btn.disabled = !state.dirty;
+    if (btn) btn.classList.toggle("is-clean", !state.dirty);
   }
 
   // Only toggled around the actual Save network call (see doSave) — a
@@ -333,12 +343,27 @@
   // server's response (now carrying real database ids for anything new)
   // as the live state and resets the undo/redo stack to that checkpoint.
   function doSave() {
+    // Blur whatever's currently focused first — a contenteditable heading/
+    // paragraph or an inspector input only commits its value on blur (see
+    // the canvas "focusout" listener and wireInspector's), so saving while
+    // still mid-edit there (Ctrl+S without clicking away first, or a fast
+    // click that lands before the browser's own blur ordering settles)
+    // would otherwise save everything EXCEPT what's still focused.
+    var active = document.activeElement;
+    if (active && active !== document.body && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) {
+      active.blur();
+    }
     if (!state.dirty) return Promise.resolve();
+    // Only a temporary, in-flight guard against double-submitting the same
+    // save — cleared again as soon as the request settles, whatever the
+    // outcome, so the button is never left permanently inert the way the
+    // old disabled-when-clean version could be.
     var btn = document.getElementById("bSaveBtn");
     if (btn) btn.disabled = true;
     setSavingUI(true);
     return api(BASE + "/save", { sections: state.sections }).then(function (res) {
       setSavingUI(false);
+      if (btn) btn.disabled = false;
       if (!res || !res.ok) {
         toast(res && res.error ? res.error : "Could not save your changes.", true);
         updateDirtyUI();
@@ -358,6 +383,7 @@
       toast("Saved");
     }).catch(function () {
       setSavingUI(false);
+      if (btn) btn.disabled = false;
       updateDirtyUI();
       toast("Could not save your changes — check your connection.", true);
     });
