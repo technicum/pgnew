@@ -15,6 +15,8 @@ const {
   sanitizeElementStyle,
   sanitizeAllElementStyles,
   sanitizeRowBlock,
+  sectionTypesForContext,
+  sectionAllowedInContext,
 } = require('../lib/sections');
 const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
 
@@ -263,6 +265,320 @@ async function loadOwnedPage(storeId, pageId) {
   return page;
 }
 
+// ---- Shared section-canvas engine ----
+// pz_page_sections now backs THREE kinds of canvas, distinguished by a
+// `scope`: { storeId, pageId, region }.
+//   - A page's own content:      { pageId: <page>, region: 'body' }
+//   - A store's global header/footer (page_id NULL): { pageId: null, region: 'header'|'footer' }
+//   - One page's header/footer OVERRIDE (falls back to global when absent
+//     — see routes/storefront.js's resolveLayoutSections): { pageId: <page>, region: 'header'|'footer' }
+// Every CRUD operation the builder needs (create/reorder/restore/update/
+// settings/element-style/toggle/delete) is implemented once here, against a
+// scope, and reused by all three sets of routes below — so the three
+// canvases can never quietly drift apart in behavior.
+function scopeWhere(scope) {
+  return scope.pageId != null
+    ? { sql: 'page_id = ? AND region = ?', params: [scope.pageId, scope.region] }
+    : { sql: 'store_id = ? AND page_id IS NULL AND region = ?', params: [scope.storeId, scope.region] };
+}
+
+// The type-library a scope's TOP-LEVEL sections are validated/offered
+// against — see lib/sections.js's `contexts`. A page's 'body' region uses
+// the 'page' canvas; header/footer scopes (global or per-page override) use
+// their own region name directly.
+function scopeContext(scope) {
+  return scope.region === 'body' ? 'page' : scope.region;
+}
+
+function parseSectionRow(s) {
+  return {
+    ...s,
+    fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
+    element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
+  };
+}
+
+async function scopeListSections(scope) {
+  const { sql, params } = scopeWhere(scope);
+  const [rows] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE ${sql} ORDER BY position ASC`, params);
+  return rows.map(parseSectionRow);
+}
+
+async function scopeLoadSection(scope, sectionId) {
+  const { sql, params } = scopeWhere(scope);
+  const [[row]] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE id = ? AND ${sql}`, [sectionId, ...params]);
+  return row ? parseSectionRow(row) : null;
+}
+
+async function scopeCreateSection(scope, req, res, next) {
+  try {
+    const { type } = req.body;
+    if (!sectionAllowedInContext(type, scopeContext(scope))) return res.status(400).json({ error: 'Unknown section type' });
+    const { sql, params } = scopeWhere(scope);
+    const [[{ maxPos }]] = await pool.query(`SELECT COALESCE(MAX(position), -1) AS maxPos FROM ${TABLES.pageSections} WHERE ${sql}`, params);
+    const fields = defaultFields(type);
+    const [result] = await pool.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, ?, ?, ?, ?, ?)`,
+      [scope.storeId, scope.pageId, scope.region, type, maxPos + 1, JSON.stringify(fields)]
+    );
+    res.json({ ok: true, section: { id: result.insertId, type, position: maxPos + 1, fields, hidden: 0 } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function scopeReorderSections(scope, req, res, next) {
+  try {
+    const order = Array.isArray(req.body.order) ? req.body.order : [];
+    const { sql, params } = scopeWhere(scope);
+    for (let i = 0; i < order.length; i++) {
+      await pool.query(`UPDATE ${TABLES.pageSections} SET position = ? WHERE id = ? AND ${sql}`, [i, order[i], ...params]);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function scopeRestoreSections(scope, req, res, next) {
+  try {
+    const incoming = Array.isArray(req.body.sections) ? req.body.sections.slice(0, 200) : [];
+    const context = scopeContext(scope);
+    const { sql, params } = scopeWhere(scope);
+
+    const [existingRows] = await pool.query(`SELECT id FROM ${TABLES.pageSections} WHERE ${sql}`, params);
+    const existingIds = new Set(existingRows.map((r) => r.id));
+    const keepIds = new Set();
+
+    for (let i = 0; i < incoming.length; i++) {
+      const item = incoming[i] || {};
+      if (!sectionAllowedInContext(item.type, context)) continue;
+
+      const fields = sanitizeFields(item.type, {}, item.fields);
+      const settings = sanitizeSectionSettings(item);
+      const hidden = item.hidden ? 1 : 0;
+      const customClass = settings.custom_class || null;
+      const customCss = settings.custom_css || null;
+      const minHeight = settings.min_height || 0;
+      const hideDesktop = settings.hide_desktop || 0;
+      const hideTablet = settings.hide_tablet || 0;
+      const hideMobile = settings.hide_mobile || 0;
+      const marginTop = settings.margin_top || 0;
+      const marginBottom = settings.margin_bottom || 0;
+      const marginLeft = settings.margin_left || 0;
+      const marginRight = settings.margin_right || 0;
+      const paddingTop = settings.padding_top || 0;
+      const paddingBottom = settings.padding_bottom || 0;
+      const paddingLeft = settings.padding_left || 0;
+      const paddingRight = settings.padding_right || 0;
+      const elementStyles = sanitizeAllElementStyles(item.type, item.element_styles);
+      const elementStylesJson = Object.keys(elementStyles).length ? JSON.stringify(elementStyles) : null;
+
+      const incomingId = Number.isInteger(item.id) ? item.id : parseInt(item.id, 10);
+      if (incomingId && existingIds.has(incomingId)) {
+        keepIds.add(incomingId);
+        await pool.query(
+          `UPDATE ${TABLES.pageSections}
+             SET position = ?, fields = ?, hidden = ?, custom_class = ?, custom_css = ?, min_height = ?,
+                 hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
+                 margin_top = ?, margin_bottom = ?, margin_left = ?, margin_right = ?,
+                 padding_top = ?, padding_bottom = ?, padding_left = ?, padding_right = ?, element_styles = ?
+           WHERE id = ?`,
+          [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
+            marginTop, marginBottom, marginLeft, marginRight,
+            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson, incomingId]
+        );
+      } else {
+        const [result] = await pool.query(
+          `INSERT INTO ${TABLES.pageSections}
+             (store_id, page_id, region, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
+              margin_top, margin_bottom, margin_left, margin_right,
+              padding_top, padding_bottom, padding_left, padding_right, element_styles)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [scope.storeId, scope.pageId, scope.region, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
+            marginTop, marginBottom, marginLeft, marginRight,
+            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson]
+        );
+        keepIds.add(result.insertId);
+      }
+    }
+
+    const toDelete = [...existingIds].filter((id) => !keepIds.has(id));
+    if (toDelete.length) {
+      await pool.query(
+        `DELETE FROM ${TABLES.pageSections} WHERE id IN (${toDelete.map(() => '?').join(',')})`,
+        toDelete
+      );
+    }
+
+    res.json({ ok: true, sections: await scopeListSections(scope) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function scopeUpdateSectionFields(scope, sectionId, req, res, next) {
+  try {
+    const section = await scopeLoadSection(scope, sectionId);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+    const nextFields = sanitizeFields(section.type, section.fields, req.body.fields);
+    await pool.query(`UPDATE ${TABLES.pageSections} SET fields = ? WHERE id = ?`, [JSON.stringify(nextFields), section.id]);
+    res.json({ ok: true, fields: nextFields });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
+  try {
+    const section = await scopeLoadSection(scope, sectionId);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+
+    const patch = sanitizeSectionSettings(req.body);
+    const sets = [];
+    const values = [];
+    if (patch.custom_class !== undefined) { sets.push('custom_class = ?'); values.push(patch.custom_class || null); }
+    if (patch.custom_css !== undefined) { sets.push('custom_css = ?'); values.push(patch.custom_css || null); }
+    if (patch.min_height !== undefined) { sets.push('min_height = ?'); values.push(patch.min_height); }
+    if (patch.hide_desktop !== undefined) { sets.push('hide_desktop = ?'); values.push(patch.hide_desktop); }
+    if (patch.hide_tablet !== undefined) { sets.push('hide_tablet = ?'); values.push(patch.hide_tablet); }
+    if (patch.hide_mobile !== undefined) { sets.push('hide_mobile = ?'); values.push(patch.hide_mobile); }
+    if (patch.margin_top !== undefined) { sets.push('margin_top = ?'); values.push(patch.margin_top); }
+    if (patch.margin_bottom !== undefined) { sets.push('margin_bottom = ?'); values.push(patch.margin_bottom); }
+    if (patch.margin_left !== undefined) { sets.push('margin_left = ?'); values.push(patch.margin_left); }
+    if (patch.margin_right !== undefined) { sets.push('margin_right = ?'); values.push(patch.margin_right); }
+    if (patch.padding_top !== undefined) { sets.push('padding_top = ?'); values.push(patch.padding_top); }
+    if (patch.padding_bottom !== undefined) { sets.push('padding_bottom = ?'); values.push(patch.padding_bottom); }
+    if (patch.padding_left !== undefined) { sets.push('padding_left = ?'); values.push(patch.padding_left); }
+    if (patch.padding_right !== undefined) { sets.push('padding_right = ?'); values.push(patch.padding_right); }
+    if (sets.length) {
+      values.push(section.id);
+      await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
+    }
+
+    const [[updated]] = await pool.query(
+      `SELECT custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
+              margin_top, margin_bottom, margin_left, margin_right,
+              padding_top, padding_bottom, padding_left, padding_right
+       FROM ${TABLES.pageSections} WHERE id = ?`,
+      [section.id]
+    );
+    res.json({
+      ok: true,
+      custom_class: updated.custom_class || '',
+      custom_css: updated.custom_css || '',
+      min_height: updated.min_height || 0,
+      hide_desktop: !!updated.hide_desktop,
+      hide_tablet: !!updated.hide_tablet,
+      hide_mobile: !!updated.hide_mobile,
+      margin_top: updated.margin_top || 0,
+      margin_bottom: updated.margin_bottom || 0,
+      margin_left: updated.margin_left || 0,
+      margin_right: updated.margin_right || 0,
+      padding_top: updated.padding_top || 0,
+      padding_bottom: updated.padding_bottom || 0,
+      padding_left: updated.padding_left || 0,
+      padding_right: updated.padding_right || 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function scopeUpdateElementStyle(scope, sectionId, req, res, next) {
+  try {
+    const section = await scopeLoadSection(scope, sectionId);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+
+    const field = typeof req.body.field === 'string' ? req.body.field : '';
+    if (!field || !(TEXT_ELEMENT_FIELDS[section.type] || []).includes(field)) {
+      return res.status(400).json({ error: 'Unknown text element for this section' });
+    }
+
+    const updated = sanitizeElementStyle(section.type, section.element_styles, field, req.body);
+    await pool.query(
+      `UPDATE ${TABLES.pageSections} SET element_styles = ? WHERE id = ?`,
+      [Object.keys(updated).length ? JSON.stringify(updated) : null, section.id]
+    );
+    res.json({ ok: true, element_styles: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function scopeToggleSection(scope, sectionId, req, res, next) {
+  try {
+    const section = await scopeLoadSection(scope, sectionId);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+    await pool.query(`UPDATE ${TABLES.pageSections} SET hidden = NOT hidden WHERE id = ?`, [section.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function scopeDeleteSection(scope, sectionId, req, res, next) {
+  try {
+    const section = await scopeLoadSection(scope, sectionId);
+    if (!section) return res.status(404).json({ error: 'Section not found' });
+    await pool.query(`DELETE FROM ${TABLES.pageSections} WHERE id = ?`, [section.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Registers the same 8-route CRUD surface (create/reorder/restore/update-
+// fields/settings/element-style/toggle/delete) under `routePrefix`, backed
+// by whatever scope `resolveScope(req, res)` resolves to. `resolveScope`
+// sends its own 404 and returns null when the scope can't be resolved (bad
+// region, page not found, etc) — routes below treat a null return as
+// "response already sent, do nothing further". Mirrors the literal-paths-
+// before-:sectionId ordering the /pages/:id/sections routes need (see the
+// NOTE above scopeRestoreSections's original, non-shared version).
+function mountSectionRoutes(routePrefix, resolveScope) {
+  router.post(`${routePrefix}/sections`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeCreateSection(scope, req, res, next);
+  });
+  router.post(`${routePrefix}/sections/reorder`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeReorderSections(scope, req, res, next);
+  });
+  router.post(`${routePrefix}/sections/restore`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeRestoreSections(scope, req, res, next);
+  });
+  router.post(`${routePrefix}/sections/:sectionId`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeUpdateSectionFields(scope, req.params.sectionId, req, res, next);
+  });
+  router.post(`${routePrefix}/sections/:sectionId/settings`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeUpdateSectionSettings(scope, req.params.sectionId, req, res, next);
+  });
+  router.post(`${routePrefix}/sections/:sectionId/element-style`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeUpdateElementStyle(scope, req.params.sectionId, req, res, next);
+  });
+  router.post(`${routePrefix}/sections/:sectionId/toggle`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeToggleSection(scope, req.params.sectionId, req, res, next);
+  });
+  router.post(`${routePrefix}/sections/:sectionId/delete`, async (req, res, next) => {
+    const scope = await resolveScope(req, res);
+    if (!scope) return;
+    return scopeDeleteSection(scope, req.params.sectionId, req, res, next);
+  });
+}
+
 router.get('/pages', async (req, res, next) => {
   try {
     const [pages] = await pool.query(
@@ -319,12 +635,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       req.flash('error', 'Page not found.');
       return res.redirect('/admin/pages');
     }
-    const [rawSections] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE page_id = ? ORDER BY position ASC`, [page.id]);
-    const sections = rawSections.map((s) => ({
-      ...s,
-      fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
-      element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
-    }));
+    const sections = await scopeListSections({ storeId: req.store.id, pageId: page.id, region: 'body' });
     // A handful of the store's real products, so the "Product grid" section
     // previews actual catalog items on the canvas instead of placeholders —
     // the live storefront always renders the true current catalog regardless
@@ -349,7 +660,29 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       [req.store.id]
     );
     const components = rawComponents.map((c) => ({ id: c.id, name: c.name, block: typeof c.block === 'string' ? JSON.parse(c.block) : c.block }));
-    res.render('admin/builder', { title: `Edit ${page.name}`, page, sections, sectionTypes: SECTION_TYPES, nestableTypes: NESTABLE_SECTION_TYPES, textElementFields: TEXT_ELEMENT_FIELDS, products, categories, components });
+    // Which of header/footer this page has its OWN override for (as opposed
+    // to inheriting the store's global one) — drives the small "Customize
+    // for this page" toggle in the builder sidebar. See the
+    // /pages/:id/layout/:region/enable|disable routes below.
+    const [overrideRows] = await pool.query(
+      `SELECT DISTINCT region FROM ${TABLES.pageSections} WHERE page_id = ? AND region IN ('header','footer')`,
+      [page.id]
+    );
+    const overrideRegions = overrideRows.map((r) => r.region);
+    res.render('admin/builder', {
+      title: `Edit ${page.name}`,
+      page,
+      context: 'page',
+      sectionsBase: `/admin/pages/${page.id}/sections`,
+      sections,
+      sectionTypes: SECTION_TYPES,
+      nestableTypes: NESTABLE_SECTION_TYPES,
+      textElementFields: TEXT_ELEMENT_FIELDS,
+      products,
+      categories,
+      components,
+      layoutOverrides: { header: overrideRegions.includes('header'), footer: overrideRegions.includes('footer') },
+    });
   } catch (err) {
     next(err);
   }
@@ -387,277 +720,146 @@ router.post('/pages/:id/delete', requireAdminRole, async (req, res, next) => {
   }
 });
 
-// ---- Section JSON API, used by public/js/builder.js ----
-router.post('/pages/:id/sections', async (req, res, next) => {
+// ---- Section JSON API, used by public/js/admin-builder.js ----
+// A page's own content lives at scope { pageId: page.id, region: 'body' }.
+// NOTE: /restore must stay ABOVE /:sectionId (mountSectionRoutes already
+// registers them in that order) — otherwise "restore" gets swallowed as a
+// :sectionId value instead, since Express matches routes in registration
+// order.
+mountSectionRoutes('/pages/:id', async (req, res) => {
+  const page = await loadOwnedPage(req.store.id, req.params.id);
+  if (!page) { res.status(404).json({ error: 'Page not found' }); return null; }
+  return { storeId: req.store.id, pageId: page.id, region: 'body' };
+});
+
+// ---- Header/footer builder ----
+// A store's global header/footer (page_id NULL) — the "Header & Footer"
+// admin area, reachable from anywhere, not tied to one page.
+router.get('/layout/:region', async (req, res, next) => {
   try {
-    const page = await loadOwnedPage(req.store.id, req.params.id);
-    if (!page) return res.status(404).json({ error: 'Page not found' });
-
-    const { type } = req.body;
-    if (!SECTION_TYPE_KEYS.includes(type)) return res.status(400).json({ error: 'Unknown section type' });
-
-    const [[{ maxPos }]] = await pool.query(
-      `SELECT COALESCE(MAX(position), -1) AS maxPos FROM ${TABLES.pageSections} WHERE page_id = ?`,
-      [page.id]
+    const region = req.params.region;
+    if (region !== 'header' && region !== 'footer') return res.status(404).send('Not found');
+    const sections = await scopeListSections({ storeId: req.store.id, pageId: null, region });
+    const [rawComponents] = await pool.query(
+      `SELECT id, name, block FROM ${TABLES.pageComponents} WHERE store_id = ? ORDER BY created_at DESC`,
+      [req.store.id]
     );
-    const fields = defaultFields(type);
-    const [result] = await pool.query(
-      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, ?, ?, ?)`,
-      [page.id, type, maxPos + 1, JSON.stringify(fields)]
-    );
-    res.json({ ok: true, section: { id: result.insertId, type, position: maxPos + 1, fields, hidden: 0 } });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/pages/:id/sections/reorder', async (req, res, next) => {
-  try {
-    const page = await loadOwnedPage(req.store.id, req.params.id);
-    if (!page) return res.status(404).json({ error: 'Page not found' });
-
-    const order = Array.isArray(req.body.order) ? req.body.order : [];
-    for (let i = 0; i < order.length; i++) {
-      await pool.query(`UPDATE ${TABLES.pageSections} SET position = ? WHERE id = ? AND page_id = ?`, [i, order[i], page.id]);
-    }
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Undo/redo, from the builder's own history stack (public/js/admin-builder.js)
-// rather than the browser's — every edit here is an immediate real save
-// (see the file-top comment there), so "undo" means replaying an earlier
-// full snapshot of this page's sections against the database, not reverting
-// some in-memory draft. The client keeps an array of past section-list
-// snapshots and posts whichever one it's moving to; this endpoint reconciles
-// the database to match it exactly:
-//   - a snapshot row with an id that still exists on this page -> updated
-//     in place (content + position)
-//   - a snapshot row with no id, or an id that's gone (e.g. undoing back
-//     past a delete) -> re-inserted as a new row
-//   - any current row not present in the snapshot (e.g. undoing an add,
-//     or redoing past a delete) -> removed
-// It always returns the resulting section list fresh from the database, so
-// the client can just replace its local state wholesale rather than trying
-// to reconcile ids itself.
-// NOTE: this route must stay ABOVE /pages/:id/sections/:sectionId below —
-// otherwise "restore" gets swallowed as a :sectionId value by that route
-// instead, since Express matches routes in registration order.
-router.post('/pages/:id/sections/restore', async (req, res, next) => {
-  try {
-    const page = await loadOwnedPage(req.store.id, req.params.id);
-    if (!page) return res.status(404).json({ error: 'Page not found' });
-
-    const incoming = Array.isArray(req.body.sections) ? req.body.sections.slice(0, 200) : [];
-
-    const [existingRows] = await pool.query(`SELECT id FROM ${TABLES.pageSections} WHERE page_id = ?`, [page.id]);
-    const existingIds = new Set(existingRows.map((r) => r.id));
-    const keepIds = new Set();
-
-    for (let i = 0; i < incoming.length; i++) {
-      const item = incoming[i] || {};
-      if (!SECTION_TYPE_KEYS.includes(item.type)) continue;
-
-      const fields = sanitizeFields(item.type, {}, item.fields);
-      const settings = sanitizeSectionSettings(item);
-      const hidden = item.hidden ? 1 : 0;
-      const customClass = settings.custom_class || null;
-      const customCss = settings.custom_css || null;
-      const minHeight = settings.min_height || 0;
-      const hideDesktop = settings.hide_desktop || 0;
-      const hideTablet = settings.hide_tablet || 0;
-      const hideMobile = settings.hide_mobile || 0;
-      const marginTop = settings.margin_top || 0;
-      const marginBottom = settings.margin_bottom || 0;
-      const marginLeft = settings.margin_left || 0;
-      const marginRight = settings.margin_right || 0;
-      const paddingTop = settings.padding_top || 0;
-      const paddingBottom = settings.padding_bottom || 0;
-      const paddingLeft = settings.padding_left || 0;
-      const paddingRight = settings.padding_right || 0;
-      const elementStyles = sanitizeAllElementStyles(item.type, item.element_styles);
-      const elementStylesJson = Object.keys(elementStyles).length ? JSON.stringify(elementStyles) : null;
-
-      const incomingId = Number.isInteger(item.id) ? item.id : parseInt(item.id, 10);
-      if (incomingId && existingIds.has(incomingId)) {
-        keepIds.add(incomingId);
-        await pool.query(
-          `UPDATE ${TABLES.pageSections}
-             SET position = ?, fields = ?, hidden = ?, custom_class = ?, custom_css = ?, min_height = ?,
-                 hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
-                 margin_top = ?, margin_bottom = ?, margin_left = ?, margin_right = ?,
-                 padding_top = ?, padding_bottom = ?, padding_left = ?, padding_right = ?, element_styles = ?
-           WHERE id = ?`,
-          [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
-            marginTop, marginBottom, marginLeft, marginRight,
-            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson, incomingId]
-        );
-      } else {
-        const [result] = await pool.query(
-          `INSERT INTO ${TABLES.pageSections}
-             (page_id, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
-              margin_top, margin_bottom, margin_left, margin_right,
-              padding_top, padding_bottom, padding_left, padding_right, element_styles)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [page.id, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
-            marginTop, marginBottom, marginLeft, marginRight,
-            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson]
-        );
-        keepIds.add(result.insertId);
-      }
-    }
-
-    const toDelete = [...existingIds].filter((id) => !keepIds.has(id));
-    if (toDelete.length) {
-      await pool.query(
-        `DELETE FROM ${TABLES.pageSections} WHERE id IN (${toDelete.map(() => '?').join(',')})`,
-        toDelete
-      );
-    }
-
-    const [rawSections] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE page_id = ? ORDER BY position ASC`, [page.id]);
-    const sections = rawSections.map((s) => ({
-      ...s,
-      fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
-      element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
-    }));
-    res.json({ ok: true, sections });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/pages/:id/sections/:sectionId', async (req, res, next) => {
-  try {
-    const page = await loadOwnedPage(req.store.id, req.params.id);
-    if (!page) return res.status(404).json({ error: 'Page not found' });
-
-    const [[section]] = await pool.query(`SELECT * FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
-    if (!section) return res.status(404).json({ error: 'Section not found' });
-
-    const currentFields = typeof section.fields === 'string' ? JSON.parse(section.fields) : section.fields;
-    const nextFields = sanitizeFields(section.type, currentFields, req.body.fields);
-    await pool.query(`UPDATE ${TABLES.pageSections} SET fields = ? WHERE id = ?`, [JSON.stringify(nextFields), section.id]);
-    res.json({ ok: true, fields: nextFields });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Universal "module settings" (custom CSS class, custom CSS, and the
-// drag-to-resize height), same for every section type — kept on their own
-// columns and their own endpoint rather than folded into the type-specific
-// /sections/:sectionId above.
-router.post('/pages/:id/sections/:sectionId/settings', async (req, res, next) => {
-  try {
-    const page = await loadOwnedPage(req.store.id, req.params.id);
-    if (!page) return res.status(404).json({ error: 'Page not found' });
-
-    const [[section]] = await pool.query(`SELECT id FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
-    if (!section) return res.status(404).json({ error: 'Section not found' });
-
-    const patch = sanitizeSectionSettings(req.body);
-    const sets = [];
-    const values = [];
-    if (patch.custom_class !== undefined) { sets.push('custom_class = ?'); values.push(patch.custom_class || null); }
-    if (patch.custom_css !== undefined) { sets.push('custom_css = ?'); values.push(patch.custom_css || null); }
-    if (patch.min_height !== undefined) { sets.push('min_height = ?'); values.push(patch.min_height); }
-    if (patch.hide_desktop !== undefined) { sets.push('hide_desktop = ?'); values.push(patch.hide_desktop); }
-    if (patch.hide_tablet !== undefined) { sets.push('hide_tablet = ?'); values.push(patch.hide_tablet); }
-    if (patch.hide_mobile !== undefined) { sets.push('hide_mobile = ?'); values.push(patch.hide_mobile); }
-    if (patch.margin_top !== undefined) { sets.push('margin_top = ?'); values.push(patch.margin_top); }
-    if (patch.margin_bottom !== undefined) { sets.push('margin_bottom = ?'); values.push(patch.margin_bottom); }
-    if (patch.margin_left !== undefined) { sets.push('margin_left = ?'); values.push(patch.margin_left); }
-    if (patch.margin_right !== undefined) { sets.push('margin_right = ?'); values.push(patch.margin_right); }
-    if (patch.padding_top !== undefined) { sets.push('padding_top = ?'); values.push(patch.padding_top); }
-    if (patch.padding_bottom !== undefined) { sets.push('padding_bottom = ?'); values.push(patch.padding_bottom); }
-    if (patch.padding_left !== undefined) { sets.push('padding_left = ?'); values.push(patch.padding_left); }
-    if (patch.padding_right !== undefined) { sets.push('padding_right = ?'); values.push(patch.padding_right); }
-    if (sets.length) {
-      values.push(section.id);
-      await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
-    }
-
-    const [[updated]] = await pool.query(
-      `SELECT custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
-              margin_top, margin_bottom, margin_left, margin_right,
-              padding_top, padding_bottom, padding_left, padding_right
-       FROM ${TABLES.pageSections} WHERE id = ?`,
-      [section.id]
-    );
-    res.json({
-      ok: true,
-      custom_class: updated.custom_class || '',
-      custom_css: updated.custom_css || '',
-      min_height: updated.min_height || 0,
-      hide_desktop: !!updated.hide_desktop,
-      hide_tablet: !!updated.hide_tablet,
-      hide_mobile: !!updated.hide_mobile,
-      margin_top: updated.margin_top || 0,
-      margin_bottom: updated.margin_bottom || 0,
-      margin_left: updated.margin_left || 0,
-      margin_right: updated.margin_right || 0,
-      padding_top: updated.padding_top || 0,
-      padding_bottom: updated.padding_bottom || 0,
-      padding_left: updated.padding_left || 0,
-      padding_right: updated.padding_right || 0,
+    const components = rawComponents.map((c) => ({ id: c.id, name: c.name, block: typeof c.block === 'string' ? JSON.parse(c.block) : c.block }));
+    res.render('admin/builder', {
+      title: region === 'header' ? 'Header' : 'Footer',
+      page: null,
+      context: region,
+      sectionsBase: `/admin/layout/${region}/sections`,
+      sections,
+      sectionTypes: SECTION_TYPES,
+      nestableTypes: NESTABLE_SECTION_TYPES,
+      textElementFields: TEXT_ELEMENT_FIELDS,
+      products: [],
+      categories: [],
+      components,
+      layoutOverrides: null,
     });
   } catch (err) {
     next(err);
   }
 });
 
-// Per-element spacing — margin/padding on a single text field inside a
-// section (e.g. just the Hero heading), independent of the section-wide
-// margin/padding above. `field` must be one of that section type's
-// TEXT_ELEMENT_FIELDS (see lib/sections.js); sanitizeElementStyle silently
-// no-ops anything else rather than erroring, so a stale client can't corrupt
-// storage even if the section's type or content has since changed.
-router.post('/pages/:id/sections/:sectionId/element-style', async (req, res, next) => {
+mountSectionRoutes('/layout/:region', async (req, res) => {
+  const region = req.params.region;
+  if (region !== 'header' && region !== 'footer') { res.status(404).json({ error: 'Not found' }); return null; }
+  return { storeId: req.store.id, pageId: null, region };
+});
+
+// One page's own header/footer OVERRIDE — falls back to the store's global
+// header/footer (above) whenever it doesn't exist; see routes/storefront.js's
+// resolveLayoutSections. /enable clones the current global sections as this
+// page's starting point (so a merchant edits from something, not a blank
+// canvas); /disable removes the page-scoped rows entirely, which reverts
+// the page to inheriting the global one again — nothing about the global
+// header/footer itself is touched by either.
+router.get('/pages/:id/layout/:region/edit', async (req, res, next) => {
   try {
+    const region = req.params.region;
+    if (region !== 'header' && region !== 'footer') return res.status(404).send('Not found');
     const page = await loadOwnedPage(req.store.id, req.params.id);
-    if (!page) return res.status(404).json({ error: 'Page not found' });
-
-    const [[section]] = await pool.query(`SELECT type, element_styles FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
-    if (!section) return res.status(404).json({ error: 'Section not found' });
-
-    const field = typeof req.body.field === 'string' ? req.body.field : '';
-    if (!field || !(TEXT_ELEMENT_FIELDS[section.type] || []).includes(field)) {
-      return res.status(400).json({ error: 'Unknown text element for this section' });
+    if (!page) {
+      req.flash('error', 'Page not found.');
+      return res.redirect('/admin/pages');
     }
-
-    const current = section.element_styles
-      ? (typeof section.element_styles === 'string' ? JSON.parse(section.element_styles) : section.element_styles)
-      : {};
-    const updated = sanitizeElementStyle(section.type, current, field, req.body);
-    await pool.query(
-      `UPDATE ${TABLES.pageSections} SET element_styles = ? WHERE id = ?`,
-      [Object.keys(updated).length ? JSON.stringify(updated) : null, req.params.sectionId]
+    const sections = await scopeListSections({ storeId: req.store.id, pageId: page.id, region });
+    if (!sections.length) {
+      req.flash('error', `Turn on "Customize ${region} for this page" first.`);
+      return res.redirect(`/admin/pages/${page.id}/edit`);
+    }
+    const [rawComponents] = await pool.query(
+      `SELECT id, name, block FROM ${TABLES.pageComponents} WHERE store_id = ? ORDER BY created_at DESC`,
+      [req.store.id]
     );
-    res.json({ ok: true, element_styles: updated });
+    const components = rawComponents.map((c) => ({ id: c.id, name: c.name, block: typeof c.block === 'string' ? JSON.parse(c.block) : c.block }));
+    res.render('admin/builder', {
+      title: `${region === 'header' ? 'Header' : 'Footer'} override — ${page.name}`,
+      page,
+      context: region,
+      sectionsBase: `/admin/pages/${page.id}/layout/${region}/sections`,
+      sections,
+      sectionTypes: SECTION_TYPES,
+      nestableTypes: NESTABLE_SECTION_TYPES,
+      textElementFields: TEXT_ELEMENT_FIELDS,
+      products: [],
+      categories: [],
+      components,
+      layoutOverrides: null,
+    });
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/pages/:id/sections/:sectionId/toggle', async (req, res, next) => {
+mountSectionRoutes('/pages/:id/layout/:region', async (req, res) => {
+  const region = req.params.region;
+  if (region !== 'header' && region !== 'footer') { res.status(404).json({ error: 'Not found' }); return null; }
+  const page = await loadOwnedPage(req.store.id, req.params.id);
+  if (!page) { res.status(404).json({ error: 'Page not found' }); return null; }
+  return { storeId: req.store.id, pageId: page.id, region };
+});
+
+router.post('/pages/:id/layout/:region/enable', async (req, res, next) => {
   try {
+    const region = req.params.region;
+    if (region !== 'header' && region !== 'footer') return res.status(404).json({ error: 'Not found' });
     const page = await loadOwnedPage(req.store.id, req.params.id);
     if (!page) return res.status(404).json({ error: 'Page not found' });
-    await pool.query(`UPDATE ${TABLES.pageSections} SET hidden = NOT hidden WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
-    res.json({ ok: true });
+
+    const existing = await scopeListSections({ storeId: req.store.id, pageId: page.id, region });
+    if (!existing.length) {
+      const globalSections = await scopeListSections({ storeId: req.store.id, pageId: null, region });
+      for (const s of globalSections) {
+        await pool.query(
+          `INSERT INTO ${TABLES.pageSections}
+             (store_id, page_id, region, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
+              margin_top, margin_bottom, margin_left, margin_right,
+              padding_top, padding_bottom, padding_left, padding_right, element_styles)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [req.store.id, page.id, region, s.type, s.position, JSON.stringify(s.fields), s.hidden, s.custom_class, s.custom_css, s.min_height,
+            s.hide_desktop, s.hide_tablet, s.hide_mobile, s.margin_top, s.margin_bottom, s.margin_left, s.margin_right,
+            s.padding_top, s.padding_bottom, s.padding_left, s.padding_right,
+            Object.keys(s.element_styles || {}).length ? JSON.stringify(s.element_styles) : null]
+        );
+      }
+    }
+    res.json({ ok: true, redirect: `/admin/pages/${page.id}/layout/${region}/edit` });
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/pages/:id/sections/:sectionId/delete', async (req, res, next) => {
+router.post('/pages/:id/layout/:region/disable', async (req, res, next) => {
   try {
+    const region = req.params.region;
+    if (region !== 'header' && region !== 'footer') return res.status(404).json({ error: 'Not found' });
     const page = await loadOwnedPage(req.store.id, req.params.id);
     if (!page) return res.status(404).json({ error: 'Page not found' });
-    await pool.query(`DELETE FROM ${TABLES.pageSections} WHERE id = ? AND page_id = ?`, [req.params.sectionId, page.id]);
+    await pool.query(`DELETE FROM ${TABLES.pageSections} WHERE page_id = ? AND region = ?`, [page.id, region]);
     res.json({ ok: true });
   } catch (err) {
     next(err);

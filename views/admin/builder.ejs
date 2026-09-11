@@ -58,13 +58,27 @@
     </div>
 
     <div class="b-main">
+      <%
+        // context is 'page' (a page's own body content), 'header' or
+        // 'footer' — the latter two cover BOTH the store's global
+        // header/footer (page is null) and one page's override of it (page
+        // is set) — see routes/admin.js's GET /layout/:region, GET
+        // /pages/:id/edit and GET /pages/:id/layout/:region/edit, which are
+        // the only three routes that render this template.
+        var regionLabel = context === 'header' ? 'Header' : 'Footer';
+        var crumbRight = context === 'page'
+          ? page.name
+          : (page ? (page.name + ' — ' + regionLabel + ' override') : regionLabel);
+        var exitHref = context !== 'page' && page ? ('/admin/pages/' + page.id + '/edit') : '/admin/pages';
+        var previewHref = page ? (page.is_home ? '/' : '/pages' + page.path) : '/';
+      %>
       <header class="b-topbar">
         <div class="b-topbar-left">
-          <a class="b-btn-outline b-exit-btn" href="/admin/pages" title="Exit editor">
+          <a class="b-btn-outline b-exit-btn" href="<%= exitHref %>" title="Exit editor">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 6 10l6 6"/></svg>
             Exit editor
           </a>
-          <div class="b-crumb"><span class="b-crumb-store"><%= store.name %></span><span class="b-crumb-sep">/</span><span class="b-crumb-page"><%= page.name %></span></div>
+          <div class="b-crumb"><span class="b-crumb-store"><%= store.name %></span><span class="b-crumb-sep">/</span><span class="b-crumb-page"><%= crumbRight %></span></div>
           <div class="b-history-toggle">
             <button id="bUndoBtn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8H12.5a4 4 0 0 1 0 8H8"/><path d="M8 4.5 4.5 8 8 11.5"/></svg>
@@ -89,21 +103,60 @@
         </div>
         <div class="b-topbar-right">
           <span class="b-save-indicator" id="bSaveIndicator"><span class="b-save-dot"></span><span id="bSaveText">Saved</span></span>
-          <a class="b-btn-outline" id="bPreviewLink" href="<%= page.is_home ? '/' : '/pages' + page.path %>" target="_blank">Preview</a>
-          <button class="b-btn-solid" id="bPublishBtn"></button>
+          <a class="b-btn-outline" id="bPreviewLink" href="<%= previewHref %>" target="_blank">Preview</a>
+          <% if (context === 'page') { %>
+            <button class="b-btn-solid" id="bPublishBtn"></button>
+          <% } %>
         </div>
       </header>
 
+      <% if (context === 'page') { %>
+        <div class="b-layout-override-bar">
+          <% ['header', 'footer'].forEach(function (region) { %>
+            <div class="b-layout-override-item">
+              <span class="b-layout-override-label"><%= region === 'header' ? 'Header' : 'Footer' %>:</span>
+              <% if (layoutOverrides[region]) { %>
+                <span class="b-layout-override-state">Custom for this page</span>
+                <a class="b-btn-text" href="/admin/pages/<%= page.id %>/layout/<%= region %>/edit">Edit</a>
+                <button type="button" class="b-btn-text" data-layout-disable="<%= region %>">Use global instead</button>
+              <% } else { %>
+                <span class="b-layout-override-state">Using global <%= region %></span>
+                <button type="button" class="b-btn-text" data-layout-enable="<%= region %>">Customize for this page</button>
+              <% } %>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+
       <div class="b-canvas-scroll">
         <div class="b-canvas-frame" id="bCanvasFrame" data-vp="desktop">
+          <%
+            // The fake header/footer "chrome" bars are just visual framing —
+            // a rough sense of where the real thing sits — so they're
+            // skipped on whichever canvas IS the real thing being built
+            // right now, and a plain "Page content" placeholder stands in
+            // for the page body on a header/footer canvas.
+          %>
           <div class="b-canvas" id="bCanvas">
-            <div class="b-canvas-chrome b-canvas-chrome-header">
-              <div><%= store.name %></div>
-              <div class="b-ch-nav"><span>Shop all</span><span>About</span><span>Contact</span></div>
-              <div class="b-ch-cart">Cart (0)</div>
-            </div>
-            <div id="bSortable"></div>
-            <div class="b-canvas-chrome b-canvas-chrome-footer" style="padding-top:22px;padding-bottom:22px;">© <%= new Date().getFullYear() %> <%= store.name %>. Powered by PageZaper.</div>
+            <% if (context !== 'header') { %>
+              <div class="b-canvas-chrome b-canvas-chrome-header">
+                <div><%= store.name %></div>
+                <div class="b-ch-nav"><span>Shop all</span><span>About</span><span>Contact</span></div>
+                <div class="b-ch-cart">Cart (0)</div>
+              </div>
+            <% } %>
+            <% if (context === 'header') { %>
+              <div id="bSortable"></div>
+              <div class="b-canvas-chrome-placeholder">Page content</div>
+            <% } else if (context === 'footer') { %>
+              <div class="b-canvas-chrome-placeholder">Page content</div>
+              <div id="bSortable"></div>
+            <% } else { %>
+              <div id="bSortable"></div>
+            <% } %>
+            <% if (context !== 'footer') { %>
+              <div class="b-canvas-chrome b-canvas-chrome-footer" style="padding-top:22px;padding-bottom:22px;">© <%= new Date().getFullYear() %> <%= store.name %>. Powered by PageZaper.</div>
+            <% } %>
           </div>
         </div>
       </div>
@@ -126,8 +179,10 @@
 
   <script>
     window.__BUILDER__ = {
-      page: <%- JSON.stringify({ id: page.id, name: page.name, path: page.path, is_home: !!page.is_home, status: page.status }).split('/').join(String.fromCharCode(92) + '/') %>,
+      page: <%- JSON.stringify(page ? { id: page.id, name: page.name, path: page.path, is_home: !!page.is_home, status: page.status } : null).split('/').join(String.fromCharCode(92) + '/') %>,
       store: <%- JSON.stringify({ name: store.name }).split('/').join(String.fromCharCode(92) + '/') %>,
+      context: <%- JSON.stringify(context) %>,
+      sectionsBase: <%- JSON.stringify(sectionsBase) %>,
       sectionTypes: <%- JSON.stringify(sectionTypes).split('/').join(String.fromCharCode(92) + '/') %>,
       nestableTypes: <%- JSON.stringify(nestableTypes).split('/').join(String.fromCharCode(92) + '/') %>,
       textElementFields: <%- JSON.stringify(textElementFields).split('/').join(String.fromCharCode(92) + '/') %>,

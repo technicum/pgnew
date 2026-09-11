@@ -1,10 +1,18 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container footer-inner">
-      <p>&copy; <%= new Date().getFullYear() %> <%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %>. Powered by <a href="//<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %>/" style="text-decoration:underline;">PageZaper</a>.</p>
-      <p><a href="<%= typeof loginUrl !== 'undefined' ? loginUrl : '/admin/login' %>">Store admin</a></p>
-    </div>
+    <% if (typeof footerSections !== 'undefined' && footerSections.length) { %>
+      <% footerSections.forEach(function (section) { %>
+        <%- include('../../../partials/section', { section: section, categories: typeof categories !== 'undefined' ? categories : [] }) %>
+      <% }); %>
+    <% } else { %>
+      <%# Fallback for a store with no footer sections saved yet — see the
+          matching comment in this theme's header.ejs. %>
+      <div class="container footer-inner">
+        <p>&copy; <%= new Date().getFullYear() %> <%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %>. Powered by <a href="//<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %>/" style="text-decoration:underline;">PageZaper</a>.</p>
+        <p><a href="<%= typeof loginUrl !== 'undefined' ? loginUrl : '/admin/login' %>">Store admin</a></p>
+      </div>
+    <% } %>
   </footer>
 </body>
 </html>

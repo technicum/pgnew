@@ -390,6 +390,156 @@ main.container {
 .empty-state-page { text-align: center; padding: 80px 0; }
 .empty-state-page h1 { font-size: 4rem; margin: 0; color: var(--color-border); }
 
+/* ---------- Header/footer builder sections ----------
+   Rendered by the same shared section engine as the page body
+   (views/storefront/partials/section.ejs), but sitting directly inside
+   <header>/<footer> rather than <main class="container"> — so unlike the
+   page-body section types above, each of these carries its own
+   .container-equivalent max-width/side-padding. */
+.pz-logo-block, .pz-nav-block, .pz-promo-bar, .pz-linkcols, .pz-social-icons, .pz-copyright {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+.pz-logo-block { display: flex; align-items: center; padding-top: 18px; padding-bottom: 18px; }
+.pz-logo-link { display: inline-flex; align-items: center; }
+.pz-logo-img { display: block; height: 32px; width: auto; }
+.pz-logo-text { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; color: var(--color-text); }
+
+.pz-nav-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+.pz-nav-links { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.pz-nav-links > a, .pz-nav-dropdown > a {
+  color: var(--color-muted);
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 6px 0;
+  border-bottom: 2px solid transparent;
+}
+.pz-nav-links > a.active, .pz-nav-links > a:hover,
+.pz-nav-dropdown > a:hover { color: var(--color-text); border-bottom-color: var(--color-primary); }
+.pz-nav-caret { font-size: 0.7em; }
+.pz-nav-dropdown { position: relative; }
+.pz-nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 6px;
+  z-index: 20;
+}
+.pz-nav-dropdown:hover .pz-nav-dropdown-menu,
+.pz-nav-dropdown:focus-within .pz-nav-dropdown-menu { display: block; }
+.pz-nav-dropdown-menu a { display: block; padding: 7px 10px; border-radius: 6px; color: var(--color-muted); font-size: 0.9rem; }
+.pz-nav-dropdown-menu a:hover { background: var(--color-bg); color: var(--color-text); }
+.pz-nav-icons { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.pz-nav-search input {
+  padding: 7px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.pz-nav-account { font-weight: 500; font-size: 0.9rem; color: var(--color-text); }
+.pz-nav-cart {
+  position: relative;
+  font-weight: 600;
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.pz-promo-bar {
+  max-width: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 24px;
+  padding-right: 24px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+}
+.pz-promo-link { text-decoration: underline; text-underline-offset: 2px; }
+.pz-promo-close {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.75;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+.pz-promo-close:hover { opacity: 1; }
+
+.pz-linkcols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 28px;
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+.pz-linkcol h4 { margin: 0 0 12px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-text); }
+.pz-linkcol a { display: block; padding: 5px 0; color: var(--color-muted); font-size: 0.9rem; }
+.pz-linkcol a:hover { color: var(--color-text); }
+
+.pz-social-icons { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 24px; padding-bottom: 24px; }
+.pz-social-icon {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+.pz-social-icon:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.pz-copyright { padding-top: 24px; padding-bottom: 24px; color: var(--color-muted); font-size: 0.85rem; text-align: center; }
+.pz-copyright-links { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 8px; font-size: 0.85rem; }
+.pz-copyright-links a { text-decoration: underline; }
+
+/* Nested inside a "Row" section (e.g. logo + nav side by side) — the row's
+   own .pz-row-col already provides the horizontal gutter, so drop the
+   max-width/side-padding these carry as top-level header/footer sections. */
+.pz-row-col .pz-logo-block, .pz-row-col .pz-nav-block, .pz-row-col .pz-promo-bar,
+.pz-row-col .pz-linkcols, .pz-row-col .pz-social-icons, .pz-row-col .pz-copyright {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+@media (max-width: 720px) {
+  .pz-nav-block { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .pz-nav-links { gap: 14px; }
+}
+
 /* ---------- Page builder sections ---------- */
 .text-image {
   display: flex;

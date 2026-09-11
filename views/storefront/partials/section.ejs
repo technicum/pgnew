@@ -277,6 +277,123 @@
     <iframe class="pz-html-frame" sandbox="allow-scripts" loading="lazy" title="Custom HTML block" srcdoc="<%= pzHtmlDoc %>"></iframe>
   </div>
 
+<% } else if (section.type === 'logo') { %>
+  <div id="<%= pzId %>" class="pz-logo-block<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <a href="/" class="pz-logo-link">
+      <% if (section.fields.image_url) { %>
+        <img class="pz-logo-img" src="<%= section.fields.image_url %>" alt="<%= typeof store !== 'undefined' && store ? store.name : '' %>" style="height:<%= section.fields.height || 32 %>px;" />
+      <% } else { %>
+        <span class="pz-logo-text"><%= typeof store !== 'undefined' && store ? store.name : '' %></span>
+      <% } %>
+    </a>
+  </div>
+
+<% } else if (section.type === 'nav_menu') { %>
+  <nav id="<%= pzId %>" class="pz-nav-block<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <div class="pz-nav-links">
+      <% if (section.fields.auto_categories && typeof categories !== 'undefined') { %>
+        <% categories.forEach(function (c) { %>
+          <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
+        <% }); %>
+      <% } %>
+      <% if (section.fields.auto_pages && typeof storePages !== 'undefined') { %>
+        <% storePages.forEach(function (pg) { %>
+          <a href="/pages<%= pg.path %>"><%= pg.name %></a>
+        <% }); %>
+      <% } %>
+      <% (section.fields.links || []).forEach(function (l) { %>
+        <% if (l.children && l.children.length) { %>
+          <div class="pz-nav-dropdown">
+            <a href="<%= l.url || '#' %>"><%= l.label %> <span class="pz-nav-caret">&#9662;</span></a>
+            <div class="pz-nav-dropdown-menu">
+              <% l.children.forEach(function (c) { %>
+                <a href="<%= c.url || '#' %>"><%= c.label %></a>
+              <% }); %>
+            </div>
+          </div>
+        <% } else { %>
+          <a href="<%= l.url || '#' %>"><%= l.label %></a>
+        <% } %>
+      <% }); %>
+    </div>
+    <div class="pz-nav-icons">
+      <% if (section.fields.show_search) { %>
+        <form class="pz-nav-search" action="/" method="GET">
+          <input type="search" name="q" placeholder="Search" aria-label="Search" value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" />
+        </form>
+      <% } %>
+      <% if (section.fields.show_account) { %>
+        <% if (typeof customer !== 'undefined' && customer) { %>
+          <a href="/account" class="pz-nav-account">My account</a>
+        <% } else { %>
+          <a href="/account/login" class="pz-nav-account">Log in</a>
+        <% } %>
+      <% } %>
+      <% if (section.fields.show_cart) { %>
+        <a href="/cart" class="pz-nav-cart">
+          Cart<% if (typeof cartItemCount !== 'undefined' && cartItemCount > 0) { %><span class="badge"><%= cartItemCount %></span><% } %>
+        </a>
+      <% } %>
+    </div>
+  </nav>
+
+<% } else if (section.type === 'promo_bar' && section.fields.text) { %>
+  <div id="<%= pzId %>" class="pz-promo-bar<%= pzExtra %>" style="<%= pzHeightStyle %>background:<%= section.fields.bg_color || '#111111' %>;color:<%= section.fields.text_color || '#ffffff' %>;" data-pz-promo<% if (section.fields.dismissible) { %> data-pz-dismissible<% } %>>
+    <span class="pz-promo-text" style="<%= pzElStyle('text') %>"><%= section.fields.text %></span>
+    <% if (section.fields.link_url && section.fields.link_text) { %>
+      <a class="pz-promo-link" href="<%= section.fields.link_url %>"><%= section.fields.link_text %></a>
+    <% } %>
+    <% if (section.fields.dismissible) { %>
+      <button type="button" class="pz-promo-close" aria-label="Dismiss">&times;</button>
+    <% } %>
+  </div>
+  <% if (section.fields.dismissible) { %>
+    <script>
+      (function () {
+        var bar = document.getElementById(<%- JSON.stringify(pzId).split('/').join(String.fromCharCode(92) + '/') %>);
+        if (!bar || bar.dataset.pzWired) return;
+        bar.dataset.pzWired = '1';
+        var key = 'pz-promo-dismissed-' + <%- JSON.stringify(String(section.id)).split('/').join(String.fromCharCode(92) + '/') %>;
+        try { if (localStorage.getItem(key)) bar.style.display = 'none'; } catch (e) {}
+        var closeBtn = bar.querySelector('.pz-promo-close');
+        if (closeBtn) closeBtn.addEventListener('click', function () {
+          bar.style.display = 'none';
+          try { localStorage.setItem(key, '1'); } catch (e) {}
+        });
+      })();
+    </script>
+  <% } %>
+
+<% } else if (section.type === 'link_columns' && section.fields.columns && section.fields.columns.length) { %>
+  <div id="<%= pzId %>" class="pz-linkcols<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <% section.fields.columns.forEach(function (c) { %>
+      <div class="pz-linkcol">
+        <h4><%= c.heading %></h4>
+        <% (c.links || []).forEach(function (l) { %>
+          <a href="<%= l.url || '#' %>"><%= l.label %></a>
+        <% }); %>
+      </div>
+    <% }); %>
+  </div>
+
+<% } else if (section.type === 'social_icons' && section.fields.links && section.fields.links.length) { %>
+  <div id="<%= pzId %>" class="pz-social-icons<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <% section.fields.links.forEach(function (l) { %>
+      <a href="<%= l.url || '#' %>" class="pz-social-icon" target="_blank" rel="noopener noreferrer" title="<%= l.platform %>"><%= l.platform.charAt(0).toUpperCase() + l.platform.slice(1) %></a>
+    <% }); %>
+  </div>
+
+<% } else if (section.type === 'copyright') { %>
+  <div id="<%= pzId %>" class="pz-copyright<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <div style="<%= pzElStyle('text') %>"><%= section.fields.text || ('© ' + new Date().getFullYear() + ' ' + (typeof store !== 'undefined' && store ? store.name : '') + '. All rights reserved.') %></div>
+    <% if (section.fields.show_powered_by || section.fields.show_admin_link) { %>
+      <div class="pz-copyright-links">
+        <% if (section.fields.show_powered_by) { %><span>Powered by <a href="//<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %>/">PageZaper</a></span><% } %>
+        <% if (section.fields.show_admin_link) { %><span><a href="<%= typeof loginUrl !== 'undefined' ? loginUrl : '/admin/login' %>">Store admin</a></span><% } %>
+      </div>
+    <% } %>
+  </div>
+
 <% } else if (section.type === 'spacer') { %>
   <div id="<%= pzId %>" class="section-spacer section-spacer-<%= section.fields.height %><%= pzExtra %>"></div>
 

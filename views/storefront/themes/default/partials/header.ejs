@@ -9,33 +9,30 @@
 <body class="theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>" style="<%= typeof themeTokenStyle !== 'undefined' ? themeTokenStyle : '' %>">
   <%- include('../../../partials/preview-banner') %>
   <header class="site-header">
-    <div class="container header-inner">
-      <a href="/" class="logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></a>
-      <nav class="main-nav">
-        <a href="/" class="<%= typeof activeCategory !== 'undefined' && !activeCategory ? 'active' : '' %>">All</a>
-        <% if (typeof categories !== 'undefined') { %>
-          <% categories.forEach(function(c) { %>
-            <a href="/?category=<%= encodeURIComponent(c.name) %>" class="<%= typeof activeCategory !== 'undefined' && activeCategory === c.name ? 'active' : '' %>"><%= c.name %></a>
-          <% }); %>
-        <% } %>
-        <% if (typeof storePages !== 'undefined' && storePages.length) { %>
-          <% storePages.forEach(function(pg) { %>
-            <a href="/pages<%= pg.path %>"><%= pg.name %></a>
-          <% }); %>
-        <% } %>
-      </nav>
-      <div class="header-actions">
-        <% if (typeof customer !== 'undefined' && customer) { %>
-          <a href="/account">My account</a>
-        <% } else { %>
-          <a href="/account/login">Log in</a>
-        <% } %>
-        <a href="/cart" class="cart-link">
-          Cart
-          <% if (cartItemCount > 0) { %><span class="badge"><%= cartItemCount %></span><% } %>
-        </a>
+    <% if (typeof headerSections !== 'undefined' && headerSections.length) { %>
+      <% headerSections.forEach(function (section) { %>
+        <%- include('../../../partials/section', { section: section, categories: typeof categories !== 'undefined' ? categories : [] }) %>
+      <% }); %>
+    <% } else { %>
+      <%# No header sections saved yet for this store (shouldn't normally
+          happen — every store is seeded one on creation, see
+          db/database.js's migrateDefaultHeaderFooter) — a plain fallback
+          bar so the storefront never ships with a missing header. %>
+      <div class="container header-inner">
+        <a href="/" class="logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %></a>
+        <div class="header-actions">
+          <% if (typeof customer !== 'undefined' && customer) { %>
+            <a href="/account">My account</a>
+          <% } else { %>
+            <a href="/account/login">Log in</a>
+          <% } %>
+          <a href="/cart" class="cart-link">
+            Cart
+            <% if (cartItemCount > 0) { %><span class="badge"><%= cartItemCount %></span><% } %>
+          </a>
+        </div>
       </div>
-    </div>
+    <% } %>
   </header>
 
   <% if (success && success.length) { %>

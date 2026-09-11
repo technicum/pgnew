@@ -212,7 +212,9 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pages} (
 
 CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  page_id INT NOT NULL,
+  page_id INT NULL,
+  store_id INT NULL,
+  region VARCHAR(10) NOT NULL DEFAULT 'body',
   type VARCHAR(30) NOT NULL,
   position INT NOT NULL DEFAULT 0,
   fields JSON NOT NULL,
@@ -234,7 +236,9 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   element_styles JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
-  INDEX idx_page_position (page_id, position)
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  INDEX idx_page_position (page_id, position),
+  INDEX idx_store_region_page (store_id, region, page_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS ${TABLES.newsletterSubscribers} (
@@ -398,6 +402,14 @@ async function columnExists(conn, table, column) {
     [table, column]
   );
   return rows[0].c > 0;
+}
+
+async function columnIsNullable(conn, table, column) {
+  const [rows] = await conn.query(
+    `SELECT is_nullable FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+    [table, column]
+  );
+  return rows.length > 0 && rows[0].is_nullable === 'YES';
 }
 
 async function indexExists(conn, table, indexName) {
@@ -637,6 +649,92 @@ async function migratePageSectionSettings(conn) {
   }
 }
 
+// Turns pz_page_sections into the shared storage for page content AND the
+// header/footer builder, instead of a separate table. Two additions make
+// this possible:
+//   - `region` ('body' | 'header' | 'footer') says which canvas a row
+//     belongs to; existing rows default to 'body' (ordinary page content),
+//     unchanged in meaning.
+//   - `page_id` becomes nullable, and a new `store_id` is added: a row with
+//     page_id = NULL is a store's GLOBAL header/footer section; a row with a
+//     real page_id and region = 'header'/'footer' is that one page's
+//     OVERRIDE, which the storefront prefers over the global rows when
+//     present (see resolveLayoutSections in routes/storefront.js). Ordinary
+//     'body' rows always have a page_id, exactly as before.
+// store_id is filled on every row (even page-scoped ones) so header/footer
+// lookups never need to join through pz_pages just to know which store a
+// row belongs to.
+async function migrateHeaderFooterSections(conn) {
+  if (!(await columnExists(conn, TABLES.pageSections, 'store_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN store_id INT NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'region'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN region VARCHAR(10) NOT NULL DEFAULT 'body'`);
+  }
+  if (!(await columnIsNullable(conn, TABLES.pageSections, 'page_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} MODIFY page_id INT NULL`);
+  }
+  // Backfill store_id for every existing row via its page, then for any
+  // stragglers (shouldn't exist, but keeps this migration self-contained).
+  await conn.query(
+    `UPDATE ${TABLES.pageSections} ps JOIN ${TABLES.pages} p ON ps.page_id = p.id SET ps.store_id = p.store_id WHERE ps.store_id IS NULL`
+  );
+  if (!(await indexExists(conn, TABLES.pageSections, 'idx_store_region_page'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD INDEX idx_store_region_page (store_id, region, page_id)`);
+  }
+  if (!(await foreignKeyExists(conn, TABLES.pageSections, 'store_id'))) {
+    await conn.query(
+      `ALTER TABLE ${TABLES.pageSections} ADD CONSTRAINT fk_${TABLES.pageSections}_store FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE`
+    );
+  }
+}
+
+// Every store needs a global header and footer (page_id NULL) to fall back
+// on — pages created before this feature existed, and brand new stores,
+// have none yet. Seeds sections that reproduce today's hardcoded header/
+// footer markup (logo/store-name, category+page nav, cart/account links;
+// copyright + "Powered by PageZaper" + admin link), so no live storefront
+// goes blank or changes look the moment this ships.
+async function migrateDefaultHeaderFooter(conn) {
+  const { defaultFields } = require('../lib/sections');
+
+  const [stores] = await conn.query(`SELECT id FROM ${TABLES.stores}`);
+  for (const store of stores) {
+    const [[existingHeader]] = await conn.query(
+      `SELECT id FROM ${TABLES.pageSections} WHERE store_id = ? AND page_id IS NULL AND region = 'header' LIMIT 1`,
+      [store.id]
+    );
+    if (!existingHeader) {
+      const logoFields = defaultFields('logo');
+      const navFields = { ...defaultFields('nav_menu'), show_search: false, show_account: true, show_cart: true, auto_categories: true, auto_pages: true, links: [] };
+      await conn.query(
+        `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'logo', 0, ?)`,
+        [store.id, JSON.stringify(logoFields)]
+      );
+      await conn.query(
+        `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'nav_menu', 1, ?)`,
+        [store.id, JSON.stringify(navFields)]
+      );
+    }
+
+    const [[existingFooter]] = await conn.query(
+      `SELECT id FROM ${TABLES.pageSections} WHERE store_id = ? AND page_id IS NULL AND region = 'footer' LIMIT 1`,
+      [store.id]
+    );
+    if (!existingFooter) {
+      // Empty `text` means "auto (c) <year> <store name>" at render time —
+      // see the 'copyright' case in section.ejs — so the seeded default
+      // looks exactly like today's hardcoded footer without baking a
+      // specific year into the database.
+      const copyrightFields = { ...defaultFields('copyright'), text: '', show_powered_by: true, show_admin_link: true };
+      await conn.query(
+        `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'footer', 'copyright', 0, ?)`,
+        [store.id, JSON.stringify(copyrightFields)]
+      );
+    }
+  }
+}
+
 // Adds customer_id to orders so a checkout can be linked to a pz_customers
 // account. Nullable and ON DELETE SET NULL — guest checkout (no account)
 // stays fully supported, and deleting a customer account never deletes
@@ -801,6 +899,8 @@ async function init() {
     const demoStoreId = await migrateMultiTenancy(conn);
     await migratePagesForExistingStores(conn);
     await migratePageSectionSettings(conn);
+    await migrateHeaderFooterSections(conn);
+    await migrateDefaultHeaderFooter(conn);
     await migrateOrderDiscountColumns(conn);
     await migrateOrderCustomerColumn(conn);
     await migrateAdminsToUsers(conn);

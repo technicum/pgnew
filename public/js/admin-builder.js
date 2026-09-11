@@ -28,7 +28,18 @@
   // the library-drag-into-column flow from offering them.
   var NESTABLE_TYPES = DATA.nestableTypes || [];
   function isNestable(type) { return NESTABLE_TYPES.indexOf(type) !== -1; }
-  var BASE = "/admin/pages/" + PAGE.id + "/sections";
+  // 'page' (a page's own body content), 'header' or 'footer' — the latter
+  // two cover both a store's global header/footer and one page's override
+  // of it (see routes/admin.js's three builder-rendering routes). Gates
+  // which types the library panel offers, mirroring lib/sections.js's own
+  // `contexts` on SECTION_TYPES so the canvas never offers a drop the
+  // server would then refuse.
+  var CONTEXT = DATA.context || "page";
+  function isAllowedInContext(type) {
+    var def = SECTION_TYPES[type];
+    return !!def && (def.contexts || ["page"]).indexOf(CONTEXT) !== -1;
+  }
+  var BASE = DATA.sectionsBase;
   var COMPONENTS_BASE = "/admin/components";
   // How many row-in-row levels the builder will let a merchant nest —
   // mirrors lib/sections.js's own MAX_ROW_DEPTH exactly (see
@@ -66,9 +77,16 @@
     html: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6 3 10l4 4M13 6l4 4-4 4M11.3 4.5 8.7 15.5"/></svg>',
     component: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m10 2.5 6.5 3.4v8.2L10 17.5l-6.5-3.4V5.9L10 2.5Z"/><path d="M3.5 5.9 10 9.3l6.5-3.4M10 9.3v8.2"/></svg>',
     move: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v14M3 10h14M6 6 3.5 8.5M14 6l2.5 2.5M6 14l-2.5-2.5M14 14l2.5-2.5"/></svg>',
-    plus: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>'
+    plus: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg>',
+    // Header/footer builder types.
+    logo: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10 2.5 16.5 6v8L10 17.5 3.5 14V6L10 2.5Z"/><path d="M10 2.5v15M3.5 6l6.5 3.5 6.5-3.5"/></svg>',
+    nav_menu: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 5.5h14M3 10h14M3 14.5h8"/></svg>',
+    promo_bar: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="15" height="8" rx="1.4"/><path d="M6 10h8"/></svg>',
+    link_columns: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4v12M4 6h4M4 9h3M11 4v12M11 6h5M11 9h4M11 12h3.5"/></svg>',
+    social_icons: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5.5" cy="10" r="2.3"/><circle cx="14.5" cy="5.5" r="2.3"/><circle cx="14.5" cy="14.5" r="2.3"/><path d="M7.5 8.8l4.9-2.6M7.5 11.2l4.9 2.6"/></svg>',
+    copyright: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.2"/><path d="M12.3 7.8a2.7 2.7 0 1 0 0 4.4"/></svg>'
   };
-  function icon(name) { return ICON[name] || ""; }
+  function icon(name) { return ICON[name] || ICON.html; }
 
   /* ---------------------------------------------------------------
      State — server data is the source of truth; every mutation below
@@ -460,6 +478,65 @@
         return '<div class="b-sec-pad"><div class="b-html-block-preview b-ph"><div>' + icon("html") +
           '<div class="b-video-hint">Custom HTML/CSS — edit the code in the panel on the right, then use Preview (top bar) to see it rendered. Runs in a sandboxed frame on your live storefront.</div></div></div></div>';
 
+      case "logo":
+        return '<div class="b-sec-pad b-logo-block">' +
+          (d.image_url
+            ? '<img class="b-logo-img" src="' + attrUrl(d.image_url) + '" alt="" style="height:' + (d.height || 32) + 'px;" />'
+            : '<span class="b-logo-text">' + esc(STORE.name) + '</span>') +
+          '</div>';
+
+      case "nav_menu": {
+        var navLinks = (d.links || []).slice();
+        if (d.auto_categories) navLinks.push({ label: "(your categories)", url: "", children: [] });
+        if (d.auto_pages) navLinks.push({ label: "(your pages)", url: "", children: [] });
+        var navHtml = navLinks.length
+          ? navLinks.map(function (l) {
+              var kids = (l.children || []).length ? ' <span class="b-nav-caret">▾</span>' : "";
+              return '<span class="b-nav-link">' + esc(l.label || "(untitled link)") + kids + '</span>';
+            }).join("")
+          : '<span class="b-prod-empty" style="padding:0;">No links yet — add some from the panel on the right.</span>';
+        var navIcons = [];
+        if (d.show_search) navIcons.push("Search");
+        if (d.show_account) navIcons.push("Account");
+        if (d.show_cart) navIcons.push("Cart");
+        return '<div class="b-sec-pad b-nav-block"><div class="b-nav-links">' + navHtml + '</div>' +
+          (navIcons.length ? '<div class="b-nav-icons">' + navIcons.map(function (n) { return "<span>" + n + "</span>"; }).join("") + '</div>' : '') +
+          '</div>';
+      }
+
+      case "promo_bar":
+        return '<div class="b-promo-bar" style="background:' + esc(d.bg_color || "#111") + ';color:' + esc(d.text_color || "#fff") + ';">' +
+          '<span data-field="text" contenteditable="true">' + esc(d.text) + '</span>' +
+          (d.link_text ? '<span class="b-promo-link">' + esc(d.link_text) + '</span>' : "") +
+          (d.dismissible ? '<span class="b-promo-close">&times;</span>' : "") +
+          '</div>';
+
+      case "link_columns": {
+        var lcCols = d.columns || [];
+        if (!lcCols.length) return '<div class="b-sec-pad"><div class="b-prod-empty">No columns yet — add some from the panel on the right.</div></div>';
+        return '<div class="b-sec-pad b-linkcols">' + lcCols.map(function (c) {
+          return '<div class="b-linkcol"><h4>' + esc(c.heading || "(untitled)") + '</h4>' +
+            (c.links || []).map(function (l) { return '<div class="b-linkcol-link">' + esc(l.label) + '</div>'; }).join("") +
+            '</div>';
+        }).join("") + '</div>';
+      }
+
+      case "social_icons": {
+        var socLinks = d.links || [];
+        if (!socLinks.length) return '<div class="b-sec-pad"><div class="b-prod-empty">No icons yet — add some from the panel on the right.</div></div>';
+        return '<div class="b-sec-pad b-social-icons">' + socLinks.map(function (l) {
+          return '<span class="b-social-chip">' + esc(l.platform) + '</span>';
+        }).join("") + '</div>';
+      }
+
+      case "copyright":
+        return '<div class="b-sec-pad b-copyright-block" style="text-align:center;">' +
+          '<div data-field="text" contenteditable="true">' + esc(d.text || ("© " + new Date().getFullYear() + " " + STORE.name + ". All rights reserved.")) + '</div>' +
+          '<div class="b-copyright-links">' +
+          (d.show_powered_by ? "<span>Powered by PageZaper</span>" : "") +
+          (d.show_admin_link ? "<span>Store admin</span>" : "") +
+          '</div></div>';
+
       case "row": {
         var cols = d.columns || [];
         if (!cols.length) {
@@ -482,9 +559,18 @@
               renderSectionInner(blk, blk.id) +
               '</div>';
           }).join("");
-          var addHtml = '<button class="b-row-col-add" data-col-add="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '" title="Add a rich text block — or drag any section from the library into this column">' +
-            icon("plus") + '<span>Add a section</span></button>';
-          return '<div class="b-row-col' + ((col.blocks || []).length ? "" : " is-empty") + '" data-col-drop="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '">' + blocksHtml + addHtml + '</div>';
+          var isEmptyCol = !(col.blocks || []).length;
+          // The "+" doesn't open a type picker — it just drops in a rich
+          // text block as a quick default, same as before — so it's labeled
+          // for what it actually does. Dragging any item from the library
+          // (or the Components panel) into this column is the real, general
+          // way to add a section here, which is what the empty-state hint
+          // above the button says outright instead of implying the button
+          // itself offers a choice.
+          var addHtml = (isEmptyCol ? '<div class="b-row-col-hint">Drop a section on this column</div>' : "") +
+            '<button class="b-row-col-add" data-col-add="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '" title="Add a rich text block — or drag any section from the library into this column">' +
+            icon("plus") + '<span>Add rich text</span></button>';
+          return '<div class="b-row-col' + (isEmptyCol ? " is-empty" : "") + '" data-col-drop="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '">' + blocksHtml + addHtml + '</div>';
         }).join("");
         var templ = cols.map(function (c) { return (c.width || 1) + "fr"; }).join(" ");
         return '<div class="b-row-inner" style="grid-template-columns:' + templ + ';">' + colsHtml + '</div>';
@@ -1081,6 +1167,7 @@
     body.innerHTML = "";
     var byGroup = {};
     Object.keys(SECTION_TYPES).forEach(function (type) {
+      if (!isAllowedInContext(type)) return;
       var g = SECTION_TYPES[type].group || "More";
       (byGroup[g] = byGroup[g] || []).push(type);
     });
@@ -1156,7 +1243,16 @@
       body.innerHTML = '<div class="b-layer-empty">No components yet — save one from any section or row block’s own toolbar (the bookmark icon) to reuse it on other pages.</div>';
       return;
     }
-    state.components.forEach(function (comp) {
+    // A saved component always inserts as a top-level section on whichever
+    // canvas is open — same top-level restriction as the section library
+    // (isAllowedInContext), so a page-only component (e.g. a saved
+    // products row) doesn't show up, and fail, on the header/footer canvas.
+    var visibleComponents = state.components.filter(function (comp) { return isAllowedInContext(comp.block.type); });
+    if (!visibleComponents.length) {
+      body.innerHTML = '<div class="b-layer-empty">No components for this canvas yet.</div>';
+      return;
+    }
+    visibleComponents.forEach(function (comp) {
       var label = (SECTION_TYPES[comp.block.type] && SECTION_TYPES[comp.block.type].name) || comp.block.type;
       var row = el(
         '<div class="b-comp-item">' +
@@ -1234,6 +1330,84 @@
   }
   function dateTimeHtml(name, isoCurrent) {
     return '<input class="b-text-native" type="datetime-local" data-field="' + name + '" value="' + esc(toLocalInputValue(isoCurrent)) + '" />';
+  }
+
+  // ---- Text <-> structured-data helpers for the header/footer link
+  // fields (nav_menu.links, link_columns.columns, social_icons.links).
+  // Each is edited as plain lines in a textarea rather than a repeating
+  // add-row UI, then parsed back into the shape lib/sections.js expects
+  // on focusout (see wireInspector below).
+  var SOCIAL_PLATFORMS = ["instagram", "facebook", "twitter", "youtube", "tiktok", "pinterest", "linkedin", "custom"];
+
+  // nav_menu links — "Label | url" per line; a line indented with leading
+  // whitespace becomes a one-level-deep dropdown child of the nearest
+  // non-indented line above it.
+  function parseLinksText(text) {
+    var out = [];
+    (text || "").split("\n").forEach(function (raw) {
+      if (!raw.trim()) return;
+      var indented = /^\s/.test(raw);
+      var parts = raw.trim().split("|");
+      var link = { label: (parts[0] || "").trim(), url: (parts[1] || "").trim() };
+      if (indented && out.length) {
+        var parent = out[out.length - 1];
+        parent.children = parent.children || [];
+        parent.children.push(link);
+      } else {
+        link.children = [];
+        out.push(link);
+      }
+    });
+    return out;
+  }
+  function linksToText(links) {
+    return (links || []).map(function (l) {
+      var line = (l.label || "") + " | " + (l.url || "");
+      var kids = (l.children || []).map(function (c) { return "  " + (c.label || "") + " | " + (c.url || ""); });
+      return [line].concat(kids).join("\n");
+    }).join("\n");
+  }
+
+  // link_columns — a "# Heading" line starts a new column, followed by
+  // its "Label | url" link lines.
+  function parseColumnsText(text) {
+    var out = [];
+    (text || "").split("\n").forEach(function (raw) {
+      var line = raw.trim();
+      if (!line) return;
+      if (line.charAt(0) === "#") {
+        out.push({ heading: line.slice(1).trim(), links: [] });
+      } else {
+        if (!out.length) out.push({ heading: "", links: [] });
+        var parts = line.split("|");
+        out[out.length - 1].links.push({ label: (parts[0] || "").trim(), url: (parts[1] || "").trim() });
+      }
+    });
+    return out;
+  }
+  function columnsToText(columns) {
+    return (columns || []).map(function (c) {
+      var lines = ["# " + (c.heading || "")];
+      (c.links || []).forEach(function (l) { lines.push((l.label || "") + " | " + (l.url || "")); });
+      return lines.join("\n");
+    }).join("\n\n");
+  }
+
+  // social_icons — "platform | url" per line; platform is matched
+  // case-insensitively against SOCIAL_PLATFORMS, falling back to "custom".
+  function parseSocialText(text) {
+    var out = [];
+    (text || "").split("\n").forEach(function (raw) {
+      if (!raw.trim()) return;
+      var parts = raw.split("|");
+      var platform = (parts[0] || "").trim().toLowerCase();
+      if (SOCIAL_PLATFORMS.indexOf(platform) === -1) platform = "custom";
+      out.push({ platform: platform, url: (parts[1] || "").trim() });
+    });
+    return out;
+  }
+  function socialToText(links) {
+    return (links || []).map(function (l) { return (l.platform || "custom") + " | " + (l.url || ""); }).join("\n");
   }
 
   function inspectorFieldsFor(sec) {
@@ -1322,6 +1496,35 @@
         return field("HTML", textareaHtml("html", d.html, "<div class=\"my-block\">…</div>")) +
           field("CSS (optional)", textareaHtml("css", d.css, ".my-block { }")) +
           field("", '<div class="b-inspector-hint">Renders in a sandboxed frame on your live storefront — scripts run isolated from the rest of your site and can’t read its cookies or data. For developers comfortable writing raw markup; there’s no visual preview here, use Preview (top bar) to see it rendered.</div>');
+      case "logo":
+        return field("Image URL", textHtml("image_url", d.image_url, "https://…")) +
+          field("Height (px)", textHtml("height", d.height, "32")) +
+          field("", '<div class="b-inspector-hint">No upload yet — paste a hosted image URL. Leave it blank to show your store name as text instead.</div>');
+      case "nav_menu":
+        return field("Links", textareaHtml("links", linksToText(d.links), "Shop | /shop\n  Hoodies | /shop/hoodies\nAbout | /pages/about")) +
+          field("", '<div class="b-inspector-hint">One link per line as “Label | URL”. Indent a line with a space to nest it as a dropdown under the link above it.</div>') +
+          field("", checkHtml("auto_categories", !!d.auto_categories, "Add your categories automatically")) +
+          field("", checkHtml("auto_pages", !!d.auto_pages, "Add your pages automatically")) +
+          field("", checkHtml("show_search", !!d.show_search, "Show search icon")) +
+          field("", checkHtml("show_account", !!d.show_account, "Show account icon")) +
+          field("", checkHtml("show_cart", !!d.show_cart, "Show cart icon"));
+      case "promo_bar":
+        return field("Link URL (optional)", textHtml("link_url", d.link_url, "https://…")) +
+          field("Link text", textHtml("link_text", d.link_text, "Shop now")) +
+          field("Background color", colorHtml("bg_color", d.bg_color)) +
+          field("Text color", colorHtml("text_color", d.text_color)) +
+          field("", checkHtml("dismissible", !!d.dismissible, "Let visitors dismiss it")) +
+          field("", '<div class="b-inspector-hint">Click the message on the canvas to edit it.</div>');
+      case "link_columns":
+        return field("Columns", textareaHtml("columns", columnsToText(d.columns), "# Shop\nHoodies | /shop/hoodies\nT-shirts | /shop/tshirts\n\n# Support\nContact | /pages/contact")) +
+          field("", '<div class="b-inspector-hint">Start each column with “# Heading”, then list its links as “Label | URL”, one per line.</div>');
+      case "social_icons":
+        return field("Icons", textareaHtml("links", socialToText(d.links), "instagram | https://instagram.com/…\nfacebook | https://facebook.com/…")) +
+          field("", '<div class="b-inspector-hint">One per line as “platform | URL”. Platforms: ' + SOCIAL_PLATFORMS.join(", ") + '.</div>');
+      case "copyright":
+        return field("", checkHtml("show_powered_by", !!d.show_powered_by, "Show “Powered by PageZaper”")) +
+          field("", checkHtml("show_admin_link", !!d.show_admin_link, "Show store admin link")) +
+          field("", '<div class="b-inspector-hint">Click the copyright text on the canvas to edit it — leave it blank there to auto-generate “© year store name”.</div>');
       default:
         return "";
     }
@@ -2300,6 +2503,29 @@
           rawTarget.save(rawPatch);
           return;
         }
+        // "links" is shared by nav_menu (label/url/children) and
+        // social_icons (platform/url) — resolve the *effective* type (the
+        // sub-selected row block's, when one is selected, same as
+        // renderInspector()) to pick the right parser. "columns" only
+        // belongs to link_columns, but is parsed the same structured way
+        // rather than falling through to the plain one-line-per-item split
+        // below.
+        if (ta.dataset.field === "links" || ta.dataset.field === "columns") {
+          var structTarget = inspectorFieldTarget();
+          if (!structTarget) return;
+          var structSelBlock = state.selectedBlockId ? findBlockInSection(sec, state.selectedBlockId) : null;
+          var structType = structSelBlock ? structSelBlock.block.type : sec.type;
+          var structPatch = {};
+          if (ta.dataset.field === "columns") {
+            structPatch.columns = parseColumnsText(ta.value);
+          } else if (structType === "social_icons") {
+            structPatch.links = parseSocialText(ta.value);
+          } else {
+            structPatch.links = parseLinksText(ta.value);
+          }
+          structTarget.save(structPatch);
+          return;
+        }
         var taTarget = inspectorFieldTarget();
         if (!taTarget) return;
         var lines = ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
@@ -2358,24 +2584,63 @@
 
     window.addEventListener("resize", positionElementHandles);
 
+    // The publish button only exists on the page-body builder (see
+    // builder.ejs) — header/footer canvases (global or per-page override)
+    // publish implicitly with every edit, same as the rest of the store.
     var publishBtn = document.getElementById("bPublishBtn");
-    function paintPublishBtn() {
-      publishBtn.textContent = PAGE.status === "published" ? "Unpublish" : "Publish";
-      publishBtn.classList.toggle("is-published", PAGE.status === "published");
+    if (publishBtn) {
+      var paintPublishBtn = function () {
+        publishBtn.textContent = PAGE.status === "published" ? "Unpublish" : "Publish";
+        publishBtn.classList.toggle("is-published", PAGE.status === "published");
+      };
+      paintPublishBtn();
+      publishBtn.addEventListener("click", function () {
+        var nextStatus = PAGE.status === "published" ? "draft" : "published";
+        publishBtn.disabled = true;
+        api("/admin/pages/" + PAGE.id + "/publish", { status: nextStatus }).then(function (res) {
+          publishBtn.disabled = false;
+          if (res && res.ok) {
+            PAGE.status = res.status;
+            paintPublishBtn();
+            toast(PAGE.status === "published" ? "Published to your storefront" : "Unpublished — saved as a draft");
+          } else {
+            toast("Could not update publish status.", true);
+          }
+        });
+      });
     }
-    paintPublishBtn();
-    publishBtn.addEventListener("click", function () {
-      var nextStatus = PAGE.status === "published" ? "draft" : "published";
-      publishBtn.disabled = true;
-      api("/admin/pages/" + PAGE.id + "/publish", { status: nextStatus }).then(function (res) {
-        publishBtn.disabled = false;
-        if (res && res.ok) {
-          PAGE.status = res.status;
-          paintPublishBtn();
-          toast(PAGE.status === "published" ? "Published to your storefront" : "Unpublished — saved as a draft");
-        } else {
-          toast("Could not update publish status.", true);
-        }
+
+    // Per-page header/footer override toggle bar (page-body builder only —
+    // see builder.ejs's b-layout-override-bar, rendered only when
+    // context === "page"). Enable clones the store's global sections into
+    // page-scoped ones and opens that override's own builder screen;
+    // disable deletes them, reverting the page to the global layout.
+    document.querySelectorAll("[data-layout-enable]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var region = btn.dataset.layoutEnable;
+        btn.disabled = true;
+        api("/admin/pages/" + PAGE.id + "/layout/" + region + "/enable", {}).then(function (res) {
+          if (res && res.ok && res.redirect) {
+            window.location.href = res.redirect;
+          } else {
+            btn.disabled = false;
+            toast((res && res.error) || "Could not customize the " + region + " for this page.", true);
+          }
+        });
+      });
+    });
+    document.querySelectorAll("[data-layout-disable]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var region = btn.dataset.layoutDisable;
+        btn.disabled = true;
+        api("/admin/pages/" + PAGE.id + "/layout/" + region + "/disable", {}).then(function (res) {
+          if (res && res.ok) {
+            window.location.reload();
+          } else {
+            btn.disabled = false;
+            toast((res && res.error) || "Could not switch back to the global " + region + ".", true);
+          }
+        });
       });
     });
   }

@@ -108,6 +108,67 @@ router.use(async (req, res, next) => {
   next();
 });
 
+// Turns a raw pz_page_sections row into the same shape the section/block
+// partials already expect from renderStorePage below (parsed JSON columns,
+// zeroed-out numeric defaults) — shared so the header/footer canvases render
+// through the exact same section.ejs/block.ejs cases as the page body.
+function toRenderSection(s) {
+  return {
+    id: s.id, type: s.type, fields: typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields,
+    custom_class: s.custom_class || '', custom_css: s.custom_css || '', min_height: s.min_height || 0,
+    hide_desktop: !!s.hide_desktop, hide_tablet: !!s.hide_tablet, hide_mobile: !!s.hide_mobile,
+    margin_top: s.margin_top || 0, margin_bottom: s.margin_bottom || 0,
+    margin_left: s.margin_left || 0, margin_right: s.margin_right || 0,
+    padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
+    padding_left: s.padding_left || 0, padding_right: s.padding_right || 0,
+    element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
+  };
+}
+
+// Resolves one region's ('header' or 'footer') rendered sections: a page's
+// own override if it has one, otherwise the store's global header/footer —
+// the same page_id-nullable fallback routes/admin.js's builder uses (see
+// its scopeWhere/mountSectionRoutes). pageId is omitted for routes with no
+// CMS page behind them (cart, checkout, account, product detail, 404),
+// which always get the store's global layout.
+async function resolveRegionSections(storeId, pageId, region) {
+  let rows = [];
+  if (pageId) {
+    [rows] = await pool.query(
+      `SELECT * FROM ${TABLES.pageSections} WHERE store_id = ? AND page_id = ? AND region = ? AND hidden = 0 ORDER BY position ASC`,
+      [storeId, pageId, region]
+    );
+  }
+  if (!rows.length) {
+    [rows] = await pool.query(
+      `SELECT * FROM ${TABLES.pageSections} WHERE store_id = ? AND page_id IS NULL AND region = ? AND hidden = 0 ORDER BY position ASC`,
+      [storeId, region]
+    );
+  }
+  return rows.map(toRenderSection);
+}
+
+// Store-wide header/footer, available to every view in this router — every
+// theme's header.ejs/footer.ejs partial loops over these instead of the old
+// hardcoded markup (see views/storefront/themes/*/partials/header.ejs).
+// Routes rendering an actual CMS page (renderStorePage below) re-resolve
+// these with that page's id afterward, picking up its per-page override
+// when it has one.
+router.use(async (req, res, next) => {
+  try {
+    const [headerSections, footerSections] = await Promise.all([
+      resolveRegionSections(req.store.id, null, 'header'),
+      resolveRegionSections(req.store.id, null, 'footer'),
+    ]);
+    res.locals.headerSections = headerSections;
+    res.locals.footerSections = footerSections;
+  } catch (err) {
+    res.locals.headerSections = [];
+    res.locals.footerSections = [];
+  }
+  next();
+});
+
 // Renders any page (home or a custom one) by loading its sections from the
 // builder and, if one of those sections is a product grid, fetching the
 // products it needs. Shared by the "/" route and "/pages/:slug" below so
@@ -115,18 +176,44 @@ router.use(async (req, res, next) => {
 async function renderStorePage(req, res, next, page) {
   try {
     const storeId = req.store.id;
-    const { category } = req.query;
+    const { category, q } = req.query;
 
+    // region = 'body' excludes this page's own header/footer OVERRIDE rows
+    // (same page_id, region IN ('header','footer') — see resolveRegionSections
+    // above) from its body content; ordinary page sections are always
+    // region = 'body' (see db/database.js's migrateHeaderFooterSections).
     const [rawSections] = await pool.query(
-      `SELECT * FROM ${TABLES.pageSections} WHERE page_id = ? AND hidden = 0 ORDER BY position ASC`,
+      `SELECT * FROM ${TABLES.pageSections} WHERE page_id = ? AND region = 'body' AND hidden = 0 ORDER BY position ASC`,
       [page.id]
     );
     const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [storeId]);
 
+    // Picks up this page's own header/footer override, falling back to the
+    // store's global layout — replaces the store-wide default the earlier
+    // middleware set for every route in this router.
+    const [headerSections, footerSections] = await Promise.all([
+      resolveRegionSections(storeId, page.id, 'header'),
+      resolveRegionSections(storeId, page.id, 'footer'),
+    ]);
+    res.locals.headerSections = headerSections;
+    res.locals.footerSections = footerSections;
+
+    // ?q= comes from the optional search box a nav_menu section can turn on
+    // (show_search — see partials/section.ejs's 'nav_menu' case); a plain
+    // title match against this store's own catalog, same scoping as the
+    // category filter below.
+    const searchQuery = typeof q === 'string' ? q.trim().slice(0, 200) : '';
+    res.locals.searchQuery = searchQuery;
+
     const needsProducts = rawSections.some((s) => s.type === 'products');
     let allProducts = [];
     if (needsProducts) {
-      if (category) {
+      if (searchQuery) {
+        [allProducts] = await pool.query(
+          `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND status = 'active' AND title LIKE ? ORDER BY created_at DESC`,
+          [storeId, `%${searchQuery}%`]
+        );
+      } else if (category) {
         [allProducts] = await pool.query(
           `SELECT p.* FROM ${TABLES.products} p
            JOIN ${TABLES.categories} c ON p.category_id = c.id

@@ -149,6 +149,20 @@ body.builder-body button { font-family: inherit; }
 .b-canvas-chrome-header .b-ch-cart { font-size: 12px; font-family: var(--b-font-mono); background: var(--b-surface-2); padding: 5px 10px; border-radius: 999px; }
 .b-canvas-chrome-footer { border-top: 1px solid var(--b-line); font-size: 11.5px; font-family: var(--b-font-mono); }
 .b-canvas-chrome-tag { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--b-line); position: absolute; }
+/* Stands in for the page body on the header/footer builder's canvas — a
+   plain placeholder rather than the real fake-chrome bars (those only make
+   sense for the ONE region that isn't the thing currently being built). */
+.b-canvas-chrome-placeholder { padding: 26px 40px; text-align: center; font-size: 12px; color: var(--b-muted); background: repeating-linear-gradient(135deg, var(--b-surface-2), var(--b-surface-2) 8px, var(--b-surface) 8px, var(--b-surface) 16px); border-top: 1px dashed var(--b-line); border-bottom: 1px dashed var(--b-line); }
+
+.b-btn-text { font-size: 12px; font-weight: 600; color: var(--b-accent); background: none; border: none; cursor: pointer; padding: 2px 4px; text-decoration: none; }
+.b-btn-text:hover { text-decoration: underline; }
+
+/* The small "Header: Using global · Customize for this page" strip shown
+   only on a page's own body canvas (context 'page') — see builder.ejs. */
+.b-layout-override-bar { display: flex; gap: 26px; padding: 8px 20px; background: var(--b-surface); border-bottom: 1px solid var(--b-line); font-size: 12px; flex-wrap: wrap; }
+.b-layout-override-item { display: flex; align-items: center; gap: 8px; }
+.b-layout-override-label { font-weight: 700; color: var(--b-ink); }
+.b-layout-override-state { color: var(--b-muted); }
 
 .b-canvas-empty { padding: 90px 24px; text-align: center; color: var(--b-muted); font-size: 13.5px; border: 2px dashed var(--b-line); margin: 16px; border-radius: 10px; }
 
@@ -371,6 +385,35 @@ body.builder-body button { font-family: inherit; }
 .b-faq-q { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .b-faq-a { font-size: 13px; color: var(--b-muted); line-height: 1.6; }
 
+/* Header/footer canvas section types — logo, nav_menu, promo_bar,
+   link_columns, social_icons, copyright (see admin-builder.js's
+   renderSectionInner and lib/sections.js's SECTION_TYPES). */
+.b-logo-block { display: flex; align-items: center; padding-top: 18px; padding-bottom: 18px; }
+.b-logo-img { display: block; width: auto; }
+.b-logo-text { font-family: var(--b-font-display); font-weight: 800; font-size: 20px; color: var(--b-ink); }
+
+.b-nav-block { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding-top: 18px; padding-bottom: 18px; }
+.b-nav-links { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.b-nav-link { font-size: 13.5px; font-weight: 600; color: var(--b-ink); }
+.b-nav-caret { font-size: 10px; color: var(--b-muted); }
+.b-nav-icons { display: flex; align-items: center; gap: 14px; }
+.b-nav-icons span { font-size: 12px; color: var(--b-muted); }
+
+.b-promo-bar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 40px; font-size: 12.5px; font-weight: 600; text-align: center; position: relative; }
+.b-promo-link { text-decoration: underline; text-underline-offset: 2px; }
+.b-promo-close { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: .7; font-size: 16px; line-height: 1; }
+
+.b-linkcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 24px; padding-top: 40px; padding-bottom: 40px; }
+.b-linkcol h4 { margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--b-ink); }
+.b-linkcol-link { font-size: 13px; color: var(--b-muted); padding: 5px 0; }
+
+.b-social-icons { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 28px; padding-bottom: 28px; }
+.b-social-chip { font-size: 11px; font-weight: 600; text-transform: capitalize; color: var(--b-ink); background: var(--b-surface-2); border: 1px solid var(--b-line); border-radius: 999px; padding: 5px 12px; }
+
+.b-copyright-block { padding-top: 24px; padding-bottom: 24px; font-size: 12.5px; color: var(--b-muted); }
+.b-copyright-links { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 8px; font-size: 12px; }
+.b-copyright-links span { color: var(--b-muted); }
+
 .b-countdown { text-align: center; background: var(--b-ink); border-radius: 12px; }
 .b-countdown h3 { color: var(--b-paper); font-size: 20px; margin-bottom: 10px; }
 .b-countdown-hint { color: var(--b-paper); opacity: .75; font-size: 12.5px; font-family: var(--b-font-mono); }
@@ -406,7 +449,8 @@ body.builder-body button { font-family: inherit; }
    as rows can go (MAX_ROW_DEPTH — see admin-builder.js's canNestRowAt) —
    shown as refused rather than accepted-then-silently-discarded. */
 .b-row-col.is-drop-blocked { background: var(--b-danger-soft, #fdecec); outline: 2px dashed var(--b-danger); outline-offset: 2px; cursor: not-allowed; }
-.b-row-col.is-empty { border: 1px dashed var(--b-line); display: flex; align-items: center; justify-content: center; }
+.b-row-col.is-empty { border: 1px dashed var(--b-line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.b-row-col-hint { font-size: 12px; color: var(--b-muted); text-align: center; padding: 0 10px; }
 /* A row nested inside another row's column renders its own .b-row-inner
    (via renderSectionInner's recursive call) straight inside a .b-row-block
    wrapper — trims that inner row's side padding since the .b-row-block

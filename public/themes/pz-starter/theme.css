@@ -135,6 +135,20 @@ body.pzs .btn, body.pzs input, body.pzs select, body.pzs textarea {
 }
 .pzs-footer-inner a { text-decoration: underline; }
 
+/* ---------- Header/footer builder sections, pz-starter refinements ----------
+   The header/footer canvas (public/js/admin-builder.js, rendered here by
+   views/storefront/partials/section.ejs) stacks sections top-to-bottom the
+   same way on every theme — these tweaks keep this theme's original
+   centered, editorial character (centered logo, centered nav, centered
+   footer) without assuming anything about which sections a merchant adds. */
+body.pzs .pz-logo-block { justify-content: center; padding-top: 22px; }
+body.pzs .pz-logo-text { font-size: 1.6rem; font-weight: 600; }
+body.pzs .pz-nav-block { justify-content: center; padding-bottom: 22px; }
+body.pzs .pz-nav-links { justify-content: center; }
+body.pzs .pz-copyright, body.pzs .pz-linkcols, body.pzs .pz-social-icons { text-align: center; }
+body.pzs .pz-linkcols { justify-items: center; }
+body.pzs .pz-social-icons { justify-content: center; }
+
 /* ---------- Organic refinements on the shared section engine ---------- */
 /* Soft shadow + gentle lift on product cards, instead of style.css's flat
    border-only default — reads warmer and a little more tactile. */
