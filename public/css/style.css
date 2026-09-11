@@ -525,6 +525,12 @@ main.container {
 .pz-copyright-links { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 8px; font-size: 0.85rem; }
 .pz-copyright-links a { text-decoration: underline; }
 
+/* Nav menu in the footer (its Header-group icon actions — search/account/
+   cart — make less sense down there, but a merchant can turn those off;
+   this just keeps the link row itself centered like the rest of the footer
+   instead of pinned left the way it reads at the top of the page). */
+.site-footer .pz-nav-block, .pzs-footer .pz-nav-block { justify-content: center; }
+
 /* Nested inside a "Row" section (e.g. logo + nav side by side) — the row's
    own .pz-row-col already provides the horizontal gutter, so drop the
    max-width/side-padding these carry as top-level header/footer sections. */
