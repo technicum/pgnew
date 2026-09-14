@@ -1,3 +1,9 @@
 node_modules/
 .env
 *.log
+
+# Per-store uploaded media (lib/media.js) — runtime data that lives on each
+# deployment's own disk, never something to commit/push/pull between dev
+# and the VPS. The pz_media DB table is the source of truth for what
+# exists; these files are just where it physically lives on THIS machine.
+public/uploads/

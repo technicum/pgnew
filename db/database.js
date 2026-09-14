@@ -88,6 +88,11 @@ const TABLES = {
   // storing its own links inline. See pz_menu_items below for the items.
   menus: `${PREFIX}menus`,
   menuItems: `${PREFIX}menu_items`,
+  // Per-store Media Library (see lib/media.js) — every uploaded file's
+  // metadata; the file itself lives on disk under public/uploads/store-<id>/
+  // (MEDIA_UPLOAD_ROOT in lib/media.js), named by this row's own `filename`
+  // so store_id is never trusted from anywhere but the DB row/folder path.
+  media: `${PREFIX}media`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -404,6 +409,32 @@ CREATE TABLE IF NOT EXISTS ${TABLES.menuItems} (
   FOREIGN KEY (menu_id) REFERENCES ${TABLES.menus}(id) ON DELETE CASCADE,
   FOREIGN KEY (parent_id) REFERENCES ${TABLES.menuItems}(id) ON DELETE CASCADE,
   INDEX idx_menu_parent_position (menu_id, parent_id, position)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One uploaded file's metadata. 'filename' is the sanitized, collision-proof
+-- name it's actually saved as on disk (see lib/media.js's safeFilename) —
+-- never the visitor-supplied original name, which is kept separately in
+-- 'original_name' purely for display (download-as, alt text fallback, the
+-- Library grid). 'url' is the public path (/uploads/store-<id>/<filename>)
+-- every consumer (product form, section image fields, the media picker)
+-- actually stores and renders — kept as its own column, rather than
+-- recomputed from store_id+filename everywhere, so a future storage-backend
+-- change (e.g. to S3/Cloudinary) only has to rewrite this one column, not
+-- every place a media row is read. uploaded_by is nullable/SET NULL so
+-- removing a staff account never deletes the files they uploaded.
+CREATE TABLE IF NOT EXISTS ${TABLES.media} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  filename VARCHAR(255) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  size INT NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  uploaded_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (uploaded_by) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
+  INDEX idx_store_created (store_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 

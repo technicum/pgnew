@@ -21,6 +21,7 @@ const {
 const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
 const menusLib = require('../lib/menus');
 const { importDemoContent } = require('../lib/demoImport');
+const mediaLib = require('../lib/media');
 
 function slugify(str) {
   return str
@@ -1182,6 +1183,90 @@ router.post('/menus/:id/items/:itemId/delete', async (req, res, next) => {
   try {
     await menusLib.deleteItem(req.store.id, req.params.id, req.params.itemId);
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Media Library ----------
+// Every uploaded file belongs to exactly one store (lib/media.js's
+// pz_media table, store_id-scoped the same way products/categories are),
+// stored on disk under public/uploads/store-<id>/. This section covers
+// both the standalone Library page and the JSON endpoints the reusable
+// media picker (public/js/media-picker.js) calls from wherever an image/
+// file field needs it — the product form, the section builder, etc.
+
+router.get('/media', async (req, res, next) => {
+  try {
+    const { rows, total } = await mediaLib.listMedia(req.store.id, { limit: 100 });
+    res.render('admin/media', { title: 'Media', files: rows, total });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// JSON listing for the picker modal — same data as the page above, paged,
+// so a store with a very large library doesn't have to load it all into
+// the picker at once. Kept as a separate route (rather than content-
+// negotiating on /media) so it's obvious at a glance which requests are
+// page loads and which are the picker's own fetches.
+router.get('/media/list', async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 40, 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    const { rows, total } = await mediaLib.listMedia(req.store.id, { limit, offset });
+    res.json({ ok: true, files: rows, total });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/media/upload', (req, res, next) => {
+  mediaLib.upload.array('files', mediaLib.MAX_FILES_PER_UPLOAD)(req, res, async (err) => {
+    if (err) {
+      // multer's own errors (file too large, too many files) and our
+      // fileFilter's UNSUPPORTED_FILE_TYPE both land here — surfaced the
+      // same way whether the request came from the full Library page
+      // (flash + redirect) or the picker's fetch() (JSON, so the modal can
+      // show the error without navigating away).
+      const message = err.message === 'UNSUPPORTED_FILE_TYPE'
+        ? 'Unsupported file type — images (JPG, PNG, WEBP, GIF, SVG) and PDF only.'
+        : err.code === 'LIMIT_FILE_SIZE'
+          ? `That file is over the ${Math.round(mediaLib.MAX_FILE_SIZE / (1024 * 1024))}MB limit.`
+          : err.code === 'LIMIT_FILE_COUNT'
+            ? `You can upload up to ${mediaLib.MAX_FILES_PER_UPLOAD} files at once.`
+            : 'Upload failed.';
+      if (req.get('accept') === 'application/json' || req.xhr) {
+        return res.status(400).json({ ok: false, error: message });
+      }
+      req.flash('error', message);
+      return res.redirect('/admin/media');
+    }
+    try {
+      const files = req.files || [];
+      const saved = [];
+      for (const file of files) {
+        saved.push(await mediaLib.recordUpload(req.store.id, req.session.admin && req.session.admin.id, file));
+      }
+      if (req.get('accept') === 'application/json' || req.xhr) {
+        return res.json({ ok: true, files: saved });
+      }
+      req.flash('success', `${saved.length} file${saved.length === 1 ? '' : 's'} uploaded.`);
+      res.redirect('/admin/media');
+    } catch (e) {
+      next(e);
+    }
+  });
+});
+
+router.post('/media/:id/delete', async (req, res, next) => {
+  try {
+    const ok = await mediaLib.deleteMedia(req.store.id, req.params.id);
+    if (req.get('accept') === 'application/json' || req.xhr) {
+      return res.json({ ok });
+    }
+    req.flash(ok ? 'success' : 'error', ok ? 'File deleted.' : 'File not found.');
+    res.redirect('/admin/media');
   } catch (err) {
     next(err);
   }

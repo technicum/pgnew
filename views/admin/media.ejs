@@ -1,0 +1,86 @@
+<%- include('partials/header') %>
+
+<div class="panel-toolbar" style="justify-content: space-between; align-items: center;">
+  <p style="margin: 0; color: #6b7280; font-size: 0.9rem;">
+    <%= total %> file<%= total === 1 ? '' : 's' %> · images and PDFs, up to 15MB each
+  </p>
+  <form id="mediaUploadForm" action="/admin/media/upload" method="POST" enctype="multipart/form-data">
+    <input type="file" id="mediaFileInput" name="files" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf" hidden />
+    <button type="button" id="mediaUploadBtn" class="btn btn-primary">Upload files</button>
+  </form>
+</div>
+
+<div id="mediaDropzone" class="media-dropzone">
+  <div class="media-grid">
+    <% files.forEach(function(f) { %>
+      <div class="media-card" data-media-id="<%= f.id %>">
+        <div class="media-card-thumb">
+          <% if (f.mime_type.startsWith('image/')) { %>
+            <img src="<%= f.url %>" alt="<%= f.original_name %>" loading="lazy" />
+          <% } else { %>
+            <div class="media-card-filetype">PDF</div>
+          <% } %>
+        </div>
+        <div class="media-card-body">
+          <div class="media-card-name" title="<%= f.original_name %>"><%= f.original_name %></div>
+          <div class="media-card-meta"><%= (f.size / 1024).toFixed(0) %> KB</div>
+          <div class="media-card-actions">
+            <button type="button" class="link-btn media-copy-url" data-url="<%= f.url %>">Copy URL</button>
+            <form action="/admin/media/<%= f.id %>/delete" method="POST" onsubmit="return confirm('Delete this file? Nothing that already references its URL will change, but the file itself will be gone.');">
+              <button type="submit" class="link-btn danger">Delete</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+    <% if (files.length === 0) { %>
+      <p class="empty-state">No files yet. Upload your first one, or drag and drop files here.</p>
+    <% } %>
+  </div>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('mediaUploadForm');
+  var input = document.getElementById('mediaFileInput');
+  var btn = document.getElementById('mediaUploadBtn');
+  var dropzone = document.getElementById('mediaDropzone');
+
+  btn.addEventListener('click', function () { input.click(); });
+  input.addEventListener('change', function () {
+    if (input.files && input.files.length) form.submit();
+  });
+
+  // Drag-and-drop is a progressive enhancement over the plain <form> above
+  // (which already works with JS off) — dropped files get attached to the
+  // same input and the same form submit runs.
+  ['dragenter', 'dragover'].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.add('is-dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(function (evt) {
+    dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.remove('is-dragover'); });
+  });
+  dropzone.addEventListener('drop', function (e) {
+    var dt = e.dataTransfer;
+    if (dt && dt.files && dt.files.length) {
+      input.files = dt.files;
+      form.submit();
+    }
+  });
+
+  document.querySelectorAll('.media-copy-url').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var url = b.getAttribute('data-url');
+      var abs = window.location.origin + url;
+      var done = function () { var orig = b.textContent; b.textContent = 'Copied!'; setTimeout(function () { b.textContent = orig; }, 1200); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(abs).then(done, done);
+      } else {
+        done();
+      }
+    });
+  });
+})();
+</script>
+
+<%- include('partials/footer') %>

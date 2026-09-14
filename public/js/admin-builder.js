@@ -1438,8 +1438,27 @@
   function textHtml(name, current, placeholder) {
     return '<input class="b-text-native" type="text" data-field="' + name + '" value="' + esc(current || "") + '" placeholder="' + esc(placeholder || "") + '" />';
   }
+  // Same as textHtml, but for a field that holds a single image/file URL --
+  // adds a "Choose" button that opens the shared media picker (public/js/
+  // media-picker.js) and writes its result straight into the field's saved
+  // value, same as if the merchant had pasted the URL in and left the
+  // input. Wired up in wireInspector()'s click handler via data-media-pick.
+  function imageFieldHtml(name, current, placeholder) {
+    return '<div class="b-media-field">' +
+      '<input class="b-text-native" type="text" data-field="' + name + '" value="' + esc(current || "") + '" placeholder="' + esc(placeholder || "") + '" />' +
+      '<button type="button" class="b-media-pick-btn" data-media-pick="' + name + '">Choose</button>' +
+      '</div>';
+  }
   function textareaHtml(name, current, placeholder) {
     return '<textarea class="b-text-native b-textarea-native" rows="4" data-field="' + name + '" placeholder="' + esc(placeholder || "") + '">' + esc(current || "") + '</textarea>';
+  }
+  // A button placed below a textarea-list field (currently just gallery's
+  // "images") that appends a picked file's URL as a new line -- the same
+  // shape the textarea's own focusout handler already parses one-line-per-
+  // item, so picking from the library and typing a URL by hand both funnel
+  // into the same saved list.
+  function imageListAppendHtml(name, label) {
+    return '<button type="button" class="b-media-pick-append-btn" data-media-pick-append="' + name + '">' + esc(label || "Add from library") + '</button>';
   }
   function colorHtml(name, current) {
     return '<input class="b-color-native" type="color" data-field="' + name + '" value="' + esc(current || "#ffffff") + '" />';
@@ -1509,7 +1528,7 @@
         if (heroBg === "color") {
           heroBgFields = field("Background color", colorHtml("bg_color", d.bg_color));
         } else if (heroBg === "image") {
-          heroBgFields = field("Background image URL", textHtml("bg_image_url", d.bg_image_url, "https://…")) +
+          heroBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         } else if (heroBg === "video") {
           heroBgFields = field("Background video URL", textHtml("bg_video_url", d.bg_video_url, "https://….mp4")) +
@@ -1532,8 +1551,8 @@
           field("", '<div class="b-inspector-hint">Click the heading on the canvas to edit it.</div>');
       case "text_image":
         return field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side)) +
-          field("Image URL", textHtml("image_url", d.image_url, "https://…")) +
-          field("", '<div class="b-inspector-hint">No upload yet — paste a hosted image URL. Click the heading or body text to edit it.</div>');
+          field("Image URL", imageFieldHtml("image_url", d.image_url, "https://…")) +
+          field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it.</div>');
       case "products":
         return field("Products to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
           field("", '<div class="b-inspector-hint">Shows your ' + DATA.products.length + ' most recent products. Click the heading to edit it.</div>');
@@ -1547,8 +1566,8 @@
           field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it.</div>');
       case "gallery":
         return field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols)) +
-          field("Image URLs", textareaHtml("images", (d.images || []).join("\n"), "One image URL per line, up to 6")) +
-          field("", '<div class="b-inspector-hint">No upload yet — paste hosted image URLs, one per line. Click the heading to edit it.</div>');
+          field("Image URLs", textareaHtml("images", (d.images || []).join("\n"), "One image URL per line, up to 6") + imageListAppendHtml("images", "Add image from library")) +
+          field("", '<div class="b-inspector-hint">Paste hosted image URLs, one per line, or use the button above. Click the heading to edit it.</div>');
       case "video":
         return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
           field("", '<div class="b-inspector-hint">Paste an embeddable video link — a YouTube/Vimeo “embed” URL works best. Click the heading to edit it.</div>');
@@ -1587,9 +1606,9 @@
           field("CSS (optional)", textareaHtml("css", d.css, ".my-block { }")) +
           field("", '<div class="b-inspector-hint">Renders in a sandboxed frame on your live storefront — scripts run isolated from the rest of your site and can’t read its cookies or data. For developers comfortable writing raw markup; there’s no visual preview here, use Preview (top bar) to see it rendered.</div>');
       case "logo":
-        return field("Image URL", textHtml("image_url", d.image_url, "https://…")) +
+        return field("Image URL", imageFieldHtml("image_url", d.image_url, "https://…")) +
           field("Height (px)", textHtml("height", d.height, "32")) +
-          field("", '<div class="b-inspector-hint">No upload yet — paste a hosted image URL. Leave it blank to show your store name as text instead.</div>');
+          field("", '<div class="b-inspector-hint">Leave the image blank to show your store name as text instead.</div>');
       case "nav_menu": {
         var menuOptions = [{ val: "", label: "— No menu picked —" }].concat(
           (DATA.menus || []).map(function (m) { return { val: String(m.id), label: esc(m.name) }; })
@@ -2421,6 +2440,32 @@
       if (tabBtn) {
         state.inspectorTab = tabBtn.dataset.tab === "settings" ? "settings" : "content";
         renderInspector();
+        return;
+      }
+      var pickBtn = e.target.closest("[data-media-pick]");
+      if (pickBtn) {
+        var pickTarget = inspectorFieldTarget();
+        if (!pickTarget || typeof MediaPicker === "undefined") return;
+        var pickField = pickBtn.dataset.mediaPick;
+        MediaPicker.open(function (file) {
+          var patch = {};
+          patch[pickField] = file.url;
+          pickTarget.save(patch);
+        });
+        return;
+      }
+      var appendBtn = e.target.closest("[data-media-pick-append]");
+      if (appendBtn) {
+        var appendTarget = inspectorFieldTarget();
+        if (!appendTarget || typeof MediaPicker === "undefined") return;
+        var appendField = appendBtn.dataset.mediaPickAppend;
+        MediaPicker.open(function (file) {
+          var list = (appendTarget.fields[appendField] || []).slice();
+          list.push(file.url);
+          var patch = {};
+          patch[appendField] = list;
+          appendTarget.save(patch);
+        });
         return;
       }
       var unpinBtn = e.target.closest("[data-el-unpin]");
