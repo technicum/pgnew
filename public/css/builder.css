@@ -31,7 +31,18 @@
 
 body.builder-body { margin: 0; height: 100vh; overflow: hidden; background: var(--b-paper); color: var(--b-ink); font-family: 'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 body.builder-body * { box-sizing: border-box; }
-body.builder-body h1, body.builder-body h2, body.builder-body h3, body.builder-body h4 { font-family: var(--b-font-display); text-wrap: balance; margin: 0; }
+/* :where() keeps this reset's specificity at (0,1,1) instead of (0,1,2) —
+   without it, this rule's `margin: 0` beats more specific component rules
+   like `.b-sec-hero h2 { margin: 0 auto 14px }` (also (0,1,1), but later in
+   source order) purely on specificity, not cascade order. That silently
+   zeroed the auto side-margins several section previews rely on to center
+   an over-constrained (max-width + margin) heading box — text-align:center
+   still centered the TEXT inside the box, but the box itself hugged the
+   left edge, which is what read as "hero text is left-aligned in the
+   builder but centered live". See .b-sec-hero/.b-sec-imgtext/.b-newsletter
+   /.b-richtext-narrow/.b-richtext-wide/.b-spotlight/.b-countdown headings
+   below, all of which depend on this reset losing the specificity fight. */
+body.builder-body :where(h1, h2, h3, h4) { font-family: var(--b-font-display); text-wrap: balance; margin: 0; }
 body.builder-body button { font-family: inherit; }
 
 .b-app { display: grid; grid-template-columns: 64px auto 1fr auto; grid-template-rows: 1fr; height: 100vh; min-width: 980px; overflow-x: auto; }
