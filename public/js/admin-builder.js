@@ -765,6 +765,20 @@
     rootEl.style.paddingRight = sec.padding_right ? sec.padding_right + "px" : "";
   }
 
+  // Universal Style-tab controls (__text_color/__bg_color/__text_align —
+  // see inspectorStyleFieldsFor's "universal" block). The storefront applies
+  // these as inline style on the section root (section.ejs's pzHeightStyle)
+  // so they always win over the theme's CSS; the builder canvas needs the
+  // same treatment, applied straight to the DOM the same way applySpacingStyle
+  // is, or the color pickers save a value that's never actually painted and
+  // the canvas keeps showing the builder chrome's own default ink color.
+  function applyColorStyle(rootEl, sec) {
+    if (!rootEl) return;
+    rootEl.style.color = sec.text_color || "";
+    rootEl.style.backgroundColor = sec.bg_color || "";
+    rootEl.style.textAlign = sec.text_align || "";
+  }
+
   // Per-element spacing: margin/padding/height on one text field inside a
   // section (e.g. just the Hero heading), applied straight to that field's
   // own contenteditable node — independent of applySpacingStyle above,
@@ -810,6 +824,7 @@
     state.sections.forEach(function (sec) {
       var wrap = el('<div class="b-csec" data-id="' + sec.id + '"></div>');
       wrap.innerHTML = renderSectionInner(sec);
+      applyColorStyle(wrap.firstElementChild, sec);
       var resizable = !NO_RESIZE_TYPES[sec.type];
       if (resizable) {
         applyHeightStyle(wrap.firstElementChild, sec.min_height);
@@ -971,37 +986,6 @@
     document.addEventListener("pointerup", onUp);
   }
 
-  /* ---------------------------------------------------------------
-     Per-element spacing overlay — a small floating set of drag handles
-     that tracks whichever text element is currently sub-selected
-     (state.selectedFieldKey). Built once at boot and re-parented onto the
-     live field node whenever the selection or the canvas DOM changes,
-     rather than inserted as a sibling of the text itself: these fields sit
-     inside all sorts of surrounding layouts (flex rows next to other
-     content, grids, etc), and a handle spliced into that flow would
-     visually disrupt it. An absolutely-positioned overlay, sized to match
-     the field's own bounding box each time, works regardless of what's
-     around it and never touches the field's own (contenteditable) DOM.
-  --------------------------------------------------------------- */
-  var elementHandles = el(
-    '<div class="b-el-handles" id="bElementHandles" hidden>' +
-      '<div class="b-el-move" data-el-action="move" title="Drag to move this text anywhere in its section">' + icon("move") + '</div>' +
-      '<div class="b-el-margin b-el-margin-top" data-el-action="margin-top" title="Drag to add space above"></div>' +
-      '<div class="b-el-margin b-el-margin-bottom" data-el-action="margin-bottom" title="Drag to add space below"></div>' +
-      '<div class="b-el-margin-v b-el-margin-left" data-el-action="margin-left" title="Drag to add space to the left"></div>' +
-      '<div class="b-el-margin-v b-el-margin-right" data-el-action="margin-right" title="Drag to add space to the right"></div>' +
-      '<div class="b-el-resize" data-el-action="resize" title="Drag to increase this text’s height"><span></span></div>' +
-    '</div>'
-  );
-  document.body.appendChild(elementHandles);
-  // Center-snap guides for the move handle, shared across drags the same
-  // way elementHandles itself is — created once, shown/hidden/repositioned
-  // rather than inserted and removed each time.
-  var guideV = el('<div class="b-el-guide b-el-guide-v" hidden></div>');
-  var guideH = el('<div class="b-el-guide b-el-guide-h" hidden></div>');
-  document.body.appendChild(guideV);
-  document.body.appendChild(guideH);
-
   // Resolves the sub-selected field to its live DOM node, whether it's a
   // top-level section's own field or one nested inside a row block
   // (state.selectedBlockId) — and, in the block case, that the block still
@@ -1022,31 +1006,14 @@
     return wrap.querySelector('[data-field="' + state.selectedFieldKey + '"]');
   }
 
-  // The box a moved/positioned element is confined to: a block's own
-  // wrapper when nested inside a row column (so its text can't wander over
-  // a sibling block in the same column), otherwise the whole section.
-  function elementBoundsEl(node) {
-    return node.closest("[data-block-id]") || node.closest(".b-csec");
-  }
-
-  // Moves/sizes the overlay to exactly cover the sub-selected field's own
-  // box. Both rects are viewport-relative, so their difference is correct
-  // regardless of how the canvas is scrolled — no scroll-container math
-  // needed, same trick sections' own position:relative handles rely on.
-  function positionElementHandles() {
-    var node = selectedFieldNode();
-    if (!node) { elementHandles.hidden = true; return; }
-    var wrap = elementBoundsEl(node);
-    if (!wrap) { elementHandles.hidden = true; return; }
-    if (elementHandles.parentNode !== wrap) wrap.appendChild(elementHandles);
-    var wrapRect = wrap.getBoundingClientRect();
-    var nodeRect = node.getBoundingClientRect();
-    elementHandles.style.top = (nodeRect.top - wrapRect.top) + "px";
-    elementHandles.style.left = (nodeRect.left - wrapRect.left) + "px";
-    elementHandles.style.width = nodeRect.width + "px";
-    elementHandles.style.height = nodeRect.height + "px";
-    elementHandles.hidden = false;
-  }
+  // No-op now that the per-element drag-handle overlay is gone (margin/
+  // height/position for a sub-selected text field are set from the
+  // inspector's number fields only — see elementSettingsHtml). Kept as a
+  // function, rather than deleted outright, because section-level resize/
+  // margin dragging (startResize/startMarginDrag below) and a few style-
+  // apply call sites still call it defensively; removing it would mean
+  // hunting down every one of those call sites for no behavioral gain.
+  function positionElementHandles() {}
 
   // Everything that reads/writes the sub-selected field's own element_styles
   // and persists it — abstracted here because a top-level section's field
@@ -1117,179 +1084,15 @@
     };
   }
 
-  function startElementSpacingDrag(e, ctx, node, direction) {
-    if (!node) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var axis = spacingAxis(direction);
-    var startPos = axis === "x" ? e.clientX : e.clientY;
-    var key = "margin_" + direction;
-    var current = ctx.getEntry()[key] || 0;
-    var sign = spacingSign(direction);
-
-    function clamp(n) { return Math.max(0, Math.min(400, Math.round(n))); }
-    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_' + key + '"][data-el-field="' + ctx.fieldKey + '"]'); }
-
-    function apply(v) {
-      var entry = Object.assign({}, ctx.getEntry());
-      entry[key] = v;
-      ctx.setEntry(entry);
-      applyElStyleToNode(node, entry);
-      positionElementHandles();
-      var input = liveInput();
-      if (input) input.value = v;
-    }
-    function onMove(ev) {
-      var p = ev.touches ? ev.touches[0] : ev;
-      var pos = axis === "x" ? p.clientX : p.clientY;
-      apply(clamp(current + sign * (pos - startPos)));
-    }
-    function onUp() {
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
-      var patch = {};
-      patch[key] = ctx.getEntry()[key] || 0;
-      ctx.persist(patch);
-    }
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
-  }
-
-  function startElementResize(e, ctx, node) {
-    if (!node) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var startY = e.clientY;
-    var startHeight = node.getBoundingClientRect().height;
-
-    function clamp(n) { return Math.max(0, Math.min(800, Math.round(n))); }
-    function liveInput() { return document.querySelector('input[type="number"][data-field="__elm_min_height"][data-el-field="' + ctx.fieldKey + '"]'); }
-
-    function apply(v) {
-      var entry = Object.assign({}, ctx.getEntry());
-      entry.min_height = v;
-      ctx.setEntry(entry);
-      applyElStyleToNode(node, entry);
-      positionElementHandles();
-      var input = liveInput();
-      if (input) input.value = v;
-    }
-    function onMove(ev) {
-      var p = ev.touches ? ev.touches[0] : ev;
-      apply(clamp(startHeight + (p.clientY - startY)));
-    }
-    function onUp() {
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
-      ctx.persist({ min_height: ctx.getEntry().min_height || 0 });
-    }
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
-  }
-
-  // Free move — drags the field out of normal flow onto an explicit spot
-  // anywhere inside its bounds (elementBoundsEl: the block it's nested in,
-  // or the whole section). Width is frozen at the moment it leaves flow (so
-  // the box doesn't shrink to fit its own text once nothing is stretching
-  // it), and dragging near the bounds' own center snaps to it, mirroring
-  // the concept preview this was built from.
-  function startElementMove(e, ctx, node) {
-    if (!node) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var bounds = elementBoundsEl(node);
-    if (!bounds) return;
-    var boundsRect = bounds.getBoundingClientRect();
-    var startRect = node.getBoundingClientRect();
-    var offX = e.clientX - startRect.left, offY = e.clientY - startRect.top;
-    var entryStart = Object.assign({}, ctx.getEntry());
-    if (!entryStart.positioned) {
-      entryStart.positioned = true;
-      entryStart.pos_left = Math.round(startRect.left - boundsRect.left);
-      entryStart.pos_top = Math.round(startRect.top - boundsRect.top);
-      entryStart.el_width = Math.round(startRect.width);
-      ctx.setEntry(entryStart);
-      applyElStyleToNode(node, entryStart);
-    }
-
-    function clampPos(n) { return Math.max(0, Math.min(4000, Math.round(n))); }
-    function liveInputs() {
-      return {
-        left: document.querySelector('input[type="number"][data-field="__elm_pos_left"][data-el-field="' + ctx.fieldKey + '"]'),
-        top: document.querySelector('input[type="number"][data-field="__elm_pos_top"][data-el-field="' + ctx.fieldKey + '"]'),
-      };
-    }
-    function apply(left, top, showGuides) {
-      var entry = Object.assign({}, ctx.getEntry());
-      entry.pos_left = left;
-      entry.pos_top = top;
-      ctx.setEntry(entry);
-      applyElStyleToNode(node, entry);
-      positionElementHandles();
-      var inputs = liveInputs();
-      if (inputs.left) inputs.left.value = left;
-      if (inputs.top) inputs.top.value = top;
-      if (showGuides) { showGuides.v.hidden = !showGuides.snapX; showGuides.h.hidden = !showGuides.snapY; }
-    }
-    function onMove(ev) {
-      var p = ev.touches ? ev.touches[0] : ev;
-      var br = bounds.getBoundingClientRect();
-      var w = node.offsetWidth, h = node.offsetHeight;
-      var left = p.clientX - br.left - offX;
-      var top = p.clientY - br.top - offY;
-      left = Math.max(0, Math.min(left, Math.max(0, br.width - w)));
-      top = Math.max(0, Math.min(top, Math.max(0, br.height - h)));
-      var centerX = br.width / 2, centerY = br.height / 2;
-      var snapX = Math.abs((left + w / 2) - centerX) < 8;
-      var snapY = Math.abs((top + h / 2) - centerY) < 8;
-      if (snapX) left = centerX - w / 2;
-      if (snapY) top = centerY - h / 2;
-      if (snapX) { guideV.style.left = (br.left + centerX) + "px"; guideV.style.top = br.top + "px"; guideV.style.height = br.height + "px"; }
-      if (snapY) { guideH.style.top = (br.top + centerY) + "px"; guideH.style.left = br.left + "px"; guideH.style.width = br.width + "px"; }
-      apply(clampPos(left), clampPos(top), { v: guideV, h: guideH, snapX: snapX, snapY: snapY });
-    }
-    function onUp() {
-      document.removeEventListener("pointermove", onMove);
-      document.removeEventListener("pointerup", onUp);
-      guideV.hidden = true;
-      guideH.hidden = true;
-      var entry = ctx.getEntry();
-      ctx.persist({ positioned: true, pos_left: entry.pos_left || 0, pos_top: entry.pos_top || 0, el_width: entry.el_width || 0 });
-      // The inspector's Position row (X/Y inputs, "Reset to normal
-      // position") only renders once st.positioned is true, so the very
-      // first move re-renders the inspector to bring it in — every drag
-      // after that already has it on screen.
-      renderInspector();
-      positionElementHandles();
-    }
-    document.addEventListener("pointermove", onMove);
-    document.addEventListener("pointerup", onUp);
-  }
-
-  elementHandles.addEventListener("pointerdown", function (e) {
-    var actionEl = e.target.closest("[data-el-action]");
-    if (!actionEl) return;
-    e.stopPropagation();
-    // A real drag ends with the pointer wherever it was released — not
-    // necessarily still over the handle it started on (the move handle
-    // especially: the field follows the cursor, but clamping against its
-    // bounds can leave the cursor just past the field's edge). The browser
-    // still fires a synthetic "click" at that release point once the
-    // pointerup completes, and canvas's own click handler would read that
-    // as "the user clicked this other spot" and clear/replace the very
-    // sub-selection this drag just set. Swallow exactly that one click,
-    // caught in the capture phase so it never reaches canvas's listener.
-    var swallowClick = function (ce) { ce.stopPropagation(); document.removeEventListener("click", swallowClick, true); };
-    document.addEventListener("click", swallowClick, true);
-    setTimeout(function () { document.removeEventListener("click", swallowClick, true); }, 600);
-    var ctx = elementStyleCtx();
-    var node = selectedFieldNode();
-    if (!ctx || !node) return;
-    var action = actionEl.dataset.elAction;
-    if (action === "resize") return startElementResize(e, ctx, node);
-    if (action === "move") return startElementMove(e, ctx, node);
-    startElementSpacingDrag(e, ctx, node, action.replace("margin-", ""));
-  });
+  // The per-element drag-handle overlay (move/margin/resize handles that
+  // used to float over a sub-selected text field on canvas) has been
+  // removed — Margin, Padding, Height and Position (for an already-
+  // positioned field) are set from the inspector's own number fields only
+  // (elementSettingsHtml). applyElStyleToNode above still applies whatever
+  // is saved there (and any pre-existing "moved free" element from before
+  // this removal) to the live canvas node; spacingAxis/spacingSign above
+  // are shared with the still-present SECTION-level margin drag
+  // (startMarginDrag, below) and stay in use there.
 
   var LIB_GROUP_ORDER = ["Content", "Commerce", "Engagement", "Layout"];
 
@@ -1848,21 +1651,23 @@
   function elementSettingsHtml(sec, fieldKey, st) {
     st = st || (sec.element_styles && sec.element_styles[fieldKey]) || {};
     var label = fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1);
+    // Only an element that was already dragged free before drag-and-drop
+    // was removed from this panel can still be here — "Reset to normal
+    // position" is now the only way out, since there's no longer a way to
+    // set this in the first place.
     var posRow = st.positioned
       ? field("Position", '<div class="b-pos-row">' +
           '<label>X<input class="b-text-native" type="number" min="0" max="4000" step="4" data-field="__elm_pos_left" data-el-field="' + esc(fieldKey) + '" value="' + (st.pos_left || 0) + '" /></label>' +
           '<label>Y<input class="b-text-native" type="number" min="0" max="4000" step="4" data-field="__elm_pos_top" data-el-field="' + esc(fieldKey) + '" value="' + (st.pos_top || 0) + '" /></label>' +
         '</div>' +
         '<button type="button" class="b-btn-outline b-el-unpin" data-el-unpin="' + esc(fieldKey) + '" style="margin-top:8px;">Reset to normal position</button>' +
-        '<div class="b-field-hint">Dragged free of the normal layout — drag the dark handle on the canvas to move it, or type pixels here.</div>')
-      : field("", '<div class="b-field-hint">Drag the dark handle on the selected text to move it anywhere inside its section.</div>');
+        '<div class="b-field-hint">Dragged free of the normal layout — type pixels here, or reset it to sit back in the normal flow.</div>')
+      : "";
     return '<div class="b-inspector-divider"></div>' +
       '<div class="b-inspector-section-label">“' + esc(label) + '” spacing & position</div>' +
       posRow +
-      field("Height", '<input class="b-text-native" type="number" min="0" max="800" step="10" data-field="__elm_min_height" data-el-field="' + esc(fieldKey) + '" value="' + (st.min_height || 0) + '" />' +
-        '<div class="b-field-hint">Drag the amber handle below the selected text on the canvas, or type a height in pixels.</div>') +
-      field("Margin", elementSpacingQuadHtml(fieldKey, "margin", st) +
-        '<div class="b-field-hint">Drag the thin handles around the selected text on the canvas, or type pixels here.</div>') +
+      field("Height", '<input class="b-text-native" type="number" min="0" max="800" step="10" data-field="__elm_min_height" data-el-field="' + esc(fieldKey) + '" value="' + (st.min_height || 0) + '" />') +
+      field("Margin", elementSpacingQuadHtml(fieldKey, "margin", st)) +
       field("Padding", elementSpacingQuadHtml(fieldKey, "padding", st)) +
       field("", '<div class="b-inspector-hint">Just this text — on top of the section’s own margin/padding in Settings. Click elsewhere on the canvas to deselect it.</div>');
   }
@@ -2512,13 +2317,6 @@
     });
 
     canvas.addEventListener("click", function (e) {
-      // The element-handle overlay (drag handles for the sub-selected
-      // text field's own margin/padding/height/position) manages selection
-      // itself via its own pointerdown listener — a click bubbling up from
-      // it must not reach the generic field-click logic below, which would
-      // otherwise immediately clear the sub-selection a drag just set.
-      if (e.target.closest("[data-el-action]")) return;
-
       var host = e.target.closest(".b-csec");
       if (!host) return;
       var id = host.dataset.id;
