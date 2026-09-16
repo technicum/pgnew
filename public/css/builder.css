@@ -394,7 +394,7 @@ body.builder-body button { font-family: inherit; }
    padding doesn't change at the mobile breakpoint either (no such @media
    rule exists in style.css), so unlike before, there is no separate
    narrower value for small viewports here. */
-.b-sec-pad { padding: 40px 24px; }
+.b-sec-pad { padding: 24px 16px; }
 
 .b-sec-hero { text-align: center; background: var(--b-accent-soft); position: relative; overflow: hidden; z-index: 0; padding-top: 48px; padding-bottom: 40px; }
 .b-sec-hero.has-custom-bg { background: transparent; }

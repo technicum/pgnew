@@ -776,7 +776,12 @@
     if (!rootEl) return;
     rootEl.style.color = sec.text_color || "";
     rootEl.style.backgroundColor = sec.bg_color || "";
-    rootEl.style.textAlign = sec.text_align || "";
+    // Only override text-align when the universal setting is actually set —
+    // rootEl is a freshly-rendered node (renderCanvas just rebuilt it from
+    // scratch), so if this is empty, whatever renderSectionInner already put
+    // in the inline style (e.g. heading/richtext's own type-specific
+    // Alignment field) should stand rather than being blanked out here.
+    if (sec.text_align) rootEl.style.textAlign = sec.text_align;
   }
 
   // Per-element spacing: margin/padding/height on one text field inside a
