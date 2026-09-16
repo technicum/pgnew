@@ -513,13 +513,13 @@
               '<div class="b-prod-card-name">' + esc(p.title) + '</div><div class="b-prod-card-price">' + money(p.price) + '</div></div>';
           }).join("");
         }
-        return '<div class="b-sec-pad"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
+        return '<div class="b-sec-pad b-sec-products"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
           '<span>' + (DATA.products.length ? "showing " + Math.min(count, DATA.products.length) + " of " + DATA.products.length : "") + '</span></div>' +
           '<div class="b-prod-grid">' + cards + '</div></div>';
 
       case "testimonials":
         var q = (d.quotes && d.quotes[0]) || { quote: "", author: "" };
-        return '<div class="b-sec-pad"><div class="b-sec-heading-row" style="justify-content:center;"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
+        return '<div class="b-sec-pad b-sec-testimonials"><div class="b-sec-heading-row" style="justify-content:center;"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
           '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
           '<div class="b-testi-quote" data-field="quotes.0.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
           '<div class="b-testi-name" data-field="quotes.0.author" contenteditable="true">' + esc(q.author) + '</div></div></div>';
@@ -541,7 +541,7 @@
         var tiles = imgs.length
           ? imgs.map(function (u) { return '<div class="b-ph b-gallery-tile" style="background-image:url(\'' + attrUrl(u) + '\');"></div>'; }).join("")
           : '<div class="b-prod-empty">No images yet — add image URLs from the panel on the right.</div>';
-        return '<div class="b-sec-pad"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
+        return '<div class="b-sec-pad b-sec-gallery"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
           '<div class="b-gallery-grid" data-cols="' + d.cols + '">' + tiles + '</div></div>';
       }
 
@@ -549,12 +549,12 @@
         var frame = d.embed_url
           ? '<div class="b-video-frame"><iframe src="' + attrUrl(d.embed_url) + '" loading="lazy" allowfullscreen></iframe></div>'
           : '<div class="b-video-frame b-ph"><div>' + icon("video") + '<div class="b-video-hint">Paste a video URL in the panel</div></div></div>';
-        return '<div class="b-sec-pad"><h3 style="margin-bottom:16px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + frame + '</div>';
+        return '<div class="b-sec-pad b-sec-video"><h3 style="margin-bottom:16px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + frame + '</div>';
       }
 
       case "spotlight": {
         var sp = d.product_id ? DATA.products.filter(function (p) { return String(p.id) === String(d.product_id); })[0] : null;
-        if (!sp) return '<div class="b-sec-pad"><div class="b-prod-empty">No product selected — choose one from the panel on the right.</div></div>';
+        if (!sp) return '<div class="b-sec-pad b-spotlight"><div class="b-prod-empty">No product selected — choose one from the panel on the right.</div></div>';
         var spImgStyle = sp.image_url ? ' style="background-image:url(\'' + attrUrl(sp.image_url) + '\');"' : "";
         return '<div class="b-sec-pad b-spotlight ' + (d.side === "left" ? "reverse" : "") + '">' +
           '<div class="b-spotlight-media b-ph"' + spImgStyle + '>' + (sp.image_url ? "" : icon("image")) + '</div>' +
@@ -572,12 +572,12 @@
               return '<div class="b-coll-card" style="background:' + swatches[i % swatches.length] + ';"><span>' + esc(c.name) + '</span></div>';
             }).join("") + '</div>'
           : '<div class="b-prod-empty">No categories yet — add some from Products &rsaquo; Categories and they’ll show up here automatically.</div>';
-        return '<div class="b-sec-pad"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' + collInner + '</div>';
+        return '<div class="b-sec-pad b-sec-collections"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' + collInner + '</div>';
       }
 
       case "logos": {
         var names = d.names || [];
-        if (!names.length) return '<div class="b-sec-pad"><div class="b-prod-empty">No names yet — add them from the panel on the right.</div></div>';
+        if (!names.length) return '<div class="b-sec-pad b-logostrip"><div class="b-prod-empty">No names yet — add them from the panel on the right.</div></div>';
         return '<div class="b-sec-pad b-logostrip">' + names.map(function (n) { return "<span>" + esc(n) + "</span>"; }).join("") + '</div>';
       }
 
@@ -588,7 +588,7 @@
             '<div class="b-faq-q" data-field="items.' + idx + '.q" contenteditable="true">' + esc(f.q) + '</div>' +
             '<div class="b-faq-a" data-field="items.' + idx + '.a" contenteditable="true">' + esc(f.a) + '</div></div>';
         }).join("");
-        return '<div class="b-sec-pad" style="max-width:640px;margin:0 auto;"><h3 style="margin-bottom:6px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + rows + '</div>';
+        return '<div class="b-sec-pad b-sec-faq" style="max-width:640px;margin:0 auto;"><h3 style="margin-bottom:6px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + rows + '</div>';
       }
 
       case "countdown":
@@ -604,7 +604,7 @@
         return d.style === "dots" ? '<div class="b-divider-preview b-divider-dots">• • • • •</div>' : '<div class="b-divider-preview"><hr/></div>';
 
       case "html":
-        return '<div class="b-sec-pad"><div class="b-html-block-preview b-ph"><div>' + icon("html") +
+        return '<div class="b-sec-pad b-sec-html"><div class="b-html-block-preview b-ph"><div>' + icon("html") +
           '<div class="b-video-hint">Custom HTML/CSS — edit the code in the panel on the right, then use Preview (top bar) to see it rendered. Runs in a sandboxed frame on your live storefront.</div></div></div></div>';
 
       case "logo":
@@ -647,7 +647,7 @@
 
       case "link_columns": {
         var lcCols = d.columns || [];
-        if (!lcCols.length) return '<div class="b-sec-pad"><div class="b-prod-empty">No columns yet — add some from the panel on the right.</div></div>';
+        if (!lcCols.length) return '<div class="b-sec-pad b-linkcols"><div class="b-prod-empty">No columns yet — add some from the panel on the right.</div></div>';
         return '<div class="b-sec-pad b-linkcols">' + lcCols.map(function (c) {
           return '<div class="b-linkcol"><h4>' + esc(c.heading || "(untitled)") + '</h4>' +
             (c.links || []).map(function (l) { return '<div class="b-linkcol-link">' + esc(l.label) + '</div>'; }).join("") +
@@ -657,7 +657,7 @@
 
       case "social_icons": {
         var socLinks = d.links || [];
-        if (!socLinks.length) return '<div class="b-sec-pad"><div class="b-prod-empty">No icons yet — add some from the panel on the right.</div></div>';
+        if (!socLinks.length) return '<div class="b-sec-pad b-social-icons"><div class="b-prod-empty">No icons yet — add some from the panel on the right.</div></div>';
         // Real per-platform glyph (SOCIAL_ICON_SVGS below), matching what
         // partials/section.ejs actually renders on the live storefront —
         // not just a text label, so this canvas preview isn't misleading.

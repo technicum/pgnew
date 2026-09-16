@@ -384,10 +384,19 @@ body.builder-body button { font-family: inherit; }
 .b-pos-row { display: flex; gap: 10px; }
 .b-pos-row label { flex: 1; font-size: 11px; color: var(--b-muted); display: flex; flex-direction: column; gap: 4px; }
 
-.b-sec-pad { padding: 56px 48px; }
-.b-canvas-frame[data-vp="mobile"] .b-sec-pad { padding: 34px 20px; }
+/* These numbers are not arbitrary — each one is copied straight from the
+   live storefront's own CSS (public/css/style.css) for that section type,
+   so the canvas matches what a customer actually sees instead of just
+   approximating it. The 24px horizontal default mirrors `.container`'s own
+   side padding, which every body section (and, via each module's own
+   .container-equivalent rule, every header/footer module too) sits inside
+   on the real site — see style.css lines ~40-43 and ~435-440. Real section
+   padding doesn't change at the mobile breakpoint either (no such @media
+   rule exists in style.css), so unlike before, there is no separate
+   narrower value for small viewports here. */
+.b-sec-pad { padding: 40px 24px; }
 
-.b-sec-hero { text-align: center; background: var(--b-accent-soft); position: relative; overflow: hidden; z-index: 0; }
+.b-sec-hero { text-align: center; background: var(--b-accent-soft); position: relative; overflow: hidden; z-index: 0; padding-top: 48px; padding-bottom: 40px; }
 .b-sec-hero.has-custom-bg { background: transparent; }
 .b-sec-hero.has-light-text h2 { color: #fff; }
 .b-sec-hero.has-light-text p { color: rgba(255, 255, 255, .85); }
@@ -397,7 +406,7 @@ body.builder-body button { font-family: inherit; }
 .b-sec-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
 .b-sec-hero-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: -1; }
 
-.b-sec-imgtext { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.b-sec-imgtext { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; padding-top: 48px; padding-bottom: 48px; }
 .b-sec-imgtext.reverse { direction: rtl; }
 .b-sec-imgtext.reverse > * { direction: ltr; }
 .b-canvas-frame[data-vp="mobile"] .b-sec-imgtext, .b-canvas-frame[data-vp="tablet"] .b-sec-imgtext { grid-template-columns: 1fr; }
@@ -409,6 +418,12 @@ body.builder-body button { font-family: inherit; }
 .b-sec-heading-row h3 { font-size: 21px; }
 .b-sec-heading-row span { font-size: 12.5px; color: var(--b-muted); }
 
+/* Products: the live storefront's own .product-grid-section carries no
+   section-level padding of its own — its only vertical spacing comes from
+   .section-title's margin (see .b-sec-heading-row above, which mirrors
+   that), so this stays at 0 rather than the shared .b-sec-pad default. */
+.b-sec-products { padding-top: 0; padding-bottom: 0; }
+
 .b-prod-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
 .b-canvas-frame[data-vp="mobile"] .b-prod-grid { grid-template-columns: repeat(2,1fr) !important; gap: 12px; }
 .b-canvas-frame[data-vp="tablet"] .b-prod-grid { grid-template-columns: repeat(3,1fr); }
@@ -418,12 +433,16 @@ body.builder-body button { font-family: inherit; }
 .b-prod-empty { grid-column: 1 / -1; padding: 30px; text-align: center; border: 1px dashed var(--b-line); border-radius: 10px; color: var(--b-muted); font-size: 13px; }
 .b-prod-empty a { color: var(--b-ink); font-weight: 600; }
 
+.b-sec-testimonials { padding-top: 40px; padding-bottom: 40px; }
 .b-testi-card { background: var(--b-surface-2); border-radius: 10px; padding: 22px; max-width: 480px; margin: 0 auto; text-align: center; }
 .b-testi-quote { font-size: 15px; line-height: 1.6; margin-bottom: 14px; }
 .b-testi-name { font-size: 12.5px; font-weight: 700; }
 .b-testi-stars { color: var(--b-accent); font-size: 13px; margin-bottom: 8px; letter-spacing: 2px; }
 
-.b-newsletter { text-align: center; background: var(--b-accent-soft); border-radius: 12px; }
+/* A boxed card on the live site (its own background/border, not edge-to-edge
+   content), padded 40px on all four sides rather than the shared 24px
+   horizontal default — see style.css's .newsletter. */
+.b-newsletter { text-align: center; background: var(--b-accent-soft); border-radius: 12px; padding: 40px; }
 .b-newsletter h3 { font-size: 22px; margin-bottom: 8px; }
 .b-newsletter p { font-size: 13.5px; color: var(--b-muted); margin-bottom: 18px; }
 .b-newsletter-form { display: flex; gap: 8px; max-width: 360px; margin: 0 auto; }
@@ -438,6 +457,7 @@ body.builder-body button { font-family: inherit; }
    select in inspectorFieldsFor's "heading" case), so these target
    :is(h1..h6) rather than a hardcoded h2, mirroring style.css's own
    .pz-heading rules so the canvas preview matches the live storefront. */
+.b-heading { padding-top: 32px; padding-bottom: 32px; }
 .b-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; }
 .b-heading-s :is(h1, h2, h3, h4, h5, h6) { font-size: 20px; }
 .b-heading-m :is(h1, h2, h3, h4, h5, h6) { font-size: 28px; }
@@ -446,26 +466,32 @@ body.builder-body button { font-family: inherit; }
 .b-heading-link-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--b-muted); }
 .b-heading-link-badge svg { width: 11px; height: 11px; }
 
-.b-richtext-narrow { max-width: 640px; margin: 0 auto; }
-.b-richtext-wide { max-width: 900px; margin: 0 auto; }
+.b-richtext-narrow { max-width: 640px; margin: 0 auto; padding-top: 40px; padding-bottom: 40px; }
+.b-richtext-wide { max-width: 900px; margin: 0 auto; padding-top: 40px; padding-bottom: 40px; }
 .b-richtext-narrow h3, .b-richtext-wide h3 { font-size: 21px; margin-bottom: 10px; }
 .b-richtext-narrow p, .b-richtext-wide p { font-size: 14px; line-height: 1.7; color: var(--b-muted); }
 
+.b-sec-gallery { padding-top: 24px; padding-bottom: 40px; }
 .b-gallery-grid { display: grid; gap: 12px; }
 .b-gallery-grid[data-cols="2"] { grid-template-columns: repeat(2,1fr); }
 .b-gallery-grid[data-cols="3"] { grid-template-columns: repeat(3,1fr); }
 .b-canvas-frame[data-vp="mobile"] .b-gallery-grid { grid-template-columns: repeat(2,1fr) !important; }
 .b-gallery-tile { aspect-ratio: 1; border-radius: 8px; background-size: cover; background-position: center; }
 
+.b-sec-video { padding-top: 24px; padding-bottom: 40px; }
 .b-video-frame { position: relative; aspect-ratio: 16/9; border-radius: 10px; overflow: hidden; }
 .b-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .b-video-frame.b-ph { flex-direction: column; gap: 8px; }
 .b-video-hint { font-size: 11.5px; color: var(--b-muted); }
 
+/* Custom HTML/CSS: the live storefront's .pz-html-block has no padding of
+   its own either (just a min-height fallback), so this stays flush with
+   .b-sec-pad's horizontal default and no extra vertical inset. */
+.b-sec-html { padding-top: 0; padding-bottom: 0; }
 .b-html-block-preview { min-height: 140px; border-radius: 10px; flex-direction: column; gap: 8px; text-align: center; padding: 24px; }
 .b-html-block-preview .b-video-hint { max-width: 360px; }
 
-.b-spotlight { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
+.b-spotlight { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; padding-top: 48px; padding-bottom: 48px; }
 .b-spotlight.reverse { direction: rtl; }
 .b-spotlight.reverse > * { direction: ltr; }
 .b-canvas-frame[data-vp="mobile"] .b-spotlight, .b-canvas-frame[data-vp="tablet"] .b-spotlight { grid-template-columns: 1fr; }
@@ -474,6 +500,7 @@ body.builder-body button { font-family: inherit; }
 .b-spotlight-price { font-family: var(--b-font-mono); font-size: 15px; color: var(--b-muted); margin-bottom: 14px; }
 .b-spotlight p { font-size: 14px; color: var(--b-muted); line-height: 1.6; margin-bottom: 16px; }
 
+.b-sec-collections { padding-top: 24px; padding-bottom: 40px; }
 .b-coll-grid { display: grid; gap: 16px; }
 .b-coll-grid[data-cols="2"] { grid-template-columns: repeat(2,1fr); }
 .b-coll-grid[data-cols="3"] { grid-template-columns: repeat(3,1fr); }
@@ -481,9 +508,10 @@ body.builder-body button { font-family: inherit; }
 .b-coll-card { position: relative; aspect-ratio: 3/2; border-radius: 10px; display: flex; align-items: flex-end; padding: 16px; }
 .b-coll-card span { font-family: var(--b-font-display); font-weight: 700; font-size: 15px; color: var(--b-ink); }
 
-.b-logostrip { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding-top: 32px; padding-bottom: 32px; }
+.b-logostrip { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding-top: 28px; padding-bottom: 28px; }
 .b-logostrip span { font-family: var(--b-font-display); font-weight: 800; font-size: 16px; color: var(--b-muted); opacity: .55; }
 
+.b-sec-faq { padding-top: 24px; padding-bottom: 40px; }
 .b-faq-item { border-bottom: 1px solid var(--b-line); padding: 14px 2px; }
 .b-faq-item:first-child { border-top: 1px solid var(--b-line); }
 .b-faq-q { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
@@ -503,7 +531,7 @@ body.builder-body button { font-family: inherit; }
 .b-nav-icons { display: flex; align-items: center; gap: 14px; }
 .b-nav-icons span { font-size: 12px; color: var(--b-muted); }
 
-.b-promo-bar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 40px; font-size: 12.5px; font-weight: 600; text-align: center; position: relative; }
+.b-promo-bar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 24px; font-size: 12.5px; font-weight: 600; text-align: center; position: relative; }
 .b-promo-link { text-decoration: underline; text-underline-offset: 2px; }
 .b-promo-close { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: .7; font-size: 16px; line-height: 1; }
 
@@ -511,7 +539,7 @@ body.builder-body button { font-family: inherit; }
 .b-linkcol h4 { margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--b-ink); }
 .b-linkcol-link { font-size: 13px; color: var(--b-muted); padding: 5px 0; }
 
-.b-social-icons { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 28px; padding-bottom: 28px; }
+.b-social-icons { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 24px; padding-bottom: 24px; }
 .b-social-chip { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--b-ink); background: var(--b-surface-2); border: 1px solid var(--b-line); border-radius: 50%; }
 .b-social-chip svg { width: 17px; height: 17px; }
 
@@ -519,7 +547,9 @@ body.builder-body button { font-family: inherit; }
 .b-copyright-links { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 8px; font-size: 12px; }
 .b-copyright-links span { color: var(--b-muted); }
 
-.b-countdown { text-align: center; background: var(--b-ink); border-radius: 12px; }
+/* Also a boxed card live (its own dark background), padded 40px on all
+   sides — see style.css's .countdown. */
+.b-countdown { text-align: center; background: var(--b-ink); border-radius: 12px; padding: 40px; }
 .b-countdown h3 { color: var(--b-paper); font-size: 20px; margin-bottom: 10px; }
 .b-countdown-hint { color: var(--b-paper); opacity: .75; font-size: 12.5px; font-family: var(--b-font-mono); }
 
