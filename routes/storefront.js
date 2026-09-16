@@ -246,8 +246,9 @@ async function renderStorePage(req, res, next, page) {
         );
       } else if (category) {
         [allProducts] = await pool.query(
-          `SELECT p.* FROM ${TABLES.products} p
-           JOIN ${TABLES.categories} c ON p.category_id = c.id
+          `SELECT DISTINCT p.* FROM ${TABLES.products} p
+           JOIN ${TABLES.productCategories} pc ON pc.product_id = p.id
+           JOIN ${TABLES.categories} c ON c.id = pc.category_id
            WHERE p.store_id = ? AND c.name = ? AND p.status = 'active'
            ORDER BY p.created_at DESC`,
           [storeId, category]
@@ -361,15 +362,62 @@ router.get('/products/:slug', async (req, res, next) => {
     if (!product) {
       return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Product not found' });
     }
+    // "Related" = shares at least one category with this product (any of
+    // them, not just its first/legacy one) -- falls back to an empty list
+    // for a product with no categories at all rather than matching
+    // everything, same as before this was many-to-many.
     const [related] = await pool.query(
-      `SELECT * FROM ${TABLES.products} WHERE store_id = ? AND category_id = ? AND id != ? AND status = 'active' LIMIT 4`,
-      [storeId, product.category_id, product.id]
+      `SELECT DISTINCT p.* FROM ${TABLES.products} p
+       JOIN ${TABLES.productCategories} pc ON pc.product_id = p.id
+       WHERE p.store_id = ?
+         AND p.id != ?
+         AND p.status = 'active'
+         AND pc.category_id IN (SELECT category_id FROM ${TABLES.productCategories} WHERE product_id = ?)
+       LIMIT 4`,
+      [storeId, product.id, product.id]
     );
 
     res.render(`${req.themeViewPrefix}/product`, {
       title: product.title,
       product: toNumber(product),
       related: related.map(toNumber),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Blog ----------
+router.get('/blog', async (req, res, next) => {
+  try {
+    const [posts] = await pool.query(
+      `SELECT * FROM ${TABLES.blogPosts} WHERE store_id = ? AND status = 'published' ORDER BY published_at DESC`,
+      [req.store.id]
+    );
+    // Just "Blog" -- the theme's own header partial already appends
+    // " · <store name>" itself (see partials/header.ejs's <title> tag), same
+    // as the product detail route below does with product.title.
+    res.render(`${req.themeViewPrefix}/blog`, {
+      title: 'Blog',
+      posts,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/blog/:slug', async (req, res, next) => {
+  try {
+    const [[post]] = await pool.query(
+      `SELECT * FROM ${TABLES.blogPosts} WHERE store_id = ? AND slug = ? AND status = 'published'`,
+      [req.store.id, req.params.slug]
+    );
+    if (!post) {
+      return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Post not found' });
+    }
+    res.render(`${req.themeViewPrefix}/blog-post`, {
+      title: post.title,
+      post,
     });
   } catch (err) {
     next(err);

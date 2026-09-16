@@ -20,15 +20,30 @@
         <a href="/admin/discounts" class="<%= title && (title === 'Discounts' || title === 'New Discount') ? 'active' : '' %>">Discounts</a>
 
         <% var isMenusScreen = title && (title === 'Menus' || title.startsWith('Edit menu: ')); %>
-        <% var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Pages' || title === 'New Page' || (title.startsWith('Edit ') && !isMenusScreen) || title === 'Header' || title === 'Footer' || title.indexOf(' override — ') !== -1 || isMenusScreen || title === 'Media'); %>
+        <%
+          // "Edit <page name>" (the page builder's own body-editing screen)
+          // is the one title here that isn't a fixed string -- guard it
+          // against 'Edit Product' (a totally separate screen that also
+          // happens to start with "Edit ") and against the menu editor's
+          // own "Edit menu: X" title.
+          var isPageBuilderScreen = title && title.startsWith('Edit ') && title !== 'Edit Product' && !isMenusScreen;
+          var isBlogScreen = title && (title === 'Blog Posts' || title === 'New Blog Post' || title === 'Edit Blog Post');
+          var contentOpen = title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen || title === 'Media' || isBlogScreen);
+          var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Header' || title === 'Footer' || title.indexOf(' override — ') !== -1 || isMenusScreen);
+        %>
+        <a href="/admin/pages" class="<%= contentOpen ? 'active' : '' %>">Content</a>
+        <% if (contentOpen) { %>
+          <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen) ? 'active' : '' %>">Pages</a>
+          <a href="/admin/media" class="admin-nav-sub <%= title === 'Media' ? 'active' : '' %>">Media</a>
+          <a href="/admin/blog" class="admin-nav-sub <%= isBlogScreen ? 'active' : '' %>">Blog posts</a>
+        <% } %>
+
         <a href="/admin/store/themes" class="<%= editStoreOpen ? 'active' : '' %>">Edit Store</a>
         <% if (editStoreOpen) { %>
           <a href="/admin/store/themes" class="admin-nav-sub <%= title && (title === 'Themes' || title.startsWith('Customize ')) ? 'active' : '' %>">Themes</a>
-          <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || (title.startsWith('Edit ') && !isMenusScreen)) ? 'active' : '' %>">Pages</a>
           <a href="/admin/layout/header" class="admin-nav-sub <%= title === 'Header' ? 'active' : '' %>">Header</a>
           <a href="/admin/layout/footer" class="admin-nav-sub <%= title === 'Footer' ? 'active' : '' %>">Footer</a>
           <a href="/admin/menus" class="admin-nav-sub <%= isMenusScreen ? 'active' : '' %>">Menus</a>
-          <a href="/admin/media" class="admin-nav-sub <%= title === 'Media' ? 'active' : '' %>">Media</a>
           <a href="/" target="_blank" class="admin-nav-sub">View store ↗</a>
         <% } %>
 

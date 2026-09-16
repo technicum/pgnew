@@ -228,6 +228,24 @@
   font-family: inherit;
 }
 .admin-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+/* .admin-form-field / .field-label: same visual weight as .admin-form label
+   (used by every other field on this form), but as a <div>+<span> instead
+   of a <label>, since the categories field wraps several REAL <label>
+   elements (one per checkbox) inside it -- a <label> can't contain another
+   <label>. */
+.admin-form .admin-form-field { margin-bottom: 16px; }
+.admin-form .field-label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+.category-checkbox-group {
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  margin-top: 8px; padding: 10px 12px;
+  border: 1px solid #d1d5db; border-radius: 8px;
+}
+.category-checkbox {
+  display: flex !important; align-items: center; gap: 6px;
+  font-size: 0.88rem; font-weight: 400; color: #111827; margin-bottom: 0 !important;
+}
+.category-checkbox input[type="checkbox"] { display: inline-block; width: auto; margin: 0; }
+.form-hint { margin-top: 6px; font-size: 0.85rem; color: #6b7280; font-weight: 400; }
 
 .order-detail-layout {
   display: grid;

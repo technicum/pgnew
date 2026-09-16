@@ -34,14 +34,21 @@
     </label>
   </div>
 
-  <label>Category
-    <select name="category_id">
-      <option value="">— None —</option>
-      <% categories.forEach(function(c) { %>
-        <option value="<%= c.id %>" <%= product && product.category_id === c.id ? 'selected' : '' %>><%= c.name %></option>
-      <% }); %>
-    </select>
-  </label>
+  <div class="admin-form-field">
+    <span class="field-label">Categories</span>
+    <% if (!categories.length) { %>
+      <div class="form-hint">No categories yet — you can create one from the storefront's category filter, or add products without one.</div>
+    <% } else { %>
+      <div class="category-checkbox-group">
+        <% categories.forEach(function(c) { %>
+          <label class="category-checkbox">
+            <input type="checkbox" name="category_ids" value="<%= c.id %>" <%= selectedCategoryIds.includes(c.id) ? 'checked' : '' %> />
+            <%= c.name %>
+          </label>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
 
   <label>Image URL
     <div class="media-field-row">

@@ -13,7 +13,7 @@
       <tr>
         <td><img class="admin-thumb" src="<%= p.image_url %>" alt="" /></td>
         <td><%= p.title %></td>
-        <td><%= p.category_name || '—' %></td>
+        <td><%= p.category_names || '—' %></td>
         <td>₹<%= p.price.toFixed(2) %></td>
         <td><%= p.stock %></td>
         <td><span class="status-pill status-<%= p.status %>"><%= p.status %></span></td>

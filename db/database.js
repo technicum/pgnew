@@ -60,6 +60,13 @@ const TABLES = {
   customers: `${PREFIX}customers`,
   categories: `${PREFIX}categories`,
   products: `${PREFIX}products`,
+  // Many-to-many: a product can sit in more than one category. products.
+  // category_id (below) is kept around read-only for backward compat with
+  // anything still querying it directly, but is no longer written to by new
+  // code — this table is the real source of truth going forward. See
+  // migrateProductCategoryLinks() for how existing category_id values get
+  // backfilled into it.
+  productCategories: `${PREFIX}product_categories`,
   orders: `${PREFIX}orders`,
   orderItems: `${PREFIX}order_items`,
   pages: `${PREFIX}pages`,
@@ -93,6 +100,11 @@ const TABLES = {
   // (MEDIA_UPLOAD_ROOT in lib/media.js), named by this row's own `filename`
   // so store_id is never trusted from anywhere but the DB row/folder path.
   media: `${PREFIX}media`,
+  // Blog posts (Content > Blog posts in the admin nav) -- deliberately
+  // simple/flat (no tags/authors/comments) to match how the rest of this
+  // app's content model stays minimal; see the CREATE TABLE below for the
+  // full column story.
+  blogPosts: `${PREFIX}blog_posts`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -193,6 +205,41 @@ CREATE TABLE IF NOT EXISTS ${TABLES.products} (
   UNIQUE KEY uniq_store_slug (store_id, slug),
   INDEX idx_status (status),
   INDEX idx_category (category_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Many-to-many product <-> category links (see TABLES.productCategories
+-- above for the full story on why this exists alongside products.category_id).
+CREATE TABLE IF NOT EXISTS ${TABLES.productCategories} (
+  product_id INT NOT NULL,
+  category_id INT NOT NULL,
+  PRIMARY KEY (product_id, category_id),
+  FOREIGN KEY (product_id) REFERENCES ${TABLES.products}(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES ${TABLES.categories}(id) ON DELETE CASCADE,
+  INDEX idx_pc_category (category_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Blog posts: title/slug/excerpt/body/cover image, draft-or-published, same
+-- shape as pz_products' own content fields so the admin form (and the
+-- media picker wiring on cover_image_url) feels identical to the product
+-- form a merchant already knows. published_at is set the first time a post
+-- moves to 'published' and never touched again after that (see
+-- routes/admin.js) -- it's "when this post first went live", not "last
+-- saved", so the storefront can sort by it even across later edits.
+CREATE TABLE IF NOT EXISTS ${TABLES.blogPosts} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL,
+  excerpt VARCHAR(500),
+  body TEXT,
+  cover_image_url VARCHAR(1000),
+  status VARCHAR(20) NOT NULL DEFAULT 'draft',
+  published_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_blog_slug (store_id, slug),
+  INDEX idx_blog_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS ${TABLES.orders} (
@@ -680,6 +727,21 @@ async function migratePagesForExistingStores(conn) {
       [pageId, JSON.stringify(defaultFields('products'))]
     );
   }
+}
+
+// Backfills pz_product_categories for products that only ever had the old
+// single products.category_id set — runs every startup but is a no-op once
+// caught up (INSERT IGNORE against the junction table's own PRIMARY KEY
+// means re-running this is always safe). New products/edits go straight
+// through the junction table from routes/admin.js and never touch
+// category_id again, but this keeps every pre-existing product's one
+// category from silently vanishing out of category filters/collections the
+// first time this code runs against an existing database.
+async function migrateProductCategoryLinks(conn) {
+  await conn.query(
+    `INSERT IGNORE INTO ${TABLES.productCategories} (product_id, category_id)
+     SELECT id, category_id FROM ${TABLES.products} WHERE category_id IS NOT NULL`
+  );
 }
 
 // Adds discount tracking to orders placed before the Discounts feature
@@ -1370,6 +1432,7 @@ async function init() {
 
     const demoStoreId = await migrateMultiTenancy(conn);
     await migratePagesForExistingStores(conn);
+    await migrateProductCategoryLinks(conn);
     await migratePageSectionSettings(conn);
     await migrateHeaderFooterSections(conn);
     await migrateDefaultHeaderFooter(conn);

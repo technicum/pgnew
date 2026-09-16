@@ -145,12 +145,41 @@ router.get('/', async (req, res, next) => {
 });
 
 // ---------- Products ----------
+// Normalizes the product form's category_ids[] (checkboxes; a single check
+// arrives as a bare string rather than an array, so this always gives back
+// an array) into a de-duped list of positive integer ids actually owned by
+// this store -- never trusts an id straight from the request body, since
+// nothing stops a crafted request from naming another store's category.
+async function ownedCategoryIds(storeId, rawIds) {
+  const ids = [...new Set((Array.isArray(rawIds) ? rawIds : rawIds ? [rawIds] : []).map((v) => parseInt(v, 10)).filter((n) => Number.isFinite(n) && n > 0))];
+  if (!ids.length) return [];
+  const [rows] = await pool.query(`SELECT id FROM ${TABLES.categories} WHERE store_id = ? AND id IN (?)`, [storeId, ids]);
+  return rows.map((r) => r.id);
+}
+
+// Replaces a product's full set of category links in one go -- simplest
+// correct way to handle "some added, some removed" from a checkbox list
+// without diffing. Cheap: a product realistically has a handful of
+// categories at most.
+async function setProductCategories(productId, categoryIds) {
+  await pool.query(`DELETE FROM ${TABLES.productCategories} WHERE product_id = ?`, [productId]);
+  if (categoryIds.length) {
+    await pool.query(
+      `INSERT INTO ${TABLES.productCategories} (product_id, category_id) VALUES ${categoryIds.map(() => '(?, ?)').join(', ')}`,
+      categoryIds.flatMap((cid) => [productId, cid])
+    );
+  }
+}
+
 router.get('/products', async (req, res, next) => {
   try {
     const [products] = await pool.query(
-      `SELECT p.*, c.name AS category_name FROM ${TABLES.products} p
-       LEFT JOIN ${TABLES.categories} c ON p.category_id = c.id
+      `SELECT p.*, GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', ') AS category_names
+       FROM ${TABLES.products} p
+       LEFT JOIN ${TABLES.productCategories} pc ON pc.product_id = p.id
+       LEFT JOIN ${TABLES.categories} c ON c.id = pc.category_id
        WHERE p.store_id = ?
+       GROUP BY p.id
        ORDER BY p.created_at DESC`,
       [req.store.id]
     );
@@ -163,7 +192,7 @@ router.get('/products', async (req, res, next) => {
 router.get('/products/new', async (req, res, next) => {
   try {
     const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [req.store.id]);
-    res.render('admin/product-form', { title: 'New Product', product: null, categories });
+    res.render('admin/product-form', { title: 'New Product', product: null, categories, selectedCategoryIds: [] });
   } catch (err) {
     next(err);
   }
@@ -172,7 +201,7 @@ router.get('/products/new', async (req, res, next) => {
 router.post('/products/new', async (req, res, next) => {
   try {
     const storeId = req.store.id;
-    const { title, description, price, compare_at_price, image_url, category_id, stock, status } = req.body;
+    const { title, description, price, compare_at_price, image_url, category_ids, stock, status } = req.body;
 
     if (!title || !price) {
       req.flash('error', 'Title and price are required.');
@@ -183,7 +212,9 @@ router.post('/products/new', async (req, res, next) => {
     const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.products} WHERE store_id = ? AND slug = ?`, [storeId, slug]);
     if (existing) slug = `${slug}-${Date.now().toString().slice(-4)}`;
 
-    await pool.query(
+    const categoryIds = await ownedCategoryIds(storeId, category_ids);
+
+    const [result] = await pool.query(
       `INSERT INTO ${TABLES.products} (store_id, title, slug, description, price, compare_at_price, image_url, category_id, stock, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -194,11 +225,15 @@ router.post('/products/new', async (req, res, next) => {
         parseFloat(price),
         compare_at_price ? parseFloat(compare_at_price) : null,
         image_url || '',
-        category_id || null,
+        // Legacy column -- first picked category, kept only so anything not
+        // yet updated to the junction table (see TABLES.productCategories)
+        // still sees a reasonable value instead of always NULL.
+        categoryIds[0] || null,
         parseInt(stock, 10) || 0,
         status === 'draft' ? 'draft' : 'active',
       ]
     );
+    await setProductCategories(result.insertId, categoryIds);
 
     req.flash('success', 'Product created.');
     res.redirect('/admin/products');
@@ -215,7 +250,13 @@ router.get('/products/:id/edit', async (req, res, next) => {
       return res.redirect('/admin/products');
     }
     const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [req.store.id]);
-    res.render('admin/product-form', { title: 'Edit Product', product: toNumber(product), categories });
+    const [linkRows] = await pool.query(`SELECT category_id FROM ${TABLES.productCategories} WHERE product_id = ?`, [product.id]);
+    res.render('admin/product-form', {
+      title: 'Edit Product',
+      product: toNumber(product),
+      categories,
+      selectedCategoryIds: linkRows.map((r) => r.category_id),
+    });
   } catch (err) {
     next(err);
   }
@@ -223,7 +264,22 @@ router.get('/products/:id/edit', async (req, res, next) => {
 
 router.post('/products/:id/edit', async (req, res, next) => {
   try {
-    const { title, description, price, compare_at_price, image_url, category_id, stock, status } = req.body;
+    const { title, description, price, compare_at_price, image_url, category_ids, stock, status } = req.body;
+
+    // An explicit ownership check up front -- rather than trusting the
+    // UPDATE's affectedRows to prove that (MySQL reports rows CHANGED, not
+    // rows MATCHED, by default; a resubmit that doesn't alter any column
+    // would show 0 even for a product this store legitimately owns, which
+    // would then wrongly skip the category-links write below) -- so a
+    // crafted product id can never be used to rewrite another store's
+    // product-category links, and a same-value resubmit still saves.
+    const [[owned]] = await pool.query(`SELECT id FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    if (!owned) {
+      req.flash('error', 'Product not found.');
+      return res.redirect('/admin/products');
+    }
+
+    const categoryIds = await ownedCategoryIds(req.store.id, category_ids);
 
     await pool.query(
       `UPDATE ${TABLES.products} SET title = ?, description = ?, price = ?, compare_at_price = ?, image_url = ?, category_id = ?, stock = ?, status = ?
@@ -234,13 +290,14 @@ router.post('/products/:id/edit', async (req, res, next) => {
         parseFloat(price),
         compare_at_price ? parseFloat(compare_at_price) : null,
         image_url || '',
-        category_id || null,
+        categoryIds[0] || null, // legacy column -- see comment in POST /products/new
         parseInt(stock, 10) || 0,
         status === 'draft' ? 'draft' : 'active',
         req.store.id,
         req.params.id,
       ]
     );
+    await setProductCategories(owned.id, categoryIds);
 
     req.flash('success', 'Product updated.');
     res.redirect('/admin/products');
@@ -254,6 +311,122 @@ router.post('/products/:id/delete', async (req, res, next) => {
     await pool.query(`DELETE FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     req.flash('success', 'Product deleted.');
     res.redirect('/admin/products');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Blog posts (Content > Blog posts) ----------
+router.get('/blog', async (req, res, next) => {
+  try {
+    const [posts] = await pool.query(
+      `SELECT * FROM ${TABLES.blogPosts} WHERE store_id = ? ORDER BY created_at DESC`,
+      [req.store.id]
+    );
+    res.render('admin/blog', { title: 'Blog Posts', posts });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/blog/new', (req, res) => {
+  res.render('admin/blog-form', { title: 'New Blog Post', post: null });
+});
+
+router.post('/blog/new', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const { title, excerpt, body, cover_image_url, status } = req.body;
+
+    if (!title) {
+      req.flash('error', 'Title is required.');
+      return res.redirect('/admin/blog/new');
+    }
+
+    let slug = slugify(title);
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.blogPosts} WHERE store_id = ? AND slug = ?`, [storeId, slug]);
+    if (existing) slug = `${slug}-${Date.now().toString().slice(-4)}`;
+
+    const publishing = status === 'published';
+    await pool.query(
+      `INSERT INTO ${TABLES.blogPosts} (store_id, title, slug, excerpt, body, cover_image_url, status, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        storeId,
+        title,
+        slug,
+        excerpt || '',
+        body || '',
+        cover_image_url || '',
+        publishing ? 'published' : 'draft',
+        publishing ? new Date() : null,
+      ]
+    );
+
+    req.flash('success', 'Blog post created.');
+    res.redirect('/admin/blog');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/blog/:id/edit', async (req, res, next) => {
+  try {
+    const [[post]] = await pool.query(`SELECT * FROM ${TABLES.blogPosts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    if (!post) {
+      req.flash('error', 'Blog post not found.');
+      return res.redirect('/admin/blog');
+    }
+    res.render('admin/blog-form', { title: 'Edit Blog Post', post });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/blog/:id/edit', async (req, res, next) => {
+  try {
+    const [[existingPost]] = await pool.query(`SELECT id, status, published_at FROM ${TABLES.blogPosts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    if (!existingPost) {
+      req.flash('error', 'Blog post not found.');
+      return res.redirect('/admin/blog');
+    }
+
+    const { title, excerpt, body, cover_image_url, status } = req.body;
+    const publishing = status === 'published';
+    // published_at is set the first time this post goes live and never
+    // touched again after that -- see the CREATE TABLE comment in
+    // db/database.js.
+    const publishedAt = publishing
+      ? (existingPost.published_at || new Date())
+      : existingPost.published_at;
+
+    await pool.query(
+      `UPDATE ${TABLES.blogPosts} SET title = ?, excerpt = ?, body = ?, cover_image_url = ?, status = ?, published_at = ?
+       WHERE store_id = ? AND id = ?`,
+      [
+        title,
+        excerpt || '',
+        body || '',
+        cover_image_url || '',
+        publishing ? 'published' : 'draft',
+        publishedAt,
+        req.store.id,
+        req.params.id,
+      ]
+    );
+
+    req.flash('success', 'Blog post updated.');
+    res.redirect('/admin/blog');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/blog/:id/delete', async (req, res, next) => {
+  try {
+    await pool.query(`DELETE FROM ${TABLES.blogPosts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    req.flash('success', 'Blog post deleted.');
+    res.redirect('/admin/blog');
   } catch (err) {
     next(err);
   }
