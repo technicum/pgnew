@@ -58,7 +58,14 @@
        // string here rather than written as a literal <h2> — same reasoning,
        // just against b.fields instead of section.fields. %>
     <% var pzHTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].indexOf(b.fields.tag) !== -1 ? b.fields.tag : 'h2'; %>
-    <div class="pz-heading pz-heading-<%= b.fields.size || 'l' %>" style="text-align:<%= b.fields.align || 'left' %>;">
+    <% var pzHeadingLight = b.fields.bg_type !== 'none' && b.fields.text_theme === 'light'; %>
+    <div class="pz-heading pz-heading-<%= b.fields.size || 'l' %><%= pzHeadingLight ? ' pz-heading-text-light' : '' %>" style="<%= pzHeroBgStyle(b.fields) %>text-align:<%= b.fields.align || 'left' %>;">
+      <% if (b.fields.bg_type === 'video' && b.fields.bg_video_url) { %>
+        <video class="pz-heading-bg-video" src="<%= b.fields.bg_video_url %>" autoplay muted loop playsinline></video>
+      <% } %>
+      <% if ((b.fields.bg_type === 'image' || b.fields.bg_type === 'video') && b.fields.bg_overlay) { %>
+        <div class="pz-heading-bg-overlay"></div>
+      <% } %>
       <% if (b.fields.link_url) { %><a href="<%= b.fields.link_url %>" class="pz-heading-link"><% } %><%- '<' + pzHTag + ' style="' + pzElStyle('heading') + '">' %><%= b.fields.heading %><%- '</' + pzHTag + '>' %><% if (b.fields.link_url) { %></a><% } %>
     </div>
 

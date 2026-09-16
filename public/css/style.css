@@ -655,14 +655,37 @@ main.container {
    defaulting h2), so these target :is(h1..h6) rather than a hardcoded h2,
    otherwise picking, say, H1 or H4 would fall back to the browser's own
    default heading margin/size instead of this theme's. */
-.pz-heading { padding: 32px 0; }
-.pz-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; }
+.pz-heading {
+  padding: 32px 0;
+  /* Same reasoning as .hero above — always a positioning root so a video/
+     image background (bg_type: 'color'/'image'/'video', mirroring hero's own
+     fields) can be clipped and layered behind the text within. */
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+.pz-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; position: relative; z-index: 1; }
 .pz-heading-s :is(h1, h2, h3, h4, h5, h6) { font-size: 1.25rem; }
 .pz-heading-m :is(h1, h2, h3, h4, h5, h6) { font-size: 1.75rem; }
 .pz-heading-l :is(h1, h2, h3, h4, h5, h6) { font-size: 2.25rem; }
 .pz-heading-xl :is(h1, h2, h3, h4, h5, h6) { font-size: 3rem; }
-.pz-heading-link { display: block; color: inherit; text-decoration: none; }
+.pz-heading-link { display: block; position: relative; z-index: 1; color: inherit; text-decoration: none; }
 .pz-heading-link:hover { text-decoration: underline; }
+.pz-heading-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+.pz-heading-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .35);
+  z-index: -1;
+}
+.pz-heading-text-light :is(h1, h2, h3, h4, h5, h6) { color: #fff; }
 
 /* Rich text */
 .richtext { padding: 40px 0; }

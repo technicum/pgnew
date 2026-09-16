@@ -100,8 +100,15 @@
     var pzHTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].indexOf(section.fields.tag) !== -1 ? section.fields.tag : 'h2';
     var pzHOpen = '<' + pzHTag + ' style="' + pzElStyle('heading') + '">';
     var pzHClose = '</' + pzHTag + '>';
+    var pzHeadingLight = section.fields.bg_type !== 'none' && section.fields.text_theme === 'light';
   %>
-  <section id="<%= pzId %>" class="pz-heading pz-heading-<%= section.fields.size || 'l' %><%= pzExtra %>" style="<%= pzHeightStyle %>text-align:<%= section.fields.align || 'left' %>;">
+  <section id="<%= pzId %>" class="pz-heading pz-heading-<%= section.fields.size || 'l' %><%= pzHeadingLight ? ' pz-heading-text-light' : '' %><%= pzExtra %>" style="<%= pzHeightStyle + pzHeroBgStyle(section.fields) %>text-align:<%= section.fields.align || 'left' %>;">
+    <% if (section.fields.bg_type === 'video' && section.fields.bg_video_url) { %>
+      <video class="pz-heading-bg-video" src="<%= section.fields.bg_video_url %>" autoplay muted loop playsinline></video>
+    <% } %>
+    <% if ((section.fields.bg_type === 'image' || section.fields.bg_type === 'video') && section.fields.bg_overlay) { %>
+      <div class="pz-heading-bg-overlay"></div>
+    <% } %>
     <% if (section.fields.link_url) { %><a href="<%= section.fields.link_url %>" class="pz-heading-link"><% } %><%- pzHOpen %><%= section.fields.heading %><%- pzHClose %><% if (section.fields.link_url) { %></a><% } %>
   </section>
 

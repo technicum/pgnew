@@ -480,7 +480,7 @@
           '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
           '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p></div>';
 
-      case "heading":
+      case "heading": {
         // Real tag (h1-h6, see the Content tab's "HTML Tag" select), but
         // never wrapped in an actual <a> here — an <a> around a
         // contenteditable, click-to-select canvas element would try to
@@ -488,10 +488,28 @@
         // just shows a link is attached; the URL itself is set/edited from
         // the inspector's Content tab.
         var hTag = ["h1", "h2", "h3", "h4", "h5", "h6"].indexOf(d.tag) !== -1 ? d.tag : "h2";
-        return '<div class="b-sec-pad b-heading b-heading-' + (d.size || "l") + '" style="text-align:' + (d.align || "left") + ';">' +
+        // Background (bg_type/bg_color/bg_image_url/bg_video_url/bg_overlay/
+        // text_theme) mirrors the hero section above.
+        var headBgType = d.bg_type || "none";
+        var headBgStyle = "";
+        var headMedia = "";
+        if (headBgType === "color" && d.bg_color) {
+          headBgStyle = "background:" + esc(d.bg_color) + ";";
+        } else if (headBgType === "image" && d.bg_image_url) {
+          headBgStyle = "background-image:url('" + esc(d.bg_image_url).replace(/'/g, "%27") + "');background-size:cover;background-position:center;";
+        } else if (headBgType === "video" && d.bg_video_url) {
+          headMedia = '<video class="b-heading-video" src="' + esc(d.bg_video_url) + '" autoplay muted loop playsinline></video>';
+        }
+        if ((headBgType === "image" || headBgType === "video") && d.bg_overlay) {
+          headMedia += '<div class="b-heading-overlay"></div>';
+        }
+        var headLight = headBgType !== "none" && d.text_theme === "light";
+        return '<div class="b-sec-pad b-heading b-heading-' + (d.size || "l") + (headBgType !== "none" ? " has-custom-bg" : "") + (headLight ? " has-light-text" : "") + '" style="' + headBgStyle + 'text-align:' + (d.align || "left") + ';">' +
+          headMedia +
           '<' + hTag + ' data-field="heading" contenteditable="true">' + esc(d.heading) + '</' + hTag + '>' +
           (d.link_url ? '<div class="b-heading-link-badge">' + icon("link") + '<span>Links to ' + esc(d.link_url) + '</span></div>' : "") +
           '</div>';
+      }
 
       case "text_image":
         var imgStyle = d.image_url ? ' style="background-image:url(\'' + esc(d.image_url).replace(/'/g, "%27") + '\');"' : "";
@@ -775,12 +793,16 @@
   function applyColorStyle(rootEl, sec) {
     if (!rootEl) return;
     rootEl.style.color = sec.text_color || "";
-    rootEl.style.backgroundColor = sec.bg_color || "";
-    // Only override text-align when the universal setting is actually set —
-    // rootEl is a freshly-rendered node (renderCanvas just rebuilt it from
-    // scratch), so if this is empty, whatever renderSectionInner already put
-    // in the inline style (e.g. heading/richtext's own type-specific
-    // Alignment field) should stand rather than being blanked out here.
+    // Only override background-color/text-align when the universal setting
+    // is actually set — rootEl is a freshly-rendered node (renderCanvas just
+    // rebuilt it from scratch), so if a universal value is empty, whatever
+    // renderSectionInner already put in the inline style (e.g. hero/heading's
+    // own type-specific "background: <color>" bg_type choice, or heading/
+    // richtext's own Alignment field) should stand rather than being blanked
+    // out here — setting rootEl.style.backgroundColor = "" would otherwise
+    // clear just that longhand out of the "background:" shorthand the type
+    // field already set, same failure shape as the text-align case below.
+    if (sec.bg_color) rootEl.style.backgroundColor = sec.bg_color;
     if (sec.text_align) rootEl.style.textAlign = sec.text_align;
   }
 
@@ -1557,10 +1579,28 @@
           heroBgFields + heroTextTheme;
         break;
       }
-      case "heading":
+      case "heading": {
+        var headBg = d.bg_type || "none";
+        var headBgFields = "";
+        if (headBg === "color") {
+          headBgFields = field("Background color", colorHtml("bg_color", d.bg_color));
+        } else if (headBg === "image") {
+          headBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
+            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
+        } else if (headBg === "video") {
+          headBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4", "video/")) +
+            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
+            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
+        }
+        var headTextTheme = headBg !== "none"
+          ? field("Text theme", segHtml("text_theme", [{ val: "dark", label: "Dark" }, { val: "light", label: "Light" }], d.text_theme || "dark"))
+          : "";
         typeStyle = field("Size", selectHtml("size", [{ val: "s", label: "Small" }, { val: "m", label: "Medium" }, { val: "l", label: "Large" }, { val: "xl", label: "Extra large" }], d.size || "l")) +
-          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left"));
+          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left")) +
+          field("Background", segHtml("bg_type", [{ val: "none", label: "None" }, { val: "color", label: "Color" }, { val: "image", label: "Image" }, { val: "video", label: "Video" }], headBg)) +
+          headBgFields + headTextTheme;
         break;
+      }
       case "text_image":
         typeStyle = field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side));
         break;
