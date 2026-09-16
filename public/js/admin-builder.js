@@ -91,7 +91,11 @@
     promo_bar: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="15" height="8" rx="1.4"/><path d="M6 10h8"/></svg>',
     link_columns: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4v12M4 6h4M4 9h3M11 4v12M11 6h5M11 9h4M11 12h3.5"/></svg>',
     social_icons: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5.5" cy="10" r="2.3"/><circle cx="14.5" cy="5.5" r="2.3"/><circle cx="14.5" cy="14.5" r="2.3"/><path d="M7.5 8.8l4.9-2.6M7.5 11.2l4.9 2.6"/></svg>',
-    copyright: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.2"/><path d="M12.3 7.8a2.7 2.7 0 1 0 0 4.4"/></svg>'
+    copyright: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.2"/><path d="M12.3 7.8a2.7 2.7 0 1 0 0 4.4"/></svg>',
+    // Device glyphs for the Visibility tab's per-device toggle cards.
+    desktop: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.3" y="3.3" width="15.4" height="9.8" rx="1.3"/><path d="M7.3 16.7h5.4M10 13.1v3.3"/></svg>',
+    tablet: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.3" y="2.3" width="11.4" height="15.4" rx="1.7"/><path d="M9.2 15.2h1.6"/></svg>',
+    mobile: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.1" y="1.8" width="7.8" height="16.4" rx="1.9"/><path d="M8.6 15.6h2.8"/></svg>'
   };
   function icon(name) { return ICON[name] || ICON.html; }
 
@@ -1821,16 +1825,34 @@
       field("Custom CSS", textareaHtml("__custom_css", sec.custom_css, "#" + pzSelector(sec.id) + " {\n  \n}")) +
       field("", '<div class="b-inspector-hint">Applies only to this section on your live storefront. Target it with <code>#' + pzSelector(sec.id) + '</code> to keep changes scoped there.</div>');
   }
+  // One per-device toggle card for the Visibility tab: a checkbox (kept real
+  // and native so the existing input[data-field^="__show_"] change-delegate
+  // in wireInspector needs no changes) visually replaced by a card showing
+  // the device glyph and a Visible/Hidden state — purely via CSS :checked
+  // sibling rules, so toggling needs no re-render.
+  function visToggleHtml(device, iconName, labelText, checked) {
+    return '<label class="b-vis-toggle">' +
+      '<input type="checkbox" class="b-vis-toggle-input" data-field="__show_' + device + '"' + (checked ? " checked" : "") + ' />' +
+      '<span class="b-vis-toggle-card">' +
+        '<span class="b-vis-toggle-icon">' + icon(iconName) + '</span>' +
+        '<span class="b-vis-toggle-label">' + esc(labelText) + '</span>' +
+        '<span class="b-vis-toggle-state">' +
+          '<span class="b-vis-toggle-state-on">' + icon("eye") + 'Visible</span>' +
+          '<span class="b-vis-toggle-state-off">' + icon("eyeOff") + 'Hidden</span>' +
+        '</span>' +
+      '</span>' +
+    '</label>';
+  }
   // Visibility tab: per-device show/hide — split out of the old "Settings"
   // pane so it's its own tab, matching the 4-tab design (Content/Style/
   // Advanced/Visibility).
   function sectionVisibilityHtml(sec) {
-    return field("Show on", '<div class="b-check-row">' +
-        checkHtml("__show_desktop", !sec.hide_desktop, "Desktop") +
-        checkHtml("__show_tablet", !sec.hide_tablet, "Tablet") +
-        checkHtml("__show_mobile", !sec.hide_mobile, "Mobile") +
+    return field("Show on", '<div class="b-vis-row">' +
+        visToggleHtml("desktop", "desktop", "Desktop", !sec.hide_desktop) +
+        visToggleHtml("tablet", "tablet", "Tablet", !sec.hide_tablet) +
+        visToggleHtml("mobile", "mobile", "Mobile", !sec.hide_mobile) +
       '</div>' +
-      '<div class="b-field-hint">Uncheck a device to hide this section there only. Preview it with the desktop/tablet/mobile switcher above the canvas.</div>');
+      '<div class="b-field-hint">Turn a device off to hide this section there only. Preview it with the desktop/tablet/mobile switcher above the canvas.</div>');
   }
   function pzSelector(id) { return "pz-section-" + id; }
 
