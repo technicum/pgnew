@@ -144,6 +144,63 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// ---------- Categories ----------
+// Deliberately minimal -- a category is just a name here (no description,
+// image, or nesting), and there's no separate edit screen: rename by
+// deleting and recreating, same as this app's other simple named lists
+// (e.g. Menus' own create-inline-then-manage-in-place pattern).
+router.get('/categories', async (req, res, next) => {
+  try {
+    const [categories] = await pool.query(
+      `SELECT c.*, COUNT(pc.product_id) AS product_count
+       FROM ${TABLES.categories} c
+       LEFT JOIN ${TABLES.productCategories} pc ON pc.category_id = c.id
+       WHERE c.store_id = ?
+       GROUP BY c.id
+       ORDER BY c.name`,
+      [req.store.id]
+    );
+    res.render('admin/categories', { title: 'Categories', categories });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/categories', async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    if (!name) {
+      req.flash('error', 'Category name is required.');
+      return res.redirect('/admin/categories');
+    }
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.categories} WHERE store_id = ? AND name = ?`, [req.store.id, name]);
+    if (existing) {
+      req.flash('error', `A category named "${name}" already exists.`);
+      return res.redirect('/admin/categories');
+    }
+    await pool.query(`INSERT INTO ${TABLES.categories} (store_id, name) VALUES (?, ?)`, [req.store.id, name]);
+    req.flash('success', 'Category created.');
+    res.redirect('/admin/categories');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/categories/:id/delete', async (req, res, next) => {
+  try {
+    // No confirmation needed beyond the browser-side one in the view --
+    // products.category_id is ON DELETE SET NULL and pz_product_categories
+    // is ON DELETE CASCADE (see db/database.js), so this never fails or
+    // leaves a product half-linked; it just un-categorizes anything that
+    // was only in this one category.
+    await pool.query(`DELETE FROM ${TABLES.categories} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    req.flash('success', 'Category deleted.');
+    res.redirect('/admin/categories');
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------- Products ----------
 // Normalizes the product form's category_ids[] (checkboxes; a single check
 // arrives as a bare string rather than an array, so this always gives back

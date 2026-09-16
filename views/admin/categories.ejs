@@ -1,0 +1,41 @@
+<%- include('partials/header') %>
+
+<div class="panel" style="max-width:480px; margin-bottom:20px;">
+  <h2>Create a category</h2>
+  <form action="/admin/categories" method="POST" class="menu-create-form">
+    <input type="text" name="name" placeholder="e.g. Apparel" maxlength="255" required />
+    <button type="submit" class="btn btn-primary">Create category</button>
+  </form>
+</div>
+
+<table class="admin-table">
+  <thead>
+    <tr><th>Name</th><th>Products</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% categories.forEach(function (c) { %>
+      <tr>
+        <td><%= c.name %></td>
+        <td><%= c.product_count %></td>
+        <%
+          // No category name in the confirm text -- keeps this safe against
+          // an apostrophe in the name breaking the onsubmit attribute's own
+          // quoting, without needing to escape anything.
+          var confirmMsg = c.product_count > 0
+            ? 'Delete this category? ' + c.product_count + ' product' + (c.product_count === 1 ? '' : 's') + ' using it will just lose this category -- nothing else changes.'
+            : 'Delete this category?';
+        %>
+        <td class="admin-row-actions">
+          <form action="/admin/categories/<%= c.id %>/delete" method="POST" onsubmit="return confirm('<%= confirmMsg %>');">
+            <button type="submit" class="link-btn danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    <% }); %>
+    <% if (categories.length === 0) { %>
+      <tr><td colspan="3" class="empty-state">No categories yet — create one above, then assign it to products from each product's edit page.</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/footer') %>

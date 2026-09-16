@@ -37,7 +37,7 @@
   <div class="admin-form-field">
     <span class="field-label">Categories</span>
     <% if (!categories.length) { %>
-      <div class="form-hint">No categories yet — you can create one from the storefront's category filter, or add products without one.</div>
+      <div class="form-hint">No categories yet — <a href="/admin/categories">create one</a> first, then come back here to assign it.</div>
     <% } else { %>
       <div class="category-checkbox-group">
         <% categories.forEach(function(c) { %>
