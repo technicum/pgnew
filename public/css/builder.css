@@ -60,6 +60,8 @@ body.builder-body button { font-family: inherit; }
 .b-side-panel-head { padding: 18px 18px 12px; border-bottom: 1px solid var(--b-line); }
 .b-side-panel-head h2 { font-size: 14.5px; font-weight: 700; }
 .b-side-panel-head p { margin: 4px 0 0; font-size: 12px; color: var(--b-muted); }
+.b-lib-cancel { margin-top: 10px; border: none; background: var(--b-surface-2); color: var(--b-ink); font-size: 12px; font-weight: 600; border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+.b-lib-cancel:hover { background: var(--b-surface-3); }
 .b-side-panel-body { flex: 1; overflow-y: auto; padding: 10px 12px 24px; }
 
 .b-side-search { position: relative; display: flex; align-items: center; padding: 12px 14px 0; }
@@ -80,6 +82,11 @@ body.builder-body button { font-family: inherit; }
 .b-lib-item[hidden] { display: none; }
 .b-lib-item:hover { background: var(--b-surface-2); }
 .b-lib-item:active { cursor: grabbing; }
+/* Picking a section for one row column (see enterColumnTargetMode): items
+   are clicked, not dragged, so they read as ordinary list buttons. */
+.b-lib-picking .b-lib-item { cursor: pointer; touch-action: auto; }
+.b-lib-picking .b-lib-item:hover { background: var(--b-accent-soft); }
+.b-lib-picking .b-lib-item:active { cursor: pointer; }
 .b-lib-item-icon { width: 30px; height: 30px; border-radius: 7px; background: var(--b-surface-2); display: flex; align-items: center; justify-content: center; color: var(--b-ink); flex-shrink: 0; }
 .b-lib-item-icon svg { width: 16px; height: 16px; }
 .b-lib-item-label { font-size: 13px; font-weight: 500; flex: 1; }
@@ -639,6 +646,18 @@ textarea[data-field="__custom_css"] { font-family: var(--b-font-mono); font-size
 .b-social-row-remove svg { width: 13px; height: 13px; }
 .b-social-row-remove:hover { color: var(--b-danger); border-color: var(--b-danger); }
 .b-social-add { width: 100%; justify-content: center; }
+
+.b-gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.b-gal-tile { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--b-surface-2); border: 1px solid var(--b-line); }
+.b-gal-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.b-gal-tile-remove { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: none; border-radius: 6px; background: rgba(33,30,27,.72); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .12s ease, background-color .12s ease; }
+.b-gal-tile-remove svg { width: 11px; height: 11px; }
+.b-gal-tile:hover .b-gal-tile-remove, .b-gal-tile-remove:focus-visible { opacity: 1; }
+.b-gal-tile-remove:hover { background: var(--b-danger); }
+.b-gal-tile-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1.5px dashed var(--b-line); background: transparent; color: var(--b-muted); cursor: pointer; padding: 0; }
+.b-gal-tile-add svg { width: 15px; height: 15px; }
+.b-gal-tile-add span { font-size: 10.5px; font-weight: 600; }
+.b-gal-tile-add:hover { border-color: var(--b-accent); color: var(--b-ink); background: var(--b-accent-soft); }
 
 .b-vis-row { display: flex; gap: 8px; }
 .b-vis-toggle { flex: 1; min-width: 0; cursor: pointer; }

@@ -121,7 +121,11 @@
   // dirty: true once any edit has been made since the page loaded (or since
   // the last successful Save) — drives the "Unsaved changes" indicator and
   // the Save button's enabled state (see updateDirtyUI/doSave below).
-  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, selectedBlockId: null, inspectorTab: "content", components: (DATA.components || []).slice(), dirty: false };
+  // colTarget: set while the section library is open specifically to fill
+  // one row column (the column's own "+" button was clicked, see
+  // enterColumnTargetMode) — { sectionId, rowBlockId, colIndex }, or null
+  // for the library's normal "drag anything onto the page" mode.
+  var state = { sections: DATA.sections.slice(), selectedId: null, selectedFieldKey: null, selectedBlockId: null, inspectorTab: "content", components: (DATA.components || []).slice(), dirty: false, colTarget: null };
 
   function findSection(id) { return state.sections.find(function (s) { return String(s.id) === String(id); }); }
   function indexOf(id) { return state.sections.findIndex(function (s) { return String(s.id) === String(id); }); }
@@ -683,16 +687,14 @@
               '</div>';
           }).join("");
           var isEmptyCol = !(col.blocks || []).length;
-          // The "+" doesn't open a type picker — it just drops in a rich
-          // text block as a quick default, same as before — so it's labeled
-          // for what it actually does. Dragging any item from the library
-          // (or the Components panel) into this column is the real, general
-          // way to add a section here, which is what the empty-state hint
-          // above the button says outright instead of implying the button
-          // itself offers a choice.
-          var addHtml = (isEmptyCol ? '<div class="b-row-col-hint">Drop a section on this column</div>' : "") +
-            '<button class="b-row-col-add" data-col-add="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '" title="Add a rich text block — or drag any section from the library into this column">' +
-            icon("plus") + '<span>Add rich text</span></button>';
+          // The "+" opens the section library on the left, scoped to this
+          // column (see enterColumnTargetMode) — clicking a type there
+          // inserts it right here, instead of always dropping in a quick
+          // rich-text default. Dragging any item from the library (or the
+          // Components panel) straight onto the column still works too.
+          var addHtml = (isEmptyCol ? '<div class="b-row-col-hint">Drop a section here, or click + to choose one</div>' : "") +
+            '<button class="b-row-col-add" data-col-add="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '" title="Choose a section to add to this column — or drag any section from the library here">' +
+            icon("plus") + '<span>Add section</span></button>';
           return '<div class="b-row-col' + (isEmptyCol ? " is-empty" : "") + '" data-col-drop="' + ci + '" data-row-owner="' + esc(ownerBlockId || "") + '">' + blocksHtml + addHtml + '</div>';
         }).join("");
         var templ = cols.map(function (c) { return (c.width || 1) + "fr"; }).join(" ");
@@ -1281,8 +1283,24 @@
 
   var LIB_GROUP_ORDER = ["Content", "Commerce", "Engagement", "Layout"];
 
+  // Swaps the library panel's head between its normal "drag onto the page"
+  // copy and the "picking for a column" copy with a Cancel button — kept in
+  // sync with state.colTarget on every renderLibrary() call rather than as
+  // a one-off DOM patch, so a stray re-render (e.g. after a search) can
+  // never leave stale head text showing.
+  function renderLibraryHead() {
+    var head = document.querySelector("#bPanelLibrary .b-side-panel-head");
+    if (!head) return;
+    head.innerHTML = state.colTarget
+      ? '<h2>Add to column</h2><p>Click a section below to insert it here.</p><button type="button" class="b-lib-cancel" id="bLibCancelTarget">Cancel</button>'
+      : '<h2>Add a section</h2><p>Drag a block onto the page</p>';
+  }
+
   function renderLibrary() {
+    renderLibraryHead();
+    var picking = !!state.colTarget;
     var body = document.getElementById("bLibraryBody");
+    body.classList.toggle("b-lib-picking", picking);
     var clearBtn = document.getElementById("bLibSearchClear");
     var q = (document.getElementById("bLibSearch") || {}).value || "";
     q = q.trim();
@@ -1291,6 +1309,10 @@
     var byGroup = {};
     Object.keys(SECTION_TYPES).forEach(function (type) {
       if (!isAllowedInContext(type)) return;
+      // Picking for a column: only offer types that can actually nest
+      // inside one (mirrors insertBlockIntoColumn's own isNestable guard,
+      // so nothing shown here could be clicked and silently rejected).
+      if (picking && !isNestable(type)) return;
       var g = SECTION_TYPES[type].group || "More";
       (byGroup[g] = byGroup[g] || []).push(type);
     });
@@ -1318,9 +1340,23 @@
     });
     if (!anyVisible) {
       body.appendChild(el('<div class="b-side-no-results">No sections match “' + esc(q) + '”.</div>'));
-    } else if (!q) {
+    } else if (!q && !picking) {
       body.appendChild(el('<div class="b-lib-note">More section types are on the way — new ones will show up in this list as they ship.</div>'));
     }
+  }
+
+  // Opens the library panel scoped to filling one row column — clicking a
+  // (nestable) type there inserts it straight into that column instead of
+  // the usual drag-and-drop. Entered from a column's own "+" button.
+  function enterColumnTargetMode(sectionId, rowBlockId, colIndex) {
+    state.colTarget = { sectionId: sectionId, rowBlockId: rowBlockId || null, colIndex: colIndex };
+    showPanel("library");
+    renderLibrary();
+  }
+  function exitColumnTargetMode() {
+    if (!state.colTarget) return;
+    state.colTarget = null;
+    renderLibrary();
   }
 
   function renderLayers() {
@@ -1463,13 +1499,27 @@
   function textareaHtml(name, current, placeholder) {
     return '<textarea class="b-text-native b-textarea-native" rows="4" data-field="' + name + '" placeholder="' + esc(placeholder || "") + '">' + esc(current || "") + '</textarea>';
   }
-  // A button placed below a textarea-list field (currently just gallery's
-  // "images") that appends a picked file's URL as a new line -- the same
-  // shape the textarea's own focusout handler already parses one-line-per-
-  // item, so picking from the library and typing a URL by hand both funnel
-  // into the same saved list.
-  function imageListAppendHtml(name, label, accept) {
-    return '<button type="button" class="b-media-pick-append-btn" data-media-pick-append="' + name + '" data-media-accept="' + esc(accept || "image/") + '">' + esc(label || "Add from library") + '</button>';
+  // Gallery's "images" field as an actual grid of thumbnails instead of a
+  // paste-a-URL-per-line textarea: each tile shows the picked image with a
+  // remove button (data-gal-remove, handled in wireInspector), and a
+  // trailing "+" tile opens the shared media picker and appends onto the
+  // list (data-media-pick-append -- the same generic handler imageFieldHtml's
+  // "Choose" button uses elsewhere, just placed as a grid tile here). Capped
+  // at 6 to match lib/sections.js's own limit on `images`, so the add tile
+  // simply stops rendering once full rather than letting a click 7-in
+  // silently get dropped on save.
+  function galleryImagesGridHtml(name, images, accept) {
+    var list = images || [];
+    var tiles = list.map(function (url, i) {
+      return '<div class="b-gal-tile">' +
+        '<img src="' + esc(url) + '" alt="" loading="lazy" />' +
+        '<button type="button" class="b-gal-tile-remove" data-gal-remove="' + name + '" data-index="' + i + '" title="Remove image" aria-label="Remove image">' + icon("trash") + '</button>' +
+      '</div>';
+    }).join("");
+    var addTile = list.length < 6
+      ? '<button type="button" class="b-gal-tile b-gal-tile-add" data-media-pick-append="' + name + '" data-media-accept="' + esc(accept || "image/") + '">' + icon("plus") + '<span>Add image</span></button>'
+      : "";
+    return '<div class="b-gal-grid">' + tiles + addTile + '</div>';
   }
   function colorHtml(name, current) {
     return '<input class="b-color-native" type="color" data-field="' + name + '" value="' + esc(current || "#ffffff") + '" />';
@@ -1582,8 +1632,8 @@
       case "richtext":
         return field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Width and alignment live on the Style tab.</div>');
       case "gallery":
-        return field("Image URLs", textareaHtml("images", (d.images || []).join("\n"), "One image URL per line, up to 6") + imageListAppendHtml("images", "Add image from library")) +
-          field("", '<div class="b-inspector-hint">Paste hosted image URLs, one per line, or use the button above. Click the heading to edit it. Columns live on the Style tab.</div>');
+        return field("Images (" + (d.images || []).length + " of 6)", galleryImagesGridHtml("images", d.images)) +
+          field("", '<div class="b-inspector-hint">Click + to add an image from your library, or the trash icon on a tile to remove it. Click the heading to edit it. Columns live on the Style tab.</div>');
       case "video":
         return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
           field("", '<div class="b-inspector-hint">Paste an embeddable video link — a YouTube/Vimeo “embed” URL works best. Click the heading to edit it.</div>');
@@ -2372,7 +2422,23 @@
     document.getElementById("bLibraryBody").addEventListener("pointerdown", function (e) {
       var item = e.target.closest(".b-lib-item");
       if (!item) return;
+      // Picking for a column: a plain click inserts (below), not a drag —
+      // starting the normal drag machinery here would also arm its own
+      // swallowNextClick() and eat that click before it ever inserted
+      // anything.
+      if (state.colTarget) return;
       startDrag(e, "insert", item.dataset.type);
+    });
+    document.getElementById("bLibraryBody").addEventListener("click", function (e) {
+      if (!state.colTarget) return;
+      var item = e.target.closest(".b-lib-item");
+      if (!item) return;
+      var t = state.colTarget;
+      insertBlockIntoColumn(t.sectionId, t.rowBlockId, t.colIndex, item.dataset.type);
+      exitColumnTargetMode();
+    });
+    document.getElementById("bPanelLibrary").addEventListener("click", function (e) {
+      if (e.target.closest("#bLibCancelTarget")) exitColumnTargetMode();
     });
     var search = document.getElementById("bLibSearch");
     var clearBtn = document.getElementById("bLibSearchClear");
@@ -2450,7 +2516,7 @@
       if (layoutBtn) return setRowLayout(id, layoutBtn.dataset.rowOwner || null, layoutBtn.dataset.rowLayout.split(",").map(Number));
 
       var colAddBtn = e.target.closest("[data-col-add]");
-      if (colAddBtn) return insertBlockIntoColumn(id, colAddBtn.dataset.rowOwner || null, parseInt(colAddBtn.dataset.colAdd, 10), "richtext");
+      if (colAddBtn) return enterColumnTargetMode(id, colAddBtn.dataset.rowOwner || null, parseInt(colAddBtn.dataset.colAdd, 10));
 
       var blockDelBtn = e.target.closest('[data-block-action="del"]');
       if (blockDelBtn) {
@@ -2633,6 +2699,20 @@
         var socRemLinks = (socRemTarget.fields.links || []).slice();
         socRemLinks.splice(socRemIdx, 1);
         socRemTarget.save({ links: socRemLinks });
+        renderInspector();
+        return;
+      }
+      var galRemoveBtn = e.target.closest("[data-gal-remove]");
+      if (galRemoveBtn) {
+        var galRemTarget = inspectorFieldTarget();
+        if (!galRemTarget) return;
+        var galRemField = galRemoveBtn.dataset.galRemove;
+        var galRemIdx = parseInt(galRemoveBtn.dataset.index, 10);
+        var galRemList = (galRemTarget.fields[galRemField] || []).slice();
+        galRemList.splice(galRemIdx, 1);
+        var galRemPatch = {};
+        galRemPatch[galRemField] = galRemList;
+        galRemTarget.save(galRemPatch);
         renderInspector();
         return;
       }
@@ -2862,7 +2942,8 @@
         }
         // The "html"/"css" fields on an html-type section/block are one raw
         // multi-line string each (the merchant's own markup/CSS) — unlike
-        // every other textarea here (gallery image URLs, logo names), which
+        // every other textarea here (logo names, and previously gallery
+        // image URLs, now its own grid — see galleryImagesGridHtml), which
         // is really a list, one item per line. No other section type has a
         // field named exactly "html" or "css", so this is an unambiguous way
         // to tell the two apart without a third data attribute.
@@ -3017,16 +3098,24 @@
     });
   }
 
+  // Shared by wireRail's own clicks and enterColumnTargetMode (which needs
+  // to jump to the library panel programmatically, not just react to a rail
+  // click on it).
+  function showPanel(which) {
+    document.querySelectorAll(".b-rail-btn[data-panel]").forEach(function (b) { b.classList.toggle("active", b.dataset.panel === which); });
+    document.getElementById("bPanelLibrary").hidden = which !== "library";
+    document.getElementById("bPanelLayers").hidden = which !== "layers";
+    var compPanel = document.getElementById("bPanelComponents");
+    if (compPanel) compPanel.hidden = which !== "components";
+  }
   function wireRail() {
     document.querySelectorAll(".b-rail-btn[data-panel]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        document.querySelectorAll(".b-rail-btn[data-panel]").forEach(function (b) { b.classList.remove("active"); });
-        btn.classList.add("active");
-        var which = btn.dataset.panel;
-        document.getElementById("bPanelLibrary").hidden = which !== "library";
-        document.getElementById("bPanelLayers").hidden = which !== "layers";
-        var compPanel = document.getElementById("bPanelComponents");
-        if (compPanel) compPanel.hidden = which !== "components";
+        // Switching away from the library while picking for a column
+        // cancels the pick — there'd be no way back to a plain "drag
+        // anything onto the page" library otherwise.
+        if (state.colTarget && btn.dataset.panel !== "library") exitColumnTargetMode();
+        showPanel(btn.dataset.panel);
       });
     });
   }
