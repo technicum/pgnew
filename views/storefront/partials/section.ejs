@@ -25,6 +25,13 @@
   if (section.padding_bottom) pzHeightStyle += 'padding-bottom:' + section.padding_bottom + 'px;';
   if (section.padding_left) pzHeightStyle += 'padding-left:' + section.padding_left + 'px;';
   if (section.padding_right) pzHeightStyle += 'padding-right:' + section.padding_right + 'px;';
+  // Universal Style-tab controls (lib/sections.js's sanitizeSectionSettings) —
+  // layered on top of whatever a type's own fields already set. Applied as
+  // inline style same as everything else above, so it always wins over the
+  // theme's own CSS without needing a stylesheet rebuild per store.
+  if (section.text_color) pzHeightStyle += 'color:' + section.text_color + ';';
+  if (section.bg_color) pzHeightStyle += 'background-color:' + section.bg_color + ';';
+  if (section.text_align) pzHeightStyle += 'text-align:' + section.text_align + ';';
 %>
 <%
   // Per-element spacing: margin/padding on a single text field inside this
@@ -375,7 +382,16 @@
 <% } else if (section.type === 'social_icons' && section.fields.links && section.fields.links.length) { %>
   <div id="<%= pzId %>" class="pz-social-icons<%= pzExtra %>" style="<%= pzHeightStyle %>">
     <% section.fields.links.forEach(function (l) { %>
-      <a href="<%= l.url || '#' %>" class="pz-social-icon" target="_blank" rel="noopener noreferrer" title="<%= l.platform %>"><%= l.platform.charAt(0).toUpperCase() + l.platform.slice(1) %></a>
+      <%
+        // socialIcons (res.locals, see server.js + lib/socialIcons.js) is
+        // keyed by the same whitelisted platform values sanitizeFields()
+        // ever stores (lib/sections.js's 'social_icons' case) — an
+        // unrecognized/missing key falls back to the generic "custom" glyph
+        // rather than rendering nothing.
+        var pzSocIcons = typeof socialIcons !== 'undefined' ? socialIcons : {};
+        var pzSocSvg = pzSocIcons[l.platform] || pzSocIcons.custom || '';
+      %>
+      <a href="<%= l.url || '#' %>" class="pz-social-icon" target="_blank" rel="noopener noreferrer" aria-label="<%= l.platform %>" title="<%= l.platform %>"><%- pzSocSvg %></a>
     <% }); %>
   </div>
 

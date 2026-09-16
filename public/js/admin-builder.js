@@ -640,8 +640,11 @@
       case "social_icons": {
         var socLinks = d.links || [];
         if (!socLinks.length) return '<div class="b-sec-pad"><div class="b-prod-empty">No icons yet — add some from the panel on the right.</div></div>';
+        // Real per-platform glyph (SOCIAL_ICON_SVGS below), matching what
+        // partials/section.ejs actually renders on the live storefront —
+        // not just a text label, so this canvas preview isn't misleading.
         return '<div class="b-sec-pad b-social-icons">' + socLinks.map(function (l) {
-          return '<span class="b-social-chip">' + esc(l.platform) + '</span>';
+          return '<span class="b-social-chip" title="' + esc(l.platform) + '">' + socialIconSvg(l.platform) + '</span>';
         }).join("") + '</div>';
       }
 
@@ -1480,6 +1483,49 @@
   // its own screen (views/admin/menu-edit.ejs), so there's no more
   // text-editing of its links here.
   var SOCIAL_PLATFORMS = ["instagram", "facebook", "twitter", "youtube", "tiktok", "pinterest", "linkedin", "custom"];
+  var SOCIAL_PLATFORM_LABELS = {
+    instagram: "Instagram", facebook: "Facebook", twitter: "X (Twitter)", youtube: "YouTube",
+    tiktok: "TikTok", pinterest: "Pinterest", linkedin: "LinkedIn", custom: "Custom",
+  };
+  // Mirrors lib/socialIcons.js's SOCIAL_ICON_SVGS exactly — this canvas is
+  // pure client JS with no access to that Node module, so this copy has to
+  // be kept in sync by hand whenever that file's icons change. Used both by
+  // the canvas preview (the "social_icons" case above) and by the
+  // repeating icon-row editor below, so what a merchant edits here always
+  // matches what actually renders on their live storefront.
+  var SOCIAL_ICON_SVGS = {
+    instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg>',
+    facebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 8.5h-2a1.5 1.5 0 0 0-1.5 1.5v2h3.4l-.5 3.2H12V21H8.7v-5.8H6.5v-3.2h2.2v-2.3A4 4 0 0 1 12.9 5.5h2.6v3Z"/></svg>',
+    twitter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l14 14M19 5L5 19"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="3.5"/><path d="M10.5 9.8l4.5 2.2-4.5 2.2Z" fill="currentColor" stroke="currentColor" stroke-linejoin="round"/></svg>',
+    tiktok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3.5v11.2a3.3 3.3 0 1 1-3.3-3.3c.3 0 .6 0 .9.1"/><path d="M13 3.5c.3 2.2 2 3.9 4.2 4.1"/></svg>',
+    pinterest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 19c.6-2.4 1.4-5.7 2-8.2a2.6 2.6 0 0 1 2.5-2c1.6 0 2.7 1.1 2.7 2.9 0 2.4-1.2 4.6-3.2 4.6-.8 0-1.5-.4-1.8-1"/></svg>',
+    linkedin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10.5v6M8 7.8v.1"/><path d="M12 16.5v-3.3a2.2 2.2 0 0 1 4.4 0v3.3M12 16.5v-6"/></svg>',
+    custom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"/><path d="M11 8l.9-.9a3 3 0 0 1 4.2 4.2l-.9.9"/><path d="M13 16l-.9.9a3 3 0 0 1-4.2-4.2l.9-.9"/></svg>',
+  };
+  function socialIconSvg(platform) { return SOCIAL_ICON_SVGS[platform] || SOCIAL_ICON_SVGS.custom; }
+
+  // Repeating-row editor for social_icons.links — a real "add a row / pick
+  // a platform / paste a URL / remove" UI (replacing the old raw "platform |
+  // url" textarea), wired up in wireInspector()'s data-social-* handlers.
+  function socialLinksEditorHtml(links) {
+    var rows = (links || []).map(function (l, i) {
+      return '<div class="b-social-row" data-social-row>' +
+        '<span class="b-social-row-icon">' + socialIconSvg(l.platform) + '</span>' +
+        '<select class="b-select-native" data-social-platform data-index="' + i + '">' +
+          SOCIAL_PLATFORMS.map(function (p) {
+            return '<option value="' + p + '" ' + (p === l.platform ? "selected" : "") + '>' + esc(SOCIAL_PLATFORM_LABELS[p]) + '</option>';
+          }).join("") +
+        '</select>' +
+        '<input class="b-text-native" type="text" data-social-url data-index="' + i + '" value="' + esc(l.url || "") + '" placeholder="https://…" />' +
+        '<button type="button" class="b-social-row-remove" data-social-remove data-index="' + i + '" aria-label="Remove icon">' + icon("trash") + '</button>' +
+      '</div>';
+    }).join("");
+    var addBtn = (links || []).length < 8
+      ? '<button type="button" class="b-btn-outline b-social-add" data-social-add>' + icon("plus") + ' Add icon</button>'
+      : '<div class="b-field-hint">Up to 8 icons.</div>';
+    return '<div class="b-social-editor">' + (rows || '<div class="b-field-hint">No icons yet — add one below.</div>') + '</div>' + addBtn;
+  }
 
   // link_columns — a "# Heading" line starts a new column, followed by
   // its "Label | url" link lines.
@@ -1506,57 +1552,22 @@
     }).join("\n\n");
   }
 
-  // social_icons — "platform | url" per line; platform is matched
-  // case-insensitively against SOCIAL_PLATFORMS, falling back to "custom".
-  function parseSocialText(text) {
-    var out = [];
-    (text || "").split("\n").forEach(function (raw) {
-      if (!raw.trim()) return;
-      var parts = raw.split("|");
-      var platform = (parts[0] || "").trim().toLowerCase();
-      if (SOCIAL_PLATFORMS.indexOf(platform) === -1) platform = "custom";
-      out.push({ platform: platform, url: (parts[1] || "").trim() });
-    });
-    return out;
-  }
-  function socialToText(links) {
-    return (links || []).map(function (l) { return (l.platform || "custom") + " | " + (l.url || ""); }).join("\n");
-  }
-
+  // Content tab: what this module SAYS — text, media, data pickers. Purely
+  // presentational choices (color, alignment, size, background, columns)
+  // live in inspectorStyleFieldsFor below instead, so the two tabs stay
+  // meaningfully different rather than an arbitrary split.
   function inspectorFieldsFor(sec) {
     var d = sec.fields;
     switch (sec.type) {
-      case "hero": {
-        var heroBg = d.bg_type || "none";
-        var heroBgFields = "";
-        if (heroBg === "color") {
-          heroBgFields = field("Background color", colorHtml("bg_color", d.bg_color));
-        } else if (heroBg === "image") {
-          heroBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
-            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
-        } else if (heroBg === "video") {
-          heroBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4", "video/")) +
-            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
-            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
-        }
-        var heroTextTheme = heroBg !== "none"
-          ? field("Text color", segHtml("text_theme", [{ val: "dark", label: "Dark" }, { val: "light", label: "Light" }], d.text_theme || "dark"))
-          : "";
+      case "hero":
         return field("Heading", textHtml("heading", d.heading)) +
           field("Subheading", textareaHtml("subheading", d.subheading)) +
-          field("Background", segHtml("bg_type", [{ val: "none", label: "None" }, { val: "color", label: "Color" }, { val: "image", label: "Image" }, { val: "video", label: "Video" }], heroBg)) +
-          heroBgFields +
-          heroTextTheme +
-          field("", '<div class="b-inspector-hint">You can also click the heading or subheading directly on the canvas to edit it.</div>');
-      }
+          field("", '<div class="b-inspector-hint">You can also click the heading or subheading directly on the canvas to edit it. Background and text color live on the Style tab.</div>');
       case "heading":
-        return field("Size", selectHtml("size", [{ val: "s", label: "Small" }, { val: "m", label: "Medium" }, { val: "l", label: "Large" }, { val: "xl", label: "Extra large" }], d.size || "l")) +
-          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left")) +
-          field("", '<div class="b-inspector-hint">Click the heading on the canvas to edit it.</div>');
+        return field("", '<div class="b-inspector-hint">Click the heading on the canvas to edit it. Size and alignment live on the Style tab.</div>');
       case "text_image":
-        return field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side)) +
-          field("Image URL", imageFieldHtml("image_url", d.image_url, "https://…")) +
-          field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it.</div>');
+        return field("Image URL", imageFieldHtml("image_url", d.image_url, "https://…")) +
+          field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Image position lives on the Style tab.</div>');
       case "products":
         return field("Products to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
           field("", '<div class="b-inspector-hint">Shows your ' + DATA.products.length + ' most recent products. Click the heading to edit it.</div>');
@@ -1565,13 +1576,10 @@
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
       case "richtext":
-        return field("Width", segHtml("width", [{ val: "narrow", label: "Narrow" }, { val: "wide", label: "Wide" }], d.width)) +
-          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }], d.align)) +
-          field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it.</div>');
+        return field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Width and alignment live on the Style tab.</div>');
       case "gallery":
-        return field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols)) +
-          field("Image URLs", textareaHtml("images", (d.images || []).join("\n"), "One image URL per line, up to 6") + imageListAppendHtml("images", "Add image from library")) +
-          field("", '<div class="b-inspector-hint">Paste hosted image URLs, one per line, or use the button above. Click the heading to edit it.</div>');
+        return field("Image URLs", textareaHtml("images", (d.images || []).join("\n"), "One image URL per line, up to 6") + imageListAppendHtml("images", "Add image from library")) +
+          field("", '<div class="b-inspector-hint">Paste hosted image URLs, one per line, or use the button above. Click the heading to edit it. Columns live on the Style tab.</div>');
       case "video":
         return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
           field("", '<div class="b-inspector-hint">Paste an embeddable video link — a YouTube/Vimeo “embed” URL works best. Click the heading to edit it.</div>');
@@ -1581,12 +1589,10 @@
           ? selectHtml("product_id", [{ val: "", label: "Choose a product…" }].concat(prodOptions), String(d.product_id || ""))
           : '<div class="b-inspector-hint">Add a product first, then come back here to spotlight it.</div>';
         return field("Product", picker) +
-          field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side)) +
-          field("", '<div class="b-inspector-hint">Click the description or button label on the canvas to edit it.</div>');
+          field("", '<div class="b-inspector-hint">Click the description or button label on the canvas to edit it. Image position lives on the Style tab.</div>');
       }
       case "collections":
-        return field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols)) +
-          field("", '<div class="b-inspector-hint">Shows all ' + (DATA.categories ? DATA.categories.length : 0) + ' of your store’s categories automatically. Click the heading to edit it.</div>');
+        return field("", '<div class="b-inspector-hint">Shows all ' + (DATA.categories ? DATA.categories.length : 0) + ' of your store’s categories automatically. Click the heading to edit it. Columns live on the Style tab.</div>');
       case "logos":
         return field("Names", textareaHtml("names", (d.names || []).join("\n"), "One name per line, up to 8")) +
           field("", '<div class="b-inspector-hint">Plain text only — good for press mentions or partner names.</div>');
@@ -1596,9 +1602,9 @@
         return field("Ends at", dateTimeHtml("end_at", d.end_at)) +
           field("", '<div class="b-inspector-hint">Shown in your local time here, but counts down to the same moment for every visitor. Click the heading to edit it.</div>');
       case "spacer":
-        return field("Height", segHtml("height", [{ val: "s", label: "S" }, { val: "m", label: "M" }, { val: "l", label: "L" }, { val: "xl", label: "XL" }], d.height));
+        return field("", '<div class="b-inspector-hint">Height lives on the Style tab.</div>');
       case "divider":
-        return field("Style", segHtml("style", [{ val: "line", label: "Line" }, { val: "dots", label: "Dots" }], d.style));
+        return field("", '<div class="b-inspector-hint">Line/dots style lives on the Style tab.</div>');
       case "row":
         return field("", '<div class="b-inspector-hint">' +
           (d.columns && d.columns.length
@@ -1629,16 +1635,14 @@
       case "promo_bar":
         return field("Link URL (optional)", textHtml("link_url", d.link_url, "https://…")) +
           field("Link text", textHtml("link_text", d.link_text, "Shop now")) +
-          field("Background color", colorHtml("bg_color", d.bg_color)) +
-          field("Text color", colorHtml("text_color", d.text_color)) +
           field("", checkHtml("dismissible", !!d.dismissible, "Let visitors dismiss it")) +
-          field("", '<div class="b-inspector-hint">Click the message on the canvas to edit it.</div>');
+          field("", '<div class="b-inspector-hint">Click the message on the canvas to edit it. Colors live on the Style tab.</div>');
       case "link_columns":
         return field("Columns", textareaHtml("columns", columnsToText(d.columns), "# Shop\nHoodies | /shop/hoodies\nT-shirts | /shop/tshirts\n\n# Support\nContact | /pages/contact")) +
           field("", '<div class="b-inspector-hint">Start each column with “# Heading”, then list its links as “Label | URL”, one per line.</div>');
       case "social_icons":
-        return field("Icons", textareaHtml("links", socialToText(d.links), "instagram | https://instagram.com/…\nfacebook | https://facebook.com/…")) +
-          field("", '<div class="b-inspector-hint">One per line as “platform | URL”. Platforms: ' + SOCIAL_PLATFORMS.join(", ") + '.</div>');
+        return field("Icons", socialLinksEditorHtml(d.links)) +
+          field("", '<div class="b-inspector-hint">Pick a platform and paste its profile URL for each icon — up to 8.</div>');
       case "copyright":
         return field("", checkHtml("show_powered_by", !!d.show_powered_by, "Show “Powered by PageZaper”")) +
           field("", checkHtml("show_admin_link", !!d.show_admin_link, "Show store admin link")) +
@@ -1646,6 +1650,90 @@
       default:
         return "";
     }
+  }
+
+  // Style tab: how this module LOOKS — color, alignment, size, background,
+  // columns. `isTopLevelSection` is false for a block nested inside a Row's
+  // column (see findBlockInSection) — those don't have their own
+  // custom_class/margin/text_color/etc. columns (only top-level pz_page_sections
+  // rows do), so the universal color/alignment controls below only show for
+  // an actual section.
+  function inspectorStyleFieldsFor(owner, isTopLevelSection) {
+    var d = owner.fields;
+    var typeStyle = "";
+    switch (owner.type) {
+      case "hero": {
+        var heroBg = d.bg_type || "none";
+        var heroBgFields = "";
+        if (heroBg === "color") {
+          heroBgFields = field("Background color", colorHtml("bg_color", d.bg_color));
+        } else if (heroBg === "image") {
+          heroBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
+            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
+        } else if (heroBg === "video") {
+          heroBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4", "video/")) +
+            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
+            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
+        }
+        var heroTextTheme = heroBg !== "none"
+          ? field("Text theme", segHtml("text_theme", [{ val: "dark", label: "Dark" }, { val: "light", label: "Light" }], d.text_theme || "dark"))
+          : "";
+        typeStyle = field("Background", segHtml("bg_type", [{ val: "none", label: "None" }, { val: "color", label: "Color" }, { val: "image", label: "Image" }, { val: "video", label: "Video" }], heroBg)) +
+          heroBgFields + heroTextTheme;
+        break;
+      }
+      case "heading":
+        typeStyle = field("Size", selectHtml("size", [{ val: "s", label: "Small" }, { val: "m", label: "Medium" }, { val: "l", label: "Large" }, { val: "xl", label: "Extra large" }], d.size || "l")) +
+          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left"));
+        break;
+      case "text_image":
+        typeStyle = field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side));
+        break;
+      case "richtext":
+        typeStyle = field("Width", segHtml("width", [{ val: "narrow", label: "Narrow" }, { val: "wide", label: "Wide" }], d.width)) +
+          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }], d.align));
+        break;
+      case "gallery":
+        typeStyle = field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols));
+        break;
+      case "spotlight":
+        typeStyle = field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side));
+        break;
+      case "collections":
+        typeStyle = field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols));
+        break;
+      case "spacer":
+        typeStyle = field("Height", segHtml("height", [{ val: "s", label: "S" }, { val: "m", label: "M" }, { val: "l", label: "L" }, { val: "xl", label: "XL" }], d.height));
+        break;
+      case "divider":
+        typeStyle = field("Style", segHtml("style", [{ val: "line", label: "Line" }, { val: "dots", label: "Dots" }], d.style));
+        break;
+      case "promo_bar":
+        typeStyle = field("Background color", colorHtml("bg_color", d.bg_color)) +
+          field("Text color", colorHtml("text_color", d.text_color));
+        break;
+      default:
+        typeStyle = "";
+    }
+    if (!isTopLevelSection) {
+      return typeStyle || '<div class="b-inspector-hint">No style options for items nested inside a Row yet — select the Row section itself for background/text color and alignment.</div>';
+    }
+    var universal = field("Text color", colorWithClearHtml("__text_color", owner.text_color)) +
+      field("Background color", colorWithClearHtml("__bg_color", owner.bg_color)) +
+      field("Text alignment", segHtml("__text_align", [{ val: "", label: "Default" }, { val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], owner.text_align || ""));
+    return typeStyle + (typeStyle ? '<div class="b-inspector-divider"></div><div class="b-inspector-section-label">Color &amp; alignment</div>' : "") + universal;
+  }
+
+  // A native <input type="color"> can't represent "no value" — it always
+  // shows some swatch — so "inherit from theme" (the stored '' state) is
+  // instead a Clear button that only appears once a color's been set.
+  function colorWithClearHtml(name, current) {
+    return '<div class="b-color-row">' +
+      '<input class="b-color-native" type="color" data-field="' + name + '" value="' + esc(current || "#111111") + '" />' +
+      (current
+        ? '<button type="button" class="b-btn-text-clear" data-color-clear="' + name + '">Clear</button>'
+        : '<span class="b-field-hint" style="margin:0;">Inherits from the theme</span>') +
+    '</div>';
   }
 
   // Universal "module settings" every section type gets, below its own
@@ -1712,38 +1800,60 @@
       field("", '<div class="b-inspector-hint">Just this text — on top of the section’s own margin/padding in Settings. Click elsewhere on the canvas to deselect it.</div>');
   }
 
-  function sectionSettingsHtml(sec) {
+  // Advanced tab: height, margin/padding, custom class/CSS — layout/escape-
+  // hatch settings, not something a merchant reaches for while writing copy
+  // or picking colors. (Was folded into the old 2-tab "Settings" pane along
+  // with visibility; split out so it matches the 4-tab design.)
+  function sectionAdvancedHtml(sec) {
     var resizable = !NO_RESIZE_TYPES[sec.type];
     var heightRow = resizable
       ? field("Height", '<input class="b-text-native" type="number" min="0" max="1200" step="10" data-field="__min_height" value="' + (sec.min_height || 0) + '" />' +
           '<div class="b-field-hint">Drag the handle at the bottom of the section on the canvas, or type a height in pixels. 0 keeps it at its natural height.</div>')
       : "";
-    var visibilityRow = field("Show on", '<div class="b-check-row">' +
-        checkHtml("__show_desktop", !sec.hide_desktop, "Desktop") +
-        checkHtml("__show_tablet", !sec.hide_tablet, "Tablet") +
-        checkHtml("__show_mobile", !sec.hide_mobile, "Mobile") +
-      '</div>' +
-      '<div class="b-field-hint">Uncheck a device to hide this section there only. Preview it with the desktop/tablet/mobile switcher above the canvas.</div>');
     var spacingRows = resizable
       ? field("Margin (space around this section)", spacingQuadHtml("__margin_top", "__margin_bottom", "__margin_left", "__margin_right", sec.margin_top, sec.margin_bottom, sec.margin_left, sec.margin_right) +
           '<div class="b-field-hint">Drag the thin handles around the section on the canvas, or type pixels here. Left/right inset the section from the page edge.</div>') +
         field("Padding (space inside its own edges)", spacingQuadHtml("__padding_top", "__padding_bottom", "__padding_left", "__padding_right", sec.padding_top, sec.padding_bottom, sec.padding_left, sec.padding_right))
       : "";
-    return visibilityRow +
-      heightRow +
+    return heightRow +
       spacingRows +
       field("Custom CSS class", textHtml("__custom_class", sec.custom_class, "e.g. my-hero-tweak")) +
       field("Custom CSS", textareaHtml("__custom_css", sec.custom_css, "#" + pzSelector(sec.id) + " {\n  \n}")) +
       field("", '<div class="b-inspector-hint">Applies only to this section on your live storefront. Target it with <code>#' + pzSelector(sec.id) + '</code> to keep changes scoped there.</div>');
   }
+  // Visibility tab: per-device show/hide — split out of the old "Settings"
+  // pane so it's its own tab, matching the 4-tab design (Content/Style/
+  // Advanced/Visibility).
+  function sectionVisibilityHtml(sec) {
+    return field("Show on", '<div class="b-check-row">' +
+        checkHtml("__show_desktop", !sec.hide_desktop, "Desktop") +
+        checkHtml("__show_tablet", !sec.hide_tablet, "Tablet") +
+        checkHtml("__show_mobile", !sec.hide_mobile, "Mobile") +
+      '</div>' +
+      '<div class="b-field-hint">Uncheck a device to hide this section there only. Preview it with the desktop/tablet/mobile switcher above the canvas.</div>');
+  }
   function pzSelector(id) { return "pz-section-" + id; }
 
-  // Content tab = what this section (or its sub-selected text element) can
-  // do/say — type-specific fields plus the per-element spacing panel.
-  // Settings tab = universal section-wide settings — visibility, height,
-  // margin/padding, custom class/CSS. Tab choice is sticky across
-  // selections (state.inspectorTab) except selectSection() pins it to
-  // "content" the moment a field gets freshly sub-selected.
+  var INSPECTOR_TABS = ["content", "style", "advanced", "visibility"];
+  var TAB_ICON = {
+    content: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 3.5 16.5 6.6 7 16H4v-3L13.4 3.5Z"/></svg>',
+    style: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 1 0 14V3Z" fill="currentColor" stroke="none"/></svg>',
+    advanced: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.6"/><path d="M10 3.3v1.6M10 15.1v1.6M16.7 10h-1.6M4.9 10H3.3M14.9 5.1l-1.1 1.1M6.2 13.7l-1.1 1.1M14.9 14.9l-1.1-1.1M6.2 6.3 5.1 5.2"/></svg>',
+    visibility: ICON.eye,
+  };
+  var TAB_LABEL = { content: "Content", style: "Style", advanced: "Advanced", visibility: "Visibility" };
+
+  // Content tab = what this section (or its sub-selected text element)
+  // SAYS. Style tab = how it LOOKS (type-specific presentational fields
+  // plus the universal text/background color + alignment every section
+  // gets). Advanced = height/spacing/custom class/CSS. Visibility =
+  // per-device show/hide. A block nested inside a Row's column only has
+  // Content + (sometimes) Style — Advanced/Visibility are section-only
+  // settings it doesn't have its own columns for, so those two tabs fall
+  // back to Content for a block rather than show something that can't
+  // actually be saved. Tab choice is sticky across selections
+  // (state.inspectorTab) except selectSection() pins it to "content" the
+  // moment a field gets freshly sub-selected.
   function renderInspector() {
     var panel = document.getElementById("bInspector");
     var sec = state.selectedId ? findSection(state.selectedId) : null;
@@ -1753,23 +1863,34 @@
     var titleType = selBlock ? selBlock.block.type : sec.type;
     var label = (SECTION_TYPES[titleType] && SECTION_TYPES[titleType].name) || titleType;
     document.getElementById("bInspectorIcon").innerHTML = icon(titleType);
-    document.getElementById("bInspectorTitle").textContent = label;
+    document.getElementById("bInspectorTitle").textContent = "Edit " + label;
     document.getElementById("bInspectorType").textContent = selBlock
       ? "inside row · column " + (selBlock.colIndex + 1)
       : "section · " + sec.type + (sec.hidden ? " · hidden" : "");
     var fieldOwnerType = selBlock ? selBlock.block.type : sec.type;
     var fieldSel = (state.selectedFieldKey && isTextElementField(fieldOwnerType, state.selectedFieldKey)) ? state.selectedFieldKey : null;
     var fieldSt = fieldSel ? ((selBlock ? selBlock.block.element_styles : sec.element_styles) || {})[fieldSel] : null;
-    var tab = state.inspectorTab === "settings" ? "settings" : "content";
-    var contentPane = inspectorFieldsFor(selBlock ? selBlock.block : sec) + (fieldSel ? elementSettingsHtml(sec, fieldSel, fieldSt) : "");
+    var tab = INSPECTOR_TABS.indexOf(state.inspectorTab) !== -1 ? state.inspectorTab : "content";
+    if (selBlock && (tab === "advanced" || tab === "visibility")) tab = "content";
+    var owner = selBlock ? selBlock.block : sec;
+    var contentPane = inspectorFieldsFor(owner) + (fieldSel ? elementSettingsHtml(sec, fieldSel, fieldSt) : "");
+    var stylePane = inspectorStyleFieldsFor(owner, !selBlock);
+    var blockNote = '<div class="b-inspector-hint">Not available for items nested inside a Row — select the Row section itself.</div>';
+    var advancedPane = selBlock ? blockNote : sectionAdvancedHtml(sec);
+    var visibilityPane = selBlock ? blockNote : sectionVisibilityHtml(sec);
+    var panes = { content: contentPane, style: stylePane, advanced: advancedPane, visibility: visibilityPane };
     var tabsHtml = '<div class="b-inspector-tabs">' +
-      '<button type="button" class="b-inspector-tab ' + (tab === "content" ? "active" : "") + '" data-tab="content">Content</button>' +
-      '<button type="button" class="b-inspector-tab ' + (tab === "settings" ? "active" : "") + '" data-tab="settings">Settings</button>' +
+      INSPECTOR_TABS.map(function (key) {
+        return '<button type="button" class="b-inspector-tab ' + (tab === key ? "active" : "") + '" data-tab="' + key + '">' +
+          '<span class="b-inspector-tab-icon">' + TAB_ICON[key] + '</span>' +
+          '<span class="b-inspector-tab-label">' + TAB_LABEL[key] + '</span></button>';
+      }).join("") +
     '</div>';
     document.getElementById("bInspectorBody").innerHTML =
       tabsHtml +
-      '<div class="b-inspector-pane" data-pane="content"' + (tab === "content" ? "" : " hidden") + '>' + contentPane + '</div>' +
-      '<div class="b-inspector-pane" data-pane="settings"' + (tab === "settings" ? "" : " hidden") + '>' + sectionSettingsHtml(sec) + '</div>';
+      INSPECTOR_TABS.map(function (key) {
+        return '<div class="b-inspector-pane" data-pane="' + key + '"' + (tab === key ? "" : " hidden") + '>' + panes[key] + '</div>';
+      }).join("");
   }
 
   /* ---------------------------------------------------------------
@@ -2466,7 +2587,41 @@
       if (!sec) return;
       var tabBtn = e.target.closest(".b-inspector-tab");
       if (tabBtn) {
-        state.inspectorTab = tabBtn.dataset.tab === "settings" ? "settings" : "content";
+        var pickedTab = tabBtn.dataset.tab;
+        state.inspectorTab = INSPECTOR_TABS.indexOf(pickedTab) !== -1 ? pickedTab : "content";
+        renderInspector();
+        return;
+      }
+      var socialAddBtn = e.target.closest("[data-social-add]");
+      if (socialAddBtn) {
+        var socAddTarget = inspectorFieldTarget();
+        if (!socAddTarget) return;
+        var socLinksNext = (socAddTarget.fields.links || []).slice();
+        if (socLinksNext.length >= 8) return;
+        socLinksNext.push({ platform: "instagram", url: "" });
+        socAddTarget.save({ links: socLinksNext });
+        renderInspector();
+        return;
+      }
+      var socialRemoveBtn = e.target.closest("[data-social-remove]");
+      if (socialRemoveBtn) {
+        var socRemTarget = inspectorFieldTarget();
+        if (!socRemTarget) return;
+        var socRemIdx = parseInt(socialRemoveBtn.dataset.index, 10);
+        var socRemLinks = (socRemTarget.fields.links || []).slice();
+        socRemLinks.splice(socRemIdx, 1);
+        socRemTarget.save({ links: socRemLinks });
+        renderInspector();
+        return;
+      }
+      var colorClearBtn = e.target.closest("[data-color-clear]");
+      if (colorClearBtn) {
+        // "__text_color" -> "text_color" — same __-prefix convention as the
+        // margin/padding/visibility settings fields (see spacingIn/hin below).
+        var clearKey = colorClearBtn.dataset.colorClear.slice(2);
+        var clearPatch = {};
+        clearPatch[clearKey] = "";
+        saveSettings(sec.id, clearPatch);
         renderInspector();
         return;
       }
@@ -2514,9 +2669,21 @@
       }
       var segBtn = e.target.closest(".b-seg button");
       if (segBtn) {
+        var wrap = segBtn.closest(".b-seg");
+        // A "__"-prefixed field (e.g. "__text_align") is a universal
+        // section-level setting, not a type field — goes through
+        // saveSettings() onto the section itself, same convention as the
+        // margin/padding/visibility inputs below, not saveField().
+        if (wrap.dataset.field && wrap.dataset.field.indexOf("__") === 0) {
+          var segKey = wrap.dataset.field.slice(2);
+          var segPatch = {};
+          segPatch[segKey] = segBtn.dataset.val;
+          saveSettings(sec.id, segPatch);
+          renderInspector();
+          return;
+        }
         var target = inspectorFieldTarget();
         if (!target) return;
-        var wrap = segBtn.closest(".b-seg");
         var patch = {};
         patch[wrap.dataset.field] = segBtn.dataset.val;
         target.save(patch);
@@ -2525,6 +2692,18 @@
     document.getElementById("bInspectorBody").addEventListener("change", function (e) {
       var sec = state.selectedId ? findSection(state.selectedId) : null;
       if (!sec) return;
+      var socPlatformSel = e.target.closest("select[data-social-platform]");
+      if (socPlatformSel) {
+        var socPlatTarget = inspectorFieldTarget();
+        if (!socPlatTarget) return;
+        var socPlatIdx = parseInt(socPlatformSel.dataset.index, 10);
+        var socPlatLinks = (socPlatTarget.fields.links || []).slice();
+        if (!socPlatLinks[socPlatIdx]) return;
+        socPlatLinks[socPlatIdx] = Object.assign({}, socPlatLinks[socPlatIdx], { platform: socPlatformSel.value });
+        socPlatTarget.save({ links: socPlatLinks });
+        renderInspector();
+        return;
+      }
       var sel = e.target.closest("select[data-field]");
       if (sel) {
         var target = inspectorFieldTarget();
@@ -2595,6 +2774,16 @@
       }
       var colorIn = e.target.closest('input[type="color"][data-field]');
       if (colorIn) {
+        // A "__"-prefixed color (universal Style tab: __text_color,
+        // __bg_color) is a section-level setting, not a type field.
+        if (colorIn.dataset.field.indexOf("__") === 0) {
+          var uColorKey = colorIn.dataset.field.slice(2);
+          var uColorPatch = {};
+          uColorPatch[uColorKey] = colorIn.value;
+          saveSettings(sec.id, uColorPatch);
+          renderInspector();
+          return;
+        }
         var colorTarget = inspectorFieldTarget();
         if (!colorTarget) return;
         var colorPatch = {};
@@ -2629,6 +2818,17 @@
     document.getElementById("bInspectorBody").addEventListener("focusout", function (e) {
       var sec = state.selectedId ? findSection(state.selectedId) : null;
       if (!sec) return;
+      var socUrlIn = e.target.closest("input[data-social-url]");
+      if (socUrlIn) {
+        var socUrlTarget = inspectorFieldTarget();
+        if (!socUrlTarget) return;
+        var socUrlIdx = parseInt(socUrlIn.dataset.index, 10);
+        var socUrlLinks = (socUrlTarget.fields.links || []).slice();
+        if (!socUrlLinks[socUrlIdx]) return;
+        socUrlLinks[socUrlIdx] = Object.assign({}, socUrlLinks[socUrlIdx], { url: socUrlIn.value.trim() });
+        socUrlTarget.save({ links: socUrlLinks });
+        return;
+      }
       var ta = e.target.closest('textarea.b-textarea-native[data-field]');
       if (ta) {
         // "__custom_css" is a universal module setting, not a type field:
@@ -2652,21 +2852,15 @@
           rawTarget.save(rawPatch);
           return;
         }
-        // "links" belongs to social_icons (platform/url) now that nav_menu
-        // just points at a saved menu instead of storing its own. "columns"
-        // only belongs to link_columns, but is parsed the same structured
-        // way rather than falling through to the plain one-line-per-item
-        // split below.
-        if (ta.dataset.field === "links" || ta.dataset.field === "columns") {
+        // "columns" only belongs to link_columns, parsed as structured
+        // "# Heading" / "Label | URL" text rather than the plain
+        // one-line-per-item split below. (social_icons' own "links" field no
+        // longer goes through a textarea at all — see socialLinksEditorHtml's
+        // data-social-* row editor and its dedicated handlers below.)
+        if (ta.dataset.field === "columns") {
           var structTarget = inspectorFieldTarget();
           if (!structTarget) return;
-          var structPatch = {};
-          if (ta.dataset.field === "columns") {
-            structPatch.columns = parseColumnsText(ta.value);
-          } else {
-            structPatch.links = parseSocialText(ta.value);
-          }
-          structTarget.save(structPatch);
+          structTarget.save({ columns: parseColumnsText(ta.value) });
           return;
         }
         var taTarget = inspectorFieldTarget();

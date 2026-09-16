@@ -247,7 +247,13 @@
   <% } else if (b.type === 'social_icons' && b.fields.links && b.fields.links.length) { %>
     <div class="pz-social-icons">
       <% b.fields.links.forEach(function (l) { %>
-        <a href="<%= l.url || '#' %>" class="pz-social-icon" target="_blank" rel="noopener noreferrer" title="<%= l.platform %>"><%= l.platform.charAt(0).toUpperCase() + l.platform.slice(1) %></a>
+        <%
+          // See partials/section.ejs's identical block for why this falls
+          // back to the generic "custom" glyph rather than rendering nothing.
+          var pzBlockSocIcons = typeof socialIcons !== 'undefined' ? socialIcons : {};
+          var pzBlockSocSvg = pzBlockSocIcons[l.platform] || pzBlockSocIcons.custom || '';
+        %>
+        <a href="<%= l.url || '#' %>" class="pz-social-icon" target="_blank" rel="noopener noreferrer" aria-label="<%= l.platform %>" title="<%= l.platform %>"><%- pzBlockSocSvg %></a>
       <% }); %>
     </div>
 

@@ -308,6 +308,14 @@ CREATE TABLE IF NOT EXISTS ${TABLES.pageSections} (
   padding_left INT NOT NULL DEFAULT 0,
   padding_right INT NOT NULL DEFAULT 0,
   element_styles JSON NULL,
+  -- Universal Style-tab controls (see lib/sections.js's sanitizeSectionSettings)
+  -- — a section-wide text color, background color, and text alignment, on
+  -- top of whatever presentational fields that section's own type already
+  -- has. NULL/'' means "inherit from the theme", same convention as the
+  -- other nullable style columns here.
+  text_color VARCHAR(7) NULL,
+  bg_color VARCHAR(7) NULL,
+  text_align VARCHAR(10) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (page_id) REFERENCES ${TABLES.pages}(id) ON DELETE CASCADE,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
@@ -829,6 +837,26 @@ async function migratePageSectionSettings(conn) {
   // and sanitizeElementStyle. NULL/absent means no element has an override.
   if (!(await columnExists(conn, TABLES.pageSections, 'element_styles'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN element_styles JSON NULL`);
+  }
+}
+
+// Universal Style-tab controls (see lib/sections.js's sanitizeSectionSettings
+// and the builder's new Content/Style/Advanced/Visibility inspector tabs) —
+// a section-wide text color, background color, and text alignment that
+// apply regardless of type, layered on top of a type's own presentational
+// fields (a hero's own bg_color, a promo_bar's own text_color, etc.).
+// Split out from migratePageSectionSettings (which already covers the
+// original custom_class/custom_css/spacing/visibility columns) so this one
+// idempotent step can be added without touching that already-shipped one.
+async function migrateSectionStyleColumns(conn) {
+  if (!(await columnExists(conn, TABLES.pageSections, 'text_color'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN text_color VARCHAR(7) NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'bg_color'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_color VARCHAR(7) NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'text_align'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN text_align VARCHAR(10) NULL`);
   }
 }
 
@@ -1434,6 +1462,7 @@ async function init() {
     await migratePagesForExistingStores(conn);
     await migrateProductCategoryLinks(conn);
     await migratePageSectionSettings(conn);
+    await migrateSectionStyleColumns(conn);
     await migrateHeaderFooterSections(conn);
     await migrateDefaultHeaderFooter(conn);
     await migrateNavMenuSections(conn);

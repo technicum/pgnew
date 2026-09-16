@@ -128,6 +128,9 @@ function toRenderSection(s) {
     padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
     padding_left: s.padding_left || 0, padding_right: s.padding_right || 0,
     element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
+    // Universal Style-tab controls (see lib/sections.js's sanitizeSectionSettings) —
+    // '' (not null) so section.ejs's pzStyleAttrs can treat "no override" uniformly.
+    text_color: s.text_color || '', bg_color: s.bg_color || '', text_align: s.text_align || '',
   };
 }
 
@@ -290,6 +293,7 @@ async function renderStorePage(req, res, next, page) {
         padding_top: s.padding_top || 0, padding_bottom: s.padding_bottom || 0,
         padding_left: s.padding_left || 0, padding_right: s.padding_right || 0,
         element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
+        text_color: s.text_color || '', bg_color: s.bg_color || '', text_align: s.text_align || '',
       };
       if (s.type === 'products') {
         section.products = allProducts.slice(0, fields.limit || 12);

@@ -672,6 +672,11 @@ async function applySectionsDiff(scope, incoming) {
       const paddingRight = settings.padding_right || 0;
       const elementStyles = sanitizeAllElementStyles(item.type, item.element_styles);
       const elementStylesJson = Object.keys(elementStyles).length ? JSON.stringify(elementStyles) : null;
+      // Universal Style-tab controls (see lib/sections.js's sanitizeSectionSettings) —
+      // '' means "no override", stored as NULL same as custom_class/custom_css.
+      const textColor = settings.text_color || null;
+      const bgColor = settings.bg_color || null;
+      const textAlign = settings.text_align || null;
 
       const incomingId = Number.isInteger(item.id) ? item.id : parseInt(item.id, 10);
       if (incomingId && existingIds.has(incomingId)) {
@@ -681,22 +686,25 @@ async function applySectionsDiff(scope, incoming) {
              SET position = ?, fields = ?, hidden = ?, custom_class = ?, custom_css = ?, min_height = ?,
                  hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
                  margin_top = ?, margin_bottom = ?, margin_left = ?, margin_right = ?,
-                 padding_top = ?, padding_bottom = ?, padding_left = ?, padding_right = ?, element_styles = ?
+                 padding_top = ?, padding_bottom = ?, padding_left = ?, padding_right = ?, element_styles = ?,
+                 text_color = ?, bg_color = ?, text_align = ?
            WHERE id = ?`,
           [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
             marginTop, marginBottom, marginLeft, marginRight,
-            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson, incomingId]
+            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson,
+            textColor, bgColor, textAlign, incomingId]
         );
       } else {
         const [result] = await pool.query(
           `INSERT INTO ${TABLES.pageSections}
              (store_id, page_id, region, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
               margin_top, margin_bottom, margin_left, margin_right,
-              padding_top, padding_bottom, padding_left, padding_right, element_styles)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              padding_top, padding_bottom, padding_left, padding_right, element_styles, text_color, bg_color, text_align)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [scope.storeId, scope.pageId, scope.region, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
             marginTop, marginBottom, marginLeft, marginRight,
-            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson]
+            paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson,
+            textColor, bgColor, textAlign]
         );
         keepIds.add(result.insertId);
       }
@@ -840,6 +848,11 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
     if (patch.padding_bottom !== undefined) { sets.push('padding_bottom = ?'); values.push(patch.padding_bottom); }
     if (patch.padding_left !== undefined) { sets.push('padding_left = ?'); values.push(patch.padding_left); }
     if (patch.padding_right !== undefined) { sets.push('padding_right = ?'); values.push(patch.padding_right); }
+    // Universal Style-tab controls — '' clears back to "inherit from theme"
+    // (stored as NULL), same convention custom_class/custom_css already use.
+    if (patch.text_color !== undefined) { sets.push('text_color = ?'); values.push(patch.text_color || null); }
+    if (patch.bg_color !== undefined) { sets.push('bg_color = ?'); values.push(patch.bg_color || null); }
+    if (patch.text_align !== undefined) { sets.push('text_align = ?'); values.push(patch.text_align || null); }
     if (sets.length) {
       values.push(section.id);
       await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
@@ -848,7 +861,8 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
     const [[updated]] = await pool.query(
       `SELECT custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
               margin_top, margin_bottom, margin_left, margin_right,
-              padding_top, padding_bottom, padding_left, padding_right
+              padding_top, padding_bottom, padding_left, padding_right,
+              text_color, bg_color, text_align
        FROM ${TABLES.pageSections} WHERE id = ?`,
       [section.id]
     );
@@ -868,6 +882,9 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
       padding_bottom: updated.padding_bottom || 0,
       padding_left: updated.padding_left || 0,
       padding_right: updated.padding_right || 0,
+      text_color: updated.text_color || '',
+      bg_color: updated.bg_color || '',
+      text_align: updated.text_align || '',
     });
   } catch (err) {
     next(err);

@@ -8,6 +8,7 @@ const path = require('path');
 const { pool, init } = require('./db/database');
 const { resolveStore, getBaseDomain, adminPortalUrl, rootUrl } = require('./middleware/tenant');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('./lib/themes');
+const { SOCIAL_ICON_SVGS } = require('./lib/socialIcons');
 const platformRoutes = require('./routes/platform');
 const platformAdminRoutes = require('./routes/platformAdmin');
 const storefrontRoutes = require('./routes/storefront');
@@ -79,6 +80,15 @@ app.use((req, res, next) => {
   // Any "Store admin" / "Log in" link for staff should use this, not a
   // relative /login or /admin/login.
   res.locals.loginUrl = adminPortalUrl(req, '/login');
+  next();
+});
+
+// The 'social_icons' footer section's per-platform icon glyphs (see
+// lib/socialIcons.js) — set globally rather than per-route since
+// section.ejs/block.ejs render it wherever a store's footer happens to show
+// up (every storefront page, not just ones with dedicated route handling).
+app.use((req, res, next) => {
+  res.locals.socialIcons = SOCIAL_ICON_SVGS;
   next();
 });
 

@@ -306,10 +306,13 @@ body.builder-body button { font-family: inherit; }
 .b-check input { margin: 0; cursor: pointer; }
 
 /* Content / Settings tabs at the top of the inspector body. */
-.b-inspector-tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--b-line); }
-.b-inspector-tab { border: none; background: transparent; font-size: 13px; font-weight: 600; color: var(--b-muted); padding: 8px 4px 10px; margin-bottom: -1px; border-bottom: 2px solid transparent; cursor: pointer; }
+.b-inspector-tabs { display: flex; gap: 2px; margin-bottom: 18px; border-bottom: 1px solid var(--b-line); }
+.b-inspector-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; border: none; background: transparent; font-size: 10.5px; font-weight: 600; color: var(--b-muted); padding: 4px 2px 10px; margin-bottom: -1px; border-bottom: 2px solid transparent; cursor: pointer; }
 .b-inspector-tab:hover { color: var(--b-ink); }
 .b-inspector-tab.active { color: var(--b-ink); border-bottom-color: var(--b-accent); }
+.b-inspector-tab-icon { display: flex; align-items: center; justify-content: center; }
+.b-inspector-tab-icon svg { width: 16px; height: 16px; }
+.b-inspector-tab-label { line-height: 1; white-space: nowrap; }
 .b-inspector-pane[hidden] { display: none; }
 .b-csec.is-drop-target-before::before, .b-csec.is-drop-target-after::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; background: var(--b-accent); border-radius: 2px; z-index: 5; }
 .b-csec.is-drop-target-before::before { top: -2px; }
@@ -520,7 +523,8 @@ body.builder-body button { font-family: inherit; }
 .b-linkcol-link { font-size: 13px; color: var(--b-muted); padding: 5px 0; }
 
 .b-social-icons { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 28px; padding-bottom: 28px; }
-.b-social-chip { font-size: 11px; font-weight: 600; text-transform: capitalize; color: var(--b-ink); background: var(--b-surface-2); border: 1px solid var(--b-line); border-radius: 999px; padding: 5px 12px; }
+.b-social-chip { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--b-ink); background: var(--b-surface-2); border: 1px solid var(--b-line); border-radius: 50%; }
+.b-social-chip svg { width: 17px; height: 17px; }
 
 .b-copyright-block { padding-top: 24px; padding-bottom: 24px; font-size: 12.5px; color: var(--b-muted); }
 .b-copyright-links { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 8px; font-size: 12px; }
@@ -619,6 +623,22 @@ body.builder-body button { font-family: inherit; }
 .b-inspector-section-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--b-muted); margin: -8px 0 16px; }
 .b-field-hint { font-size: 11.5px; color: var(--b-muted); line-height: 1.5; margin-top: 6px; }
 textarea[data-field="__custom_css"] { font-family: var(--b-font-mono); font-size: 12px; line-height: 1.5; min-height: 110px; }
+
+.b-color-row { display: flex; align-items: center; gap: 8px; }
+.b-color-row .b-color-native { flex: 1; }
+.b-btn-text-clear { flex-shrink: 0; border: none; background: transparent; color: var(--b-muted); font-size: 12px; font-weight: 600; cursor: pointer; padding: 6px 2px; }
+.b-btn-text-clear:hover { color: var(--b-ink); text-decoration: underline; }
+
+.b-social-editor { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.b-social-row { display: flex; align-items: center; gap: 8px; }
+.b-social-row-icon { flex-shrink: 0; width: 30px; height: 30px; border-radius: 7px; background: var(--b-surface-2); display: flex; align-items: center; justify-content: center; }
+.b-social-row-icon svg { width: 15px; height: 15px; }
+.b-social-row select.b-select-native { flex: 0 0 118px; }
+.b-social-row .b-text-native { flex: 1; min-width: 0; }
+.b-social-row-remove { flex-shrink: 0; width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--b-line); background: var(--b-surface); color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.b-social-row-remove svg { width: 13px; height: 13px; }
+.b-social-row-remove:hover { color: var(--b-danger); border-color: var(--b-danger); }
+.b-social-add { width: 100%; justify-content: center; }
 
 .b-drag-ghost { position: fixed; z-index: 999; pointer-events: none; background: var(--b-ink); color: var(--b-paper); font-size: 12.5px; font-weight: 600; padding: 9px 14px; border-radius: 8px; box-shadow: var(--b-shadow); display: flex; align-items: center; gap: 8px; transform: translate(-50%,-50%); }
 .b-drag-ghost svg { width: 14px; height: 14px; }
