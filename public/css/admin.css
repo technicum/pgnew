@@ -708,11 +708,27 @@
   overflow: hidden;
 }
 .media-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.media-card-thumb { cursor: pointer; }
 .media-card-filetype { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; color: #6b7280; }
 .media-card-body { padding: 10px 12px; }
 .media-card-name { font-size: 0.82rem; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .media-card-meta { font-size: 0.75rem; color: #9ca3af; margin-top: 2px; }
 .media-card-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 0.78rem; }
+
+/* ---------- Media Library: click-to-preview lightbox ---------- */
+.media-lightbox-overlay {
+  position: fixed; inset: 0; background: rgba(17, 24, 39, 0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1100; padding: 32px;
+}
+.media-lightbox-inner { position: relative; max-width: min(900px, 100%); max-height: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.media-lightbox-inner img { max-width: 100%; max-height: 80vh; border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+.media-lightbox-name { color: #f9fafb; font-size: 0.85rem; text-align: center; }
+.media-lightbox-close {
+  position: absolute; top: -40px; right: -8px; background: none; border: none;
+  color: #f9fafb; font-size: 1.8rem; line-height: 1; cursor: pointer; padding: 4px 8px;
+}
+.media-lightbox-overlay[hidden] { display: none; }
 
 /* ---------- Media picker modal (public/js/media-picker.js) ---------- */
 .media-picker-overlay {
@@ -720,6 +736,7 @@
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; padding: 24px;
 }
+.media-picker-overlay[hidden] { display: none; }
 .media-picker-modal {
   background: #fff; border-radius: 14px; width: min(760px, 100%); max-height: min(640px, 90vh);
   display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
