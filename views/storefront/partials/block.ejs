@@ -38,13 +38,38 @@
     }
     return '';
   }
+  // Mirrors section.ejs's pzEsc/pzBgVideoEmbed/pzBgVideoHtml — see the
+  // comments there.
+  function pzEsc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function pzBgVideoEmbed(url) {
+    url = (url || '').trim();
+    var yt = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
+    if (yt) {
+      var ytId = yt[1];
+      return { kind: 'youtube', src: 'https://www.youtube-nocookie.com/embed/' + ytId + '?autoplay=1&mute=1&loop=1&playlist=' + ytId + '&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3' };
+    }
+    var vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+    if (vm) {
+      return { kind: 'vimeo', src: 'https://player.vimeo.com/video/' + vm[1] + '?autoplay=1&muted=1&loop=1&background=1&controls=0' };
+    }
+    return { kind: 'file', src: url };
+  }
+  function pzBgVideoHtml(url, cssClass) {
+    var embed = pzBgVideoEmbed(url);
+    if (embed.kind === 'file') {
+      return '<video class="' + cssClass + '" src="' + pzEsc(embed.src) + '" autoplay muted loop playsinline></video>';
+    }
+    return '<iframe class="' + cssClass + '" src="' + pzEsc(embed.src) + '" style="pointer-events:none;border:0;" allow="autoplay; encrypted-media" loading="lazy"></iframe>';
+  }
 %>
 <div class="pz-block pz-block-<%= b.type %>" style="position:relative;">
   <% if (b.type === 'hero') { %>
     <% var pzHeroLight = b.fields.bg_type !== 'none' && b.fields.text_theme === 'light'; %>
     <div class="hero<%= pzHeroLight ? ' hero-text-light' : '' %>" style="<%= pzHeroBgStyle(b.fields) %>">
       <% if (b.fields.bg_type === 'video' && b.fields.bg_video_url) { %>
-        <video class="hero-bg-video" src="<%= b.fields.bg_video_url %>" autoplay muted loop playsinline></video>
+        <%- pzBgVideoHtml(b.fields.bg_video_url, 'hero-bg-video') %>
       <% } %>
       <% if ((b.fields.bg_type === 'image' || b.fields.bg_type === 'video') && b.fields.bg_overlay) { %>
         <div class="hero-bg-overlay"></div>
@@ -61,7 +86,7 @@
     <% var pzHeadingLight = b.fields.bg_type !== 'none' && b.fields.text_theme === 'light'; %>
     <div class="pz-heading pz-heading-<%= b.fields.size || 'l' %><%= pzHeadingLight ? ' pz-heading-text-light' : '' %>" style="<%= pzHeroBgStyle(b.fields) %>text-align:<%= b.fields.align || 'left' %>;">
       <% if (b.fields.bg_type === 'video' && b.fields.bg_video_url) { %>
-        <video class="pz-heading-bg-video" src="<%= b.fields.bg_video_url %>" autoplay muted loop playsinline></video>
+        <%- pzBgVideoHtml(b.fields.bg_video_url, 'pz-heading-bg-video') %>
       <% } %>
       <% if ((b.fields.bg_type === 'image' || b.fields.bg_type === 'video') && b.fields.bg_overlay) { %>
         <div class="pz-heading-bg-overlay"></div>

@@ -450,6 +450,40 @@
     return '<div class="b-ph ' + (extraClass || "") + '"' + (styleAttr || "") + '>' + icon("image") + "</div>";
   }
 
+  // A section's "Background video" field (hero, heading — see bg_video_url
+  // in lib/sections.js) used to only accept a direct .mp4/.webm file link,
+  // rendered as a plain <video>. This also recognizes a pasted YouTube or
+  // Vimeo watch/share link and turns it into that platform's muted/looping
+  // "background" iframe embed instead, so a merchant can paste whichever
+  // kind of link they have — mirrored in views/storefront/partials/
+  // section.ejs and block.ejs's own pzBgVideoEmbed for the live storefront,
+  // which must build the exact same src for the canvas preview to match.
+  function bgVideoEmbed(url) {
+    url = (url || "").trim();
+    var yt = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
+    if (yt) {
+      var ytId = yt[1];
+      return { kind: "youtube", src: "https://www.youtube-nocookie.com/embed/" + ytId + "?autoplay=1&mute=1&loop=1&playlist=" + ytId + "&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3" };
+    }
+    var vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+    if (vm) {
+      return { kind: "vimeo", src: "https://player.vimeo.com/video/" + vm[1] + "?autoplay=1&muted=1&loop=1&background=1&controls=0" };
+    }
+    return { kind: "file", src: url };
+  }
+  // Renders whichever markup bgVideoEmbed() calls for, sized/positioned by
+  // the given CSS class exactly like the plain <video> this replaces —
+  // youtube/vimeo get pointer-events:none so the decorative embed can't
+  // steal clicks meant for the canvas (selecting the section, editing the
+  // heading text, etc.), which a native <video> with no controls never risked.
+  function bgVideoHtml(url, cssClass) {
+    var embed = bgVideoEmbed(url);
+    if (embed.kind === "file") {
+      return '<video class="' + cssClass + '" src="' + attrUrl(embed.src) + '" autoplay muted loop playsinline></video>';
+    }
+    return '<iframe class="' + cssClass + '" src="' + attrUrl(embed.src) + '" style="pointer-events:none;border:0;" allow="autoplay; encrypted-media" loading="lazy"></iframe>';
+  }
+
   // ownerBlockId: undefined/null when `sec` is a top-level page section;
   // otherwise the id of the row BLOCK this call is rendering (i.e. `sec` is
   // itself one of a row's nested blocks, passed in recursively from the
@@ -469,7 +503,7 @@
         } else if (heroBgType === "image" && d.bg_image_url) {
           heroBgStyle = ' style="background-image:url(\'' + esc(d.bg_image_url).replace(/'/g, "%27") + '\');background-size:cover;background-position:center;"';
         } else if (heroBgType === "video" && d.bg_video_url) {
-          heroMedia = '<video class="b-sec-hero-video" src="' + esc(d.bg_video_url) + '" autoplay muted loop playsinline></video>';
+          heroMedia = bgVideoHtml(d.bg_video_url, "b-sec-hero-video");
         }
         if ((heroBgType === "image" || heroBgType === "video") && d.bg_overlay) {
           heroMedia += '<div class="b-sec-hero-overlay"></div>';
@@ -498,7 +532,7 @@
         } else if (headBgType === "image" && d.bg_image_url) {
           headBgStyle = "background-image:url('" + esc(d.bg_image_url).replace(/'/g, "%27") + "');background-size:cover;background-position:center;";
         } else if (headBgType === "video" && d.bg_video_url) {
-          headMedia = '<video class="b-heading-video" src="' + esc(d.bg_video_url) + '" autoplay muted loop playsinline></video>';
+          headMedia = bgVideoHtml(d.bg_video_url, "b-heading-video");
         }
         if ((headBgType === "image" || headBgType === "video") && d.bg_overlay) {
           headMedia += '<div class="b-heading-overlay"></div>';
@@ -1568,8 +1602,8 @@
           heroBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         } else if (heroBg === "video") {
-          heroBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4", "video/")) +
-            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
+          heroBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4, a YouTube link, or a Vimeo link", "video/")) +
+            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm), or a YouTube/Vimeo link — pasting either works.</div>') +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         }
         var heroTextTheme = heroBg !== "none"
@@ -1588,8 +1622,8 @@
           headBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         } else if (headBg === "video") {
-          headBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4", "video/")) +
-            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
+          headBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4, a YouTube link, or a Vimeo link", "video/")) +
+            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm), or a YouTube/Vimeo link — pasting either works.</div>') +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         }
         var headTextTheme = headBg !== "none"
