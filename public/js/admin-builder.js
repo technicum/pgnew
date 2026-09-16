@@ -2432,6 +2432,30 @@
     });
   }
 
+  // Guards a media-picker click ("Choose" / "Add from library") and — unlike
+  // a bare `if (!x) return;` — actually SAYS why it refused, instead of the
+  // button silently doing nothing. Whichever of these trips is exactly the
+  // fact we need to see to diagnose a "the popup never opens" report:
+  //   - no target: the field being edited went away underneath the click
+  //     (rare timing case, e.g. the section was deleted mid-click).
+  //   - MediaPicker undefined: public/js/media-picker.js never finished
+  //     loading/registering itself — a failed or blocked script request,
+  //     or a page-load-time error elsewhere that stopped the rest of this
+  //     file's own script from finishing its setup.
+  function mediaPickerReady(target) {
+    if (!target) {
+      console.error("[media-picker] no selected field to save into — try reselecting the section and clicking Choose again.");
+      toast("Couldn't open the media library — try clicking the section again first.", true);
+      return false;
+    }
+    if (typeof MediaPicker === "undefined") {
+      console.error("[media-picker] MediaPicker is not defined — public/js/media-picker.js did not load or finish running on this page. Check the Network tab for a failed/blocked request to /js/media-picker.js, and the Console for an earlier script error.");
+      toast("Media library failed to load — please refresh the page and try again. (See console for details.)", true);
+      return false;
+    }
+    return true;
+  }
+
   function wireInspector() {
     document.getElementById("bInspectorBody").addEventListener("click", function (e) {
       var sec = state.selectedId ? findSection(state.selectedId) : null;
@@ -2445,7 +2469,7 @@
       var pickBtn = e.target.closest("[data-media-pick]");
       if (pickBtn) {
         var pickTarget = inspectorFieldTarget();
-        if (!pickTarget || typeof MediaPicker === "undefined") return;
+        if (!mediaPickerReady(pickTarget)) return;
         var pickField = pickBtn.dataset.mediaPick;
         MediaPicker.open(function (file) {
           var patch = {};
@@ -2457,7 +2481,7 @@
       var appendBtn = e.target.closest("[data-media-pick-append]");
       if (appendBtn) {
         var appendTarget = inspectorFieldTarget();
-        if (!appendTarget || typeof MediaPicker === "undefined") return;
+        if (!mediaPickerReady(appendTarget)) return;
         var appendField = appendBtn.dataset.mediaPickAppend;
         MediaPicker.open(function (file) {
           var list = (appendTarget.fields[appendField] || []).slice();
