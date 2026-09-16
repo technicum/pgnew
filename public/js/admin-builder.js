@@ -1504,10 +1504,9 @@
   // remove button (data-gal-remove, handled in wireInspector), and a
   // trailing "+" tile opens the shared media picker and appends onto the
   // list (data-media-pick-append -- the same generic handler imageFieldHtml's
-  // "Choose" button uses elsewhere, just placed as a grid tile here). Capped
-  // at 6 to match lib/sections.js's own limit on `images`, so the add tile
-  // simply stops rendering once full rather than letting a click 7-in
-  // silently get dropped on save.
+  // "Choose" button uses elsewhere, just placed as a grid tile here). No
+  // count cap -- lib/sections.js no longer truncates `images` server-side
+  // either, so the add tile always stays available.
   function galleryImagesGridHtml(name, images, accept) {
     var list = images || [];
     var tiles = list.map(function (url, i) {
@@ -1516,9 +1515,7 @@
         '<button type="button" class="b-gal-tile-remove" data-gal-remove="' + name + '" data-index="' + i + '" title="Remove image" aria-label="Remove image">' + icon("trash") + '</button>' +
       '</div>';
     }).join("");
-    var addTile = list.length < 6
-      ? '<button type="button" class="b-gal-tile b-gal-tile-add" data-media-pick-append="' + name + '" data-media-accept="' + esc(accept || "image/") + '">' + icon("plus") + '<span>Add image</span></button>'
-      : "";
+    var addTile = '<button type="button" class="b-gal-tile b-gal-tile-add" data-media-pick-append="' + name + '" data-media-accept="' + esc(accept || "image/") + '">' + icon("plus") + '<span>Add image</span></button>';
     return '<div class="b-gal-grid">' + tiles + addTile + '</div>';
   }
   function colorHtml(name, current) {
@@ -1632,7 +1629,7 @@
       case "richtext":
         return field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Width and alignment live on the Style tab.</div>');
       case "gallery":
-        return field("Images (" + (d.images || []).length + " of 6)", galleryImagesGridHtml("images", d.images)) +
+        return field("Images (" + (d.images || []).length + ")", galleryImagesGridHtml("images", d.images)) +
           field("", '<div class="b-inspector-hint">Click + to add an image from your library, or the trash icon on a tile to remove it. Click the heading to edit it. Columns live on the Style tab.</div>');
       case "video":
         return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
