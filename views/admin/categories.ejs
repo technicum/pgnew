@@ -14,8 +14,15 @@
   </thead>
   <tbody>
     <% categories.forEach(function (c) { %>
-      <tr>
-        <td><%= c.name %></td>
+      <tr data-category-row="<%= c.id %>">
+        <td>
+          <span class="cat-name-display"><%= c.name %></span>
+          <form class="cat-name-edit-form" action="/admin/categories/<%= c.id %>/edit" method="POST" hidden>
+            <input type="text" class="cat-name-edit-input" name="name" value="<%= c.name %>" maxlength="255" required />
+            <button type="submit" class="link-btn">Save</button>
+            <button type="button" class="link-btn cat-edit-cancel">Cancel</button>
+          </form>
+        </td>
         <td><%= c.product_count %></td>
         <%
           // No category name in the confirm text -- keeps this safe against
@@ -26,6 +33,7 @@
             : 'Delete this category?';
         %>
         <td class="admin-row-actions">
+          <button type="button" class="link-btn cat-edit-btn">Edit</button>
           <form action="/admin/categories/<%= c.id %>/delete" method="POST" onsubmit="return confirm('<%= confirmMsg %>');">
             <button type="submit" class="link-btn danger">Delete</button>
           </form>
@@ -37,5 +45,35 @@
     <% } %>
   </tbody>
 </table>
+
+<script>
+(function () {
+  // Inline rename -- click Edit on a row to swap its name for a text field
+  // in place, Cancel (or a successful Save, which just reloads the page) to
+  // swap it back. Only one field, so a whole separate edit page felt like
+  // more clicks than this deserves.
+  document.querySelectorAll('[data-category-row]').forEach(function (row) {
+    var display = row.querySelector('.cat-name-display');
+    var editForm = row.querySelector('.cat-name-edit-form');
+    var editBtn = row.querySelector('.cat-edit-btn');
+    var cancelBtn = row.querySelector('.cat-edit-cancel');
+    var input = row.querySelector('.cat-name-edit-input');
+
+    editBtn.addEventListener('click', function () {
+      display.hidden = true;
+      editBtn.hidden = true;
+      editForm.hidden = false;
+      input.focus();
+      input.select();
+    });
+    cancelBtn.addEventListener('click', function () {
+      input.value = display.textContent;
+      editForm.hidden = true;
+      display.hidden = false;
+      editBtn.hidden = false;
+    });
+  });
+})();
+</script>
 
 <%- include('partials/footer') %>

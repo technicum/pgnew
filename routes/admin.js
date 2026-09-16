@@ -146,9 +146,9 @@ router.get('/', async (req, res, next) => {
 
 // ---------- Categories ----------
 // Deliberately minimal -- a category is just a name here (no description,
-// image, or nesting), and there's no separate edit screen: rename by
-// deleting and recreating, same as this app's other simple named lists
-// (e.g. Menus' own create-inline-then-manage-in-place pattern).
+// image, or nesting). Renaming is an inline edit right in the list (see
+// views/admin/categories.ejs) rather than a whole separate page, since
+// there's only the one field.
 router.get('/categories', async (req, res, next) => {
   try {
     const [categories] = await pool.query(
@@ -180,6 +180,34 @@ router.post('/categories', async (req, res, next) => {
     }
     await pool.query(`INSERT INTO ${TABLES.categories} (store_id, name) VALUES (?, ?)`, [req.store.id, name]);
     req.flash('success', 'Category created.');
+    res.redirect('/admin/categories');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/categories/:id/edit', async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    if (!name) {
+      req.flash('error', 'Category name is required.');
+      return res.redirect('/admin/categories');
+    }
+    const [[owned]] = await pool.query(`SELECT id FROM ${TABLES.categories} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    if (!owned) {
+      req.flash('error', 'Category not found.');
+      return res.redirect('/admin/categories');
+    }
+    const [[existing]] = await pool.query(
+      `SELECT id FROM ${TABLES.categories} WHERE store_id = ? AND name = ? AND id != ?`,
+      [req.store.id, name, req.params.id]
+    );
+    if (existing) {
+      req.flash('error', `A category named "${name}" already exists.`);
+      return res.redirect('/admin/categories');
+    }
+    await pool.query(`UPDATE ${TABLES.categories} SET name = ? WHERE store_id = ? AND id = ?`, [name, req.store.id, req.params.id]);
+    req.flash('success', 'Category renamed.');
     res.redirect('/admin/categories');
   } catch (err) {
     next(err);

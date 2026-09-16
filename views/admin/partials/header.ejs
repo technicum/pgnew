@@ -15,8 +15,12 @@
       <nav class="admin-nav">
         <a href="/admin" class="<%= title === 'Dashboard' ? 'active' : '' %>">Home</a>
         <a href="/admin/orders" class="<%= title && (title === 'Orders' || title.startsWith('Order ')) ? 'active' : '' %>">Orders</a>
-        <a href="/admin/products" class="<%= title && (title === 'Products' || title === 'New Product' || title === 'Edit Product') ? 'active' : '' %>">Products</a>
-        <a href="/admin/categories" class="<%= title === 'Categories' ? 'active' : '' %>">Categories</a>
+        <% var productsOpen = title && (title === 'Products' || title === 'New Product' || title === 'Edit Product' || title === 'Categories'); %>
+        <a href="/admin/products" class="<%= productsOpen ? 'active' : '' %>">Products</a>
+        <% if (productsOpen) { %>
+          <a href="/admin/products" class="admin-nav-sub <%= title && (title === 'Products' || title === 'New Product' || title === 'Edit Product') ? 'active' : '' %>">All products</a>
+          <a href="/admin/categories" class="admin-nav-sub <%= title === 'Categories' ? 'active' : '' %>">Categories</a>
+        <% } %>
         <a href="/admin/customers" class="<%= title === 'Customers' ? 'active' : '' %>">Customers</a>
         <a href="/admin/discounts" class="<%= title && (title === 'Discounts' || title === 'New Discount') ? 'active' : '' %>">Discounts</a>
 
