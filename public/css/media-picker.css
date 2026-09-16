@@ -1,0 +1,64 @@
+/*
+ * Media picker modal (public/js/media-picker.js) — self-contained styling.
+ *
+ * WHY THIS IS ITS OWN FILE: media-picker.js is shared by every admin page
+ * that has an image/video field (the page builder, the product form), and
+ * those pages don't all load the same base stylesheet — the builder
+ * (views/admin/builder.ejs) is a standalone page that loads only
+ * builder.css, not admin.css or style.css. When these rules lived inside
+ * admin.css, the picker modal had zero styling on the builder page: it
+ * still opened and worked (the click handlers don't care about CSS), but
+ * rendered as an unstyled block appended to the end of <body> — no
+ * position:fixed, no backdrop, no centering, no sizing on the grid items —
+ * which is exactly why it looked like nothing happened, or (once an item
+ * had an image to show) why that image rendered at its full native size
+ * instead of a thumbnail. Every rule below is deliberately self-contained
+ * (no reliance on .btn, CSS custom properties from another file, etc.) so
+ * this file alone is enough for the picker to look right on ANY page that
+ * loads media-picker.js — just add the <link> next to the <script>.
+ */
+.media-picker-overlay {
+  position: fixed; inset: 0; background: rgba(17, 24, 39, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 24px;
+}
+.media-picker-overlay[hidden] { display: none; }
+.media-picker-modal {
+  background: #fff; border-radius: 14px; width: min(760px, 100%); max-height: min(640px, 90vh);
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+.media-picker-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
+.media-picker-header h3 { margin: 0; font-size: 1rem; color: #111827; }
+.media-picker-close { background: none; border: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: #6b7280; }
+.media-picker-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.media-picker-upload-row { margin-bottom: 14px; }
+/* Self-styled rather than borrowed from .btn/.btn-secondary (style.css /
+   admin.css), since a page like the builder never loads either of those. */
+.media-picker-upload-btn {
+  display: inline-block; padding: 10px 18px; border-radius: 8px;
+  font-weight: 600; font-size: 0.9rem; background: #fff; color: #374151;
+  border: 1px solid #d1d5db; cursor: pointer;
+}
+.media-picker-upload-btn:hover { background: #f9fafb; }
+.media-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+.media-picker-item {
+  border: 2px solid transparent; border-radius: 10px; overflow: hidden; cursor: pointer;
+  background: #f3f4f6; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  padding: 0; transition: border-color 0.1s ease;
+  /* Flex items default to min-height/min-width: auto, which lets an
+     oversized source image's intrinsic size push this box past its
+     aspect-ratio instead of being clamped by it. Pinning both to 0 forces
+     the aspect-ratio box to win, so the img/video below actually fills it
+     instead of blowing up to the source file's real dimensions. */
+  min-width: 0; min-height: 0;
+}
+.media-picker-item:hover { border-color: #6366f1; }
+.media-picker-item img, .media-picker-item video { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Shared with admin.css's .media-card-filetype (the standalone Library
+   page's own grid badge) — duplicated here on purpose so this file has no
+   dependency on admin.css being loaded too. Keep both in sync if this ever
+   changes. */
+.media-card-filetype { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; color: #6b7280; }
+.media-picker-item .media-card-filetype { font-size: 0.72rem; }
+.media-picker-empty { color: #6b7280; font-size: 0.85rem; padding: 20px 0; text-align: center; }

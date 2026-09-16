@@ -6,6 +6,7 @@
   <title><%= title %><%= typeof store !== 'undefined' && store ? ' · ' + store.name + ' Admin' : ' · PageZaper Admin' %></title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="/css/admin.css" />
+  <link rel="stylesheet" href="/css/media-picker.css?v=<%= assetVersion %>" />
 </head>
 <body class="admin-body theme-<%= typeof store !== 'undefined' && store && store.theme ? store.theme : 'default' %>">
   <div class="admin-layout">

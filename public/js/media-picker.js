@@ -1,8 +1,10 @@
 /*
  * Reusable media picker modal — one instance shared by the whole admin.
  *
- * Usage from any page that has loaded this script and the store's own
- * admin CSS (the .media-picker-* rules live in public/css/admin.css):
+ * Usage from any page that has loaded this script and its stylesheet
+ * (the .media-picker-* rules live in public/css/media-picker.css --
+ * link that file wherever this script is loaded, it's self-contained
+ * and doesn't need admin.css/style.css to also be present):
  *
  *   MediaPicker.open(function (file) {
  *     // file.url is what you want in a URL field.
@@ -54,7 +56,7 @@
         '<div class="media-picker-body">' +
           '<div class="media-picker-upload-row">' +
             '<input type="file" class="media-picker-file-input" multiple hidden />' +
-            '<button type="button" class="btn btn-secondary media-picker-upload-btn">Upload new file</button>' +
+            '<button type="button" class="media-picker-upload-btn">Upload new file</button>' +
           '</div>' +
           '<div class="media-picker-grid"></div>' +
         '</div>' +

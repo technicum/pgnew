@@ -731,35 +731,11 @@
 }
 .media-lightbox-overlay[hidden] { display: none; }
 
-/* ---------- Media picker modal (public/js/media-picker.js) ---------- */
-.media-picker-overlay {
-  position: fixed; inset: 0; background: rgba(17, 24, 39, 0.5);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000; padding: 24px;
-}
-.media-picker-overlay[hidden] { display: none; }
-.media-picker-modal {
-  background: #fff; border-radius: 14px; width: min(760px, 100%); max-height: min(640px, 90vh);
-  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-}
-.media-picker-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
-.media-picker-header h3 { margin: 0; font-size: 1rem; }
-.media-picker-close { background: none; border: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: #6b7280; }
-.media-picker-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
-.media-picker-upload-row { margin-bottom: 14px; }
-.media-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
-.media-picker-item {
-  border: 2px solid transparent; border-radius: 10px; overflow: hidden; cursor: pointer;
-  background: #f3f4f6; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  padding: 0; transition: border-color 0.1s ease;
-  /* Flex items default to min-height/min-width: auto, which lets an
-     oversized source image's intrinsic size push this box past its
-     aspect-ratio instead of being clamped by it. Pinning both to 0 forces
-     the aspect-ratio box to win, so the img/video below actually fills it
-     instead of blowing up to the source file's real dimensions. */
-  min-width: 0; min-height: 0;
-}
-.media-picker-item:hover { border-color: var(--color-primary); }
-.media-picker-item img, .media-picker-item video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.media-picker-item .media-card-filetype { font-size: 0.72rem; }
-.media-picker-empty { color: #6b7280; font-size: 0.85rem; padding: 20px 0; text-align: center; }
+/* ---------- Media picker modal (public/js/media-picker.js) ----------
+ * Moved to its own file: public/css/media-picker.css, linked directly
+ * wherever media-picker.js is loaded (see that file's header comment for
+ * why — short version: the page builder doesn't load this stylesheet, so
+ * rules living only here were invisible on the one page the picker is
+ * used most). admin.css itself still applies on every page that includes
+ * it, same as before, in case anything else here ever targets these
+ * classes. */
