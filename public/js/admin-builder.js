@@ -95,7 +95,8 @@
     // Device glyphs for the Visibility tab's per-device toggle cards.
     desktop: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.3" y="3.3" width="15.4" height="9.8" rx="1.3"/><path d="M7.3 16.7h5.4M10 13.1v3.3"/></svg>',
     tablet: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.3" y="2.3" width="11.4" height="15.4" rx="1.7"/><path d="M9.2 15.2h1.6"/></svg>',
-    mobile: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.1" y="1.8" width="7.8" height="16.4" rx="1.9"/><path d="M8.6 15.6h2.8"/></svg>'
+    mobile: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6.1" y="1.8" width="7.8" height="16.4" rx="1.9"/><path d="M8.6 15.6h2.8"/></svg>',
+    link: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a3 3 0 0 0 4.3.3l2-2a3 3 0 0 0-4.3-4.3l-1.1 1.1"/><path d="M11.5 8.5a3 3 0 0 0-4.3-.3l-2 2a3 3 0 0 0 4.3 4.3l1.1-1.1"/></svg>'
   };
   function icon(name) { return ICON[name] || ICON.html; }
 
@@ -480,8 +481,17 @@
           '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p></div>';
 
       case "heading":
+        // Real tag (h1-h6, see the Content tab's "HTML Tag" select), but
+        // never wrapped in an actual <a> here — an <a> around a
+        // contenteditable, click-to-select canvas element would try to
+        // navigate on click instead of selecting it. A small badge below
+        // just shows a link is attached; the URL itself is set/edited from
+        // the inspector's Content tab.
+        var hTag = ["h1", "h2", "h3", "h4", "h5", "h6"].indexOf(d.tag) !== -1 ? d.tag : "h2";
         return '<div class="b-sec-pad b-heading b-heading-' + (d.size || "l") + '" style="text-align:' + (d.align || "left") + ';">' +
-          '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2></div>';
+          '<' + hTag + ' data-field="heading" contenteditable="true">' + esc(d.heading) + '</' + hTag + '>' +
+          (d.link_url ? '<div class="b-heading-link-badge">' + icon("link") + '<span>Links to ' + esc(d.link_url) + '</span></div>' : "") +
+          '</div>';
 
       case "text_image":
         var imgStyle = d.image_url ? ' style="background-image:url(\'' + esc(d.image_url).replace(/'/g, "%27") + '\');"' : "";
@@ -1615,7 +1625,13 @@
           field("Subheading", textareaHtml("subheading", d.subheading)) +
           field("", '<div class="b-inspector-hint">You can also click the heading or subheading directly on the canvas to edit it. Background and text color live on the Style tab.</div>');
       case "heading":
-        return field("", '<div class="b-inspector-hint">Click the heading on the canvas to edit it. Size and alignment live on the Style tab.</div>');
+        return field("Title", textareaHtml("heading", d.heading, "Add Your Heading Text Here")) +
+          field("Link", textHtml("link_url", d.link_url, "Type or paste your URL")) +
+          field("HTML Tag", selectHtml("tag", [
+            { val: "h1", label: "H1" }, { val: "h2", label: "H2" }, { val: "h3", label: "H3" },
+            { val: "h4", label: "H4" }, { val: "h5", label: "H5" }, { val: "h6", label: "H6" },
+          ], d.tag || "h2")) +
+          field("", '<div class="b-inspector-hint">You can also click the heading directly on the canvas to edit it. The tag changes what actually renders (h1-h6) for SEO — visual size and alignment live on the Style tab regardless of which tag you pick.</div>');
       case "text_image":
         return field("Image URL", imageFieldHtml("image_url", d.image_url, "https://…")) +
           field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Image position lives on the Style tab.</div>');
@@ -2965,9 +2981,20 @@
         }
         var taTarget = inspectorFieldTarget();
         if (!taTarget) return;
-        var lines = ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
         var patch = {};
-        patch[ta.dataset.field] = lines;
+        // Only logos' "names" is actually a one-item-per-line LIST field.
+        // Every other textarea here (hero's subheading, heading's own
+        // title text, and any future one) is one plain multi-line string —
+        // this used to default to the list-split below for every field
+        // without a special case above, which silently turned a multi-line
+        // Subheading edit into an array (and then a no-op save, since
+        // lib/sections.js's `str()` sanitizer only accepts an actual
+        // string) the moment it wrapped past one line.
+        if (ta.dataset.field === "names") {
+          patch[ta.dataset.field] = ta.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+        } else {
+          patch[ta.dataset.field] = ta.value;
+        }
         taTarget.save(patch);
         return;
       }

@@ -54,8 +54,12 @@
     </div>
 
   <% } else if (b.type === 'heading') { %>
+    <% // See section.ejs's own heading case for why the tag is built as a
+       // string here rather than written as a literal <h2> — same reasoning,
+       // just against b.fields instead of section.fields. %>
+    <% var pzHTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].indexOf(b.fields.tag) !== -1 ? b.fields.tag : 'h2'; %>
     <div class="pz-heading pz-heading-<%= b.fields.size || 'l' %>" style="text-align:<%= b.fields.align || 'left' %>;">
-      <h2 style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
+      <% if (b.fields.link_url) { %><a href="<%= b.fields.link_url %>" class="pz-heading-link"><% } %><%- '<' + pzHTag + ' style="' + pzElStyle('heading') + '">' %><%= b.fields.heading %><%- '</' + pzHTag + '>' %><% if (b.fields.link_url) { %></a><% } %>
     </div>
 
   <% } else if (b.type === 'richtext') { %>

@@ -91,8 +91,18 @@
   </section>
 
 <% } else if (section.type === 'heading') { %>
+  <%
+    // The tag is validated server-side to one of h1-h6 (lib/sections.js's
+    // sanitizeFields), so it's safe to splice straight into the markup —
+    // EJS has no dynamic-tag-name syntax of its own, so the open/close tags
+    // are just built as strings. Defaults h2, matching every heading section
+    // created before this field existed.
+    var pzHTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].indexOf(section.fields.tag) !== -1 ? section.fields.tag : 'h2';
+    var pzHOpen = '<' + pzHTag + ' style="' + pzElStyle('heading') + '">';
+    var pzHClose = '</' + pzHTag + '>';
+  %>
   <section id="<%= pzId %>" class="pz-heading pz-heading-<%= section.fields.size || 'l' %><%= pzExtra %>" style="<%= pzHeightStyle %>text-align:<%= section.fields.align || 'left' %>;">
-    <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+    <% if (section.fields.link_url) { %><a href="<%= section.fields.link_url %>" class="pz-heading-link"><% } %><%- pzHOpen %><%= section.fields.heading %><%- pzHClose %><% if (section.fields.link_url) { %></a><% } %>
   </section>
 
 <% } else if (section.type === 'products') { %>

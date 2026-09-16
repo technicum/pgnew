@@ -650,13 +650,19 @@ main.container {
   font-size: 0.92rem;
 }
 
-/* Standalone heading */
+/* Standalone heading — the actual tag is whichever of h1-h6 the merchant
+   picked in the builder's Content tab (lib/sections.js's `tag` field,
+   defaulting h2), so these target :is(h1..h6) rather than a hardcoded h2,
+   otherwise picking, say, H1 or H4 would fall back to the browser's own
+   default heading margin/size instead of this theme's. */
 .pz-heading { padding: 32px 0; }
-.pz-heading h2 { margin: 0; }
-.pz-heading-s h2 { font-size: 1.25rem; }
-.pz-heading-m h2 { font-size: 1.75rem; }
-.pz-heading-l h2 { font-size: 2.25rem; }
-.pz-heading-xl h2 { font-size: 3rem; }
+.pz-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; }
+.pz-heading-s :is(h1, h2, h3, h4, h5, h6) { font-size: 1.25rem; }
+.pz-heading-m :is(h1, h2, h3, h4, h5, h6) { font-size: 1.75rem; }
+.pz-heading-l :is(h1, h2, h3, h4, h5, h6) { font-size: 2.25rem; }
+.pz-heading-xl :is(h1, h2, h3, h4, h5, h6) { font-size: 3rem; }
+.pz-heading-link { display: block; color: inherit; text-decoration: none; }
+.pz-heading-link:hover { text-decoration: underline; }
 
 /* Rich text */
 .richtext { padding: 40px 0; }

@@ -42,7 +42,7 @@ body.builder-body * { box-sizing: border-box; }
    builder but centered live". See .b-sec-hero/.b-sec-imgtext/.b-newsletter
    /.b-richtext-narrow/.b-richtext-wide/.b-spotlight/.b-countdown headings
    below, all of which depend on this reset losing the specificity fight. */
-body.builder-body :where(h1, h2, h3, h4) { font-family: var(--b-font-display); text-wrap: balance; margin: 0; }
+body.builder-body :where(h1, h2, h3, h4, h5, h6) { font-family: var(--b-font-display); text-wrap: balance; margin: 0; }
 body.builder-body button { font-family: inherit; }
 
 .b-app { display: grid; grid-template-columns: 64px auto 1fr auto; grid-template-rows: 1fr; height: 100vh; min-width: 980px; overflow-x: auto; }
@@ -458,11 +458,18 @@ body.builder-body button { font-family: inherit; }
 .b-ph { background-color: var(--b-surface-2); display: flex; align-items: center; justify-content: center; color: rgba(120,113,100,.6); }
 .b-ph svg { width: 22px; height: 22px; opacity: .7; }
 
-.b-heading h2 { margin: 0; }
-.b-heading-s h2 { font-size: 20px; }
-.b-heading-m h2 { font-size: 28px; }
-.b-heading-l h2 { font-size: 36px; }
-.b-heading-xl h2 { font-size: 48px; }
+/* The heading's actual tag is whichever of h1-h6 was picked on the Content
+   tab (defaults h2 — see galleryImagesGridHtml's neighbor, the "HTML Tag"
+   select in inspectorFieldsFor's "heading" case), so these target
+   :is(h1..h6) rather than a hardcoded h2, mirroring style.css's own
+   .pz-heading rules so the canvas preview matches the live storefront. */
+.b-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; }
+.b-heading-s :is(h1, h2, h3, h4, h5, h6) { font-size: 20px; }
+.b-heading-m :is(h1, h2, h3, h4, h5, h6) { font-size: 28px; }
+.b-heading-l :is(h1, h2, h3, h4, h5, h6) { font-size: 36px; }
+.b-heading-xl :is(h1, h2, h3, h4, h5, h6) { font-size: 48px; }
+.b-heading-link-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--b-muted); }
+.b-heading-link-badge svg { width: 11px; height: 11px; }
 
 .b-richtext-narrow { max-width: 640px; margin: 0 auto; }
 .b-richtext-wide { max-width: 900px; margin: 0 auto; }
