@@ -1230,7 +1230,7 @@ router.post('/media/upload', (req, res, next) => {
       // (flash + redirect) or the picker's fetch() (JSON, so the modal can
       // show the error without navigating away).
       const message = err.message === 'UNSUPPORTED_FILE_TYPE'
-        ? 'Unsupported file type — images (JPG, PNG, WEBP, GIF, SVG) and PDF only.'
+        ? 'Unsupported file type — images (JPG, PNG, WEBP, GIF, SVG), video (MP4, WEBM), and PDF only.'
         : err.code === 'LIMIT_FILE_SIZE'
           ? `That file is over the ${Math.round(mediaLib.MAX_FILE_SIZE / (1024 * 1024))}MB limit.`
           : err.code === 'LIMIT_FILE_COUNT'

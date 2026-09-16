@@ -1438,15 +1438,19 @@
   function textHtml(name, current, placeholder) {
     return '<input class="b-text-native" type="text" data-field="' + name + '" value="' + esc(current || "") + '" placeholder="' + esc(placeholder || "") + '" />';
   }
-  // Same as textHtml, but for a field that holds a single image/file URL --
-  // adds a "Choose" button that opens the shared media picker (public/js/
-  // media-picker.js) and writes its result straight into the field's saved
-  // value, same as if the merchant had pasted the URL in and left the
-  // input. Wired up in wireInspector()'s click handler via data-media-pick.
-  function imageFieldHtml(name, current, placeholder) {
+  // Same as textHtml, but for a field that holds a single image/video/file
+  // URL -- adds a "Choose" button that opens the shared media picker
+  // (public/js/media-picker.js) and writes its result straight into the
+  // field's saved value, same as if the merchant had pasted the URL in and
+  // left the input. `accept` is a mime-type prefix ("image/", "video/")
+  // that narrows both what the picker's grid shows and what its own
+  // upload button accepts -- defaults to images, since every field but the
+  // hero's background video wants that. Wired up in wireInspector()'s
+  // click handler via data-media-pick / data-media-accept.
+  function imageFieldHtml(name, current, placeholder, accept) {
     return '<div class="b-media-field">' +
       '<input class="b-text-native" type="text" data-field="' + name + '" value="' + esc(current || "") + '" placeholder="' + esc(placeholder || "") + '" />' +
-      '<button type="button" class="b-media-pick-btn" data-media-pick="' + name + '">Choose</button>' +
+      '<button type="button" class="b-media-pick-btn" data-media-pick="' + name + '" data-media-accept="' + esc(accept || "image/") + '">Choose</button>' +
       '</div>';
   }
   function textareaHtml(name, current, placeholder) {
@@ -1457,8 +1461,8 @@
   // shape the textarea's own focusout handler already parses one-line-per-
   // item, so picking from the library and typing a URL by hand both funnel
   // into the same saved list.
-  function imageListAppendHtml(name, label) {
-    return '<button type="button" class="b-media-pick-append-btn" data-media-pick-append="' + name + '">' + esc(label || "Add from library") + '</button>';
+  function imageListAppendHtml(name, label, accept) {
+    return '<button type="button" class="b-media-pick-append-btn" data-media-pick-append="' + name + '" data-media-accept="' + esc(accept || "image/") + '">' + esc(label || "Add from library") + '</button>';
   }
   function colorHtml(name, current) {
     return '<input class="b-color-native" type="color" data-field="' + name + '" value="' + esc(current || "#ffffff") + '" />';
@@ -1531,7 +1535,7 @@
           heroBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         } else if (heroBg === "video") {
-          heroBgFields = field("Background video URL", textHtml("bg_video_url", d.bg_video_url, "https://….mp4")) +
+          heroBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4", "video/")) +
             field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         }
@@ -2475,7 +2479,7 @@
           var patch = {};
           patch[pickField] = file.url;
           pickTarget.save(patch);
-        });
+        }, { accept: pickBtn.dataset.mediaAccept || "image/" });
         return;
       }
       var appendBtn = e.target.closest("[data-media-pick-append]");
@@ -2489,7 +2493,7 @@
           var patch = {};
           patch[appendField] = list;
           appendTarget.save(patch);
-        });
+        }, { accept: appendBtn.dataset.mediaAccept || "image/" });
         return;
       }
       var unpinBtn = e.target.closest("[data-el-unpin]");

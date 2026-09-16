@@ -2,10 +2,10 @@
 
 <div class="panel-toolbar" style="justify-content: space-between; align-items: center;">
   <p id="mediaCount" style="margin: 0; color: #6b7280; font-size: 0.9rem;">
-    <%= total %> file<%= total === 1 ? '' : 's' %> · images and PDFs, up to 15MB each
+    <%= total %> file<%= total === 1 ? '' : 's' %> · images, video and PDFs, up to 50MB each
   </p>
   <form id="mediaUploadForm" action="/admin/media/upload" method="POST" enctype="multipart/form-data">
-    <input type="file" id="mediaFileInput" name="files" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf" hidden />
+    <input type="file" id="mediaFileInput" name="files" multiple accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,video/mp4,video/webm,application/pdf" hidden />
     <button type="button" id="mediaUploadBtn" class="btn btn-primary">Upload files</button>
   </form>
 </div>
@@ -19,6 +19,8 @@
         <div class="media-card-thumb">
           <% if (f.mime_type.startsWith('image/')) { %>
             <img src="<%= f.url %>" alt="<%= f.original_name %>" loading="lazy" />
+          <% } else if (f.mime_type.startsWith('video/')) { %>
+            <video src="<%= f.url %>" muted playsinline preload="metadata"></video>
           <% } else { %>
             <div class="media-card-filetype">PDF</div>
           <% } %>
@@ -40,7 +42,8 @@
 <div id="mediaLightbox" class="media-lightbox-overlay" hidden>
   <div class="media-lightbox-inner">
     <button type="button" id="mediaLightboxClose" class="media-lightbox-close" aria-label="Close">&times;</button>
-    <img id="mediaLightboxImg" src="" alt="" />
+    <img id="mediaLightboxImg" src="" alt="" hidden />
+    <video id="mediaLightboxVideo" src="" controls playsinline hidden></video>
     <div id="mediaLightboxName" class="media-lightbox-name"></div>
   </div>
 </div>
@@ -57,19 +60,28 @@
   var errorEl = document.getElementById('mediaError');
   var lightbox = document.getElementById('mediaLightbox');
   var lightboxImg = document.getElementById('mediaLightboxImg');
+  var lightboxVideo = document.getElementById('mediaLightboxVideo');
   var lightboxName = document.getElementById('mediaLightboxName');
   var lightboxClose = document.getElementById('mediaLightboxClose');
   var fileCount = <%- JSON.stringify(total) %>;
 
-  function openLightbox(url, name) {
-    lightboxImg.src = url;
-    lightboxImg.alt = name || '';
+  function openLightbox(kind, url, name) {
+    lightboxImg.hidden = kind !== 'image';
+    lightboxVideo.hidden = kind !== 'video';
+    if (kind === 'image') {
+      lightboxImg.src = url;
+      lightboxImg.alt = name || '';
+    } else {
+      lightboxVideo.src = url;
+    }
     lightboxName.textContent = name || '';
     lightbox.hidden = false;
   }
   function closeLightbox() {
     lightbox.hidden = true;
     lightboxImg.src = '';
+    lightboxVideo.pause();
+    lightboxVideo.src = '';
   }
   lightboxClose.addEventListener('click', closeLightbox);
   lightbox.addEventListener('click', function (e) {
@@ -79,14 +91,21 @@
     if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
   });
 
-  // Clicking a card's thumbnail previews it — an image opens in the
-  // lightbox above, a PDF (no inline preview here) just opens in a new
-  // tab, same as clicking its Copy URL link's target would.
+  // Clicking a card's thumbnail previews it — an image or video opens in
+  // the lightbox above (video with playback controls), a PDF (no inline
+  // preview here) just opens in a new tab, same as clicking its Copy URL
+  // link's target would.
   function wireThumbClick(thumb) {
     thumb.addEventListener('click', function () {
       var img = thumb.querySelector('img');
       if (img) {
-        openLightbox(img.src, img.alt);
+        openLightbox('image', img.src, img.alt);
+        return;
+      }
+      var video = thumb.querySelector('video');
+      if (video) {
+        var nameEl = thumb.closest('.media-card').querySelector('.media-card-name');
+        openLightbox('video', video.src, nameEl ? nameEl.textContent : '');
         return;
       }
       var card = thumb.closest('.media-card');
@@ -105,7 +124,7 @@
     errorEl.textContent = '';
   }
   function updateCount() {
-    countEl.textContent = fileCount + ' file' + (fileCount === 1 ? '' : 's') + ' · images and PDFs, up to 15MB each';
+    countEl.textContent = fileCount + ' file' + (fileCount === 1 ? '' : 's') + ' · images, video and PDFs, up to 50MB each';
   }
 
   function cardFor(f) {
@@ -115,12 +134,20 @@
 
     var thumb = document.createElement('div');
     thumb.className = 'media-card-thumb';
-    if ((f.mime_type || '').indexOf('image/') === 0) {
+    var mime = f.mime_type || '';
+    if (mime.indexOf('image/') === 0) {
       var img = document.createElement('img');
       img.src = f.url;
       img.alt = f.original_name;
       img.loading = 'lazy';
       thumb.appendChild(img);
+    } else if (mime.indexOf('video/') === 0) {
+      var video = document.createElement('video');
+      video.src = f.url;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      thumb.appendChild(video);
     } else {
       var badge = document.createElement('div');
       badge.className = 'media-card-filetype';

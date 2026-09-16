@@ -75,7 +75,7 @@
     MediaPicker.open(function (file) {
       input.value = file.url;
       updatePreview();
-    });
+    }, { accept: 'image/' });
   });
 })();
 </script>
