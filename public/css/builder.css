@@ -657,19 +657,24 @@ textarea[data-field="__custom_css"] { font-family: var(--b-font-mono); font-size
 .b-social-row-remove { flex-shrink: 0; width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--b-line); background: var(--b-surface); color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .b-social-row-remove svg { width: 13px; height: 13px; }
 .b-social-row-remove:hover { color: var(--b-danger); border-color: var(--b-danger); }
-.b-social-add { width: 100%; justify-content: center; }
+.b-social-add { width: 100%; justify-content: center; gap: 6px; }
+.b-social-add svg { width: 13px; height: 13px; flex-shrink: 0; }
 
-/* FAQ items repeater (Content tab) — an Elementor-style list: each row is
-   just a label + Duplicate/Remove, the actual question/answer text is
-   edited by clicking it on the canvas like every other module's text. */
-.b-faq-editor { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-.b-faq-row { display: flex; align-items: center; gap: 6px; border: 1px solid var(--b-line); border-radius: 8px; padding: 7px 8px 7px 12px; background: var(--b-surface); }
-.b-faq-row-label { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--b-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.b-faq-row-dup, .b-faq-row-remove { flex-shrink: 0; width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--b-line); background: var(--b-surface); color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.b-faq-row-dup svg, .b-faq-row-remove svg { width: 12px; height: 12px; }
+/* FAQ items repeater (Content tab) — edit the question/answer text right
+   here (data-faq-q/data-faq-a), same as clicking it on the canvas still
+   does; each row also has Duplicate/Remove. */
+.b-faq-editor { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.b-faq-row { border: 1px solid var(--b-line); border-radius: 8px; padding: 8px; background: var(--b-surface); display: flex; flex-direction: column; gap: 6px; }
+.b-faq-row-head { display: flex; align-items: center; gap: 6px; }
+.b-faq-row-num { flex: 1; min-width: 0; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--b-muted); }
+.b-faq-row-dup, .b-faq-row-remove { flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--b-line); background: var(--b-surface); color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.b-faq-row-dup svg, .b-faq-row-remove svg { width: 11px; height: 11px; }
 .b-faq-row-dup:hover { color: var(--b-ink); border-color: var(--b-ink); }
 .b-faq-row-remove:hover { color: var(--b-danger); border-color: var(--b-danger); }
-.b-faq-add { width: 100%; justify-content: center; }
+.b-faq-row .b-text-native { width: 100%; }
+.b-faq-a-input { width: 100%; resize: vertical; min-height: 44px; }
+.b-faq-add { width: 100%; justify-content: center; gap: 6px; }
+.b-faq-add svg { width: 13px; height: 13px; flex-shrink: 0; }
 
 .b-gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .b-gal-tile { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--b-surface-2); border: 1px solid var(--b-line); }

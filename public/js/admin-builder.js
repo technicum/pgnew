@@ -1397,21 +1397,24 @@
     return '<div class="b-social-editor">' + (rows || '<div class="b-field-hint">No icons yet — add one below.</div>') + '</div>' + addBtn;
   }
 
-  // FAQ items — an Elementor-style repeater list: each row previews the
-  // question text and offers Duplicate/Remove, plus an "Add" button below,
-  // matching the reference screenshot (status icon/duplicate/x, + Add Item).
-  // The question/answer text itself is still edited by clicking it directly
-  // on the canvas (same convention as every other module's text) — this
-  // only manages which rows exist. Capped at 6 to match lib/sections.js's
-  // sanitizeFields, which silently drops anything past that server-side.
+  // FAQ items — an Elementor-style repeater list, edit AND manage rows
+  // right here in the Content tab (data-faq-q/data-faq-a, wired in
+  // wireInspector's focusout handler) — clicking the question/answer
+  // directly on the canvas still works too, same convention as every other
+  // module's text, this just means it isn't the only way anymore. Capped
+  // at 6 to match lib/sections.js's sanitizeFields, which silently drops
+  // anything past that server-side.
   function faqItemsEditorHtml(items) {
     var list = items || [];
     var rows = list.map(function (it, i) {
-      var label = (it.q || "").trim() || ("Question " + (i + 1));
       return '<div class="b-faq-row" data-faq-row>' +
-        '<span class="b-faq-row-label">' + esc(label) + '</span>' +
-        '<button type="button" class="b-faq-row-dup" data-faq-duplicate data-index="' + i + '" aria-label="Duplicate question" title="Duplicate">' + icon("dup") + '</button>' +
-        '<button type="button" class="b-faq-row-remove" data-faq-remove data-index="' + i + '" aria-label="Remove question" title="Remove">' + icon("trash") + '</button>' +
+        '<div class="b-faq-row-head">' +
+          '<span class="b-faq-row-num">Question ' + (i + 1) + '</span>' +
+          '<button type="button" class="b-faq-row-dup" data-faq-duplicate data-index="' + i + '" aria-label="Duplicate question" title="Duplicate">' + icon("dup") + '</button>' +
+          '<button type="button" class="b-faq-row-remove" data-faq-remove data-index="' + i + '" aria-label="Remove question" title="Remove">' + icon("trash") + '</button>' +
+        '</div>' +
+        '<input class="b-text-native" type="text" data-faq-q data-index="' + i + '" value="' + esc(it.q || "") + '" placeholder="Question" />' +
+        '<textarea class="b-text-native b-textarea-native b-faq-a-input" data-faq-a data-index="' + i + '" placeholder="Answer" rows="2">' + esc(it.a || "") + '</textarea>' +
       '</div>';
     }).join("");
     var addBtn = list.length < 6
@@ -2804,6 +2807,28 @@
         if (!socUrlLinks[socUrlIdx]) return;
         socUrlLinks[socUrlIdx] = Object.assign({}, socUrlLinks[socUrlIdx], { url: socUrlIn.value.trim() });
         socUrlTarget.save({ links: socUrlLinks });
+        return;
+      }
+      var faqQIn = e.target.closest("input[data-faq-q]");
+      if (faqQIn) {
+        var faqQTarget = inspectorFieldTarget();
+        if (!faqQTarget) return;
+        var faqQIdx = parseInt(faqQIn.dataset.index, 10);
+        var faqQItems = (faqQTarget.fields.items || []).slice();
+        if (!faqQItems[faqQIdx]) return;
+        faqQItems[faqQIdx] = Object.assign({}, faqQItems[faqQIdx], { q: faqQIn.value.trim() });
+        faqQTarget.save({ items: faqQItems });
+        return;
+      }
+      var faqAIn = e.target.closest("textarea[data-faq-a]");
+      if (faqAIn) {
+        var faqATarget = inspectorFieldTarget();
+        if (!faqATarget) return;
+        var faqAIdx = parseInt(faqAIn.dataset.index, 10);
+        var faqAItems = (faqATarget.fields.items || []).slice();
+        if (!faqAItems[faqAIdx]) return;
+        faqAItems[faqAIdx] = Object.assign({}, faqAItems[faqAIdx], { a: faqAIn.value.trim() });
+        faqATarget.save({ items: faqAItems });
         return;
       }
       var ta = e.target.closest('textarea.b-textarea-native[data-field]');
