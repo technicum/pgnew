@@ -677,6 +677,12 @@ async function applySectionsDiff(scope, incoming) {
       const textColor = settings.text_color || null;
       const bgColor = settings.bg_color || null;
       const textAlign = settings.text_align || null;
+      // Universal background (see lib/sections.js's sanitizeSectionSettings) —
+      // same NULL-means-"no override" convention as textColor/bgColor/textAlign.
+      const bgType = settings.bg_type || null;
+      const bgImageUrl = settings.bg_image_url || null;
+      const bgVideoUrl = settings.bg_video_url || null;
+      const bgOverlay = settings.bg_overlay ? 1 : 0;
 
       const incomingId = Number.isInteger(item.id) ? item.id : parseInt(item.id, 10);
       if (incomingId && existingIds.has(incomingId)) {
@@ -687,24 +693,25 @@ async function applySectionsDiff(scope, incoming) {
                  hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
                  margin_top = ?, margin_bottom = ?, margin_left = ?, margin_right = ?,
                  padding_top = ?, padding_bottom = ?, padding_left = ?, padding_right = ?, element_styles = ?,
-                 text_color = ?, bg_color = ?, text_align = ?
+                 text_color = ?, bg_color = ?, text_align = ?, bg_type = ?, bg_image_url = ?, bg_video_url = ?, bg_overlay = ?
            WHERE id = ?`,
           [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
             marginTop, marginBottom, marginLeft, marginRight,
             paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson,
-            textColor, bgColor, textAlign, incomingId]
+            textColor, bgColor, textAlign, bgType, bgImageUrl, bgVideoUrl, bgOverlay, incomingId]
         );
       } else {
         const [result] = await pool.query(
           `INSERT INTO ${TABLES.pageSections}
              (store_id, page_id, region, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
               margin_top, margin_bottom, margin_left, margin_right,
-              padding_top, padding_bottom, padding_left, padding_right, element_styles, text_color, bg_color, text_align)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              padding_top, padding_bottom, padding_left, padding_right, element_styles, text_color, bg_color, text_align,
+              bg_type, bg_image_url, bg_video_url, bg_overlay)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [scope.storeId, scope.pageId, scope.region, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
             marginTop, marginBottom, marginLeft, marginRight,
             paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson,
-            textColor, bgColor, textAlign]
+            textColor, bgColor, textAlign, bgType, bgImageUrl, bgVideoUrl, bgOverlay]
         );
         keepIds.add(result.insertId);
       }
@@ -853,6 +860,10 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
     if (patch.text_color !== undefined) { sets.push('text_color = ?'); values.push(patch.text_color || null); }
     if (patch.bg_color !== undefined) { sets.push('bg_color = ?'); values.push(patch.bg_color || null); }
     if (patch.text_align !== undefined) { sets.push('text_align = ?'); values.push(patch.text_align || null); }
+    if (patch.bg_type !== undefined) { sets.push('bg_type = ?'); values.push(patch.bg_type || null); }
+    if (patch.bg_image_url !== undefined) { sets.push('bg_image_url = ?'); values.push(patch.bg_image_url || null); }
+    if (patch.bg_video_url !== undefined) { sets.push('bg_video_url = ?'); values.push(patch.bg_video_url || null); }
+    if (patch.bg_overlay !== undefined) { sets.push('bg_overlay = ?'); values.push(patch.bg_overlay ? 1 : 0); }
     if (sets.length) {
       values.push(section.id);
       await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
@@ -862,7 +873,7 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
       `SELECT custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
               margin_top, margin_bottom, margin_left, margin_right,
               padding_top, padding_bottom, padding_left, padding_right,
-              text_color, bg_color, text_align
+              text_color, bg_color, text_align, bg_type, bg_image_url, bg_video_url, bg_overlay
        FROM ${TABLES.pageSections} WHERE id = ?`,
       [section.id]
     );
@@ -885,6 +896,10 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
       text_color: updated.text_color || '',
       bg_color: updated.bg_color || '',
       text_align: updated.text_align || '',
+      bg_type: updated.bg_type || '',
+      bg_image_url: updated.bg_image_url || '',
+      bg_video_url: updated.bg_video_url || '',
+      bg_overlay: !!updated.bg_overlay,
     });
   } catch (err) {
     next(err);

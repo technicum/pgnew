@@ -2215,35 +2215,40 @@
       if (rect.bottom - clientY < AUTOSCROLL_EDGE) return Math.ceil((AUTOSCROLL_EDGE - (rect.bottom - clientY)) / AUTOSCROLL_EDGE * AUTOSCROLL_MAX);
       return 0;
     }
-    // Runs once per animation frame rather than once per raw pointermove —
-    // which can fire far more often than the screen repaints — so the
-    // drop-target recompute in processPointer (it walks every section's
-    // bounding rect) can't fall behind the pointer and make the drag feel
-    // laggy on a page with a lot of sections. Also drives auto-scroll:
-    // holding the ghost at the canvas/Layers-list edge keeps nudging that
-    // panel's scroll position every frame, since without this a plain
-    // pointermove-driven drag strands a merchant unable to drag a section
-    // past whatever's on screen without letting go, scrolling by hand, and
-    // re-grabbing it.
+    // Drives auto-scroll only: holding the ghost at the canvas/Layers-list
+    // edge keeps nudging that panel's scroll position every frame (pointermove
+    // alone never fires again once the pointer stops moving, even while it's
+    // sitting in the edge zone) — re-running processPointer afterward keeps
+    // the drop marker honest once a scroll has shifted every section's
+    // bounding rect out from under the pointer. The actual hit-testing below
+    // stays driven straight off pointermove (see onMove) rather than this
+    // rAF loop — deferring it by even one frame means a drop released before
+    // that frame lands sees a stale (sometimes still-null) colDropInfo/
+    // dropInfo and silently does nothing, which bit column drops hardest
+    // since they're a small, precise target.
     var rafId = requestAnimationFrame(tick);
     function tick() {
       if (!drag) return;
       rafId = requestAnimationFrame(tick);
       var p = drag.pointer;
+      var scrolled = false;
       [document.getElementById("bLayersBody"), document.querySelector(".b-canvas-scroll")].forEach(function (el) {
         if (!el) return;
         var r = el.getBoundingClientRect();
         if (p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom) return;
         var delta = autoScrollDelta(r, p.clientY);
-        if (delta) el.scrollTop += delta;
+        if (!delta) return;
+        el.scrollTop += delta;
+        scrolled = true;
       });
-      processPointer(p);
+      if (scrolled) processPointer(p);
     }
 
     function onMove(ev) {
       var p = ev.touches ? ev.touches[0] : ev;
       drag.pointer = p;
       moveGhost(p.clientX, p.clientY);
+      processPointer(p);
     }
     function processPointer(p) {
       // Dragging a nestable library item over a row's column drops it into

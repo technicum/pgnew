@@ -860,6 +860,30 @@ async function migrateSectionStyleColumns(conn) {
   }
 }
 
+// The universal Style-tab background — the same color/image/video/overlay
+// option every section type already gets via bg_color above, extended to
+// match what only 'hero' and 'heading' could do with their own private
+// fields.bg_type/bg_image_url/bg_video_url/bg_overlay (lib/sections.js).
+// bg_type is NULL/'' for every section created before this existed, which
+// sanitizeSectionSettings/section.ejs treat as "no override" — falling back
+// to bg_color alone, exactly the pre-existing behavior — so nothing already
+// on a page changes look. Split into its own idempotent step for the same
+// reason migrateSectionStyleColumns is separate from migratePageSectionSettings.
+async function migrateSectionBgColumns(conn) {
+  if (!(await columnExists(conn, TABLES.pageSections, 'bg_type'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_type VARCHAR(10) NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'bg_image_url'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_image_url VARCHAR(1000) NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'bg_video_url'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_video_url VARCHAR(1000) NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.pageSections, 'bg_overlay'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_overlay TINYINT(1) NOT NULL DEFAULT 0`);
+  }
+}
+
 // Turns pz_page_sections into the shared storage for page content AND the
 // header/footer builder, instead of a separate table. Two additions make
 // this possible:
@@ -1463,6 +1487,7 @@ async function init() {
     await migrateProductCategoryLinks(conn);
     await migratePageSectionSettings(conn);
     await migrateSectionStyleColumns(conn);
+    await migrateSectionBgColumns(conn);
     await migrateHeaderFooterSections(conn);
     await migrateDefaultHeaderFooter(conn);
     await migrateNavMenuSections(conn);
