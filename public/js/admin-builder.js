@@ -1191,6 +1191,12 @@
   // the usual drag-and-drop. Entered from a column's own "+" button.
   function enterColumnTargetMode(sectionId, rowBlockId, colIndex) {
     state.colTarget = { sectionId: sectionId, rowBlockId: rowBlockId || null, colIndex: colIndex };
+    // Reset any search already typed into the library panel — clicking a
+    // column's own "+" is a fresh "what am I adding here" moment, and a
+    // stale filter from browsing the full library earlier would otherwise
+    // hide types the merchant now expects to see.
+    var search = document.getElementById("bLibSearch");
+    if (search) search.value = "";
     showPanel("library");
     renderLibrary();
   }
