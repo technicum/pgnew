@@ -1562,7 +1562,10 @@
         return field("Products to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
           field("", '<div class="b-inspector-hint">Shows your ' + DATA.products.length + ' most recent products. Click the heading to edit it.</div>');
       case "testimonials":
-        return field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it. Use "Add testimonial" below the cards to add another (up to 3), or hover a card and click the trash icon to remove it.</div>');
+        return field("", (d.quotes || []).length < 3
+            ? '<button type="button" class="b-btn-outline" data-testi-add>' + icon("plus") + ' Add testimonial</button>'
+            : '<div class="b-field-hint">Up to 3 testimonials.</div>') +
+          field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it, or hover a card there and click the trash icon to remove it.</div>');
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
       case "richtext":
@@ -1588,7 +1591,10 @@
         return field("Names", textareaHtml("names", (d.names || []).join("\n"), "One name per line, up to 8")) +
           field("", '<div class="b-inspector-hint">Plain text only — good for press mentions or partner names.</div>');
       case "faq":
-        return field("", '<div class="b-inspector-hint">Click any question or answer on the canvas to edit it. Use "Add question" below the list to add another (up to 6), or hover a question and click the trash icon to remove it.</div>');
+        return field("", (d.items || []).length < 6
+            ? '<button type="button" class="b-btn-outline" data-faq-add>' + icon("plus") + ' Add question</button>'
+            : '<div class="b-field-hint">Up to 6 questions.</div>') +
+          field("", '<div class="b-inspector-hint">Click any question or answer on the canvas to edit it, or hover one there and click the trash icon to remove it.</div>');
       case "countdown":
         return field("Ends at", dateTimeHtml("end_at", d.end_at)) +
           field("", '<div class="b-inspector-hint">Shown in your local time here, but counts down to the same moment for every visitor. Click the heading to edit it.</div>');
@@ -2779,6 +2785,28 @@
         var socRemLinks = (socRemTarget.fields.links || []).slice();
         socRemLinks.splice(socRemIdx, 1);
         socRemTarget.save({ links: socRemLinks });
+        renderInspector();
+        return;
+      }
+      var faqAddInsBtn = e.target.closest("[data-faq-add]");
+      if (faqAddInsBtn) {
+        var faqAddInsTarget = inspectorFieldTarget();
+        if (!faqAddInsTarget) return;
+        var faqInsItems = (faqAddInsTarget.fields.items || []).slice();
+        if (faqInsItems.length >= 6) return;
+        faqInsItems.push({ q: "New question", a: "Add your answer here." });
+        faqAddInsTarget.save({ items: faqInsItems });
+        renderInspector();
+        return;
+      }
+      var testiAddInsBtn = e.target.closest("[data-testi-add]");
+      if (testiAddInsBtn) {
+        var testiAddInsTarget = inspectorFieldTarget();
+        if (!testiAddInsTarget) return;
+        var testiInsQuotes = (testiAddInsTarget.fields.quotes || []).slice();
+        if (testiInsQuotes.length >= 3) return;
+        testiInsQuotes.push({ quote: "Fast shipping and exactly as described.", author: "A happy customer" });
+        testiAddInsTarget.save({ quotes: testiInsQuotes });
         renderInspector();
         return;
       }
