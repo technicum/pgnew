@@ -123,6 +123,18 @@ const TABLES = {
   storeApps: `${PREFIX}store_apps`,
   plans: `${PREFIX}plans`,
   planApps: `${PREFIX}plan_apps`,
+  // Account-scoped apps (CRM being the first — see apps.scope, added by
+  // migrateAppsScopeColumn) install against a pz_users login instead of one
+  // store, since the whole point is working across every store that login
+  // runs. Mirrors store_apps exactly, just keyed to user_id.
+  userApps: `${PREFIX}user_apps`,
+  // Who can work a CRM owner's leads/tasks — deliberately separate from
+  // user_roles (store admin/manager, which grants full access to ONE
+  // store's products/orders/pages). CRM access and store-staff access are
+  // independent grants; see the CREATE TABLE comment below.
+  crmMembers: `${PREFIX}crm_members`,
+  // A follow-up/to-do attached to a CRM contact.
+  crmTasks: `${PREFIX}crm_tasks`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -635,6 +647,63 @@ CREATE TABLE IF NOT EXISTS ${TABLES.storeApps} (
   UNIQUE KEY uniq_store_app (store_id, app_id),
   INDEX idx_store_app_active (store_id, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Same shape as ${TABLES.storeApps} above, but for an app whose scope is
+-- 'account' (see migrateAppsScopeColumn) rather than 'store' -- CRM being
+-- the first one. Keyed to a pz_users login instead of one store, since the
+-- whole point of an account-scoped app is working across every store that
+-- login runs, not any single one of them.
+CREATE TABLE IF NOT EXISTS ${TABLES.userApps} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  app_id INT NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  FOREIGN KEY (app_id) REFERENCES ${TABLES.apps}(id) ON DELETE RESTRICT,
+  UNIQUE KEY uniq_user_app (user_id, app_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Who can work a CRM owner's leads and tasks. Deliberately separate from
+-- ${TABLES.userRoles} (which grants full admin/manager access to one
+-- specific STORE -- products, orders, pages, everything). A person here can
+-- see and work this owner's contacts/tasks across every store the owner
+-- runs, without ever touching any of those stores' own admin -- and being
+-- store staff does NOT imply CRM access, or vice versa; the owner grants
+-- each independently. owner_user_id is whoever activated CRM (via
+-- ${TABLES.userApps}); member_user_id is who they've added to help work it.
+CREATE TABLE IF NOT EXISTS ${TABLES.crmMembers} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  owner_user_id INT NOT NULL,
+  member_user_id INT NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'member',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  FOREIGN KEY (member_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_owner_member (owner_user_id, member_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A follow-up/to-do attached to one ${TABLES.contacts} row. assigned_to is
+-- checked in app code (either the owner themself or one of their
+-- ${TABLES.crmMembers}) rather than by the FK, since either table could
+-- hold that user. owner_user_id is denormalized from the contact's store
+-- (rather than joined through contacts -> stores -> user_roles every time)
+-- purely so "my tasks" / "tasks I've assigned" stay a single cheap query.
+CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  owner_user_id INT NOT NULL,
+  contact_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  due_date DATE NULL,
+  assigned_to INT NULL,
+  done TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE CASCADE,
+  FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
+  INDEX idx_task_owner_done (owner_user_id, done),
+  INDEX idx_task_contact (contact_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
 const SAMPLE_PRODUCTS = [
@@ -1001,43 +1070,6 @@ async function migrateSectionStyleColumns(conn) {
   }
   if (!(await columnExists(conn, TABLES.pageSections, 'text_align'))) {
     await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN text_align VARCHAR(10) NULL`);
-  }
-}
-
-// The universal Style-tab background — the same color/image/video/overlay
-// option every section type already gets via bg_color above, extended to
-// match what only 'hero' and 'heading' could do with their own private
-// fields.bg_type/bg_image_url/bg_video_url/bg_overlay (lib/sections.js).
-// bg_type is NULL/'' for every section created before this existed, which
-// sanitizeSectionSettings/section.ejs treat as "no override" — falling back
-// to bg_color alone, exactly the pre-existing behavior — so nothing already
-// on a page changes look. Split into its own idempotent step for the same
-// reason migrateSectionStyleColumns is separate from migratePageSectionSettings.
-async function migrateSectionBgColumns(conn) {
-  if (!(await columnExists(conn, TABLES.pageSections, 'bg_type'))) {
-    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_type VARCHAR(10) NULL`);
-  }
-  if (!(await columnExists(conn, TABLES.pageSections, 'bg_image_url'))) {
-    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_image_url VARCHAR(1000) NULL`);
-  }
-  if (!(await columnExists(conn, TABLES.pageSections, 'bg_video_url'))) {
-    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_video_url VARCHAR(1000) NULL`);
-  }
-  if (!(await columnExists(conn, TABLES.pageSections, 'bg_overlay'))) {
-    await conn.query(`ALTER TABLE ${TABLES.pageSections} ADD COLUMN bg_overlay TINYINT(1) NOT NULL DEFAULT 0`);
-  }
-}
-
-// The category picked on the "Create a new site" popup (see routes/
-// platform.js's STORE_CATEGORIES and views/admin/dashboard.ejs's modal).
-// 'online_store' is the only ecommerce category — every other value (and
-// NULL, for stores created before this column existed or via /signup, which
-// doesn't ask) means the storefront has no product catalog, which is what
-// hides Commerce-group sections (products/spotlight/collections) from the
-// builder — see isEcommerceCategory in lib/sections.js.
-async function migrateStoreCategoryColumn(conn) {
-  if (!(await columnExists(conn, TABLES.stores, 'category'))) {
-    await conn.query(`ALTER TABLE ${TABLES.stores} ADD COLUMN category VARCHAR(20) NULL`);
   }
 }
 
@@ -1421,6 +1453,19 @@ async function migrateStoreThemes(conn) {
 // it's seeded at 0 as a placeholder since no standalone price was set, and
 // should be updated from platform-admin (or here) before any store is
 // actually charged for it on its own.
+// Adds pz_apps.scope to an existing install (fresh installs already get it
+// from the CREATE TABLE above). 'store' (the default, matching every app
+// before this) installs per-store via pz_store_apps; 'account' installs per
+// pz_users login via pz_user_apps instead -- CRM is the first 'account' app,
+// set explicitly below in migrateSeedPlansAndApps. Must run before that
+// function so the column exists by the time it tries to set it.
+async function migrateAppsScopeColumn(conn) {
+  if (!(await tableExists(conn, TABLES.apps))) return;
+  if (!(await columnExists(conn, TABLES.apps, 'scope'))) {
+    await conn.query(`ALTER TABLE ${TABLES.apps} ADD COLUMN scope VARCHAR(10) NOT NULL DEFAULT 'store' AFTER slug`);
+  }
+}
+
 async function migrateSeedPlansAndApps(conn) {
   const planSeed = [
     { slug: 'free', name: 'Free', price_cents: 0 },
@@ -1441,14 +1486,22 @@ async function migrateSeedPlansAndApps(conn) {
     }
   }
 
-  const [[existingCrmApp]] = await conn.query(`SELECT id FROM ${TABLES.apps} WHERE slug = 'crm'`);
+  // CRM is 'account'-scoped (works across every store one login runs, via
+  // pz_user_apps) rather than 'store'-scoped like every app before it — see
+  // migrateAppsScopeColumn above. The UPDATE below only fires the one time
+  // it's needed: an install that seeded this row before scope existed would
+  // otherwise be stuck showing CRM as a plain per-store app forever.
+  const [[existingCrmApp]] = await conn.query(`SELECT id, scope FROM ${TABLES.apps} WHERE slug = 'crm'`);
   let crmAppId;
   if (existingCrmApp) {
     crmAppId = existingCrmApp.id;
+    if (existingCrmApp.scope !== 'account') {
+      await conn.query(`UPDATE ${TABLES.apps} SET scope = 'account' WHERE id = ?`, [crmAppId]);
+    }
   } else {
     const [result] = await conn.query(
-      `INSERT INTO ${TABLES.apps} (slug, name, price_cents, description) VALUES (?, ?, ?, ?)`,
-      ['crm', 'CRM', 0, 'Contacts, leads and listings for every store type, not just ecommerce.']
+      `INSERT INTO ${TABLES.apps} (slug, name, price_cents, description, scope) VALUES (?, ?, ?, ?, ?)`,
+      ['crm', 'CRM', 0, 'Contacts, leads, tasks and follow-ups across every site you run.', 'account']
     );
     crmAppId = result.insertId;
   }
@@ -1701,8 +1754,6 @@ async function init() {
     await migrateProductCategoryLinks(conn);
     await migratePageSectionSettings(conn);
     await migrateSectionStyleColumns(conn);
-    await migrateSectionBgColumns(conn);
-    await migrateStoreCategoryColumn(conn);
     await migrateHeaderFooterSections(conn);
     await migrateDefaultHeaderFooter(conn);
     await migrateNavMenuSections(conn);
@@ -1711,6 +1762,7 @@ async function init() {
     await migrateAdminsToUsers(conn);
     await migrateThemesFromManifests(conn);
     await migrateStoreThemes(conn);
+    await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);
 

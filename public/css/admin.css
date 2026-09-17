@@ -19,20 +19,10 @@
   color: #111827;
   font-weight: 800;
   font-size: 1.2rem;
-  margin-bottom: 10px;
+  margin-bottom: 28px;
 }
 .admin-sidebar .admin-logo span { color: var(--color-primary); }
 .admin-sidebar .admin-logo small { display: block; color: #9ca3af; font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
-
-.admin-exit-store {
-  display: inline-block;
-  color: #6b7280;
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-decoration: none;
-  margin-bottom: 20px;
-}
-.admin-exit-store:hover { color: #111827; }
 
 .admin-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .admin-nav a {
@@ -404,6 +394,35 @@
 .dashboard-store-name { font-weight: 700; color: #111827; font-size: 1rem; }
 .dashboard-store-domain { color: #9ca3af; font-size: 0.82rem; }
 .dashboard-store-role { font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 600; background: #f3f4f6; padding: 4px 10px; border-radius: 999px; }
+
+/* CRM (account-level, views/platform/crm-*.ejs) -- wider than the default
+   .dashboard-main so tables have room; the tab row replaces a sidebar since
+   this area (unlike a store's own /admin) has never had one. */
+.dashboard-main.crm-main { max-width: 1000px; }
+.crm-tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 24px; }
+.crm-tab { padding: 10px 16px; font-size: 0.9rem; font-weight: 600; color: #6b7280; text-decoration: none; border-bottom: 2px solid transparent; }
+.crm-tab:hover { color: #111827; }
+.crm-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+.crm-contact-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.crm-contact-layout .admin-form { max-width: none; }
+.crm-contact-site { margin: 0 0 16px; font-size: 0.85rem; color: #6b7280; }
+@media (max-width: 760px) { .crm-contact-layout { grid-template-columns: 1fr; } }
+
+.crm-tasks-panel h2 { margin-top: 0; font-size: 1rem; }
+.crm-task-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.crm-task-form input[type="text"] { flex: 1 1 160px; }
+.crm-task-form input, .crm-task-form select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; }
+.crm-task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.crm-task-list-wide { max-width: 640px; }
+.crm-task { display: flex; align-items: center; gap: 10px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; background: #fff; }
+.crm-task-check { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #16a34a; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+.crm-task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.crm-task-title { font-weight: 600; font-size: 0.92rem; }
+.crm-task-meta { font-size: 0.78rem; color: #6b7280; }
+.crm-task-meta a { color: inherit; }
+.crm-task-done { opacity: 0.55; }
+.crm-task-done .crm-task-title { text-decoration: line-through; }
 
 /* Profile page */
 .profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }

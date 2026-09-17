@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="dashboard-body">
+  <header class="dashboard-header">
+    <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
+    <div class="dashboard-header-right">
+      <span class="dashboard-account-name"><%= account.name %></span>
+      <a href="/dashboard" class="link-btn">Your sites</a>
+      <form action="/dashboard/logout" method="POST" style="display:inline;">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="dashboard-main crm-main">
+    <div class="crm-tabs">
+      <a href="/dashboard/crm/leads" class="crm-tab">Leads</a>
+      <a href="/dashboard/crm/customers" class="crm-tab">Customers</a>
+      <a href="/dashboard/crm/my-tasks" class="crm-tab">My Tasks</a>
+      <a href="/dashboard/crm/team" class="crm-tab active">Team</a>
+    </div>
+
+    <% if (typeof success !== 'undefined' && success && success.length) { %>
+      <div class="flash flash-success"><%= success[0] %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error && error.length) { %>
+      <div class="flash flash-error"><%= error[0] %></div>
+    <% } %>
+
+    <p style="color:#6b7280; font-size:0.88rem; max-width:520px;">People you add here can log in and see/work your leads, customers and tasks — they get no access to any of your stores' products, orders or site editing unless you separately add them as staff on that store.</p>
+
+    <table class="admin-table">
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Added</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% team.forEach(function(m) { %>
+          <tr>
+            <td><%= m.name %></td>
+            <td><%= m.email %></td>
+            <td><span class="status-pill status-paid"><%= m.role %></span></td>
+            <td><%= new Date(m.created_at).toLocaleDateString() %></td>
+            <td class="admin-row-actions">
+              <form action="/dashboard/crm/team/<%= m.id %>/remove" method="POST" onsubmit="return confirm('Remove ' + <%- JSON.stringify(m.name) %> + ' from your CRM team?');">
+                <button type="submit" class="link-btn danger">Remove</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (team.length === 0) { %>
+          <tr><td colspan="5" class="empty-state">No CRM team members yet.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+
+    <h2 style="margin-top:32px;">Add a team member</h2>
+    <form action="/dashboard/crm/team" method="POST" class="admin-form">
+      <label>Name *
+        <input type="text" name="name" required placeholder="Priya Sharma" />
+      </label>
+      <div class="form-row">
+        <label>Email *
+          <input type="email" name="email" required placeholder="priya@example.com" />
+        </label>
+        <label>Role
+          <select name="role">
+            <option value="member">Member</option>
+            <option value="manager">Manager</option>
+          </select>
+        </label>
+      </div>
+      <label>Password <span style="font-weight:400; color:#6b7280;">(only needed if they don't already have a PageZaper login)</span>
+        <input type="password" name="password" minlength="6" placeholder="At least 6 characters" />
+      </label>
+      <button type="submit" class="btn btn-primary">Add to CRM team</button>
+    </form>
+  </main>
+</body>
+</html>

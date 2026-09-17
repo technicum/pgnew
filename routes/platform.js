@@ -4,7 +4,10 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { pool, THEMES, isReservedSubdomain, TABLES } = require('../db/database');
 const { storeUrl, rootUrl, adminPortalUrl } = require('../middleware/tenant');
-const { defaultFields, STORE_CATEGORIES } = require('../lib/sections');
+const { defaultFields } = require('../lib/sections');
+const appsLib = require('../lib/apps');
+const crmLib = require('../lib/crm');
+const { sanitizeContact } = require('../lib/contacts');
 
 function slugify(str) {
   return (str || '')
@@ -16,12 +19,6 @@ function slugify(str) {
 
 const SUBDOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// The category picked on the "Create a new site" popup (see
-// views/admin/dashboard.ejs's modal, which links straight into
-// /dashboard/new-store?category=<val>) — now the single source of truth
-// (lib/sections.js) for which of a store's sections the page builder offers;
-// see isEcommerceCategory/sectionTypesForStore there.
 
 // ---------- Marketing homepage ----------
 // Only shown on the root domain — on a store's own subdomain, "/" is that
@@ -37,7 +34,7 @@ router.get('/', (req, res, next) => {
 router.get('/signup', (req, res) => {
   if (req.store || !req.isRootDomain) return res.redirect(rootUrl(req, '/signup'));
   res.render('platform/signup', {
-    title: 'Create your site',
+    title: 'Create your store',
     errors: [],
     themes: THEMES,
     values: { storeName: '', subdomain: '', ownerName: '', ownerEmail: '', theme: 'default' },
@@ -72,7 +69,7 @@ router.post('/signup', async (req, res, next) => {
   }
 
   if (errors.length) {
-    return res.status(400).render('platform/signup', { title: 'Create your site', errors, themes: THEMES, values });
+    return res.status(400).render('platform/signup', { title: 'Create your store', errors, themes: THEMES, values });
   }
 
   const conn = await pool.getConnection();
@@ -81,7 +78,7 @@ router.post('/signup', async (req, res, next) => {
     if (existing) {
       conn.release();
       return res.status(400).render('platform/signup', {
-        title: 'Create your site',
+        title: 'Create your store',
         errors: [`"${subdomain}" is already taken — please choose another store address.`],
         themes: THEMES,
         values,
@@ -102,7 +99,7 @@ router.post('/signup', async (req, res, next) => {
         await conn.rollback();
         conn.release();
         return res.status(400).render('platform/signup', {
-          title: 'Create your site',
+          title: 'Create your store',
           errors: [`An account already exists for ${ownerEmail} — enter its password to add another store, or log in instead.`],
           themes: THEMES,
           values,
@@ -151,7 +148,7 @@ router.post('/signup', async (req, res, next) => {
 
     req.session.account = { id: userId, name: sessionName, email: ownerEmail };
     req.session.admin = { id: userId, name: sessionName, email: ownerEmail, store_id: storeId, role: 'admin' };
-    req.flash('success', `Welcome to PageZaper, ${sessionName}! Your site "${storeName}" is ready — add your first products to get started.`);
+    req.flash('success', `Welcome to PageZaper, ${sessionName}! Your store "${storeName}" is ready — add your first products to get started.`);
     res.redirect(storeUrl(req, subdomain, '/admin'));
   } catch (err) {
     await conn.rollback();
@@ -225,7 +222,7 @@ router.get('/dashboard', requireAccount, async (req, res, next) => {
        ORDER BY (ur.role = 'admin') DESC, s.created_at ASC`,
       [req.session.account.id]
     );
-    res.render('platform/dashboard', { title: 'Your sites', account: req.session.account, stores });
+    res.render('platform/dashboard', { title: 'Your stores', account: req.session.account, stores });
   } catch (err) {
     next(err);
   }
@@ -275,17 +272,11 @@ router.post('/dashboard/logout', requireAccount, (req, res) => {
 // unlike /signup this needs no name/email/password fields, just the new
 // store's own details.
 router.get('/dashboard/new-store', requireAccount, (req, res) => {
-  // ?category=<val> arrives from the dashboard's "Create a new site" popup
-  // (see views/admin/dashboard.ejs) — an unrecognized or missing value just
-  // means no category badge shows on this form, not an error, since a
-  // merchant can also reach this page directly (e.g. "Back to your stores"
-  // then in again) with nothing picked.
-  const category = STORE_CATEGORIES.includes(req.query.category) ? req.query.category : '';
   res.render('platform/new-store', {
-    title: 'Create a new site',
+    title: 'Create a new store',
     errors: [],
     themes: THEMES,
-    values: { storeName: '', subdomain: '', theme: 'default', category },
+    values: { storeName: '', subdomain: '', theme: 'default' },
   });
 });
 
@@ -294,9 +285,8 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
   let subdomain = (req.body.subdomain || '').trim().toLowerCase();
   if (!subdomain && storeName) subdomain = slugify(storeName);
   const theme = THEMES.includes(req.body.theme) ? req.body.theme : 'default';
-  const category = STORE_CATEGORIES.includes(req.body.category) ? req.body.category : null;
 
-  const values = { storeName, subdomain, theme, category: category || '' };
+  const values = { storeName, subdomain, theme };
   const errors = [];
 
   if (!storeName) errors.push('Store name is required.');
@@ -307,7 +297,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
   }
 
   if (errors.length) {
-    return res.status(400).render('platform/new-store', { title: 'Create a new site', errors, themes: THEMES, values });
+    return res.status(400).render('platform/new-store', { title: 'Create a new store', errors, themes: THEMES, values });
   }
 
   const conn = await pool.getConnection();
@@ -316,7 +306,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
     if (existing) {
       conn.release();
       return res.status(400).render('platform/new-store', {
-        title: 'Create a new site',
+        title: 'Create a new store',
         errors: [`"${subdomain}" is already taken — please choose another store address.`],
         themes: THEMES,
         values,
@@ -326,8 +316,8 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
     await conn.beginTransaction();
 
     const [storeResult] = await conn.query(
-      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status, category) VALUES (?, ?, ?, 'free', 'active', ?)`,
-      [storeName, subdomain, theme, category]
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES (?, ?, ?, 'free', 'active')`,
+      [storeName, subdomain, theme]
     );
     const storeId = storeResult.insertId;
 
@@ -357,7 +347,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
       store_id: storeId,
       role: 'admin',
     };
-    req.flash('success', `Your site "${storeName}" is ready — add your first products to get started.`);
+    req.flash('success', `Your store "${storeName}" is ready — add your first products to get started.`);
     res.redirect(storeUrl(req, subdomain, '/admin'));
   } catch (err) {
     await conn.rollback();
@@ -437,6 +427,283 @@ router.post('/dashboard/profile', requireAccount, async (req, res, next) => {
 
     req.flash('success', 'Profile updated.');
     res.redirect(adminPortalUrl(req, '/dashboard'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- CRM ----------
+// Lives at the account level (this router), not inside any one store's
+// /admin — see lib/crm.js's file comment for why. requireCrm resolves
+// whether this login can be here at all (owner of their own CRM, or a
+// member of someone else's) and attaches { ownerUserId, role } to
+// req.crm; every route below reads req.crm instead of req.session.account
+// directly, so "whose CRM am I looking at" stays in exactly one place.
+async function requireCrm(req, res, next) {
+  try {
+    const access = await crmLib.resolveCrmAccess(req.session.account.id);
+    if (!access) return res.redirect(adminPortalUrl(req, '/dashboard/crm/activate'));
+    req.crm = access;
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Only the owner manages billing and the team roster — a member helps work
+// leads/tasks, not who else gets to.
+function requireCrmOwner(req, res, next) {
+  if (req.crm && req.crm.role === 'owner') return next();
+  req.flash('error', "Only the CRM owner can do that.");
+  res.redirect(adminPortalUrl(req, '/dashboard/crm/team'));
+}
+
+router.get('/dashboard/crm', requireAccount, (req, res) => res.redirect(adminPortalUrl(req, '/dashboard/crm/leads')));
+
+// Shown instead of requireCrm's redirect target when this login has no CRM
+// access anywhere yet — lets them activate it for themselves. (A team
+// member who hasn't been added by an owner also lands here, same message.)
+router.get('/dashboard/crm/activate', requireAccount, async (req, res, next) => {
+  try {
+    const access = await crmLib.resolveCrmAccess(req.session.account.id);
+    if (access) return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    const [[crmApp]] = await pool.query(`SELECT * FROM ${TABLES.apps} WHERE slug = 'crm'`);
+    res.render('platform/crm-activate', { title: 'CRM', account: req.session.account, crmApp });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/activate', requireAccount, async (req, res, next) => {
+  try {
+    const [[crmApp]] = await pool.query(`SELECT * FROM ${TABLES.apps} WHERE slug = 'crm'`);
+    if (!crmApp) {
+      req.flash('error', 'CRM app not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard'));
+    }
+    await appsLib.activateAccountApp(req.session.account.id, crmApp.id);
+    req.flash('success', 'CRM activated.');
+    res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+async function renderCrmContacts(req, res, next, segment) {
+  try {
+    const contacts = await crmLib.listContacts(req.crm.ownerUserId, segment);
+    res.render('platform/crm-contacts', {
+      title: segment === 'customers' ? 'CRM Customers' : 'Leads',
+      segment,
+      contacts,
+      crm: req.crm,
+      account: req.session.account,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+router.get('/dashboard/crm/leads', requireAccount, requireCrm, (req, res, next) => renderCrmContacts(req, res, next, 'leads'));
+router.get('/dashboard/crm/customers', requireAccount, requireCrm, (req, res, next) => renderCrmContacts(req, res, next, 'customers'));
+
+router.get('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const stores = await crmLib.getOwnerStores(req.crm.ownerUserId);
+    res.render('platform/crm-contact-form', { title: 'New Contact', account: req.session.account, crm: req.crm, contact: null, stores });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const ownerUserId = req.crm.ownerUserId;
+    const storeIds = await crmLib.getOwnerStoreIds(ownerUserId);
+    const storeId = parseInt(req.body.store_id, 10);
+    if (!storeIds.includes(storeId)) {
+      req.flash('error', 'Please choose one of your sites.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
+    }
+    const data = sanitizeContact(req.body);
+    if (!data.name || !data.email) {
+      req.flash('error', 'Name and email are required.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
+    }
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ?`, [storeId, data.email]);
+    if (existing) {
+      req.flash('error', `A contact with email "${data.email}" already exists for that site.`);
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
+    }
+    await pool.query(
+      `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source) VALUES (?, ?, ?, ?, ?)`,
+      [storeId, data.name, data.email, data.phone, data.source]
+    );
+    req.flash('success', 'Contact added.');
+    res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/dashboard/crm/contacts/:id', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    }
+    const [tasks, assignableUsers] = await Promise.all([
+      crmLib.listTasksForContact(contact.id),
+      crmLib.listAssignableUsers(req.crm.ownerUserId),
+    ]);
+    res.render('platform/crm-contact', { title: 'Contact', account: req.session.account, crm: req.crm, contact, tasks, assignableUsers });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/contacts/:id/edit', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    }
+    const data = sanitizeContact(req.body);
+    if (!data.name || !data.email) {
+      req.flash('error', 'Name and email are required.');
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+    }
+    const [[dupe]] = await pool.query(
+      `SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ? AND id != ?`,
+      [contact.store_id, data.email, contact.id]
+    );
+    if (dupe) {
+      req.flash('error', `A contact with email "${data.email}" already exists for that site.`);
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+    }
+    await pool.query(
+      `UPDATE ${TABLES.contacts} SET name = ?, email = ?, phone = ?, source = ? WHERE id = ?`,
+      [data.name, data.email, data.phone, data.source, contact.id]
+    );
+    req.flash('success', 'Contact updated.');
+    res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/contacts/:id/delete', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    }
+    const segment = contact.customer_id ? 'customers' : 'leads';
+    await pool.query(`DELETE FROM ${TABLES.contacts} WHERE id = ?`, [contact.id]);
+    req.flash('success', 'Contact deleted.');
+    res.redirect(adminPortalUrl(req, `/dashboard/crm/${segment}`));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Tasks (attached to a contact) ----
+router.post('/dashboard/crm/contacts/:id/tasks', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    }
+    const title = (req.body.title || '').trim();
+    if (!title) {
+      req.flash('error', 'Task title is required.');
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+    }
+    const assignedTo = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
+    if (!(await crmLib.isAssignable(req.crm.ownerUserId, assignedTo))) {
+      req.flash('error', "That person isn't on this CRM team.");
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+    }
+    await crmLib.createTask(req.crm.ownerUserId, contact.id, {
+      title,
+      due_date: req.body.due_date || null,
+      assigned_to: assignedTo,
+    });
+    req.flash('success', 'Task added.');
+    res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/tasks/:id/toggle', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    await crmLib.setTaskDone(req.crm.ownerUserId, req.params.id, req.body.done === '1');
+    res.redirect(req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/my-tasks'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/tasks/:id/delete', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    await crmLib.deleteTask(req.crm.ownerUserId, req.params.id);
+    res.redirect(req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/my-tasks'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Landing page for a team member: everything assigned to them, across
+// every contact/site under this CRM, in one list.
+router.get('/dashboard/crm/my-tasks', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const tasks = await crmLib.listTasksForAssignee(req.crm.ownerUserId, req.session.account.id);
+    res.render('platform/crm-my-tasks', { title: 'My Tasks', account: req.session.account, crm: req.crm, tasks });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- CRM team (owner only) ----
+router.get('/dashboard/crm/team', requireAccount, requireCrm, requireCrmOwner, async (req, res, next) => {
+  try {
+    const team = await crmLib.listCrmTeam(req.crm.ownerUserId);
+    res.render('platform/crm-team', { title: 'CRM Team', account: req.session.account, crm: req.crm, team });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/team', requireAccount, requireCrm, requireCrmOwner, async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    if (!name || !email) {
+      req.flash('error', 'Name and email are required.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/team'));
+    }
+    await crmLib.addCrmMember(req.crm.ownerUserId, { name, email, password: req.body.password, role: req.body.role });
+    req.flash('success', `${email} added to your CRM team.`);
+    res.redirect(adminPortalUrl(req, '/dashboard/crm/team'));
+  } catch (err) {
+    if (err && err.message) {
+      req.flash('error', err.message);
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/team'));
+    }
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/team/:userId/remove', requireAccount, requireCrm, requireCrmOwner, async (req, res, next) => {
+  try {
+    await crmLib.removeCrmMember(req.crm.ownerUserId, req.params.userId);
+    req.flash('success', 'Removed from your CRM team.');
+    res.redirect(adminPortalUrl(req, '/dashboard/crm/team'));
   } catch (err) {
     next(err);
   }

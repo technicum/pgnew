@@ -12,9 +12,6 @@
   <div class="admin-layout">
     <aside class="admin-sidebar">
       <div class="admin-logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %> <small>Admin</small></div>
-      <% if (!impersonation) { %>
-        <a href="<%= accountDashboardUrl %>" class="admin-exit-store">&larr; Exit store</a>
-      <% } %>
       <%
         // Orders/Products/Customers/Discounts/Markets/Finance are e-commerce
         // concepts that don't apply to a Lawyer/Recruitment/Car Dealer/Real
@@ -74,15 +71,6 @@
           <a href="/admin/finance" class="<%= title === 'Finance' ? 'active' : '' %>">Finance</a>
         <% } %>
         <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
-
-        <% if (typeof activeAppSlugs !== 'undefined' && activeAppSlugs.indexOf('crm') !== -1) { %>
-          <% var crmOpen = title && (title === 'Leads' || title === 'CRM Customers' || title === 'New Contact' || title === 'Edit Contact'); %>
-          <a href="/admin/contacts/leads" class="<%= crmOpen ? 'active' : '' %>">CRM</a>
-          <% if (crmOpen) { %>
-            <a href="/admin/contacts/leads" class="admin-nav-sub <%= title === 'Leads' || title === 'New Contact' || title === 'Edit Contact' ? 'active' : '' %>">Leads</a>
-            <a href="/admin/contacts/customers" class="admin-nav-sub <%= title === 'CRM Customers' ? 'active' : '' %>">Customers</a>
-          <% } %>
-        <% } %>
 
         <a href="/admin/apps" class="<%= title === 'Apps' ? 'active' : '' %>">Apps</a>
         <% if (title === 'Apps') { %>

@@ -17,16 +17,12 @@ const {
   sanitizeRowBlock,
   sectionTypesForContext,
   sectionAllowedInContext,
-  sectionTypesForStore,
-  STORE_CATEGORIES,
-  STORE_CATEGORY_LABELS,
 } = require('../lib/sections');
 const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
 const menusLib = require('../lib/menus');
 const { importDemoContent } = require('../lib/demoImport');
 const mediaLib = require('../lib/media');
-const { getActiveAppSlugs, listAppsForStore, activateApp, deactivateApp } = require('../lib/apps');
-const { sanitizeContact } = require('../lib/contacts');
+const { getActiveAppSlugs, listAppsForStore, activateApp } = require('../lib/apps');
 
 function slugify(str) {
   return str
@@ -635,7 +631,7 @@ async function scopeLoadSection(scope, sectionId) {
 async function scopeCreateSection(scope, req, res, next) {
   try {
     const { type } = req.body;
-    if (!sectionAllowedInContext(type, scopeContext(scope), req.store.category)) return res.status(400).json({ error: 'Unknown section type' });
+    if (!sectionAllowedInContext(type, scopeContext(scope))) return res.status(400).json({ error: 'Unknown section type' });
     const { sql, params } = scopeWhere(scope);
     const [[{ maxPos }]] = await pool.query(`SELECT COALESCE(MAX(position), -1) AS maxPos FROM ${TABLES.pageSections} WHERE ${sql}`, params);
     const fields = defaultFields(type);
@@ -1131,7 +1127,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       context: 'page',
       sectionsBase: `/admin/pages/${page.id}/sections`,
       sections,
-      sectionTypes: sectionTypesForStore(req.store.category),
+      sectionTypes: SECTION_TYPES,
       sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
@@ -1211,7 +1207,7 @@ router.get('/layout/:region', async (req, res, next) => {
       context: region,
       sectionsBase: `/admin/layout/${region}/sections`,
       sections,
-      sectionTypes: sectionTypesForStore(req.store.category),
+      sectionTypes: SECTION_TYPES,
       sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
@@ -1266,7 +1262,7 @@ router.get('/pages/:id/layout/:region/edit', async (req, res, next) => {
       context: region,
       sectionsBase: `/admin/pages/${page.id}/layout/${region}/sections`,
       sections,
-      sectionTypes: sectionTypesForStore(req.store.category),
+      sectionTypes: SECTION_TYPES,
       sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
@@ -2040,169 +2036,13 @@ router.post('/apps/:slug/activate', async (req, res, next) => {
   }
 });
 
-// Mirrors /activate. A plan-bundled app (pz_plan_apps) can't be turned off
-// here — listAppsForStore's `active` is bundled || installed, so flipping
-// pz_store_apps.is_active to 0 on one of those would silently do nothing
-// useful anyway; caught explicitly so a direct POST (the UI never offers
-// this button for a bundled app) gets a real error instead of a no-op
-// "deactivated" flash.
-router.post('/apps/:slug/deactivate', async (req, res, next) => {
-  try {
-    const [[app]] = await pool.query(`SELECT * FROM ${TABLES.apps} WHERE slug = ? AND status = 'published'`, [req.params.slug]);
-    if (!app) {
-      req.flash('error', 'App not found.');
-      return res.redirect('/admin/apps');
-    }
-    const [[bundle]] = await pool.query(
-      `SELECT pa.id FROM ${TABLES.planApps} pa JOIN ${TABLES.plans} p ON p.id = pa.plan_id
-       WHERE pa.app_id = ? AND p.slug = ?`,
-      [app.id, req.store.plan]
-    );
-    if (bundle) {
-      req.flash('error', `${app.name} is included in your plan and can't be deactivated.`);
-      return res.redirect('/admin/apps');
-    }
-    await deactivateApp(req.store.id, app.id);
-    req.flash('success', `${app.name} deactivated.`);
-    res.redirect('/admin/apps');
-  } catch (err) {
-    next(err);
-  }
-});
-
 // ---------- Contacts (CRM) ----------
-// Gated behind the 'crm' app — see requireApp above. Deliberately a
-// superset of Customers: every person the store's admin should know
-// about, not just people with a pz_customers login (see db/database.js's
-// pz_contacts comment for the full design story).
-router.use('/contacts', requireApp('crm', 'CRM'));
-
-// The CRM sub-nav splits pz_contacts into two views by whether customer_id
-// is set — NOT a separate table, just a filter on the one contacts list.
-// 'leads' is the default landing screen; 'customers' shows contacts who've
-// since converted to a real pz_customers account. The page title
-// deliberately says "CRM Customers" (not bare "Customers") so it never
-// collides with the existing ecommerce Customers screen's own
-// title === 'Customers' nav-highlight check in header.ejs — two different
-// tables, kept visibly distinct in the nav.
-router.get('/contacts', (req, res) => res.redirect('/admin/contacts/leads'));
-
-router.get('/contacts/leads', async (req, res, next) => {
-  try {
-    const [contacts] = await pool.query(
-      `SELECT * FROM ${TABLES.contacts} WHERE store_id = ? AND customer_id IS NULL ORDER BY created_at DESC`,
-      [req.store.id]
-    );
-    res.render('admin/contacts', {
-      title: 'Leads',
-      segment: 'leads',
-      contacts,
-      emptyText: "No leads yet — they'll show up here from your contact form, or add one manually.",
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/contacts/customers', async (req, res, next) => {
-  try {
-    const [contacts] = await pool.query(
-      `SELECT * FROM ${TABLES.contacts} WHERE store_id = ? AND customer_id IS NOT NULL ORDER BY created_at DESC`,
-      [req.store.id]
-    );
-    res.render('admin/contacts', {
-      title: 'CRM Customers',
-      segment: 'customers',
-      contacts,
-      emptyText: 'No converted customers yet — a lead lands here once they create an account.',
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/contacts/new', (req, res) => {
-  res.render('admin/contact-form', { title: 'New Contact', contact: null });
-});
-
-router.post('/contacts/new', async (req, res, next) => {
-  try {
-    const storeId = req.store.id;
-    const data = sanitizeContact(req.body);
-    if (!data.name || !data.email) {
-      req.flash('error', 'Name and email are required.');
-      return res.redirect('/admin/contacts/new');
-    }
-    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ?`, [storeId, data.email]);
-    if (existing) {
-      req.flash('error', `A contact with email "${data.email}" already exists.`);
-      return res.redirect('/admin/contacts/new');
-    }
-    // A contact added by hand here is a lead by definition — customer_id
-    // only ever gets set once that person creates a real pz_customers
-    // account matched by email (not built yet, see lib/contacts.js notes).
-    await pool.query(
-      `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source) VALUES (?, ?, ?, ?, ?)`,
-      [storeId, data.name, data.email, data.phone, data.source]
-    );
-    req.flash('success', 'Contact added.');
-    res.redirect('/admin/contacts/leads');
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/contacts/:id/edit', async (req, res, next) => {
-  try {
-    const [[contact]] = await pool.query(`SELECT * FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
-    if (!contact) {
-      req.flash('error', 'Contact not found.');
-      return res.redirect('/admin/contacts/leads');
-    }
-    res.render('admin/contact-form', { title: 'Edit Contact', contact });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/contacts/:id/edit', async (req, res, next) => {
-  try {
-    const storeId = req.store.id;
-    const data = sanitizeContact(req.body);
-    if (!data.name || !data.email) {
-      req.flash('error', 'Name and email are required.');
-      return res.redirect(`/admin/contacts/${req.params.id}/edit`);
-    }
-    const [[existing]] = await pool.query(
-      `SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ? AND id != ?`,
-      [storeId, data.email, req.params.id]
-    );
-    if (existing) {
-      req.flash('error', `A contact with email "${data.email}" already exists.`);
-      return res.redirect(`/admin/contacts/${req.params.id}/edit`);
-    }
-    const [[current]] = await pool.query(`SELECT customer_id FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [storeId, req.params.id]);
-    await pool.query(
-      `UPDATE ${TABLES.contacts} SET name = ?, email = ?, phone = ?, source = ? WHERE store_id = ? AND id = ?`,
-      [data.name, data.email, data.phone, data.source, storeId, req.params.id]
-    );
-    req.flash('success', 'Contact updated.');
-    res.redirect(current && current.customer_id ? '/admin/contacts/customers' : '/admin/contacts/leads');
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/contacts/:id/delete', async (req, res, next) => {
-  try {
-    const [[contact]] = await pool.query(`SELECT customer_id FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
-    await pool.query(`DELETE FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
-    req.flash('success', 'Contact deleted.');
-    res.redirect(contact && contact.customer_id ? '/admin/contacts/customers' : '/admin/contacts/leads');
-  } catch (err) {
-    next(err);
-  }
-});
+// CRM moved to the account level (routes/platform.js's /dashboard/crm/*,
+// lib/crm.js) — it now works across every store one login runs, not just
+// this one, so it no longer lives nested in a single store's own /admin.
+// Old links into this store's /admin/contacts still land somewhere useful
+// instead of 404ing.
+router.get('/contacts*', (req, res) => res.redirect(adminPortalUrl(req, '/dashboard/crm/leads')));
 
 // ---------- Settings ----------
 router.get('/settings', async (req, res, next) => {
@@ -2215,7 +2055,7 @@ router.get('/settings', async (req, res, next) => {
        ORDER BY (ur.role = 'admin') DESC, u.name ASC`,
       [req.store.id]
     );
-    res.render('admin/settings', { title: 'Settings', themes: THEMES, team, storeCategories: STORE_CATEGORIES, categoryLabels: STORE_CATEGORY_LABELS });
+    res.render('admin/settings', { title: 'Settings', themes: THEMES, team });
   } catch (err) {
     next(err);
   }
@@ -2306,16 +2146,13 @@ router.post('/settings/store', async (req, res, next) => {
   try {
     const name = (req.body.name || '').trim();
     const theme = THEMES.includes(req.body.theme) ? req.body.theme : req.store.theme;
-    // '' (the form's "Not set" option) clears it back to NULL, which
-    // isEcommerceCategory (lib/sections.js) treats the same as 'online_store'.
-    const category = STORE_CATEGORIES.includes(req.body.category) ? req.body.category : null;
 
     if (!name) {
       req.flash('error', 'Store name is required.');
       return res.redirect('/admin/settings');
     }
 
-    await pool.query(`UPDATE ${TABLES.stores} SET name = ?, theme = ?, category = ? WHERE id = ?`, [name, theme, category, req.store.id]);
+    await pool.query(`UPDATE ${TABLES.stores} SET name = ?, theme = ? WHERE id = ?`, [name, theme, req.store.id]);
     req.flash('success', 'Store settings updated.');
     res.redirect('/admin/settings');
   } catch (err) {

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="dashboard-body">
+  <header class="dashboard-header">
+    <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
+    <div class="dashboard-header-right">
+      <span class="dashboard-account-name"><%= account.name %></span>
+      <a href="/dashboard" class="link-btn">Your sites</a>
+      <form action="/dashboard/logout" method="POST" style="display:inline;">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="dashboard-main crm-main">
+    <div class="crm-tabs">
+      <a href="/dashboard/crm/leads" class="crm-tab active">Leads</a>
+      <a href="/dashboard/crm/customers" class="crm-tab">Customers</a>
+      <a href="/dashboard/crm/my-tasks" class="crm-tab">My Tasks</a>
+      <% if (crm.role === 'owner') { %>
+        <a href="/dashboard/crm/team" class="crm-tab">Team</a>
+      <% } %>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error && error.length) { %>
+      <div class="flash flash-error"><%= error[0] %></div>
+    <% } %>
+
+    <form action="/dashboard/crm/contacts/new" method="POST" class="admin-form">
+      <label>Site *
+        <select name="store_id" required>
+          <% stores.forEach(function(s) { %>
+            <option value="<%= s.id %>"><%= s.name %></option>
+          <% }); %>
+        </select>
+      </label>
+
+      <label>Name *
+        <input type="text" name="name" required placeholder="Jane Doe" />
+      </label>
+
+      <div class="form-row">
+        <label>Email *
+          <input type="email" name="email" required placeholder="jane@example.com" />
+        </label>
+        <label>Phone
+          <input type="text" name="phone" placeholder="+91 98765 43210" />
+        </label>
+      </div>
+
+      <label>Source
+        <select name="source">
+          <option value="manual" selected>Added manually</option>
+          <option value="contact_form">Contact form</option>
+          <option value="signup">Account signup</option>
+          <option value="order">Order / checkout</option>
+          <option value="newsletter">Newsletter</option>
+        </select>
+      </label>
+
+      <button type="submit" class="btn btn-primary">Add contact</button>
+    </form>
+  </main>
+</body>
+</html>
