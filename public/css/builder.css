@@ -291,14 +291,6 @@ body.builder-body button { font-family: inherit; }
 .b-csec.is-flash-target::after { content: ""; position: absolute; inset: 0; outline: 2px solid var(--b-accent); outline-offset: -2px; pointer-events: none; z-index: 2; border-radius: 2px; animation: b-flash .9s ease-out; }
 @keyframes b-flash { 0% { outline-color: var(--b-accent); background: rgba(245,166,35,.14); } 100% { outline-color: transparent; background: transparent; } }
 
-/* Universal background (Style tab, every type except hero/heading — see
-   applyUniversalBgMedia): same video/overlay treatment as hero's and
-   heading's own .b-sec-hero-video/.b-sec-hero-overlay above, just not
-   scoped to one type's markup since this is inserted into whichever
-   section/div renderSectionInner produced. */
-.b-uni-bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
-.b-uni-bg-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: -1; }
-
 /* Dims a section on the canvas when it's hidden on whichever device the
    desktop/tablet/mobile viewport switcher is currently previewing — a
    different, per-device flag from is-hidden-sec above (hidden everywhere). */
@@ -354,7 +346,7 @@ body.builder-body button { font-family: inherit; }
    though a neighboring section's handle occupies the same shared pixel
    band when both sit at zero margin. */
 .b-csec-margin { position: absolute; left: 8px; right: 8px; height: 10px; cursor: row-resize; touch-action: none; z-index: 6; opacity: 0; transition: opacity .12s; }
-.b-csec-margin::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--b-accent-soft); border: 1px solid var(--b-accent); border-radius: 2px; }
+.b-csec-margin::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
 .b-csec.is-selected .b-csec-margin, .b-csec:hover .b-csec-margin { opacity: .85; }
 .b-csec-margin:hover, .b-csec-margin:active { opacity: 1 !important; }
 .b-csec-margin-top { top: -17px; }
@@ -367,7 +359,7 @@ body.builder-body button { font-family: inherit; }
    boundary would be unreachable. Sitting just inside the edge keeps it
    clickable regardless. */
 .b-csec-margin-v { position: absolute; top: 8px; bottom: 8px; width: 10px; cursor: col-resize; touch-action: none; z-index: 6; opacity: 0; transition: opacity .12s; }
-.b-csec-margin-v::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--b-accent-soft); border: 1px solid var(--b-accent); border-radius: 2px; }
+.b-csec-margin-v::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
 .b-csec.is-selected .b-csec-margin-v, .b-csec:hover .b-csec-margin-v { opacity: .85; }
 .b-csec-margin-v:hover, .b-csec-margin-v:active { opacity: 1 !important; }
 .b-csec-margin-left { left: 4px; }
@@ -402,7 +394,7 @@ body.builder-body button { font-family: inherit; }
    padding doesn't change at the mobile breakpoint either (no such @media
    rule exists in style.css), so unlike before, there is no separate
    narrower value for small viewports here. */
-.b-sec-pad { padding: 24px 16px; }
+.b-sec-pad { padding: 40px 24px; }
 
 .b-sec-hero { text-align: center; background: var(--b-accent-soft); position: relative; overflow: hidden; z-index: 0; padding-top: 48px; padding-bottom: 40px; }
 .b-sec-hero.has-custom-bg { background: transparent; }
@@ -442,16 +434,10 @@ body.builder-body button { font-family: inherit; }
 .b-prod-empty a { color: var(--b-ink); font-weight: 600; }
 
 .b-sec-testimonials { padding-top: 40px; padding-bottom: 40px; }
-.b-testi-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 900px; margin: 0 auto; }
-.b-testi-card { position: relative; background: var(--b-surface-2); border-radius: 10px; padding: 22px 30px 22px 22px; width: 280px; max-width: 100%; text-align: center; }
+.b-testi-card { background: var(--b-surface-2); border-radius: 10px; padding: 22px; max-width: 480px; margin: 0 auto; text-align: center; }
 .b-testi-quote { font-size: 15px; line-height: 1.6; margin-bottom: 14px; }
 .b-testi-name { font-size: 12.5px; font-weight: 700; }
 .b-testi-stars { color: var(--b-accent); font-size: 13px; margin-bottom: 8px; letter-spacing: 2px; }
-.b-testi-remove { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent; color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .12s ease, background-color .12s ease, color .12s ease; }
-.b-testi-remove svg { width: 12px; height: 12px; }
-.b-testi-card:hover .b-testi-remove, .b-testi-remove:focus-visible { opacity: 1; }
-.b-testi-remove:hover { background: var(--b-danger); color: #fff; }
-.b-testi-add { display: block; margin: 16px auto 0; }
 
 /* A boxed card on the live site (its own background/border, not edge-to-edge
    content), padded 40px on all four sides rather than the shared 24px
@@ -471,18 +457,14 @@ body.builder-body button { font-family: inherit; }
    select in inspectorFieldsFor's "heading" case), so these target
    :is(h1..h6) rather than a hardcoded h2, mirroring style.css's own
    .pz-heading rules so the canvas preview matches the live storefront. */
-.b-heading { padding-top: 32px; padding-bottom: 32px; position: relative; overflow: hidden; z-index: 0; }
-.b-heading.has-custom-bg { background: transparent; }
-.b-heading.has-light-text :is(h1, h2, h3, h4, h5, h6) { color: #fff; }
-.b-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; position: relative; z-index: 1; }
+.b-heading { padding-top: 32px; padding-bottom: 32px; }
+.b-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; }
 .b-heading-s :is(h1, h2, h3, h4, h5, h6) { font-size: 20px; }
 .b-heading-m :is(h1, h2, h3, h4, h5, h6) { font-size: 28px; }
 .b-heading-l :is(h1, h2, h3, h4, h5, h6) { font-size: 36px; }
 .b-heading-xl :is(h1, h2, h3, h4, h5, h6) { font-size: 48px; }
-.b-heading-link-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--b-muted); position: relative; z-index: 1; }
+.b-heading-link-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--b-muted); }
 .b-heading-link-badge svg { width: 11px; height: 11px; }
-.b-heading-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
-.b-heading-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: -1; }
 
 .b-richtext-narrow { max-width: 640px; margin: 0 auto; padding-top: 40px; padding-bottom: 40px; }
 .b-richtext-wide { max-width: 900px; margin: 0 auto; padding-top: 40px; padding-bottom: 40px; }
@@ -530,15 +512,10 @@ body.builder-body button { font-family: inherit; }
 .b-logostrip span { font-family: var(--b-font-display); font-weight: 800; font-size: 16px; color: var(--b-muted); opacity: .55; }
 
 .b-sec-faq { padding-top: 24px; padding-bottom: 40px; }
-.b-faq-item { position: relative; border-bottom: 1px solid var(--b-line); padding: 14px 34px 14px 2px; }
+.b-faq-item { border-bottom: 1px solid var(--b-line); padding: 14px 2px; }
 .b-faq-item:first-child { border-top: 1px solid var(--b-line); }
 .b-faq-q { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .b-faq-a { font-size: 13px; color: var(--b-muted); line-height: 1.6; }
-.b-faq-item-remove { position: absolute; top: 14px; right: 2px; width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent; color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .12s ease, background-color .12s ease, color .12s ease; }
-.b-faq-item-remove svg { width: 12px; height: 12px; }
-.b-faq-item:hover .b-faq-item-remove, .b-faq-item-remove:focus-visible { opacity: 1; }
-.b-faq-item-remove:hover { background: var(--b-danger); color: #fff; }
-.b-faq-add { margin-top: 14px; }
 
 /* Header/footer canvas section types — logo, nav_menu, promo_bar,
    link_columns, social_icons, copyright (see admin-builder.js's
@@ -681,6 +658,18 @@ textarea[data-field="__custom_css"] { font-family: var(--b-font-mono); font-size
 .b-social-row-remove svg { width: 13px; height: 13px; }
 .b-social-row-remove:hover { color: var(--b-danger); border-color: var(--b-danger); }
 .b-social-add { width: 100%; justify-content: center; }
+
+/* FAQ items repeater (Content tab) — an Elementor-style list: each row is
+   just a label + Duplicate/Remove, the actual question/answer text is
+   edited by clicking it on the canvas like every other module's text. */
+.b-faq-editor { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.b-faq-row { display: flex; align-items: center; gap: 6px; border: 1px solid var(--b-line); border-radius: 8px; padding: 7px 8px 7px 12px; background: var(--b-surface); }
+.b-faq-row-label { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--b-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-faq-row-dup, .b-faq-row-remove { flex-shrink: 0; width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--b-line); background: var(--b-surface); color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.b-faq-row-dup svg, .b-faq-row-remove svg { width: 12px; height: 12px; }
+.b-faq-row-dup:hover { color: var(--b-ink); border-color: var(--b-ink); }
+.b-faq-row-remove:hover { color: var(--b-danger); border-color: var(--b-danger); }
+.b-faq-add { width: 100%; justify-content: center; }
 
 .b-gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .b-gal-tile { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--b-surface-2); border: 1px solid var(--b-line); }

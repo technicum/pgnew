@@ -450,40 +450,6 @@
     return '<div class="b-ph ' + (extraClass || "") + '"' + (styleAttr || "") + '>' + icon("image") + "</div>";
   }
 
-  // A section's "Background video" field (hero, heading — see bg_video_url
-  // in lib/sections.js) used to only accept a direct .mp4/.webm file link,
-  // rendered as a plain <video>. This also recognizes a pasted YouTube or
-  // Vimeo watch/share link and turns it into that platform's muted/looping
-  // "background" iframe embed instead, so a merchant can paste whichever
-  // kind of link they have — mirrored in views/storefront/partials/
-  // section.ejs and block.ejs's own pzBgVideoEmbed for the live storefront,
-  // which must build the exact same src for the canvas preview to match.
-  function bgVideoEmbed(url) {
-    url = (url || "").trim();
-    var yt = url.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
-    if (yt) {
-      var ytId = yt[1];
-      return { kind: "youtube", src: "https://www.youtube-nocookie.com/embed/" + ytId + "?autoplay=1&mute=1&loop=1&playlist=" + ytId + "&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3" };
-    }
-    var vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
-    if (vm) {
-      return { kind: "vimeo", src: "https://player.vimeo.com/video/" + vm[1] + "?autoplay=1&muted=1&loop=1&background=1&controls=0" };
-    }
-    return { kind: "file", src: url };
-  }
-  // Renders whichever markup bgVideoEmbed() calls for, sized/positioned by
-  // the given CSS class exactly like the plain <video> this replaces —
-  // youtube/vimeo get pointer-events:none so the decorative embed can't
-  // steal clicks meant for the canvas (selecting the section, editing the
-  // heading text, etc.), which a native <video> with no controls never risked.
-  function bgVideoHtml(url, cssClass) {
-    var embed = bgVideoEmbed(url);
-    if (embed.kind === "file") {
-      return '<video class="' + cssClass + '" src="' + attrUrl(embed.src) + '" autoplay muted loop playsinline></video>';
-    }
-    return '<iframe class="' + cssClass + '" src="' + attrUrl(embed.src) + '" style="pointer-events:none;border:0;" allow="autoplay; encrypted-media" loading="lazy"></iframe>';
-  }
-
   // ownerBlockId: undefined/null when `sec` is a top-level page section;
   // otherwise the id of the row BLOCK this call is rendering (i.e. `sec` is
   // itself one of a row's nested blocks, passed in recursively from the
@@ -503,7 +469,7 @@
         } else if (heroBgType === "image" && d.bg_image_url) {
           heroBgStyle = ' style="background-image:url(\'' + esc(d.bg_image_url).replace(/'/g, "%27") + '\');background-size:cover;background-position:center;"';
         } else if (heroBgType === "video" && d.bg_video_url) {
-          heroMedia = bgVideoHtml(d.bg_video_url, "b-sec-hero-video");
+          heroMedia = '<video class="b-sec-hero-video" src="' + esc(d.bg_video_url) + '" autoplay muted loop playsinline></video>';
         }
         if ((heroBgType === "image" || heroBgType === "video") && d.bg_overlay) {
           heroMedia += '<div class="b-sec-hero-overlay"></div>';
@@ -514,7 +480,7 @@
           '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
           '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p></div>';
 
-      case "heading": {
+      case "heading":
         // Real tag (h1-h6, see the Content tab's "HTML Tag" select), but
         // never wrapped in an actual <a> here — an <a> around a
         // contenteditable, click-to-select canvas element would try to
@@ -522,28 +488,10 @@
         // just shows a link is attached; the URL itself is set/edited from
         // the inspector's Content tab.
         var hTag = ["h1", "h2", "h3", "h4", "h5", "h6"].indexOf(d.tag) !== -1 ? d.tag : "h2";
-        // Background (bg_type/bg_color/bg_image_url/bg_video_url/bg_overlay/
-        // text_theme) mirrors the hero section above.
-        var headBgType = d.bg_type || "none";
-        var headBgStyle = "";
-        var headMedia = "";
-        if (headBgType === "color" && d.bg_color) {
-          headBgStyle = "background:" + esc(d.bg_color) + ";";
-        } else if (headBgType === "image" && d.bg_image_url) {
-          headBgStyle = "background-image:url('" + esc(d.bg_image_url).replace(/'/g, "%27") + "');background-size:cover;background-position:center;";
-        } else if (headBgType === "video" && d.bg_video_url) {
-          headMedia = bgVideoHtml(d.bg_video_url, "b-heading-video");
-        }
-        if ((headBgType === "image" || headBgType === "video") && d.bg_overlay) {
-          headMedia += '<div class="b-heading-overlay"></div>';
-        }
-        var headLight = headBgType !== "none" && d.text_theme === "light";
-        return '<div class="b-sec-pad b-heading b-heading-' + (d.size || "l") + (headBgType !== "none" ? " has-custom-bg" : "") + (headLight ? " has-light-text" : "") + '" style="' + headBgStyle + 'text-align:' + (d.align || "left") + ';">' +
-          headMedia +
+        return '<div class="b-sec-pad b-heading b-heading-' + (d.size || "l") + '" style="text-align:' + (d.align || "left") + ';">' +
           '<' + hTag + ' data-field="heading" contenteditable="true">' + esc(d.heading) + '</' + hTag + '>' +
           (d.link_url ? '<div class="b-heading-link-badge">' + icon("link") + '<span>Links to ' + esc(d.link_url) + '</span></div>' : "") +
           '</div>';
-      }
 
       case "text_image":
         var imgStyle = d.image_url ? ' style="background-image:url(\'' + esc(d.image_url).replace(/'/g, "%27") + '\');"' : "";
@@ -569,23 +517,12 @@
           '<span>' + (DATA.products.length ? "showing " + Math.min(count, DATA.products.length) + " of " + DATA.products.length : "") + '</span></div>' +
           '<div class="b-prod-grid">' + cards + '</div></div>';
 
-      case "testimonials": {
-        var quotes = d.quotes || [];
-        var testiCards = quotes.map(function (q, idx) {
-          return '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
-            '<div class="b-testi-quote" data-field="quotes.' + idx + '.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
-            '<div class="b-testi-name" data-field="quotes.' + idx + '.author" contenteditable="true">' + esc(q.author) + '</div>' +
-            '<button type="button" class="b-testi-remove" data-testi-remove data-index="' + idx + '" title="Remove testimonial" aria-label="Remove testimonial">' + icon("trash") + '</button></div>';
-        }).join("");
-        // Up to 3 testimonials (lib/sections.js's sanitizeFields caps `quotes`
-        // the same way) — same "add disappears past the cap" convention as
-        // FAQ's questions/social_icons' icons.
-        var testiAddBtn = quotes.length < 3
-          ? '<button type="button" class="b-btn-outline b-testi-add" data-testi-add>' + icon("plus") + ' Add testimonial</button>'
-          : '<div class="b-field-hint" style="text-align:center;">Up to 3 testimonials.</div>';
+      case "testimonials":
+        var q = (d.quotes && d.quotes[0]) || { quote: "", author: "" };
         return '<div class="b-sec-pad b-sec-testimonials"><div class="b-sec-heading-row" style="justify-content:center;"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
-          '<div class="b-testi-grid">' + testiCards + '</div>' + testiAddBtn + '</div>';
-      }
+          '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
+          '<div class="b-testi-quote" data-field="quotes.0.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
+          '<div class="b-testi-name" data-field="quotes.0.author" contenteditable="true">' + esc(q.author) + '</div></div></div>';
 
       case "newsletter":
         return '<div class="b-sec-pad b-newsletter">' +
@@ -649,16 +586,9 @@
         var rows = items.map(function (f, idx) {
           return '<div class="b-faq-item">' +
             '<div class="b-faq-q" data-field="items.' + idx + '.q" contenteditable="true">' + esc(f.q) + '</div>' +
-            '<div class="b-faq-a" data-field="items.' + idx + '.a" contenteditable="true">' + esc(f.a) + '</div>' +
-            '<button type="button" class="b-faq-item-remove" data-faq-remove data-index="' + idx + '" title="Remove question" aria-label="Remove question">' + icon("trash") + '</button></div>';
+            '<div class="b-faq-a" data-field="items.' + idx + '.a" contenteditable="true">' + esc(f.a) + '</div></div>';
         }).join("");
-        // Up to 6 questions (lib/sections.js's sanitizeFields caps `items` the
-        // same way) — the add button just disappears past that rather than
-        // erroring, same convention as social_icons' "up to 8" limit.
-        var faqAddBtn = items.length < 6
-          ? '<button type="button" class="b-btn-outline b-faq-add" data-faq-add>' + icon("plus") + ' Add question</button>'
-          : '<div class="b-field-hint">Up to 6 questions.</div>';
-        return '<div class="b-sec-pad b-sec-faq" style="max-width:640px;margin:0 auto;"><h3 style="margin-bottom:6px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + rows + faqAddBtn + '</div>';
+        return '<div class="b-sec-pad b-sec-faq" style="max-width:640px;margin:0 auto;"><h3 style="margin-bottom:6px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + rows + '</div>';
       }
 
       case "countdown":
@@ -753,7 +683,13 @@
               rowLayoutOptHtml("1", "1 column", ownerBlockId) +
               rowLayoutOptHtml("1,1", "2 equal", ownerBlockId) +
               rowLayoutOptHtml("1,1,1", "3 equal", ownerBlockId) +
+              rowLayoutOptHtml("1,1,1,1", "4 equal", ownerBlockId) +
               rowLayoutOptHtml("1.6,1", "60 / 40", ownerBlockId) +
+              rowLayoutOptHtml("1,1.6", "40 / 60", ownerBlockId) +
+              rowLayoutOptHtml("7,3", "70 / 30", ownerBlockId) +
+              rowLayoutOptHtml("3,7", "30 / 70", ownerBlockId) +
+              rowLayoutOptHtml("1,2,1", "25/50/25", ownerBlockId) +
+              rowLayoutOptHtml("1,1,1,1,1,1", "6 equal", ownerBlockId) +
             '</div></div>';
         }
         var colsHtml = cols.map(function (col, ci) {
@@ -845,58 +781,8 @@
   function applyColorStyle(rootEl, sec) {
     if (!rootEl) return;
     rootEl.style.color = sec.text_color || "";
-    // Only override background-color/text-align when the universal setting
-    // is actually set — rootEl is a freshly-rendered node (renderCanvas just
-    // rebuilt it from scratch), so if a universal value is empty, whatever
-    // renderSectionInner already put in the inline style (e.g. hero/heading's
-    // own type-specific "background: <color>" bg_type choice, or heading/
-    // richtext's own Alignment field) should stand rather than being blanked
-    // out here — setting rootEl.style.backgroundColor = "" would otherwise
-    // clear just that longhand out of the "background:" shorthand the type
-    // field already set, same failure shape as the text-align case below.
-    // bg_type 'image'/'video' hands the background off to
-    // applyUniversalBgMedia below instead of the flat color; explicit 'none'
-    // means the merchant turned a previously-set bg_color back off, so it
-    // must NOT show here even though sec.bg_color itself is still whatever
-    // it was last set to (segHtml's "None" only flips bg_type, it doesn't
-    // clear bg_color, since flipping back to "Color" should remember it).
-    // bg_type unset/'' (every section saved before this existed) falls back
-    // to "color" here so a pre-existing plain bg_color keeps rendering
-    // exactly as it always did.
-    var bgType = sec.bg_type || (sec.bg_color ? "color" : "none");
-    if (sec.bg_color && bgType === "color") rootEl.style.backgroundColor = sec.bg_color;
-    if (sec.text_align) rootEl.style.textAlign = sec.text_align;
-    applyUniversalBgMedia(rootEl, sec);
-  }
-
-  // The universal background's image/video option (__bg_type/__bg_image_url/
-  // __bg_video_url/__bg_overlay — see inspectorStyleFieldsFor's "uniBg"
-  // block) needs actual DOM nodes, not just an inline style, so it's applied
-  // here rather than folded into the plain color/align properties above.
-  // 'hero'/'heading' skip this entirely — they render their own equivalent
-  // background straight from fields.bg_type in renderSectionInner, and
-  // showing both would just double up. rootEl is always a freshly-rendered
-  // node (renderCanvas just rebuilt wrap.innerHTML from scratch), so there's
-  // never a stale video/overlay from a previous render to clean up first.
-  function applyUniversalBgMedia(rootEl, sec) {
-    if (!rootEl || sec.type === "hero" || sec.type === "heading") return;
-    var bgType = sec.bg_type || (sec.bg_color ? "color" : "none");
-    if (bgType === "image" && sec.bg_image_url) {
-      rootEl.style.backgroundImage = "url('" + sec.bg_image_url.replace(/'/g, "%27") + "')";
-      rootEl.style.backgroundSize = "cover";
-      rootEl.style.backgroundPosition = "center";
-    } else if (bgType === "video" && sec.bg_video_url) {
-      rootEl.style.position = rootEl.style.position || "relative";
-      var mediaWrap = document.createElement("div");
-      mediaWrap.innerHTML = bgVideoHtml(sec.bg_video_url, "b-uni-bg-video");
-      if (mediaWrap.firstChild) rootEl.insertBefore(mediaWrap.firstChild, rootEl.firstChild);
-    }
-    if ((bgType === "image" || bgType === "video") && sec.bg_overlay) {
-      rootEl.style.position = rootEl.style.position || "relative";
-      var overlay = document.createElement("div");
-      overlay.className = "b-uni-bg-overlay";
-      rootEl.insertBefore(overlay, rootEl.firstChild);
-    }
+    rootEl.style.backgroundColor = sec.bg_color || "";
+    rootEl.style.textAlign = sec.text_align || "";
   }
 
   // Per-element spacing: margin/padding/height on one text field inside a
@@ -1511,6 +1397,29 @@
     return '<div class="b-social-editor">' + (rows || '<div class="b-field-hint">No icons yet — add one below.</div>') + '</div>' + addBtn;
   }
 
+  // FAQ items — an Elementor-style repeater list: each row previews the
+  // question text and offers Duplicate/Remove, plus an "Add" button below,
+  // matching the reference screenshot (status icon/duplicate/x, + Add Item).
+  // The question/answer text itself is still edited by clicking it directly
+  // on the canvas (same convention as every other module's text) — this
+  // only manages which rows exist. Capped at 6 to match lib/sections.js's
+  // sanitizeFields, which silently drops anything past that server-side.
+  function faqItemsEditorHtml(items) {
+    var list = items || [];
+    var rows = list.map(function (it, i) {
+      var label = (it.q || "").trim() || ("Question " + (i + 1));
+      return '<div class="b-faq-row" data-faq-row>' +
+        '<span class="b-faq-row-label">' + esc(label) + '</span>' +
+        '<button type="button" class="b-faq-row-dup" data-faq-duplicate data-index="' + i + '" aria-label="Duplicate question" title="Duplicate">' + icon("dup") + '</button>' +
+        '<button type="button" class="b-faq-row-remove" data-faq-remove data-index="' + i + '" aria-label="Remove question" title="Remove">' + icon("trash") + '</button>' +
+      '</div>';
+    }).join("");
+    var addBtn = list.length < 6
+      ? '<button type="button" class="b-btn-outline b-faq-add" data-faq-add>' + icon("plus") + ' Add Item</button>'
+      : '<div class="b-field-hint">Up to 6 questions.</div>';
+    return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No questions yet — add one below.</div>') + '</div>' + addBtn;
+  }
+
   // link_columns — a "# Heading" line starts a new column, followed by
   // its "Label | url" link lines.
   function parseColumnsText(text) {
@@ -1562,18 +1471,14 @@
         return field("Products to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
           field("", '<div class="b-inspector-hint">Shows your ' + DATA.products.length + ' most recent products. Click the heading to edit it.</div>');
       case "testimonials":
-        return field("", (d.quotes || []).length < 3
-            ? '<button type="button" class="b-btn-outline" data-testi-add>' + icon("plus") + ' Add testimonial</button>'
-            : '<div class="b-field-hint">Up to 3 testimonials.</div>') +
-          field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it, or hover a card there and click the trash icon to remove it.</div>');
+        return field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it.</div>');
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
       case "richtext":
         return field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Width and alignment live on the Style tab.</div>');
       case "gallery":
-        return field("Heading (optional)", textHtml("heading", d.heading, "From the studio")) +
-          field("Images (" + (d.images || []).length + ")", galleryImagesGridHtml("images", d.images)) +
-          field("", '<div class="b-inspector-hint">Leave the heading blank to hide it. You can also click it directly on the canvas to edit it. Columns live on the Style tab.</div>');
+        return field("Images (" + (d.images || []).length + ")", galleryImagesGridHtml("images", d.images)) +
+          field("", '<div class="b-inspector-hint">Click + to add an image from your library, or the trash icon on a tile to remove it. Click the heading to edit it. Columns live on the Style tab.</div>');
       case "video":
         return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
           field("", '<div class="b-inspector-hint">Paste an embeddable video link — a YouTube/Vimeo “embed” URL works best. Click the heading to edit it.</div>');
@@ -1591,10 +1496,8 @@
         return field("Names", textareaHtml("names", (d.names || []).join("\n"), "One name per line, up to 8")) +
           field("", '<div class="b-inspector-hint">Plain text only — good for press mentions or partner names.</div>');
       case "faq":
-        return field("", (d.items || []).length < 6
-            ? '<button type="button" class="b-btn-outline" data-faq-add>' + icon("plus") + ' Add question</button>'
-            : '<div class="b-field-hint">Up to 6 questions.</div>') +
-          field("", '<div class="b-inspector-hint">Click any question or answer on the canvas to edit it, or hover one there and click the trash icon to remove it.</div>');
+        return field("Questions", faqItemsEditorHtml(d.items)) +
+          field("", '<div class="b-inspector-hint">Click a question or answer directly on the canvas to edit its text — use Add, Duplicate, or Remove here to manage the list.</div>');
       case "countdown":
         return field("Ends at", dateTimeHtml("end_at", d.end_at)) +
           field("", '<div class="b-inspector-hint">Shown in your local time here, but counts down to the same moment for every visitor. Click the heading to edit it.</div>');
@@ -1668,8 +1571,8 @@
           heroBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         } else if (heroBg === "video") {
-          heroBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4, a YouTube link, or a Vimeo link", "video/")) +
-            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm), or a YouTube/Vimeo link — pasting either works.</div>') +
+          heroBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4", "video/")) +
+            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm) — YouTube/Vimeo links won’t play here.</div>') +
             field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
         }
         var heroTextTheme = heroBg !== "none"
@@ -1679,28 +1582,10 @@
           heroBgFields + heroTextTheme;
         break;
       }
-      case "heading": {
-        var headBg = d.bg_type || "none";
-        var headBgFields = "";
-        if (headBg === "color") {
-          headBgFields = field("Background color", colorHtml("bg_color", d.bg_color));
-        } else if (headBg === "image") {
-          headBgFields = field("Background image URL", imageFieldHtml("bg_image_url", d.bg_image_url, "https://…")) +
-            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
-        } else if (headBg === "video") {
-          headBgFields = field("Background video URL", imageFieldHtml("bg_video_url", d.bg_video_url, "https://….mp4, a YouTube link, or a Vimeo link", "video/")) +
-            field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm), or a YouTube/Vimeo link — pasting either works.</div>') +
-            field("", checkHtml("bg_overlay", !!d.bg_overlay, "Darken for text readability"));
-        }
-        var headTextTheme = headBg !== "none"
-          ? field("Text theme", segHtml("text_theme", [{ val: "dark", label: "Dark" }, { val: "light", label: "Light" }], d.text_theme || "dark"))
-          : "";
+      case "heading":
         typeStyle = field("Size", selectHtml("size", [{ val: "s", label: "Small" }, { val: "m", label: "Medium" }, { val: "l", label: "Large" }, { val: "xl", label: "Extra large" }], d.size || "l")) +
-          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left")) +
-          field("Background", segHtml("bg_type", [{ val: "none", label: "None" }, { val: "color", label: "Color" }, { val: "image", label: "Image" }, { val: "video", label: "Video" }], headBg)) +
-          headBgFields + headTextTheme;
+          field("Alignment", segHtml("align", [{ val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], d.align || "left"));
         break;
-      }
       case "text_image":
         typeStyle = field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side));
         break;
@@ -1733,40 +1618,8 @@
     if (!isTopLevelSection) {
       return typeStyle || '<div class="b-inspector-hint">No style options for items nested inside a Row yet — select the Row section itself for background/text color and alignment.</div>';
     }
-    // 'hero' and 'heading' already have their own richer background picker
-    // above (their own fields.bg_type/bg_image_url/bg_video_url/bg_overlay,
-    // plus a text-theme toggle), and 'promo_bar' already has its own simple
-    // required Background/Text color pair right above (it always needs some
-    // fill, so it isn't "background: none, image or video") — showing this
-    // universal one on top of any of those would just be two competing
-    // "Background" controls on the same section. Every other type gets this
-    // one instead: the same color/image/video/overlay option, generalized
-    // onto the section-level settings (see lib/sections.js's
-    // sanitizeSectionSettings) since those types have no fields of their own
-    // to hold it.
-    var uniBg = "";
-    if (["hero", "heading", "promo_bar"].indexOf(owner.type) === -1) {
-      // Legacy stores that set a background color before this existed have
-      // bg_type NULL/'' but a real bg_color — shown here as "Color" (matching
-      // what's actually rendered) rather than "None", so the segmented
-      // control never contradicts the canvas.
-      var uniBgType = owner.bg_type || (owner.bg_color ? "color" : "none");
-      var uniBgFields = "";
-      if (uniBgType === "color") {
-        uniBgFields = field("Background color", colorWithClearHtml("__bg_color", owner.bg_color));
-      } else if (uniBgType === "image") {
-        uniBgFields = field("Background image URL", imageFieldHtml("__bg_image_url", owner.bg_image_url, "https://…")) +
-          field("", checkHtml("__bg_overlay", !!owner.bg_overlay, "Darken for text readability"));
-      } else if (uniBgType === "video") {
-        uniBgFields = field("Background video URL", imageFieldHtml("__bg_video_url", owner.bg_video_url, "https://….mp4, a YouTube link, or a Vimeo link", "video/")) +
-          field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm), or a YouTube/Vimeo link — pasting either works.</div>') +
-          field("", checkHtml("__bg_overlay", !!owner.bg_overlay, "Darken for text readability"));
-      }
-      uniBg = field("Background", segHtml("__bg_type", [{ val: "none", label: "None" }, { val: "color", label: "Color" }, { val: "image", label: "Image" }, { val: "video", label: "Video" }], uniBgType)) +
-        uniBgFields;
-    }
     var universal = field("Text color", colorWithClearHtml("__text_color", owner.text_color)) +
-      uniBg +
+      field("Background color", colorWithClearHtml("__bg_color", owner.bg_color)) +
       field("Text alignment", segHtml("__text_align", [{ val: "", label: "Default" }, { val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], owner.text_align || ""));
     return typeStyle + (typeStyle ? '<div class="b-inspector-divider"></div><div class="b-inspector-section-label">Color &amp; alignment</div>' : "") + universal;
   }
@@ -2302,53 +2155,14 @@
     var iconName = kind === "insert" ? payload : findSection(payload).type;
     ghost.innerHTML = icon(iconName) + "<span>" + esc(label) + "</span>";
     ghost.hidden = false;
-    drag = { kind: kind, payload: payload, pointer: { clientX: e.clientX, clientY: e.clientY } };
+    drag = { kind: kind, payload: payload };
     moveGhost(e.clientX, e.clientY);
 
     function clearColDropMarkers() { document.querySelectorAll(".b-row-col").forEach(function (n) { n.classList.remove("is-drop-target", "is-drop-blocked"); }); }
 
-    var AUTOSCROLL_EDGE = 56, AUTOSCROLL_MAX = 22;
-    function autoScrollDelta(rect, clientY) {
-      if (clientY - rect.top < AUTOSCROLL_EDGE) return -Math.ceil((AUTOSCROLL_EDGE - (clientY - rect.top)) / AUTOSCROLL_EDGE * AUTOSCROLL_MAX);
-      if (rect.bottom - clientY < AUTOSCROLL_EDGE) return Math.ceil((AUTOSCROLL_EDGE - (rect.bottom - clientY)) / AUTOSCROLL_EDGE * AUTOSCROLL_MAX);
-      return 0;
-    }
-    // Drives auto-scroll only: holding the ghost at the canvas/Layers-list
-    // edge keeps nudging that panel's scroll position every frame (pointermove
-    // alone never fires again once the pointer stops moving, even while it's
-    // sitting in the edge zone) — re-running processPointer afterward keeps
-    // the drop marker honest once a scroll has shifted every section's
-    // bounding rect out from under the pointer. The actual hit-testing below
-    // stays driven straight off pointermove (see onMove) rather than this
-    // rAF loop — deferring it by even one frame means a drop released before
-    // that frame lands sees a stale (sometimes still-null) colDropInfo/
-    // dropInfo and silently does nothing, which bit column drops hardest
-    // since they're a small, precise target.
-    var rafId = requestAnimationFrame(tick);
-    function tick() {
-      if (!drag) return;
-      rafId = requestAnimationFrame(tick);
-      var p = drag.pointer;
-      var scrolled = false;
-      [document.getElementById("bLayersBody"), document.querySelector(".b-canvas-scroll")].forEach(function (el) {
-        if (!el) return;
-        var r = el.getBoundingClientRect();
-        if (p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom) return;
-        var delta = autoScrollDelta(r, p.clientY);
-        if (!delta) return;
-        el.scrollTop += delta;
-        scrolled = true;
-      });
-      if (scrolled) processPointer(p);
-    }
-
     function onMove(ev) {
       var p = ev.touches ? ev.touches[0] : ev;
-      drag.pointer = p;
       moveGhost(p.clientX, p.clientY);
-      processPointer(p);
-    }
-    function processPointer(p) {
       // Dragging a nestable library item over a row's column drops it into
       // that column instead of at the top level — checked first since a
       // column sits visually inside the section list computeDropIndex
@@ -2407,7 +2221,6 @@
     function onUp() {
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
-      cancelAnimationFrame(rafId);
       ghost.hidden = true;
       clearDropMarkers();
       clearColDropMarkers();
@@ -2558,64 +2371,6 @@
         var saveBlockHost = blockSaveBtn.closest("[data-block-id]");
         var foundForSave = saveBlockHost ? findBlockInSection(sec, saveBlockHost.dataset.blockId) : null;
         if (foundForSave) saveAsComponent(foundForSave.block);
-        return;
-      }
-
-      // FAQ's "Add question"/per-item remove — same array-item pattern as
-      // gallery's images grid (data-gal-remove) and social_icons' rows, just
-      // placed straight on the canvas next to each contenteditable q/a
-      // rather than in the inspector, since that's already where a merchant
-      // edits a FAQ item's text. Resolves its own owner (section, or a
-      // block nested inside a Row's column) straight from the DOM instead
-      // of state.selectedId/selectedBlockId, since this button can be
-      // clicked on a FAQ that isn't the currently-selected section.
-      var faqAddBtn = e.target.closest("[data-faq-add]");
-      var faqRemoveBtn = e.target.closest("[data-faq-remove]");
-      if (faqAddBtn || faqRemoveBtn) {
-        var faqBlockHost = e.target.closest("[data-block-id]");
-        var faqFound = faqBlockHost ? findBlockInSection(sec, faqBlockHost.dataset.blockId) : null;
-        var faqOwnerFields = faqFound ? faqFound.block.fields : sec.fields;
-        var faqItems = (faqOwnerFields.items || []).slice();
-        if (faqAddBtn) {
-          if (faqItems.length < 6) faqItems.push({ q: "New question", a: "Add your answer here." });
-        } else {
-          faqItems.splice(parseInt(faqRemoveBtn.dataset.index, 10), 1);
-        }
-        if (faqFound) {
-          faqFound.block.fields.items = faqItems;
-          renderAll();
-          saveField(id, { columns: sec.fields.columns });
-        } else {
-          sec.fields.items = faqItems;
-          renderAll();
-          saveField(id, { items: faqItems });
-        }
-        return;
-      }
-
-      // Testimonials' "Add testimonial"/per-card remove — same pattern as
-      // FAQ's questions just above.
-      var testiAddBtn = e.target.closest("[data-testi-add]");
-      var testiRemoveBtn = e.target.closest("[data-testi-remove]");
-      if (testiAddBtn || testiRemoveBtn) {
-        var testiBlockHost = e.target.closest("[data-block-id]");
-        var testiFound = testiBlockHost ? findBlockInSection(sec, testiBlockHost.dataset.blockId) : null;
-        var testiOwnerFields = testiFound ? testiFound.block.fields : sec.fields;
-        var testiQuotes = (testiOwnerFields.quotes || []).slice();
-        if (testiAddBtn) {
-          if (testiQuotes.length < 3) testiQuotes.push({ quote: "Fast shipping and exactly as described.", author: "A happy customer" });
-        } else {
-          testiQuotes.splice(parseInt(testiRemoveBtn.dataset.index, 10), 1);
-        }
-        if (testiFound) {
-          testiFound.block.fields.quotes = testiQuotes;
-          renderAll();
-          saveField(id, { columns: sec.fields.columns });
-        } else {
-          sec.fields.quotes = testiQuotes;
-          renderAll();
-          saveField(id, { quotes: testiQuotes });
-        }
         return;
       }
 
@@ -2788,28 +2543,6 @@
         renderInspector();
         return;
       }
-      var faqAddInsBtn = e.target.closest("[data-faq-add]");
-      if (faqAddInsBtn) {
-        var faqAddInsTarget = inspectorFieldTarget();
-        if (!faqAddInsTarget) return;
-        var faqInsItems = (faqAddInsTarget.fields.items || []).slice();
-        if (faqInsItems.length >= 6) return;
-        faqInsItems.push({ q: "New question", a: "Add your answer here." });
-        faqAddInsTarget.save({ items: faqInsItems });
-        renderInspector();
-        return;
-      }
-      var testiAddInsBtn = e.target.closest("[data-testi-add]");
-      if (testiAddInsBtn) {
-        var testiAddInsTarget = inspectorFieldTarget();
-        if (!testiAddInsTarget) return;
-        var testiInsQuotes = (testiAddInsTarget.fields.quotes || []).slice();
-        if (testiInsQuotes.length >= 3) return;
-        testiInsQuotes.push({ quote: "Fast shipping and exactly as described.", author: "A happy customer" });
-        testiAddInsTarget.save({ quotes: testiInsQuotes });
-        renderInspector();
-        return;
-      }
       var galRemoveBtn = e.target.closest("[data-gal-remove]");
       if (galRemoveBtn) {
         var galRemTarget = inspectorFieldTarget();
@@ -2821,6 +2554,40 @@
         var galRemPatch = {};
         galRemPatch[galRemField] = galRemList;
         galRemTarget.save(galRemPatch);
+        renderInspector();
+        return;
+      }
+      var faqAddBtn = e.target.closest("[data-faq-add]");
+      if (faqAddBtn) {
+        var faqAddTarget = inspectorFieldTarget();
+        if (!faqAddTarget) return;
+        var faqAddItems = (faqAddTarget.fields.items || []).slice();
+        if (faqAddItems.length >= 6) return;
+        faqAddItems.push({ q: "New question", a: "Add your answer here." });
+        faqAddTarget.save({ items: faqAddItems });
+        renderInspector();
+        return;
+      }
+      var faqDupBtn = e.target.closest("[data-faq-duplicate]");
+      if (faqDupBtn) {
+        var faqDupTarget = inspectorFieldTarget();
+        if (!faqDupTarget) return;
+        var faqDupIdx = parseInt(faqDupBtn.dataset.index, 10);
+        var faqDupItems = (faqDupTarget.fields.items || []).slice();
+        var faqDupItem = faqDupItems[faqDupIdx];
+        if (faqDupItem && faqDupItems.length < 6) faqDupItems.splice(faqDupIdx + 1, 0, Object.assign({}, faqDupItem));
+        faqDupTarget.save({ items: faqDupItems });
+        renderInspector();
+        return;
+      }
+      var faqRemoveBtn = e.target.closest("[data-faq-remove]");
+      if (faqRemoveBtn) {
+        var faqRemTarget = inspectorFieldTarget();
+        if (!faqRemTarget) return;
+        var faqRemIdx = parseInt(faqRemoveBtn.dataset.index, 10);
+        var faqRemItems = (faqRemTarget.fields.items || []).slice();
+        faqRemItems.splice(faqRemIdx, 1);
+        faqRemTarget.save({ items: faqRemItems });
         renderInspector();
         return;
       }
@@ -2837,24 +2604,9 @@
       }
       var pickBtn = e.target.closest("[data-media-pick]");
       if (pickBtn) {
-        var pickField = pickBtn.dataset.mediaPick;
-        // A "__"-prefixed field (the universal background's __bg_image_url/
-        // __bg_video_url) is a section-level setting — sec itself just needs
-        // to exist for mediaPickerReady's checks, not a fields target.
-        if (pickField.indexOf("__") === 0) {
-          if (!mediaPickerReady(sec)) return;
-          var pickKey = pickField.slice(2);
-          MediaPicker.open(function (file) {
-            var uPatch = {};
-            uPatch[pickKey] = file.url;
-            sec[pickKey] = file.url;
-            saveSettings(sec.id, uPatch);
-            renderInspector();
-          }, { accept: pickBtn.dataset.mediaAccept || "image/" });
-          return;
-        }
         var pickTarget = inspectorFieldTarget();
         if (!mediaPickerReady(pickTarget)) return;
+        var pickField = pickBtn.dataset.mediaPick;
         MediaPicker.open(function (file) {
           var patch = {};
           patch[pickField] = file.url;
@@ -3028,20 +2780,6 @@
         boolTarget.save(boolPatch);
         return;
       }
-      // The universal background's "Darken for text readability" overlay
-      // toggle (__bg_overlay) — a section-level setting like __bg_type/
-      // __bg_color above, not a type field, so it goes through saveSettings()
-      // rather than boolTarget.save(). Checked ahead of "__show_" below,
-      // which is its own more specific "__"-prefixed checkbox.
-      var uniBoolBox = e.target.closest('input[type="checkbox"][data-field^="__"]:not([data-field^="__show_"])');
-      if (uniBoolBox) {
-        var uBoolKey = uniBoolBox.dataset.field.slice(2);
-        sec[uBoolKey] = uniBoolBox.checked;
-        var uBoolPatch = {};
-        uBoolPatch[uBoolKey] = uniBoolBox.checked;
-        saveSettings(sec.id, uBoolPatch);
-        return;
-      }
       // "Show on Desktop/Tablet/Mobile" checkboxes are the positive framing
       // on screen, but stored/sent as the inverse hide_* flags.
       var showBox = e.target.closest('input[type="checkbox"][data-field^="__show_"]');
@@ -3124,16 +2862,9 @@
       }
       var input = e.target.closest('input.b-text-native[data-field]');
       if (input && input.type !== "datetime-local" && input.type !== "number") {
-        // Any "__"-prefixed text input (custom_class, and the universal
-        // background's __bg_image_url/__bg_video_url) is a section-level
-        // setting, not a type field — same convention as the color/seg/
-        // checkbox handlers elsewhere in this file.
-        if (input.dataset.field.indexOf("__") === 0) {
-          var uKey = input.dataset.field.slice(2);
-          var uPatch = {};
-          uPatch[uKey] = input.value;
-          sec[uKey] = input.value;
-          saveSettings(sec.id, uPatch);
+        if (input.dataset.field === "__custom_class") {
+          sec.custom_class = input.value;
+          saveSettings(sec.id, { custom_class: input.value });
           return;
         }
         var inTarget = inspectorFieldTarget();
