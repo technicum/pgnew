@@ -111,20 +111,20 @@
       </form>
     </div>
 
+    <link rel="stylesheet" href="/vendor/quill/quill.snow.css">
+    <script src="/vendor/quill/quill.min.js"></script>
     <script>
       // Upgrades the always-visible #taskDescriptionInput textarea into a
-      // WYSIWYG (Quill) editor once the library has loaded -- until then,
-      // the plain textarea IS the description field, so it's never blank
-      // or uneditable. Quill's files are vendored locally under
-      // public/vendor/quill/ (not pulled from a CDN) so this doesn't
-      // depend on outbound network access working from wherever this is
-      // deployed. Written to run both on a normal full-page load AND when
-      // injected into the slide-over panel (public/js/crm-task-panel.js
-      // re-executes any <script> tag found in fetched content) -- so it
-      // loads the library into <head> itself (persists across panel
-      // content swaps, loaded at most once per page session) rather than
-      // via a <script src> tag in this markup, which would otherwise be
-      // re-fetched/re-run on every panel refresh.
+      // WYSIWYG (Quill) editor. Deliberately plain: a normal <script src>
+      // (which the browser's own parser blocks on -- Quill is guaranteed to
+      // be loaded by the time this next script tag runs) plus a normal
+      // inline <script>, no custom dynamic-loading/Promise machinery. That
+      // machinery existed to make this also work when this markup is
+      // fetched and injected into the slide-over panel instead of parsed
+      // normally, which needed public/js/crm-task-panel.js's own
+      // runScripts() to handle correctly instead (it now waits for a
+      // <script src> it re-inserts to finish loading before moving on to
+      // the next script, same guarantee the browser's parser gives here).
       (function () {
         // Scoped to THIS script instance's own container -- not
         // document.getElementById, which only ever returns the first match
@@ -138,80 +138,47 @@
         var thisScript = document.currentScript;
         var scope = (thisScript && (thisScript.closest('.task-panel-body') || thisScript.closest('.admin-content'))) || document;
 
-        function loadQuill() {
-          if (window.Quill) return Promise.resolve();
-          if (window.__quillLoading) return window.__quillLoading;
-          window.__quillLoading = new Promise(function (resolve, reject) {
-            var timer = setTimeout(function () { reject(new Error('Quill load timed out')); }, 6000);
+        var el = scope.querySelector('#taskDescriptionEditor');
+        var hidden = scope.querySelector('#taskDescriptionInput');
+        if (!el || !hidden || el.dataset.quillReady) return;
 
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = '/vendor/quill/quill.snow.css';
-            document.head.appendChild(link);
-
-            var script = document.createElement('script');
-            script.src = '/vendor/quill/quill.min.js';
-            script.onload = function () { clearTimeout(timer); resolve(); };
-            script.onerror = function () { clearTimeout(timer); reject(new Error('Quill failed to load')); };
-            document.head.appendChild(script);
-          });
-          return window.__quillLoading;
+        if (typeof window.Quill === 'undefined') {
+          console.error('Task description editor: Quill did not load; leaving the plain textarea in place.');
+          return;
         }
+        el.dataset.quillReady = '1';
 
-        var container = scope.querySelector('#taskDescriptionEditor');
-        if (!container) return;
+        // Reveal the container BEFORE constructing Quill on it -- Quill
+        // measures/lays out its toolbar and editable region at
+        // construction time, and doing that while the container is still
+        // `hidden` (display:none) leaves it broken even after unhiding it
+        // afterwards.
+        hidden.hidden = true;
+        el.hidden = false;
 
-        loadQuill()
-          .then(function () {
-            // The panel may have re-rendered this content again before the
-            // library finished loading on a slow connection -- re-look the
-            // nodes up (still scoped) instead of trusting the closed-over
-            // references, and skip if this instance has already been
-            // initialized (or replaced) since.
-            var el = scope.querySelector('#taskDescriptionEditor');
-            var hidden = scope.querySelector('#taskDescriptionInput');
-            if (!el || !hidden || el.dataset.quillReady) return;
-            el.dataset.quillReady = '1';
+        var quill = new Quill(el, {
+          theme: 'snow',
+          placeholder: 'Describe what needs to be done...',
+          modules: {
+            toolbar: [
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ list: 'ordered' }, { list: 'bullet' }],
+              ['link', 'image'],
+              ['clean'],
+            ],
+          },
+        });
+        // The supported way to load existing raw HTML into Quill --
+        // assigning straight to quill.root.innerHTML can leave its internal
+        // Delta model out of sync with what's on screen.
+        quill.clipboard.dangerouslyPasteHTML(hidden.value || '');
 
-            // Reveal the container BEFORE constructing Quill on it -- Quill
-            // measures/lays out its toolbar and editable region at
-            // construction time, and doing that while the container is
-            // still `hidden` (display:none) leaves it broken even after
-            // unhiding it afterwards.
-            hidden.hidden = true;
-            el.hidden = false;
-
-            var quill = new Quill(el, {
-              theme: 'snow',
-              placeholder: 'Describe what needs to be done...',
-              modules: {
-                toolbar: [
-                  ['bold', 'italic', 'underline', 'strike'],
-                  [{ list: 'ordered' }, { list: 'bullet' }],
-                  ['link', 'image'],
-                  ['clean'],
-                ],
-              },
-            });
-            // The supported way to load existing raw HTML into Quill --
-            // assigning straight to quill.root.innerHTML can leave its
-            // internal Delta model out of sync with what's on screen.
-            quill.clipboard.dangerouslyPasteHTML(hidden.value || '');
-
-            var form = el.closest('form');
-            if (form) {
-              form.addEventListener('submit', function () {
-                hidden.value = quill.root.innerHTML;
-              });
-            }
-          })
-          .catch(function (err) {
-            // Quill never loaded/initialized -- leave the plain textarea as
-            // the (already visible, already working) description field,
-            // but log why so this is diagnosable from the console instead
-            // of silently degrading with no trace.
-            console.error('Task description editor: falling back to plain textarea.', err);
+        var form = el.closest('form');
+        if (form) {
+          form.addEventListener('submit', function () {
+            hidden.value = quill.root.innerHTML;
           });
+        }
       })();
     </script>
 

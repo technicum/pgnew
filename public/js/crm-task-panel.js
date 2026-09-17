@@ -43,20 +43,34 @@
   }
 
   // Setting .innerHTML never executes embedded <script> tags (e.g. the
-  // description editor's own setup script in crm-task.ejs) -- replacing
-  // each with a freshly-created <script> node does. Every such script here
-  // is inline (no `src`) by design, so this is synchronous; anything the
-  // script itself needs to load asynchronously (e.g. a CDN library) is its
-  // own responsibility to await.
+  // description editor's setup in crm-task.ejs, or its <script src> for
+  // Quill itself) -- replacing each with a freshly-created <script> node
+  // does. Runs them in order, one at a time, waiting for each `src` script
+  // to actually finish loading before moving to the next -- otherwise an
+  // inline script that assumes an earlier <script src> already ran (e.g.
+  // "new Quill(...)" assuming the Quill library loaded) fires too early on
+  // this path, since a script *inserted via JS* -- unlike one the browser's
+  // own HTML parser hits directly -- does not block subsequent script
+  // insertion on an external file loading.
   function runScripts(container) {
-    container.querySelectorAll('script').forEach(function (old) {
-      var fresh = document.createElement('script');
-      for (var i = 0; i < old.attributes.length; i++) {
-        fresh.setAttribute(old.attributes[i].name, old.attributes[i].value);
-      }
-      fresh.textContent = old.textContent;
-      old.parentNode.replaceChild(fresh, old);
-    });
+    var scripts = Array.prototype.slice.call(container.querySelectorAll('script'));
+    return scripts.reduce(function (chain, old) {
+      return chain.then(function () {
+        return new Promise(function (resolve) {
+          var fresh = document.createElement('script');
+          for (var i = 0; i < old.attributes.length; i++) {
+            fresh.setAttribute(old.attributes[i].name, old.attributes[i].value);
+          }
+          fresh.textContent = old.textContent;
+          if (fresh.src) {
+            fresh.onload = resolve;
+            fresh.onerror = resolve; // don't block the rest of the page over one failed script
+          }
+          old.parentNode.replaceChild(fresh, old);
+          if (!fresh.src) resolve(); // inline scripts already ran synchronously above
+        });
+      });
+    }, Promise.resolve());
   }
 
   function renderInto(target, html) {
