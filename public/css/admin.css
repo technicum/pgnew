@@ -19,20 +19,10 @@
   color: #111827;
   font-weight: 800;
   font-size: 1.2rem;
-  margin-bottom: 10px;
+  margin-bottom: 28px;
 }
 .admin-sidebar .admin-logo span { color: var(--color-primary); }
 .admin-sidebar .admin-logo small { display: block; color: #9ca3af; font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
-
-.admin-exit-store {
-  display: inline-block;
-  color: #6b7280;
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-decoration: none;
-  margin-bottom: 20px;
-}
-.admin-exit-store:hover { color: #111827; }
 
 .admin-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .admin-nav a {
@@ -413,6 +403,11 @@
 .crm-tab { padding: 10px 16px; font-size: 0.9rem; font-weight: 600; color: #6b7280; text-decoration: none; border-bottom: 2px solid transparent; }
 .crm-tab:hover { color: #111827; }
 .crm-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+.crm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.crm-filter-bar select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #fff; }
+.crm-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.crm-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: #eef2ff; color: #4338ca; }
 
 .crm-contact-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 .crm-contact-layout .admin-form { max-width: none; }

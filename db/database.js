@@ -545,6 +545,11 @@ CREATE TABLE IF NOT EXISTS ${TABLES.contacts} (
   -- or 'manual' (added by the store admin directly). Plain string, not an
   -- ENUM, so a new source never needs a schema migration to exist.
   source VARCHAR(30) NOT NULL DEFAULT 'manual',
+  -- Free-text labels ("hot", "wholesale", "follow up") -- a JSON array,
+  -- same lightweight convention as pz_page_sections.fields or
+  -- pz_listings.details, rather than a separate tags table. See
+  -- lib/contacts.js's sanitizeTags for the comma-separated input format.
+  tags JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   FOREIGN KEY (customer_id) REFERENCES ${TABLES.customers}(id) ON DELETE SET NULL,
@@ -1459,6 +1464,15 @@ async function migrateStoreThemes(conn) {
 // pz_users login via pz_user_apps instead -- CRM is the first 'account' app,
 // set explicitly below in migrateSeedPlansAndApps. Must run before that
 // function so the column exists by the time it tries to set it.
+// Adds pz_contacts.tags to an existing install (fresh installs already get
+// it from the CREATE TABLE above).
+async function migrateContactsTagsColumn(conn) {
+  if (!(await tableExists(conn, TABLES.contacts))) return;
+  if (!(await columnExists(conn, TABLES.contacts, 'tags'))) {
+    await conn.query(`ALTER TABLE ${TABLES.contacts} ADD COLUMN tags JSON NULL AFTER source`);
+  }
+}
+
 async function migrateAppsScopeColumn(conn) {
   if (!(await tableExists(conn, TABLES.apps))) return;
   if (!(await columnExists(conn, TABLES.apps, 'scope'))) {
@@ -1762,6 +1776,7 @@ async function init() {
     await migrateAdminsToUsers(conn);
     await migrateThemesFromManifests(conn);
     await migrateStoreThemes(conn);
+    await migrateContactsTagsColumn(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);

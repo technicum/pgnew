@@ -491,11 +491,17 @@ router.post('/dashboard/crm/activate', requireAccount, async (req, res, next) =>
 
 async function renderCrmContacts(req, res, next, segment) {
   try {
-    const contacts = await crmLib.listContacts(req.crm.ownerUserId, segment);
+    const storeId = req.query.store ? parseInt(req.query.store, 10) : null;
+    const [contacts, stores] = await Promise.all([
+      crmLib.listContacts(req.crm.ownerUserId, segment, storeId),
+      crmLib.getOwnerStores(req.crm.ownerUserId),
+    ]);
     res.render('platform/crm-contacts', {
       title: segment === 'customers' ? 'CRM Customers' : 'Leads',
       segment,
       contacts,
+      stores,
+      selectedStore: storeId,
       crm: req.crm,
       account: req.session.account,
     });
@@ -536,8 +542,8 @@ router.post('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (re
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
     }
     await pool.query(
-      `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source) VALUES (?, ?, ?, ?, ?)`,
-      [storeId, data.name, data.email, data.phone, data.source]
+      `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, ?)`,
+      [storeId, data.name, data.email, data.phone, data.source, JSON.stringify(data.tags)]
     );
     req.flash('success', 'Contact added.');
     res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
@@ -584,10 +590,29 @@ router.post('/dashboard/crm/contacts/:id/edit', requireAccount, requireCrm, asyn
       return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
     }
     await pool.query(
-      `UPDATE ${TABLES.contacts} SET name = ?, email = ?, phone = ?, source = ? WHERE id = ?`,
-      [data.name, data.email, data.phone, data.source, contact.id]
+      `UPDATE ${TABLES.contacts} SET name = ?, email = ?, phone = ?, source = ?, tags = ? WHERE id = ?`,
+      [data.name, data.email, data.phone, data.source, JSON.stringify(data.tags), contact.id]
     );
     req.flash('success', 'Contact updated.');
+    res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/contacts/:id/convert', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    }
+    if (contact.customer_id) {
+      req.flash('error', 'Already a customer.');
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
+    }
+    await crmLib.convertToCustomer(req.crm.ownerUserId, contact.id);
+    req.flash('success', `${contact.name} moved to Customers.`);
     res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
   } catch (err) {
     next(err);

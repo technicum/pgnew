@@ -38,7 +38,14 @@
 
     <div class="crm-contact-layout">
       <form action="/dashboard/crm/contacts/<%= contact.id %>/edit" method="POST" class="admin-form">
-        <p class="crm-contact-site">Site: <strong><%= contact.store_name %></strong> · <%= contact.customer_id ? 'Customer' : 'Lead' %></p>
+        <p class="crm-contact-site">
+          Site: <strong><%= contact.store_name %></strong> · <%= contact.customer_id ? 'Customer' : 'Lead' %>
+          <% if (!contact.customer_id) { %>
+            <form action="/dashboard/crm/contacts/<%= contact.id %>/convert" method="POST" style="display:inline;" onsubmit="return confirm('Move this lead to Customers? This creates a real customer account for them if one does not already exist.');">
+              <button type="submit" class="link-btn">Move to Customer</button>
+            </form>
+          <% } %>
+        </p>
 
         <label>Name *
           <input type="text" name="name" required value="<%= contact.name %>" />
@@ -61,6 +68,10 @@
             <option value="order" <%= contact.source === 'order' ? 'selected' : '' %>>Order / checkout</option>
             <option value="newsletter" <%= contact.source === 'newsletter' ? 'selected' : '' %>>Newsletter</option>
           </select>
+        </label>
+
+        <label>Tags <span style="font-weight:400; color:#6b7280;">(comma-separated)</span>
+          <input type="text" name="tags" value="<%= (contact.tags || []).join(', ') %>" placeholder="hot, wholesale" />
         </label>
 
         <button type="submit" class="btn btn-primary">Save changes</button>

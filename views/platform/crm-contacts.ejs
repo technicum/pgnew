@@ -36,13 +36,21 @@
       <div class="flash flash-error"><%= error[0] %></div>
     <% } %>
 
-    <div class="panel-toolbar">
+    <div class="panel-toolbar crm-toolbar">
+      <form action="/dashboard/crm/<%= segment %>" method="GET" class="crm-filter-bar">
+        <select name="store" onchange="this.form.submit()">
+          <option value="">All sites</option>
+          <% stores.forEach(function(s) { %>
+            <option value="<%= s.id %>" <%= selectedStore === s.id ? 'selected' : '' %>><%= s.name %></option>
+          <% }); %>
+        </select>
+      </form>
       <a href="/dashboard/crm/contacts/new" class="btn btn-primary">+ New contact</a>
     </div>
 
     <table class="admin-table">
       <thead>
-        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Source</th><th>Added</th></tr>
+        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Source</th><th>Added</th></tr>
       </thead>
       <tbody>
         <% contacts.forEach(function(c) { %>
@@ -51,12 +59,15 @@
             <td><%= c.email %></td>
             <td><%= c.phone || '—' %></td>
             <td><%= c.store_name %></td>
+            <td class="crm-tags">
+              <% (c.tags || []).forEach(function(t) { %><span class="crm-tag"><%= t %></span><% }); %>
+            </td>
             <td><span class="status-pill status-paid"><%= c.source.replace('_', ' ') %></span></td>
             <td><%= new Date(c.created_at).toLocaleDateString() %></td>
           </tr>
         <% }); %>
         <% if (contacts.length === 0) { %>
-          <tr><td colspan="6" class="empty-state">
+          <tr><td colspan="7" class="empty-state">
             <%= segment === 'customers' ? 'No converted customers yet — a lead lands here once they create an account.' : "No leads yet — they'll show up here from your contact forms, or add one manually." %>
           </td></tr>
         <% } %>
