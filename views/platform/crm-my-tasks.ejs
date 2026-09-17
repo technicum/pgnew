@@ -11,9 +11,10 @@
             <div class="crm-task-body">
               <span class="crm-task-title"><%= t.title %></span>
               <span class="crm-task-meta">
-                <a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <%= t.store_name || 'General inquiry' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
+                <% if (t.contact_id) { %><a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <%= t.store_name || 'General inquiry' %><% } else { %>Standalone task<% } %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
               </span>
             </div>
+            <a href="/dashboard/crm/tasks" class="link-btn">Hand off to someone else</a>
           </li>
         <% }); %>
         <% if (tasks.length === 0) { %>

@@ -696,16 +696,20 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmMembers} (
   UNIQUE KEY uniq_owner_member (owner_user_id, member_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- A follow-up/to-do attached to one ${TABLES.contacts} row. assigned_to is
--- checked in app code (either the owner themself or one of their
+-- A follow-up/to-do, optionally attached to one ${TABLES.contacts} row --
+-- contact_id is nullable so a task can also be a standalone to-do (see
+-- migrateTasksOptionalContact for installs that predate this). assigned_to
+-- is checked in app code (either the owner themself or one of their
 -- ${TABLES.crmMembers}) rather than by the FK, since either table could
--- hold that user. owner_user_id is denormalized from the contact's store
--- (rather than joined through contacts -> stores -> user_roles every time)
--- purely so "my tasks" / "tasks I've assigned" stay a single cheap query.
+-- hold that user, and any of them can assign a task to any other -- there's
+-- no owner-only restriction on who does the assigning. owner_user_id is
+-- denormalized from the contact's store (rather than joined through
+-- contacts -> stores -> user_roles every time) purely so "my tasks" /
+-- "tasks I've assigned" stay a single cheap query.
 CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   owner_user_id INT NOT NULL,
-  contact_id INT NOT NULL,
+  contact_id INT NULL,
   title VARCHAR(255) NOT NULL,
   due_date DATE NULL,
   assigned_to INT NULL,
@@ -1501,6 +1505,17 @@ async function migrateContactsOptionalStore(conn) {
   }
 }
 
+// Lets a task stand on its own (a general to-do assigned to a CRM team
+// member) instead of always being a follow-up on one contact -- relaxes
+// contact_id to nullable. Same idempotency pattern as every migrate*
+// function in this file.
+async function migrateTasksOptionalContact(conn) {
+  if (!(await tableExists(conn, TABLES.crmTasks))) return;
+  if (!(await columnIsNullable(conn, TABLES.crmTasks, 'contact_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN contact_id INT NULL`);
+  }
+}
+
 async function migrateAppsScopeColumn(conn) {
   if (!(await tableExists(conn, TABLES.apps))) return;
   if (!(await columnExists(conn, TABLES.apps, 'scope'))) {
@@ -1806,6 +1821,7 @@ async function init() {
     await migrateStoreThemes(conn);
     await migrateContactsTagsColumn(conn);
     await migrateContactsOptionalStore(conn);
+    await migrateTasksOptionalContact(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);

@@ -438,6 +438,8 @@
 .crm-task-meta a { color: inherit; }
 .crm-task-done { opacity: 0.55; }
 .crm-task-done .crm-task-title { text-decoration: line-through; }
+.crm-task-reassign { flex-shrink: 0; }
+.crm-task-reassign select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; font-family: inherit; background: #fff; }
 
 /* Profile page */
 .profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }

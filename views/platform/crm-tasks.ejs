@@ -1,0 +1,48 @@
+<%- include('partials/header') %>
+
+    <div class="dashboard-main crm-main">
+      <form action="/dashboard/crm/tasks" method="POST" class="crm-task-form">
+        <input type="text" name="title" placeholder="e.g. Follow up on renewal" required />
+        <input type="date" name="due_date" />
+        <select name="assigned_to">
+          <option value="">Unassigned</option>
+          <% assignableUsers.forEach(function(u) { %>
+            <option value="<%= u.id %>"><%= u.name %><%= u.id === account.id ? ' (you)' : '' %></option>
+          <% }); %>
+        </select>
+        <button type="submit" class="btn btn-primary">Add task</button>
+      </form>
+
+      <ul class="crm-task-list crm-task-list-wide">
+        <% tasks.forEach(function(t) { %>
+          <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>">
+            <form action="/dashboard/crm/tasks/<%= t.id %>/toggle" method="POST">
+              <input type="hidden" name="done" value="<%= t.done ? '0' : '1' %>" />
+              <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
+            </form>
+            <div class="crm-task-body">
+              <span class="crm-task-title"><%= t.title %></span>
+              <span class="crm-task-meta">
+                <% if (t.contact_id) { %><a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <% } %><%= t.store_name || (t.contact_id ? 'General inquiry' : 'Standalone task') %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
+              </span>
+            </div>
+            <form action="/dashboard/crm/tasks/<%= t.id %>/reassign" method="POST" class="crm-task-reassign">
+              <select name="assigned_to" onchange="this.form.submit()">
+                <option value="">Unassigned</option>
+                <% assignableUsers.forEach(function(u) { %>
+                  <option value="<%= u.id %>" <%= t.assigned_to === u.id ? 'selected' : '' %>><%= u.name %><%= u.id === account.id ? ' (you)' : '' %></option>
+                <% }); %>
+              </select>
+            </form>
+            <form action="/dashboard/crm/tasks/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Delete this task?');">
+              <button type="submit" class="link-btn danger">Delete</button>
+            </form>
+          </li>
+        <% }); %>
+        <% if (tasks.length === 0) { %>
+          <li class="empty-state">No tasks yet — add one above.</li>
+        <% } %>
+      </ul>
+    </div>
+
+<%- include('partials/footer') %>

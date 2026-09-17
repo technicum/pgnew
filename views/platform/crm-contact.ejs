@@ -73,6 +73,14 @@
                     <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
                   </span>
                 </div>
+                <form action="/dashboard/crm/tasks/<%= t.id %>/reassign" method="POST" class="crm-task-reassign">
+                  <select name="assigned_to" onchange="this.form.submit()">
+                    <option value="">Unassigned</option>
+                    <% assignableUsers.forEach(function(u) { %>
+                      <option value="<%= u.id %>" <%= t.assigned_to === u.id ? 'selected' : '' %>><%= u.name %><%= u.role === 'owner' ? ' (you)' : '' %></option>
+                    <% }); %>
+                  </select>
+                </form>
                 <form action="/dashboard/crm/tasks/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Delete this task?');">
                   <button type="submit" class="link-btn danger">Delete</button>
                 </form>
