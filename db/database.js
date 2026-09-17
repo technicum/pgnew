@@ -135,10 +135,6 @@ const TABLES = {
   crmMembers: `${PREFIX}crm_members`,
   // A follow-up/to-do attached to a CRM contact.
   crmTasks: `${PREFIX}crm_tasks`,
-  // Media/reference links attached to one crmTasks row -- a task can carry
-  // several (a design file, a doc, a recording), hence its own table rather
-  // than a single column on crmTasks.
-  crmTaskLinks: `${PREFIX}crm_task_links`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -722,7 +718,10 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   -- it only shows up nested in its parent's detail view.
   parent_task_id INT NULL,
   title VARCHAR(255) NOT NULL,
-  description TEXT NULL,
+  -- MEDIUMTEXT (not TEXT) because the description editor (see
+  -- views/platform/crm-task.ejs) is a WYSIWYG field that can hold embedded
+  -- (base64) images, not just plain text.
+  description MEDIUMTEXT NULL,
   priority VARCHAR(10) NOT NULL DEFAULT 'medium',
   due_date DATE NULL,
   assigned_to INT NULL,
@@ -735,19 +734,6 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   INDEX idx_task_owner_done (owner_user_id, done),
   INDEX idx_task_contact (contact_id),
   INDEX idx_task_parent (parent_task_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Media/reference links on one ${TABLES.crmTasks} row -- opened in the task
--- detail view (routes/platform.js's GET /dashboard/crm/tasks/:id). Just a
--- URL, not an upload -- see lib/crm.js's addTaskLink for why.
-CREATE TABLE IF NOT EXISTS ${TABLES.crmTaskLinks} (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  task_id INT NOT NULL,
-  url VARCHAR(1000) NOT NULL,
-  label VARCHAR(255) NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
-  INDEX idx_task_link_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -840,6 +826,14 @@ async function columnIsNullable(conn, table, column) {
     [table, column]
   );
   return rows.length > 0 && rows[0].is_nullable === 'YES';
+}
+
+async function columnDataType(conn, table, column) {
+  const [rows] = await conn.query(
+    `SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+    [table, column]
+  );
+  return rows.length > 0 ? rows[0].data_type : null;
 }
 
 async function indexExists(conn, table, indexName) {
@@ -1551,7 +1545,12 @@ async function migrateTasksOptionalContact(conn) {
 async function migrateTasksDetail(conn) {
   if (!(await tableExists(conn, TABLES.crmTasks))) return;
   if (!(await columnExists(conn, TABLES.crmTasks, 'description'))) {
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN description TEXT NULL AFTER title`);
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN description MEDIUMTEXT NULL AFTER title`);
+  } else if ((await columnDataType(conn, TABLES.crmTasks, 'description')) === 'text') {
+    // Widened from TEXT (64KB) to MEDIUMTEXT (16MB) once the description
+    // editor started allowing embedded (base64) images -- see
+    // views/platform/crm-task.ejs's Quill setup.
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN description MEDIUMTEXT NULL`);
   }
   if (!(await columnExists(conn, TABLES.crmTasks, 'priority'))) {
     await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN priority VARCHAR(10) NOT NULL DEFAULT 'medium' AFTER description`);

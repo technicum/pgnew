@@ -4,10 +4,10 @@
 // navigating away -- the underlying GET /dashboard/crm/tasks/:id page is
 // still a full, working page on its own (direct link, reload, no-JS), this
 // just fetches that same page and shows only its ".admin-content" in a
-// drawer. Every form inside the panel (edit, reassign, links, subtasks,
-// toggle) posts through fetch the same way, then swaps the panel's content
-// for whatever the server redirected back to -- no page-specific wiring
-// needed as routes change.
+// drawer. Every form inside the panel (edit, reassign, subtasks, toggle)
+// posts through fetch the same way, then swaps the panel's content for
+// whatever the server redirected back to -- no page-specific wiring needed
+// as routes change.
 (function () {
   var TASK_URL_RE = /^\/dashboard\/crm\/tasks\/\d+$/;
 
@@ -42,6 +42,28 @@
     return content ? content.innerHTML : html;
   }
 
+  // Setting .innerHTML never executes embedded <script> tags (e.g. the
+  // description editor's own setup script in crm-task.ejs) -- replacing
+  // each with a freshly-created <script> node does. Every such script here
+  // is inline (no `src`) by design, so this is synchronous; anything the
+  // script itself needs to load asynchronously (e.g. a CDN library) is its
+  // own responsibility to await.
+  function runScripts(container) {
+    container.querySelectorAll('script').forEach(function (old) {
+      var fresh = document.createElement('script');
+      for (var i = 0; i < old.attributes.length; i++) {
+        fresh.setAttribute(old.attributes[i].name, old.attributes[i].value);
+      }
+      fresh.textContent = old.textContent;
+      old.parentNode.replaceChild(fresh, old);
+    });
+  }
+
+  function renderInto(target, html) {
+    target.innerHTML = extractAdminContent(html);
+    runScripts(target);
+  }
+
   function isOpen() {
     return !!panel && panel.classList.contains('open');
   }
@@ -64,7 +86,7 @@
   function loadInto(url) {
     fetch(url)
       .then(function (res) { return res.text(); })
-      .then(function (html) { panelBody.innerHTML = extractAdminContent(html); })
+      .then(function (html) { renderInto(panelBody, html); })
       .catch(function () {
         panelBody.innerHTML = '<p class="empty-state">Could not load this task.</p>';
       });
@@ -90,10 +112,8 @@
     fetch(location.href)
       .then(function (res) { return res.text(); })
       .then(function (html) {
-        var doc = new DOMParser().parseFromString(html, 'text/html');
-        var fresh = doc.querySelector('.admin-content');
         var current = document.querySelector('.admin-content');
-        if (fresh && current) current.innerHTML = fresh.innerHTML;
+        if (current) renderInto(current, html);
       })
       .catch(function () {});
   }
@@ -139,7 +159,7 @@
           return;
         }
         return res.text().then(function (html) {
-          panelBody.innerHTML = extractAdminContent(html);
+          renderInto(panelBody, html);
           history.replaceState({ taskPanel: true }, '', res.url);
         });
       })

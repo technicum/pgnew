@@ -759,9 +759,9 @@ router.post('/dashboard/crm/tasks', requireAccount, requireCrm, async (req, res,
   }
 });
 
-// Task detail: description, priority, media/reference links, and its
-// subtask checklist -- what clicking a task from any of the lists above
-// opens into.
+// Task detail: description (a WYSIWYG field that can hold embedded media --
+// see the Quill setup in the view), priority, and its subtask checklist --
+// what clicking a task from any of the lists above opens into.
 router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const task = await crmLib.getTask(req.crm.ownerUserId, req.params.id);
@@ -769,9 +769,8 @@ router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, r
       req.flash('error', 'Task not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
     }
-    const [subtasks, links, assignableUsers] = await Promise.all([
+    const [subtasks, assignableUsers] = await Promise.all([
       crmLib.listSubtasks(task.id),
-      crmLib.listTaskLinks(task.id),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
     ]);
     res.render('platform/crm-task', {
@@ -780,7 +779,6 @@ router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, r
       crm: req.crm,
       task,
       subtasks,
-      links,
       assignableUsers,
       priorities: crmLib.TASK_PRIORITIES,
     });
@@ -804,34 +802,6 @@ router.post('/dashboard/crm/tasks/:id/edit', requireAccount, requireCrm, async (
       due_date: req.body.due_date || null,
     });
     req.flash('success', 'Task updated.');
-    res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${req.params.id}`));
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/dashboard/crm/tasks/:id/links', requireAccount, requireCrm, async (req, res, next) => {
-  try {
-    const task = await crmLib.getTask(req.crm.ownerUserId, req.params.id);
-    if (!task) {
-      req.flash('error', 'Task not found.');
-      return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
-    }
-    const url = (req.body.url || '').trim();
-    if (!url) {
-      req.flash('error', 'A link needs a URL.');
-      return res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
-    }
-    await crmLib.addTaskLink(task.id, { url, label: (req.body.label || '').trim() });
-    res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post('/dashboard/crm/tasks/:id/links/:linkId/delete', requireAccount, requireCrm, async (req, res, next) => {
-  try {
-    await crmLib.deleteTaskLink(req.params.id, req.params.linkId);
     res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${req.params.id}`));
   } catch (err) {
     next(err);

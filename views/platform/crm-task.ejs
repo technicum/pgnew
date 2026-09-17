@@ -19,7 +19,11 @@
           </label>
 
           <label>Description
-            <textarea name="description" rows="6" placeholder="Describe what needs to be done..."><%= task.description || '' %></textarea>
+            <!-- Quill mounts on #taskDescriptionEditor below and keeps this
+                 hidden textarea (the field actually submitted) in sync on
+                 submit -- see the script at the bottom of this file. -->
+            <textarea id="taskDescriptionInput" name="description" style="display:none;"><%= task.description || '' %></textarea>
+            <div id="taskDescriptionEditor" class="crm-task-editor"></div>
           </label>
 
           <div class="form-row">
@@ -57,29 +61,6 @@
               </select>
             </label>
           </form>
-
-          <h2 style="margin-top:24px;">Media &amp; links</h2>
-          <form action="/dashboard/crm/tasks/<%= task.id %>/links" method="POST" class="crm-task-form">
-            <input type="text" name="label" placeholder="Label (optional)" />
-            <input type="url" name="url" placeholder="https://..." required />
-            <button type="submit" class="btn btn-primary">Add link</button>
-          </form>
-          <ul class="crm-task-list">
-            <% links.forEach(function(l) { %>
-              <li class="crm-task">
-                <div class="crm-task-body">
-                  <a class="crm-task-title" href="<%= l.url %>" target="_blank" rel="noopener noreferrer"><%= l.label || l.url %></a>
-                  <% if (l.label) { %><span class="crm-task-meta"><%= l.url %></span><% } %>
-                </div>
-                <form action="/dashboard/crm/tasks/<%= task.id %>/links/<%= l.id %>/delete" method="POST" onsubmit="return confirm('Remove this link?');">
-                  <button type="submit" class="link-btn danger">Remove</button>
-                </form>
-              </li>
-            <% }); %>
-            <% if (links.length === 0) { %>
-              <li class="empty-state">No links yet.</li>
-            <% } %>
-          </ul>
         </div>
       </div>
 
@@ -125,5 +106,70 @@
         <button type="submit" class="link-btn danger">Delete task</button>
       </form>
     </div>
+
+    <script>
+      // Mounts the WYSIWYG description editor. Written to run both on a
+      // normal full-page load AND when injected into the slide-over panel
+      // (public/js/crm-task-panel.js re-executes any <script> tag found in
+      // fetched content) -- so it loads the Quill library into <head> itself
+      // (persists across panel content swaps, loaded at most once per page
+      // session) rather than via a <script src> tag in this markup, which
+      // would otherwise be re-fetched/re-run on every panel refresh.
+      (function () {
+        function loadQuill() {
+          if (window.Quill) return Promise.resolve();
+          if (window.__quillLoading) return window.__quillLoading;
+          window.__quillLoading = new Promise(function (resolve, reject) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css';
+            document.head.appendChild(link);
+
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+          return window.__quillLoading;
+        }
+
+        var container = document.getElementById('taskDescriptionEditor');
+        if (!container) return;
+
+        loadQuill().then(function () {
+          // The panel may have re-rendered this content again before the
+          // library finished loading on a slow connection -- re-look the
+          // node up instead of trusting the closed-over reference, and skip
+          // if it's already been initialized (or replaced) since.
+          var el = document.getElementById('taskDescriptionEditor');
+          if (!el || el.dataset.quillReady) return;
+          el.dataset.quillReady = '1';
+
+          var hidden = document.getElementById('taskDescriptionInput');
+          var quill = new Quill(el, {
+            theme: 'snow',
+            placeholder: 'Describe what needs to be done...',
+            modules: {
+              toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['link', 'image'],
+                ['clean'],
+              ],
+            },
+          });
+          quill.root.innerHTML = (hidden && hidden.value) || '';
+
+          var form = el.closest('form');
+          if (form) {
+            form.addEventListener('submit', function () {
+              var input = document.getElementById('taskDescriptionInput');
+              if (input) input.value = quill.root.innerHTML;
+            });
+          }
+        });
+      })();
+    </script>
 
 <%- include('partials/footer') %>
