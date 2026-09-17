@@ -25,7 +25,7 @@
       </tr>
     <% }); %>
     <% if (contacts.length === 0) { %>
-      <tr><td colspan="6" class="empty-state">No contacts yet — add one, or they'll show up here as leads come in.</td></tr>
+      <tr><td colspan="6" class="empty-state"><%= typeof emptyText !== 'undefined' ? emptyText : "No contacts yet." %></td></tr>
     <% } %>
   </tbody>
 </table>

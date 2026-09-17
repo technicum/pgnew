@@ -2044,13 +2044,45 @@ router.post('/apps/:slug/activate', async (req, res, next) => {
 // pz_contacts comment for the full design story).
 router.use('/contacts', requireApp('crm', 'CRM'));
 
-router.get('/contacts', async (req, res, next) => {
+// The CRM sub-nav splits pz_contacts into two views by whether customer_id
+// is set — NOT a separate table, just a filter on the one contacts list.
+// 'leads' is the default landing screen; 'customers' shows contacts who've
+// since converted to a real pz_customers account. The page title
+// deliberately says "CRM Customers" (not bare "Customers") so it never
+// collides with the existing ecommerce Customers screen's own
+// title === 'Customers' nav-highlight check in header.ejs — two different
+// tables, kept visibly distinct in the nav.
+router.get('/contacts', (req, res) => res.redirect('/admin/contacts/leads'));
+
+router.get('/contacts/leads', async (req, res, next) => {
   try {
     const [contacts] = await pool.query(
-      `SELECT * FROM ${TABLES.contacts} WHERE store_id = ? ORDER BY created_at DESC`,
+      `SELECT * FROM ${TABLES.contacts} WHERE store_id = ? AND customer_id IS NULL ORDER BY created_at DESC`,
       [req.store.id]
     );
-    res.render('admin/contacts', { title: 'Contacts', contacts });
+    res.render('admin/contacts', {
+      title: 'Leads',
+      segment: 'leads',
+      contacts,
+      emptyText: "No leads yet — they'll show up here from your contact form, or add one manually.",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/contacts/customers', async (req, res, next) => {
+  try {
+    const [contacts] = await pool.query(
+      `SELECT * FROM ${TABLES.contacts} WHERE store_id = ? AND customer_id IS NOT NULL ORDER BY created_at DESC`,
+      [req.store.id]
+    );
+    res.render('admin/contacts', {
+      title: 'CRM Customers',
+      segment: 'customers',
+      contacts,
+      emptyText: 'No converted customers yet — a lead lands here once they create an account.',
+    });
   } catch (err) {
     next(err);
   }
@@ -2073,12 +2105,15 @@ router.post('/contacts/new', async (req, res, next) => {
       req.flash('error', `A contact with email "${data.email}" already exists.`);
       return res.redirect('/admin/contacts/new');
     }
+    // A contact added by hand here is a lead by definition — customer_id
+    // only ever gets set once that person creates a real pz_customers
+    // account matched by email (not built yet, see lib/contacts.js notes).
     await pool.query(
       `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source) VALUES (?, ?, ?, ?, ?)`,
       [storeId, data.name, data.email, data.phone, data.source]
     );
     req.flash('success', 'Contact added.');
-    res.redirect('/admin/contacts');
+    res.redirect('/admin/contacts/leads');
   } catch (err) {
     next(err);
   }
@@ -2089,7 +2124,7 @@ router.get('/contacts/:id/edit', async (req, res, next) => {
     const [[contact]] = await pool.query(`SELECT * FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     if (!contact) {
       req.flash('error', 'Contact not found.');
-      return res.redirect('/admin/contacts');
+      return res.redirect('/admin/contacts/leads');
     }
     res.render('admin/contact-form', { title: 'Edit Contact', contact });
   } catch (err) {
@@ -2113,12 +2148,13 @@ router.post('/contacts/:id/edit', async (req, res, next) => {
       req.flash('error', `A contact with email "${data.email}" already exists.`);
       return res.redirect(`/admin/contacts/${req.params.id}/edit`);
     }
+    const [[current]] = await pool.query(`SELECT customer_id FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [storeId, req.params.id]);
     await pool.query(
       `UPDATE ${TABLES.contacts} SET name = ?, email = ?, phone = ?, source = ? WHERE store_id = ? AND id = ?`,
       [data.name, data.email, data.phone, data.source, storeId, req.params.id]
     );
     req.flash('success', 'Contact updated.');
-    res.redirect('/admin/contacts');
+    res.redirect(current && current.customer_id ? '/admin/contacts/customers' : '/admin/contacts/leads');
   } catch (err) {
     next(err);
   }
@@ -2126,9 +2162,10 @@ router.post('/contacts/:id/edit', async (req, res, next) => {
 
 router.post('/contacts/:id/delete', async (req, res, next) => {
   try {
+    const [[contact]] = await pool.query(`SELECT customer_id FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     await pool.query(`DELETE FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     req.flash('success', 'Contact deleted.');
-    res.redirect('/admin/contacts');
+    res.redirect(contact && contact.customer_id ? '/admin/contacts/customers' : '/admin/contacts/leads');
   } catch (err) {
     next(err);
   }
