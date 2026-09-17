@@ -460,7 +460,7 @@ body.task-panel-open { overflow: hidden; }
 .task-panel-backdrop.open { opacity: 1; pointer-events: auto; }
 .task-panel {
   position: fixed; top: 0; right: 0; bottom: 0;
-  width: min(560px, 100vw);
+  width: min(850px, 100vw);
   background: #fff; box-shadow: -8px 0 24px rgba(17, 24, 39, 0.18);
   transform: translateX(100%); transition: transform 0.22s ease;
   z-index: 1001; display: flex; flex-direction: column;
