@@ -361,6 +361,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
 router.get('/dashboard/profile', requireAccount, (req, res) => {
   res.render('platform/profile', {
     title: 'Your profile',
+    account: req.session.account,
     errors: [],
     values: { name: req.session.account.name, email: req.session.account.email },
   });
@@ -386,7 +387,7 @@ router.post('/dashboard/profile', requireAccount, async (req, res, next) => {
   }
 
   if (errors.length) {
-    return res.status(400).render('platform/profile', { title: 'Your profile', errors, values });
+    return res.status(400).render('platform/profile', { title: 'Your profile', account: req.session.account, errors, values });
   }
 
   try {
@@ -395,6 +396,7 @@ router.post('/dashboard/profile', requireAccount, async (req, res, next) => {
     if (wantsPasswordChange && !bcrypt.compareSync(currentPassword, user.password_hash)) {
       return res.status(400).render('platform/profile', {
         title: 'Your profile',
+        account: req.session.account,
         errors: ['Current password is incorrect.'],
         values,
       });
@@ -405,6 +407,7 @@ router.post('/dashboard/profile', requireAccount, async (req, res, next) => {
       if (emailTaken) {
         return res.status(400).render('platform/profile', {
           title: 'Your profile',
+          account: req.session.account,
           errors: [`"${email}" is already in use by another account.`],
           values,
         });

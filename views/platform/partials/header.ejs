@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= typeof pageTitle !== 'undefined' ? pageTitle : title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
+      <%
+        // Which of the CRM sub-screens we're on -- `crm` is only ever passed
+        // by the requireCrm-gated routes (routes/platform.js), so this is
+        // naturally false on the "activate CRM" screen (nothing to
+        // sub-navigate there yet) even though that screen shares the top-
+        // level "CRM" nav item below.
+        var crmScreens = ['Leads', 'CRM Customers', 'New Contact', 'Contact', 'My Tasks', 'CRM Team'];
+        var crmOpen = typeof crm !== 'undefined' && crm && crmScreens.indexOf(title) !== -1;
+      %>
+      <nav class="admin-nav">
+        <a href="/dashboard" class="<%= title === 'Your stores' ? 'active' : '' %>">Your sites</a>
+        <a href="/dashboard/crm" class="<%= crmOpen || title === 'CRM' ? 'active' : '' %>">CRM</a>
+        <% if (crmOpen) { %>
+          <a href="/dashboard/crm/leads" class="admin-nav-sub <%= (title === 'Leads' || title === 'New Contact' || title === 'Contact') ? 'active' : '' %>">Leads</a>
+          <a href="/dashboard/crm/customers" class="admin-nav-sub <%= title === 'CRM Customers' ? 'active' : '' %>">Customers</a>
+          <a href="/dashboard/crm/my-tasks" class="admin-nav-sub <%= title === 'My Tasks' ? 'active' : '' %>">My Tasks</a>
+          <% if (crm.role === 'owner') { %>
+            <a href="/dashboard/crm/team" class="admin-nav-sub <%= title === 'CRM Team' ? 'active' : '' %>">Team</a>
+          <% } %>
+        <% } %>
+
+        <div class="admin-nav-divider"></div>
+        <a href="/dashboard/profile" class="<%= title === 'Your profile' ? 'active' : '' %>">Profile</a>
+      </nav>
+      <form action="/dashboard/logout" method="POST" class="admin-logout-form">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    </aside>
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <h1><%= title %></h1>
+        <% if (typeof account !== 'undefined' && account) { %><span class="admin-user">Hi, <%= account.name %></span><% } %>
+      </header>
+
+      <% if (typeof success !== 'undefined' && success && success.length) { %>
+        <div class="flash flash-success"><%= success[0] %></div>
+      <% } %>
+      <% if (typeof error !== 'undefined' && error && error.length) { %>
+        <div class="flash flash-error"><%= error[0] %></div>
+      <% } %>
+
+      <div class="admin-content">

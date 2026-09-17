@@ -1,59 +1,31 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title %> · PageZaper</title>
-  <link rel="stylesheet" href="/css/style.css" />
-  <link rel="stylesheet" href="/css/admin.css" />
-</head>
-<body class="dashboard-body">
-  <header class="dashboard-header">
-    <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
-    <div class="dashboard-header-right">
-      <span class="dashboard-account-name"><%= account.name %></span>
-      <a href="/dashboard/crm" class="link-btn">CRM</a>
-      <a href="/dashboard/profile" class="link-btn">Your profile</a>
-      <form action="/dashboard/logout" method="POST" style="display:inline;">
-        <button type="submit" class="link-btn">Log out</button>
-      </form>
-    </div>
-  </header>
+<%- include('partials/header') %>
 
-  <main class="dashboard-main">
-    <% if (typeof success !== 'undefined' && success && success.length) { %>
-      <div class="flash flash-success"><%= success[0] %></div>
-    <% } %>
-    <% if (typeof error !== 'undefined' && error && error.length) { %>
-      <div class="flash flash-error"><%= error[0] %></div>
-    <% } %>
-
-    <div class="dashboard-title-row">
-      <h1>Your sites</h1>
-      <button type="button" class="btn btn-primary" id="newSiteBtn">Create a new site</button>
-    </div>
-
-    <% if (!stores.length) { %>
-      <div class="dashboard-empty">
-        <p>You don't manage any sites yet.</p>
-        <button type="button" class="btn btn-primary" id="newSiteBtnEmpty">Create your first site</button>
+    <div class="dashboard-main">
+      <div class="dashboard-title-row" style="justify-content:flex-end;">
+        <button type="button" class="btn btn-primary" id="newSiteBtn">Create a new site</button>
       </div>
-    <% } else { %>
-      <div class="dashboard-store-list">
-        <% stores.forEach(function(s) { %>
-          <form action="/dashboard/enter" method="POST" class="dashboard-store-card">
-            <input type="hidden" name="storeId" value="<%= s.store_id %>" />
-            <div class="dashboard-store-info">
-              <span class="dashboard-store-name"><%= s.name %></span>
-              <span class="dashboard-store-domain"><%= s.subdomain %>.<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %></span>
-            </div>
-            <span class="dashboard-store-role"><%= s.role %></span>
-            <button type="submit" class="btn btn-primary">Enter site</button>
-          </form>
-        <% }); %>
-      </div>
-    <% } %>
-  </main>
+
+      <% if (!stores.length) { %>
+        <div class="dashboard-empty">
+          <p>You don't manage any sites yet.</p>
+          <button type="button" class="btn btn-primary" id="newSiteBtnEmpty">Create your first site</button>
+        </div>
+      <% } else { %>
+        <div class="dashboard-store-list">
+          <% stores.forEach(function(s) { %>
+            <form action="/dashboard/enter" method="POST" class="dashboard-store-card">
+              <input type="hidden" name="storeId" value="<%= s.store_id %>" />
+              <div class="dashboard-store-info">
+                <span class="dashboard-store-name"><%= s.name %></span>
+                <span class="dashboard-store-domain"><%= s.subdomain %>.<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %></span>
+              </div>
+              <span class="dashboard-store-role"><%= s.role %></span>
+              <button type="submit" class="btn btn-primary">Enter site</button>
+            </form>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
 
   <%
     // Same category list/icons as views/admin/dashboard.ejs's own "Create
@@ -99,5 +71,4 @@
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) close(); });
     })();
   </script>
-</body>
-</html>
+<%- include('partials/footer') %>
