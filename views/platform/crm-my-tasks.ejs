@@ -1,26 +1,54 @@
-<%- include('partials/header') %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="dashboard-body">
+  <header class="dashboard-header">
+    <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
+    <div class="dashboard-header-right">
+      <span class="dashboard-account-name"><%= account.name %></span>
+      <a href="/dashboard" class="link-btn">Your sites</a>
+      <form action="/dashboard/logout" method="POST" style="display:inline;">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    </div>
+  </header>
 
-    <div class="dashboard-main crm-main">
-      <ul class="crm-task-list crm-task-list-wide">
-        <% tasks.forEach(function(t) { %>
-          <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>">
-            <form action="/dashboard/crm/tasks/<%= t.id %>/toggle" method="POST">
-              <input type="hidden" name="done" value="<%= t.done ? '0' : '1' %>" />
-              <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
-            </form>
-            <div class="crm-task-body">
-              <a class="crm-task-title" href="/dashboard/crm/tasks/<%= t.id %>"><%= t.title %></a>
-              <span class="crm-task-meta">
-                <% if (t.parent_task_id) { %>Subtask of <%= t.parent_title %><% } else if (t.contact_id) { %><a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <%= t.store_name || 'General inquiry' %><% } else { %>Standalone task<% } %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %><%= t.priority && t.priority !== 'medium' ? ' · ' + t.priority + ' priority' : '' %>
-              </span>
-            </div>
-            <a href="/dashboard/crm/tasks/<%= t.id %>" class="link-btn">Open</a>
-          </li>
-        <% }); %>
-        <% if (tasks.length === 0) { %>
-          <li class="empty-state">Nothing assigned to you right now.</li>
-        <% } %>
-      </ul>
+  <main class="dashboard-main crm-main">
+    <div class="crm-tabs">
+      <a href="/dashboard/crm/leads" class="crm-tab">Leads</a>
+      <a href="/dashboard/crm/customers" class="crm-tab">Customers</a>
+      <a href="/dashboard/crm/tasks" class="crm-tab">Tasks</a>
+      <a href="/dashboard/crm/my-tasks" class="crm-tab active">My Tasks</a>
+      <% if (crm.role === 'owner') { %>
+        <a href="/dashboard/crm/team" class="crm-tab">Team</a>
+      <% } %>
     </div>
 
-<%- include('partials/footer') %>
+    <ul class="crm-task-list crm-task-list-wide">
+      <% tasks.forEach(function(t) { %>
+        <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>">
+          <form action="/dashboard/crm/tasks/<%= t.id %>/toggle" method="POST">
+            <input type="hidden" name="done" value="<%= t.done ? '0' : '1' %>" />
+            <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
+          </form>
+          <div class="crm-task-body">
+            <span class="crm-task-title"><%= t.title %></span>
+            <span class="crm-task-meta">
+              <a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <%= t.store_name || 'General inquiry' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
+            </span>
+          </div>
+        </li>
+      <% }); %>
+      <% if (tasks.length === 0) { %>
+        <li class="empty-state">Nothing assigned to you right now.</li>
+      <% } %>
+    </ul>
+  </main>
+</body>
+</html>
