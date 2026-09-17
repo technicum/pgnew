@@ -121,7 +121,7 @@
         </ul>
       </div>
 
-      <form action="/dashboard/crm/tasks/<%= task.id %>/delete" method="POST" onsubmit="return confirm('Delete this task? This also deletes its subtasks.');" style="margin-top:16px;">
+      <form action="/dashboard/crm/tasks/<%= task.id %>/delete" method="POST" class="crm-task-delete-self" onsubmit="return confirm('Delete this task? This also deletes its subtasks.');" style="margin-top:16px;">
         <button type="submit" class="link-btn danger">Delete task</button>
       </form>
     </div>

@@ -446,6 +446,40 @@
 .crm-task-priority-medium { background: #eef2ff; color: #4338ca; }
 .crm-task-priority-high { background: #fee2e2; color: #b91c1c; }
 
+/* Task detail slide-over (public/js/crm-task-panel.js) -- fetches the same
+   full page GET /dashboard/crm/tasks/:id renders and shows only its
+   .admin-content here, so the CSS below only needs to handle the chrome
+   (backdrop/panel/close button); the content itself reuses .crm-* rules
+   above as-is. */
+body.task-panel-open { overflow: hidden; }
+.task-panel-backdrop {
+  position: fixed; inset: 0; background: rgba(17, 24, 39, 0.45);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+  z-index: 1000;
+}
+.task-panel-backdrop.open { opacity: 1; pointer-events: auto; }
+.task-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(560px, 100vw);
+  background: #fff; box-shadow: -8px 0 24px rgba(17, 24, 39, 0.18);
+  transform: translateX(100%); transition: transform 0.22s ease;
+  z-index: 1001; display: flex; flex-direction: column;
+}
+.task-panel.open { transform: translateX(0); }
+.task-panel-head {
+  flex-shrink: 0; display: flex; justify-content: flex-end;
+  padding: 12px 16px; border-bottom: 1px solid #e5e7eb;
+}
+.task-panel-close {
+  width: 32px; height: 32px; border: none; background: transparent;
+  font-size: 1.4rem; line-height: 1; color: #6b7280; cursor: pointer; border-radius: 6px;
+}
+.task-panel-close:hover { background: #f3f4f6; color: #111827; }
+.task-panel-body { flex: 1; overflow-y: auto; overflow-wrap: anywhere; padding: 20px 24px 32px; }
+.task-panel-loading { color: #6b7280; font-size: 0.9rem; }
+.task-panel .dashboard-main.crm-main { max-width: none; padding: 0; }
+.task-panel .crm-contact-layout { grid-template-columns: 1fr; }
+
 /* Profile page */
 .profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }
 
