@@ -133,11 +133,8 @@ const TABLES = {
   // store's products/orders/pages). CRM access and store-staff access are
   // independent grants; see the CREATE TABLE comment below.
   crmMembers: `${PREFIX}crm_members`,
-  // A follow-up/to-do — either attached to a CRM contact, or "standalone"
-  // (contact_id NULL) for work that isn't about any one lead/customer.
+  // A follow-up/to-do attached to a CRM contact.
   crmTasks: `${PREFIX}crm_tasks`,
-  // Small checklist items nested under one crm_tasks row.
-  crmSubtasks: `${PREFIX}crm_subtasks`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -699,23 +696,17 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmMembers} (
   UNIQUE KEY uniq_owner_member (owner_user_id, member_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- A follow-up/to-do, either attached to one ${TABLES.contacts} row or
--- "standalone" (contact_id NULL) for CRM work that isn't about any one
--- lead/customer. assigned_to is checked in app code (either the owner
--- themself or one of their ${TABLES.crmMembers}) rather than by the FK,
--- since either table could hold that user. owner_user_id is denormalized
--- from the contact's store (rather than joined through contacts -> stores
--- -> user_roles every time) purely so "my tasks" / "tasks I've assigned"
--- stay a single cheap query, and is set directly for standalone tasks.
--- description holds a small amount of sanitized rich-text HTML from the
--- task panel's editor (see lib/crm.js's sanitizeDescriptionHtml).
+-- A follow-up/to-do attached to one ${TABLES.contacts} row. assigned_to is
+-- checked in app code (either the owner themself or one of their
+-- ${TABLES.crmMembers}) rather than by the FK, since either table could
+-- hold that user. owner_user_id is denormalized from the contact's store
+-- (rather than joined through contacts -> stores -> user_roles every time)
+-- purely so "my tasks" / "tasks I've assigned" stay a single cheap query.
 CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   owner_user_id INT NOT NULL,
-  contact_id INT NULL,
+  contact_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
-  description MEDIUMTEXT NULL,
-  priority ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium',
   due_date DATE NULL,
   assigned_to INT NULL,
   done TINYINT(1) NOT NULL DEFAULT 0,
@@ -725,21 +716,6 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_task_owner_done (owner_user_id, done),
   INDEX idx_task_contact (contact_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- A small checklist item nested under one crm_tasks row (the "Subtasks"
--- panel). Deliberately minimal -- no description/priority of its own.
-CREATE TABLE IF NOT EXISTS ${TABLES.crmSubtasks} (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  task_id INT NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  due_date DATE NULL,
-  assigned_to INT NULL,
-  done TINYINT(1) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
-  FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
-  INDEX idx_subtask_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -1532,26 +1508,6 @@ async function migrateAppsScopeColumn(conn) {
   }
 }
 
-// Adds the Tasks-panel fields (description, priority) to an existing
-// install and relaxes contact_id to nullable so a task can be "standalone"
-// -- not attached to any contact. Fresh installs already get this shape
-// from the CREATE TABLE above; crm_subtasks is a brand-new table on both,
-// so it needs no migrate function (CREATE TABLE IF NOT EXISTS covers it).
-async function migrateCrmTasksEnhancements(conn) {
-  if (!(await tableExists(conn, TABLES.crmTasks))) return;
-  if (!(await columnExists(conn, TABLES.crmTasks, 'description'))) {
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN description MEDIUMTEXT NULL AFTER title`);
-  }
-  if (!(await columnExists(conn, TABLES.crmTasks, 'priority'))) {
-    await conn.query(
-      `ALTER TABLE ${TABLES.crmTasks} ADD COLUMN priority ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium' AFTER description`
-    );
-  }
-  if (!(await columnIsNullable(conn, TABLES.crmTasks, 'contact_id'))) {
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN contact_id INT NULL`);
-  }
-}
-
 async function migrateSeedPlansAndApps(conn) {
   const planSeed = [
     { slug: 'free', name: 'Free', price_cents: 0 },
@@ -1850,7 +1806,6 @@ async function init() {
     await migrateStoreThemes(conn);
     await migrateContactsTagsColumn(conn);
     await migrateContactsOptionalStore(conn);
-    await migrateCrmTasksEnhancements(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);
