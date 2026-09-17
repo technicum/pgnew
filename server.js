@@ -80,6 +80,12 @@ app.use((req, res, next) => {
   // Any "Store admin" / "Log in" link for staff should use this, not a
   // relative /login or /admin/login.
   res.locals.loginUrl = adminPortalUrl(req, '/login');
+  // The account-level "Your sites" screen (routes/platform.js's /dashboard) —
+  // where a merchant with more than one store picks which to work on. Used
+  // by the store admin sidebar's "Exit store" link (views/admin/partials/
+  // header.ejs) to get back there without a relative link that would try to
+  // resolve against the STORE's own subdomain instead.
+  res.locals.accountDashboardUrl = adminPortalUrl(req, '/dashboard');
   next();
 });
 
