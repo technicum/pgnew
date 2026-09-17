@@ -696,26 +696,44 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmMembers} (
   UNIQUE KEY uniq_owner_member (owner_user_id, member_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- A follow-up/to-do attached to one ${TABLES.contacts} row. assigned_to is
--- checked in app code (either the owner themself or one of their
+-- A follow-up/to-do, optionally attached to one ${TABLES.contacts} row --
+-- contact_id is nullable so a task can also be a standalone to-do (see
+-- migrateTasksOptionalContact for installs that predate this). assigned_to
+-- is checked in app code (either the owner themself or one of their
 -- ${TABLES.crmMembers}) rather than by the FK, since either table could
--- hold that user. owner_user_id is denormalized from the contact's store
--- (rather than joined through contacts -> stores -> user_roles every time)
--- purely so "my tasks" / "tasks I've assigned" stay a single cheap query.
+-- hold that user, and any of them can assign a task to any other -- there's
+-- no owner-only restriction on who does the assigning. owner_user_id is
+-- denormalized from the contact's store (rather than joined through
+-- contacts -> stores -> user_roles every time) purely so "my tasks" /
+-- "tasks I've assigned" stay a single cheap query.
 CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   owner_user_id INT NOT NULL,
-  contact_id INT NOT NULL,
+  contact_id INT NULL,
+  -- Self-reference for subtasks (the task detail page's checklist). A
+  -- subtask is an ordinary row here, just scoped under its parent instead
+  -- of a contact -- it gets its own title/description/priority/assignee,
+  -- but is left out of the top-level board/contact listings (see
+  -- listAllTasks/listTasksForContact's "parent_task_id IS NULL" filter) so
+  -- it only shows up nested in its parent's detail view.
+  parent_task_id INT NULL,
   title VARCHAR(255) NOT NULL,
+  -- MEDIUMTEXT (not TEXT) because the description editor (see
+  -- views/platform/crm-task.ejs) is a WYSIWYG field that can hold embedded
+  -- (base64) images, not just plain text.
+  description MEDIUMTEXT NULL,
+  priority VARCHAR(10) NOT NULL DEFAULT 'medium',
   due_date DATE NULL,
   assigned_to INT NULL,
   done TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
   FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
   FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_task_owner_done (owner_user_id, done),
-  INDEX idx_task_contact (contact_id)
+  INDEX idx_task_contact (contact_id),
+  INDEX idx_task_parent (parent_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -808,6 +826,14 @@ async function columnIsNullable(conn, table, column) {
     [table, column]
   );
   return rows.length > 0 && rows[0].is_nullable === 'YES';
+}
+
+async function columnDataType(conn, table, column) {
+  const [rows] = await conn.query(
+    `SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+    [table, column]
+  );
+  return rows.length > 0 ? rows[0].data_type : null;
 }
 
 async function indexExists(conn, table, indexName) {
@@ -1501,6 +1527,43 @@ async function migrateContactsOptionalStore(conn) {
   }
 }
 
+// Lets a task stand on its own (a general to-do assigned to a CRM team
+// member) instead of always being a follow-up on one contact -- relaxes
+// contact_id to nullable. Same idempotency pattern as every migrate*
+// function in this file.
+async function migrateTasksOptionalContact(conn) {
+  if (!(await tableExists(conn, TABLES.crmTasks))) return;
+  if (!(await columnIsNullable(conn, TABLES.crmTasks, 'contact_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN contact_id INT NULL`);
+  }
+}
+
+// Adds the task detail screen's fields (description, priority) and subtask
+// support (parent_task_id, self-referencing) to installs that created
+// ${TABLES.crmTasks} before these existed. Same idempotency pattern as
+// every migrate* function in this file.
+async function migrateTasksDetail(conn) {
+  if (!(await tableExists(conn, TABLES.crmTasks))) return;
+  if (!(await columnExists(conn, TABLES.crmTasks, 'description'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN description MEDIUMTEXT NULL AFTER title`);
+  } else if ((await columnDataType(conn, TABLES.crmTasks, 'description')) === 'text') {
+    // Widened from TEXT (64KB) to MEDIUMTEXT (16MB) once the description
+    // editor started allowing embedded (base64) images -- see
+    // views/platform/crm-task.ejs's Quill setup.
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN description MEDIUMTEXT NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.crmTasks, 'priority'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN priority VARCHAR(10) NOT NULL DEFAULT 'medium' AFTER description`);
+  }
+  if (!(await columnExists(conn, TABLES.crmTasks, 'parent_task_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN parent_task_id INT NULL AFTER contact_id`);
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD INDEX idx_task_parent (parent_task_id)`);
+    await conn.query(
+      `ALTER TABLE ${TABLES.crmTasks} ADD FOREIGN KEY (parent_task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE`
+    );
+  }
+}
+
 async function migrateAppsScopeColumn(conn) {
   if (!(await tableExists(conn, TABLES.apps))) return;
   if (!(await columnExists(conn, TABLES.apps, 'scope'))) {
@@ -1806,6 +1869,8 @@ async function init() {
     await migrateStoreThemes(conn);
     await migrateContactsTagsColumn(conn);
     await migrateContactsOptionalStore(conn);
+    await migrateTasksOptionalContact(conn);
+    await migrateTasksDetail(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);
