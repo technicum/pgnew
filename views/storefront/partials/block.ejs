@@ -131,32 +131,7 @@
     <div class="testimonials">
       <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
       <% if (b.fields.layout === 'slider') { %>
-        <div class="testimonial-slider">
-          <button type="button" class="testi-slider-arrow testi-slider-prev" data-testi-prev aria-label="Previous testimonial">&#10094;</button>
-          <div class="testimonial-track" id="pz-block-<%= b.id %>-track">
-            <%- b.fields.quotes.map(pzTestiCardHtml).join('') %>
-          </div>
-          <button type="button" class="testi-slider-arrow testi-slider-next" data-testi-next aria-label="Next testimonial">&#10095;</button>
-        </div>
-        <script>
-          (function () {
-            var track = document.getElementById(<%- JSON.stringify('pz-block-' + b.id + '-track').split('/').join(String.fromCharCode(92) + '/') %>);
-            if (!track) return;
-            var wrap = track.closest('.testimonial-slider');
-            if (!wrap || wrap.dataset.pzWired) return;
-            wrap.dataset.pzWired = '1';
-            function step(dir) {
-              var card = track.querySelector('.testimonial-card');
-              var cs = card ? getComputedStyle(card) : null;
-              var amount = card ? card.getBoundingClientRect().width + (cs ? parseFloat(cs.marginRight || 0) : 0) + 20 : 300;
-              track.scrollBy({ left: dir * amount, behavior: 'smooth' });
-            }
-            var prevBtn = wrap.querySelector('[data-testi-prev]');
-            var nextBtn = wrap.querySelector('[data-testi-next]');
-            if (prevBtn) prevBtn.addEventListener('click', function () { step(-1); });
-            if (nextBtn) nextBtn.addEventListener('click', function () { step(1); });
-          })();
-        </script>
+        <%- pzTestiSwiperHtml('pz-block-' + b.id + '-swiper', b.fields.quotes) %>
       <% } else { %>
         <div class="testimonial-grid">
           <%- b.fields.quotes.map(pzTestiCardHtml).join('') %>

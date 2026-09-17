@@ -651,35 +651,21 @@ main.container {
 .testimonial-card cite { color: var(--color-muted); font-style: normal; font-size: 0.88rem; }
 .testimonial-stars { color: #f2a900; font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 8px; }
 
-/* Testimonials' "Slider" layout (fields.layout — see lib/sections.js) — a
-   horizontally scroll-snapping track of the same .testimonial-card markup
-   the "Cards" grid above uses, with two arrow buttons that just nudge the
-   scroll position by one card's width (see section.ejs's inline script);
-   native touch/trackpad swipe on the track itself works with no JS at all. */
-.testimonial-slider { display: flex; align-items: center; gap: 12px; }
-.testimonial-track {
-  display: flex;
-  gap: 20px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  padding: 4px 2px;
-  flex: 1;
-}
-.testimonial-track .testimonial-card { flex: 0 0 280px; scroll-snap-align: start; }
-.testi-slider-arrow {
-  flex-shrink: 0;
+/* Testimonials' "Slider" layout (fields.layout — see lib/sections.js) —
+   the Swiper library (loaded on demand from a CDN, see section.ejs's
+   pzTestiSwiperHtml) renders the actual carousel; this just themes it and
+   sizes each slide's card to match the "Cards" grid above. */
+.pz-testi-swiper { padding: 4px 2px 40px; --swiper-theme-color: var(--color-ink); --swiper-navigation-size: 20px; }
+.pz-testi-swiper .swiper-slide { height: auto; display: flex; }
+.pz-testi-swiper .swiper-slide .testimonial-card { width: 100%; }
+.pz-testi-swiper .swiper-button-prev, .pz-testi-swiper .swiper-button-next {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid var(--color-border);
   background: var(--color-surface);
-  color: var(--color-ink);
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
+  border: 1px solid var(--color-border);
 }
-.testi-slider-arrow:hover { background: var(--color-border); }
+.pz-testi-swiper .swiper-button-prev:after, .pz-testi-swiper .swiper-button-next:after { font-size: 14px; font-weight: 700; }
 
 .newsletter {
   background: var(--color-surface);

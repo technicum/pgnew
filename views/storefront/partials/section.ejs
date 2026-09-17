@@ -152,6 +152,59 @@
       '<p>&ldquo;' + pzEsc(q.quote) + '&rdquo;</p>' +
       '<cite>&mdash; ' + pzEsc(q.author) + '</cite></blockquote>';
   }
+  // Testimonials' "Slider" layout (fields.layout — see lib/sections.js),
+  // powered by the real Swiper library rather than a homemade scroll-snap
+  // track — this app has no frontend build step/bundler, so a CDN <link>/
+  // <script> is the simplest way to bring in a third-party widget. Lazy and
+  // shared: the library/CSS are only fetched the first time a slider
+  // testimonials section actually renders on a page, queued and reused by
+  // any further slider instances on that same page rather than being
+  // fetched or initialized again. Shared by section.ejs (top-level) and
+  // block.ejs (nested in a Row's column) — see this file's own closure,
+  // which block.ejs's include() already relies on for pzElStyle etc.
+  function pzTestiSwiperHtml(uid, quotes) {
+    var slides = (quotes || []).map(function (q) { return '<div class="swiper-slide">' + pzTestiCardHtml(q) + '</div>'; }).join('');
+    var idJs = JSON.stringify(uid).split('/').join(String.fromCharCode(92) + '/');
+    return '<div class="pz-testi-swiper swiper" id="' + pzEsc(uid) + '">' +
+        '<div class="swiper-wrapper">' + slides + '</div>' +
+        '<div class="swiper-pagination"></div>' +
+        '<div class="swiper-button-prev"></div>' +
+        '<div class="swiper-button-next"></div>' +
+      '</div>' +
+      '<script>' +
+        '(function () {' +
+          'function pzInitTestiSwiper() {' +
+            'var el = document.getElementById(' + idJs + ');' +
+            'if (!el || el.dataset.pzSwiperInit || typeof Swiper === "undefined") return;' +
+            'el.dataset.pzSwiperInit = "1";' +
+            'new Swiper(el, {' +
+              'loop: el.querySelectorAll(".swiper-slide").length > 1,' +
+              'spaceBetween: 20,' +
+              'slidesPerView: 1,' +
+              'pagination: { el: el.querySelector(".swiper-pagination"), clickable: true },' +
+              'navigation: { nextEl: el.querySelector(".swiper-button-next"), prevEl: el.querySelector(".swiper-button-prev") },' +
+              'breakpoints: { 640: { slidesPerView: 2 }, 1024: { slidesPerView: 3 } }' +
+            '});' +
+          '}' +
+          'if (window.Swiper) { pzInitTestiSwiper(); return; }' +
+          'window.__pzSwiperQueue = window.__pzSwiperQueue || [];' +
+          'window.__pzSwiperQueue.push(pzInitTestiSwiper);' +
+          'if (window.__pzSwiperLoading) return;' +
+          'window.__pzSwiperLoading = true;' +
+          'var link = document.createElement("link");' +
+          'link.rel = "stylesheet";' +
+          'link.href = "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css";' +
+          'document.head.appendChild(link);' +
+          'var scriptEl = document.createElement("script");' +
+          'scriptEl.src = "https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js";' +
+          'scriptEl.onload = function () {' +
+            '(window.__pzSwiperQueue || []).forEach(function (fn) { fn(); });' +
+            'window.__pzSwiperQueue = [];' +
+          '};' +
+          'document.head.appendChild(scriptEl);' +
+        '})();' +
+      '</script>';
+  }
 %>
 <% if (section.type === 'hero') { %>
   <% var pzHeroLight = section.fields.bg_type !== 'none' && section.fields.text_theme === 'light'; %>
@@ -227,32 +280,7 @@
     <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <% if (section.fields.layout === 'slider') { %>
-      <div class="testimonial-slider">
-        <button type="button" class="testi-slider-arrow testi-slider-prev" data-testi-prev aria-label="Previous testimonial">&#10094;</button>
-        <div class="testimonial-track" id="<%= pzId %>-track">
-          <%- section.fields.quotes.map(pzTestiCardHtml).join('') %>
-        </div>
-        <button type="button" class="testi-slider-arrow testi-slider-next" data-testi-next aria-label="Next testimonial">&#10095;</button>
-      </div>
-      <script>
-        (function () {
-          var track = document.getElementById(<%- JSON.stringify(pzId + '-track').split('/').join(String.fromCharCode(92) + '/') %>);
-          if (!track) return;
-          var wrap = track.closest('.testimonial-slider');
-          if (!wrap || wrap.dataset.pzWired) return;
-          wrap.dataset.pzWired = '1';
-          function step(dir) {
-            var card = track.querySelector('.testimonial-card');
-            var cs = card ? getComputedStyle(card) : null;
-            var amount = card ? card.getBoundingClientRect().width + (cs ? parseFloat(cs.marginRight || 0) : 0) + 20 : 300;
-            track.scrollBy({ left: dir * amount, behavior: 'smooth' });
-          }
-          var prevBtn = wrap.querySelector('[data-testi-prev]');
-          var nextBtn = wrap.querySelector('[data-testi-next]');
-          if (prevBtn) prevBtn.addEventListener('click', function () { step(-1); });
-          if (nextBtn) nextBtn.addEventListener('click', function () { step(1); });
-        })();
-      </script>
+      <%- pzTestiSwiperHtml(pzId + '-swiper', section.fields.quotes) %>
     <% } else { %>
       <div class="testimonial-grid">
         <%- section.fields.quotes.map(pzTestiCardHtml).join('') %>
