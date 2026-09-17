@@ -16,6 +16,7 @@ const adminRoutes = require('./routes/admin');
 const { attachCartInfo } = require('./middleware/cart');
 
 const app = express();
+// Falls back to 3000 when PORT isn't set in the environment (e.g. local dev).
 const PORT = process.env.PORT || 3000;
 const BASE_DOMAIN = getBaseDomain();
 
