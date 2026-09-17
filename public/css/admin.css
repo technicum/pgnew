@@ -445,7 +445,13 @@
 .crm-task-priority-low { background: #f3f4f6; color: #4b5563; }
 .crm-task-priority-medium { background: #eef2ff; color: #4338ca; }
 .crm-task-priority-high { background: #fee2e2; color: #b91c1c; }
+/* .admin-form textarea's own "display: block" above outranks the browser's
+   built-in [hidden] rule (higher specificity), so #taskDescriptionInput
+   stayed visible even once JS set its hidden attribute after Quill mounted
+   -- this rule needs to win instead. */
+.admin-form textarea[hidden] { display: none; }
 .crm-task-editor { min-height: 160px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+.crm-task-editor[hidden] { display: none; }
 .crm-task-editor .ql-toolbar { border: none; border-bottom: 1px solid #e5e7eb; border-radius: 8px 8px 0 0; }
 .crm-task-editor .ql-container { border: none; border-radius: 0 0 8px 8px; font-family: inherit; font-size: 0.92rem; min-height: 120px; }
 
