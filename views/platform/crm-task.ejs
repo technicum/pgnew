@@ -20,11 +20,12 @@
 
           <label>Description
             <!-- Progressive enhancement: this textarea is the real,
-                 always-visible field (works with no JS, or if the Quill
-                 library fails to load from its CDN). The script at the
-                 bottom of this file only swaps in the WYSIWYG editor once
-                 Quill has actually loaded and mounted successfully, and
-                 keeps this field in sync as the field submitted. -->
+                 always-visible field (works with no JS, or if the locally
+                 vendored Quill library -- public/vendor/quill/ -- somehow
+                 fails to load). The script at the bottom of this file only
+                 swaps in the WYSIWYG editor once Quill has actually loaded
+                 and mounted successfully, and keeps this field in sync as
+                 the field submitted. -->
             <textarea id="taskDescriptionInput" name="description" rows="6" placeholder="Describe what needs to be done..."><%= task.description || '' %></textarea>
             <div id="taskDescriptionEditor" class="crm-task-editor" hidden></div>
           </label>
@@ -125,6 +126,18 @@
       // via a <script src> tag in this markup, which would otherwise be
       // re-fetched/re-run on every panel refresh.
       (function () {
+        // Scoped to THIS script instance's own container -- not
+        // document.getElementById, which only ever returns the first match
+        // in the document. If the slide-over panel is opened while a full
+        // task-detail page is already showing underneath (e.g. clicking a
+        // subtask from within a task's own page), there are briefly TWO
+        // #taskDescriptionEditor/#taskDescriptionInput pairs in the DOM at
+        // once -- one in the underlying page, one freshly injected into the
+        // panel -- and grabbing the wrong one left the panel's own editor
+        // permanently stuck uninitialized.
+        var thisScript = document.currentScript;
+        var scope = (thisScript && (thisScript.closest('.task-panel-body') || thisScript.closest('.admin-content'))) || document;
+
         function loadQuill() {
           if (window.Quill) return Promise.resolve();
           if (window.__quillLoading) return window.__quillLoading;
@@ -145,20 +158,28 @@
           return window.__quillLoading;
         }
 
-        var container = document.getElementById('taskDescriptionEditor');
+        var container = scope.querySelector('#taskDescriptionEditor');
         if (!container) return;
 
         loadQuill()
           .then(function () {
             // The panel may have re-rendered this content again before the
             // library finished loading on a slow connection -- re-look the
-            // nodes up instead of trusting the closed-over references, and
-            // skip if this instance has already been initialized (or
-            // replaced) since.
-            var el = document.getElementById('taskDescriptionEditor');
-            var hidden = document.getElementById('taskDescriptionInput');
+            // nodes up (still scoped) instead of trusting the closed-over
+            // references, and skip if this instance has already been
+            // initialized (or replaced) since.
+            var el = scope.querySelector('#taskDescriptionEditor');
+            var hidden = scope.querySelector('#taskDescriptionInput');
             if (!el || !hidden || el.dataset.quillReady) return;
             el.dataset.quillReady = '1';
+
+            // Reveal the container BEFORE constructing Quill on it -- Quill
+            // measures/lays out its toolbar and editable region at
+            // construction time, and doing that while the container is
+            // still `hidden` (display:none) leaves it broken even after
+            // unhiding it afterwards.
+            hidden.hidden = true;
+            el.hidden = false;
 
             var quill = new Quill(el, {
               theme: 'snow',
@@ -177,9 +198,6 @@
             // internal Delta model out of sync with what's on screen.
             quill.clipboard.dangerouslyPasteHTML(hidden.value || '');
 
-            hidden.hidden = true;
-            el.hidden = false;
-
             var form = el.closest('form');
             if (form) {
               form.addEventListener('submit', function () {
@@ -187,9 +205,12 @@
               });
             }
           })
-          .catch(function () {
-            // Quill never loaded -- leave the plain textarea as the
-            // (already visible, already working) description field.
+          .catch(function (err) {
+            // Quill never loaded/initialized -- leave the plain textarea as
+            // the (already visible, already working) description field,
+            // but log why so this is diagnosable from the console instead
+            // of silently degrading with no trace.
+            console.error('Task description editor: falling back to plain textarea.', err);
           });
       })();
     </script>
