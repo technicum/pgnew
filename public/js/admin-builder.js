@@ -1562,7 +1562,7 @@
         return field("Products to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
           field("", '<div class="b-inspector-hint">Shows your ' + DATA.products.length + ' most recent products. Click the heading to edit it.</div>');
       case "testimonials":
-        return field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it.</div>');
+        return field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it. Use "Add testimonial" below the cards to add another (up to 3), or hover a card and click the trash icon to remove it.</div>');
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
       case "richtext":
