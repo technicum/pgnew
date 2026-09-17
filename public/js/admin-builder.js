@@ -569,12 +569,23 @@
           '<span>' + (DATA.products.length ? "showing " + Math.min(count, DATA.products.length) + " of " + DATA.products.length : "") + '</span></div>' +
           '<div class="b-prod-grid">' + cards + '</div></div>';
 
-      case "testimonials":
-        var q = (d.quotes && d.quotes[0]) || { quote: "", author: "" };
+      case "testimonials": {
+        var quotes = d.quotes || [];
+        var testiCards = quotes.map(function (q, idx) {
+          return '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
+            '<div class="b-testi-quote" data-field="quotes.' + idx + '.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
+            '<div class="b-testi-name" data-field="quotes.' + idx + '.author" contenteditable="true">' + esc(q.author) + '</div>' +
+            '<button type="button" class="b-testi-remove" data-testi-remove data-index="' + idx + '" title="Remove testimonial" aria-label="Remove testimonial">' + icon("trash") + '</button></div>';
+        }).join("");
+        // Up to 3 testimonials (lib/sections.js's sanitizeFields caps `quotes`
+        // the same way) — same "add disappears past the cap" convention as
+        // FAQ's questions/social_icons' icons.
+        var testiAddBtn = quotes.length < 3
+          ? '<button type="button" class="b-btn-outline b-testi-add" data-testi-add>' + icon("plus") + ' Add testimonial</button>'
+          : '<div class="b-field-hint" style="text-align:center;">Up to 3 testimonials.</div>';
         return '<div class="b-sec-pad b-sec-testimonials"><div class="b-sec-heading-row" style="justify-content:center;"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
-          '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
-          '<div class="b-testi-quote" data-field="quotes.0.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
-          '<div class="b-testi-name" data-field="quotes.0.author" contenteditable="true">' + esc(q.author) + '</div></div></div>';
+          '<div class="b-testi-grid">' + testiCards + '</div>' + testiAddBtn + '</div>';
+      }
 
       case "newsletter":
         return '<div class="b-sec-pad b-newsletter">' +
@@ -2572,6 +2583,32 @@
           sec.fields.items = faqItems;
           renderAll();
           saveField(id, { items: faqItems });
+        }
+        return;
+      }
+
+      // Testimonials' "Add testimonial"/per-card remove — same pattern as
+      // FAQ's questions just above.
+      var testiAddBtn = e.target.closest("[data-testi-add]");
+      var testiRemoveBtn = e.target.closest("[data-testi-remove]");
+      if (testiAddBtn || testiRemoveBtn) {
+        var testiBlockHost = e.target.closest("[data-block-id]");
+        var testiFound = testiBlockHost ? findBlockInSection(sec, testiBlockHost.dataset.blockId) : null;
+        var testiOwnerFields = testiFound ? testiFound.block.fields : sec.fields;
+        var testiQuotes = (testiOwnerFields.quotes || []).slice();
+        if (testiAddBtn) {
+          if (testiQuotes.length < 3) testiQuotes.push({ quote: "Fast shipping and exactly as described.", author: "A happy customer" });
+        } else {
+          testiQuotes.splice(parseInt(testiRemoveBtn.dataset.index, 10), 1);
+        }
+        if (testiFound) {
+          testiFound.block.fields.quotes = testiQuotes;
+          renderAll();
+          saveField(id, { columns: sec.fields.columns });
+        } else {
+          sec.fields.quotes = testiQuotes;
+          renderAll();
+          saveField(id, { quotes: testiQuotes });
         }
         return;
       }
