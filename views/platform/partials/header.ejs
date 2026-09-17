@@ -17,7 +17,7 @@
         // naturally false on the "activate CRM" screen (nothing to
         // sub-navigate there yet) even though that screen shares the top-
         // level "CRM" nav item below.
-        var crmScreens = ['Leads', 'CRM Customers', 'New Contact', 'Contact', 'Tasks', 'My Tasks', 'CRM Team'];
+        var crmScreens = ['Leads', 'CRM Customers', 'New Contact', 'Contact', 'Tasks', 'Task', 'My Tasks', 'CRM Team'];
         var crmOpen = typeof crm !== 'undefined' && crm && crmScreens.indexOf(title) !== -1;
       %>
       <nav class="admin-nav">
@@ -26,7 +26,7 @@
         <% if (crmOpen) { %>
           <a href="/dashboard/crm/leads" class="admin-nav-sub <%= (title === 'Leads' || title === 'New Contact' || title === 'Contact') ? 'active' : '' %>">Leads</a>
           <a href="/dashboard/crm/customers" class="admin-nav-sub <%= title === 'CRM Customers' ? 'active' : '' %>">Customers</a>
-          <a href="/dashboard/crm/tasks" class="admin-nav-sub <%= title === 'Tasks' ? 'active' : '' %>">Tasks</a>
+          <a href="/dashboard/crm/tasks" class="admin-nav-sub <%= (title === 'Tasks' || title === 'Task') ? 'active' : '' %>">Tasks</a>
           <a href="/dashboard/crm/my-tasks" class="admin-nav-sub <%= title === 'My Tasks' ? 'active' : '' %>">My Tasks</a>
           <% if (crm.role === 'owner') { %>
             <a href="/dashboard/crm/team" class="admin-nav-sub <%= title === 'CRM Team' ? 'active' : '' %>">Team</a>

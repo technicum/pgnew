@@ -135,6 +135,10 @@ const TABLES = {
   crmMembers: `${PREFIX}crm_members`,
   // A follow-up/to-do attached to a CRM contact.
   crmTasks: `${PREFIX}crm_tasks`,
+  // Media/reference links attached to one crmTasks row -- a task can carry
+  // several (a design file, a doc, a recording), hence its own table rather
+  // than a single column on crmTasks.
+  crmTaskLinks: `${PREFIX}crm_task_links`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -710,16 +714,40 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   owner_user_id INT NOT NULL,
   contact_id INT NULL,
+  -- Self-reference for subtasks (the task detail page's checklist). A
+  -- subtask is an ordinary row here, just scoped under its parent instead
+  -- of a contact -- it gets its own title/description/priority/assignee,
+  -- but is left out of the top-level board/contact listings (see
+  -- listAllTasks/listTasksForContact's "parent_task_id IS NULL" filter) so
+  -- it only shows up nested in its parent's detail view.
+  parent_task_id INT NULL,
   title VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  priority VARCHAR(10) NOT NULL DEFAULT 'medium',
   due_date DATE NULL,
   assigned_to INT NULL,
   done TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
   FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
   FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_task_owner_done (owner_user_id, done),
-  INDEX idx_task_contact (contact_id)
+  INDEX idx_task_contact (contact_id),
+  INDEX idx_task_parent (parent_task_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Media/reference links on one ${TABLES.crmTasks} row -- opened in the task
+-- detail view (routes/platform.js's GET /dashboard/crm/tasks/:id). Just a
+-- URL, not an upload -- see lib/crm.js's addTaskLink for why.
+CREATE TABLE IF NOT EXISTS ${TABLES.crmTaskLinks} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT NOT NULL,
+  url VARCHAR(1000) NOT NULL,
+  label VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
+  INDEX idx_task_link_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -1516,6 +1544,27 @@ async function migrateTasksOptionalContact(conn) {
   }
 }
 
+// Adds the task detail screen's fields (description, priority) and subtask
+// support (parent_task_id, self-referencing) to installs that created
+// ${TABLES.crmTasks} before these existed. Same idempotency pattern as
+// every migrate* function in this file.
+async function migrateTasksDetail(conn) {
+  if (!(await tableExists(conn, TABLES.crmTasks))) return;
+  if (!(await columnExists(conn, TABLES.crmTasks, 'description'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN description TEXT NULL AFTER title`);
+  }
+  if (!(await columnExists(conn, TABLES.crmTasks, 'priority'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN priority VARCHAR(10) NOT NULL DEFAULT 'medium' AFTER description`);
+  }
+  if (!(await columnExists(conn, TABLES.crmTasks, 'parent_task_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN parent_task_id INT NULL AFTER contact_id`);
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD INDEX idx_task_parent (parent_task_id)`);
+    await conn.query(
+      `ALTER TABLE ${TABLES.crmTasks} ADD FOREIGN KEY (parent_task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE`
+    );
+  }
+}
+
 async function migrateAppsScopeColumn(conn) {
   if (!(await tableExists(conn, TABLES.apps))) return;
   if (!(await columnExists(conn, TABLES.apps, 'scope'))) {
@@ -1822,6 +1871,7 @@ async function init() {
     await migrateContactsTagsColumn(conn);
     await migrateContactsOptionalStore(conn);
     await migrateTasksOptionalContact(conn);
+    await migrateTasksDetail(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);

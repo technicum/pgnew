@@ -433,13 +433,18 @@
 .crm-task { display: flex; align-items: center; gap: 10px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; background: #fff; }
 .crm-task-check { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #16a34a; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
 .crm-task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.crm-task-title { font-weight: 600; font-size: 0.92rem; }
+.crm-task-title { font-weight: 600; font-size: 0.92rem; color: #111827; text-decoration: none; }
+.crm-task-title:hover { text-decoration: underline; }
 .crm-task-meta { font-size: 0.78rem; color: #6b7280; }
 .crm-task-meta a { color: inherit; }
 .crm-task-done { opacity: 0.55; }
 .crm-task-done .crm-task-title { text-decoration: line-through; }
 .crm-task-reassign { flex-shrink: 0; }
 .crm-task-reassign select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; font-family: inherit; background: #fff; }
+.crm-task-priority { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; margin: 0 0 16px; }
+.crm-task-priority-low { background: #f3f4f6; color: #4b5563; }
+.crm-task-priority-medium { background: #eef2ff; color: #4338ca; }
+.crm-task-priority-high { background: #fee2e2; color: #b91c1c; }
 
 /* Profile page */
 .profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }

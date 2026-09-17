@@ -1,0 +1,129 @@
+<% var pageTitle = task.title; %>
+<%- include('partials/header') %>
+
+    <div class="dashboard-main crm-main">
+      <p class="crm-contact-site">
+        <% if (task.parent_task_id) { %>
+          Subtask of <a href="/dashboard/crm/tasks/<%= task.parent_task_id %>"><%= task.parent_title %></a>
+        <% } else if (task.contact_id) { %>
+          Follow-up on <a href="/dashboard/crm/contacts/<%= task.contact_id %>"><%= task.contact_name %></a> · <%= task.store_name || 'General inquiry' %>
+        <% } else { %>
+          Standalone task
+        <% } %>
+      </p>
+
+      <div class="crm-contact-layout">
+        <form action="/dashboard/crm/tasks/<%= task.id %>/edit" method="POST" class="admin-form">
+          <label>Title *
+            <input type="text" name="title" required value="<%= task.title %>" />
+          </label>
+
+          <label>Description
+            <textarea name="description" rows="6" placeholder="Describe what needs to be done..."><%= task.description || '' %></textarea>
+          </label>
+
+          <div class="form-row">
+            <label>Priority
+              <select name="priority">
+                <% priorities.forEach(function(p) { %>
+                  <option value="<%= p %>" <%= task.priority === p ? 'selected' : '' %>><%= p.charAt(0).toUpperCase() + p.slice(1) %></option>
+                <% }); %>
+              </select>
+            </label>
+            <label>Due date
+              <input type="date" name="due_date" value="<%= task.due_date ? new Date(task.due_date).toISOString().slice(0,10) : '' %>" />
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Save changes</button>
+        </form>
+
+        <div class="panel">
+          <h2>Status &amp; assignee</h2>
+          <p class="crm-task-priority crm-task-priority-<%= task.priority %>"><%= task.priority.charAt(0).toUpperCase() + task.priority.slice(1) %> priority</p>
+
+          <form action="/dashboard/crm/tasks/<%= task.id %>/toggle" method="POST">
+            <input type="hidden" name="done" value="<%= task.done ? '0' : '1' %>" />
+            <button type="submit" class="btn <%= task.done ? '' : 'btn-primary' %>"><%= task.done ? 'Mark not done' : 'Mark done' %></button>
+          </form>
+
+          <form action="/dashboard/crm/tasks/<%= task.id %>/reassign" method="POST" class="crm-task-form" style="margin-top:12px;">
+            <label style="width:100%;">Assigned to
+              <select name="assigned_to" onchange="this.form.submit()">
+                <option value="">Unassigned</option>
+                <% assignableUsers.forEach(function(u) { %>
+                  <option value="<%= u.id %>" <%= task.assigned_to === u.id ? 'selected' : '' %>><%= u.name %><%= u.id === account.id ? ' (you)' : '' %></option>
+                <% }); %>
+              </select>
+            </label>
+          </form>
+
+          <h2 style="margin-top:24px;">Media &amp; links</h2>
+          <form action="/dashboard/crm/tasks/<%= task.id %>/links" method="POST" class="crm-task-form">
+            <input type="text" name="label" placeholder="Label (optional)" />
+            <input type="url" name="url" placeholder="https://..." required />
+            <button type="submit" class="btn btn-primary">Add link</button>
+          </form>
+          <ul class="crm-task-list">
+            <% links.forEach(function(l) { %>
+              <li class="crm-task">
+                <div class="crm-task-body">
+                  <a class="crm-task-title" href="<%= l.url %>" target="_blank" rel="noopener noreferrer"><%= l.label || l.url %></a>
+                  <% if (l.label) { %><span class="crm-task-meta"><%= l.url %></span><% } %>
+                </div>
+                <form action="/dashboard/crm/tasks/<%= task.id %>/links/<%= l.id %>/delete" method="POST" onsubmit="return confirm('Remove this link?');">
+                  <button type="submit" class="link-btn danger">Remove</button>
+                </form>
+              </li>
+            <% }); %>
+            <% if (links.length === 0) { %>
+              <li class="empty-state">No links yet.</li>
+            <% } %>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel crm-tasks-panel" style="margin-top:24px;">
+        <h2>Subtasks</h2>
+        <form action="/dashboard/crm/tasks/<%= task.id %>/subtasks" method="POST" class="crm-task-form">
+          <input type="text" name="title" placeholder="e.g. Draft the outline" required />
+          <input type="date" name="due_date" />
+          <select name="assigned_to">
+            <option value="">Unassigned</option>
+            <% assignableUsers.forEach(function(u) { %>
+              <option value="<%= u.id %>"><%= u.name %><%= u.id === account.id ? ' (you)' : '' %></option>
+            <% }); %>
+          </select>
+          <button type="submit" class="btn btn-primary">Add subtask</button>
+        </form>
+
+        <ul class="crm-task-list">
+          <% subtasks.forEach(function(t) { %>
+            <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>">
+              <form action="/dashboard/crm/tasks/<%= t.id %>/toggle" method="POST">
+                <input type="hidden" name="done" value="<%= t.done ? '0' : '1' %>" />
+                <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
+              </form>
+              <div class="crm-task-body">
+                <a class="crm-task-title" href="/dashboard/crm/tasks/<%= t.id %>"><%= t.title %></a>
+                <span class="crm-task-meta">
+                  <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
+                </span>
+              </div>
+              <form action="/dashboard/crm/tasks/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Delete this subtask?');">
+                <button type="submit" class="link-btn danger">Delete</button>
+              </form>
+            </li>
+          <% }); %>
+          <% if (subtasks.length === 0) { %>
+            <li class="empty-state">No subtasks yet — add one above.</li>
+          <% } %>
+        </ul>
+      </div>
+
+      <form action="/dashboard/crm/tasks/<%= task.id %>/delete" method="POST" onsubmit="return confirm('Delete this task? This also deletes its subtasks.');" style="margin-top:16px;">
+        <button type="submit" class="link-btn danger">Delete task</button>
+      </form>
+    </div>
+
+<%- include('partials/footer') %>
