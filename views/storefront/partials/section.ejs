@@ -207,7 +207,7 @@
 
 <% } else if (section.type === 'gallery' && section.fields.images && section.fields.images.length) { %>
   <section id="<%= pzId %>" class="gallery<%= pzExtra %>" style="<%= pzHeightStyle %>">
-    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+    <% if (section.fields.heading) { %><h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2><% } %>
     <div class="gallery-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
       <% section.fields.images.forEach(function(url) { %>
         <div class="gallery-tile" style="background-image:url('<%= url %>')"></div>
