@@ -1,127 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= contact.name %> · PageZaper</title>
-  <link rel="stylesheet" href="/css/style.css" />
-  <link rel="stylesheet" href="/css/admin.css" />
-</head>
-<body class="dashboard-body">
-  <header class="dashboard-header">
-    <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
-    <div class="dashboard-header-right">
-      <span class="dashboard-account-name"><%= account.name %></span>
-      <a href="/dashboard" class="link-btn">Your sites</a>
-      <form action="/dashboard/logout" method="POST" style="display:inline;">
-        <button type="submit" class="link-btn">Log out</button>
-      </form>
-    </div>
-  </header>
+<% var pageTitle = contact.name; %>
+<%- include('partials/header') %>
 
-  <main class="dashboard-main crm-main">
-    <div class="crm-tabs">
-      <a href="/dashboard/crm/leads" class="crm-tab">Leads</a>
-      <a href="/dashboard/crm/customers" class="crm-tab">Customers</a>
-      <a href="/dashboard/crm/my-tasks" class="crm-tab">My Tasks</a>
-      <% if (crm.role === 'owner') { %>
-        <a href="/dashboard/crm/team" class="crm-tab">Team</a>
-      <% } %>
-    </div>
+    <div class="dashboard-main crm-main">
+      <div class="crm-contact-layout">
+        <form action="/dashboard/crm/contacts/<%= contact.id %>/edit" method="POST" class="admin-form">
+          <p class="crm-contact-site">
+            Site: <strong><%= contact.store_name || 'General inquiry' %></strong> · <%= contact.customer_id ? 'Customer' : 'Lead' %>
+            <% if (!contact.customer_id && contact.store_id) { %>
+              <form action="/dashboard/crm/contacts/<%= contact.id %>/convert" method="POST" style="display:inline;" onsubmit="return confirm('Move this lead to Customers? This creates a real customer account for them if one does not already exist.');">
+                <button type="submit" class="link-btn">Move to Customer</button>
+              </form>
+            <% } else if (!contact.customer_id) { %>
+              <span style="color:#9ca3af; font-size:0.82rem;">Assign a site to convert to a customer.</span>
+            <% } %>
+          </p>
 
-    <% if (typeof success !== 'undefined' && success && success.length) { %>
-      <div class="flash flash-success"><%= success[0] %></div>
-    <% } %>
-    <% if (typeof error !== 'undefined' && error && error.length) { %>
-      <div class="flash flash-error"><%= error[0] %></div>
-    <% } %>
-
-    <div class="crm-contact-layout">
-      <form action="/dashboard/crm/contacts/<%= contact.id %>/edit" method="POST" class="admin-form">
-        <p class="crm-contact-site">
-          Site: <strong><%= contact.store_name || 'General inquiry' %></strong> · <%= contact.customer_id ? 'Customer' : 'Lead' %>
-          <% if (!contact.customer_id && contact.store_id) { %>
-            <form action="/dashboard/crm/contacts/<%= contact.id %>/convert" method="POST" style="display:inline;" onsubmit="return confirm('Move this lead to Customers? This creates a real customer account for them if one does not already exist.');">
-              <button type="submit" class="link-btn">Move to Customer</button>
-            </form>
-          <% } else if (!contact.customer_id) { %>
-            <span style="color:#9ca3af; font-size:0.82rem;">Assign a site to convert to a customer.</span>
-          <% } %>
-        </p>
-
-        <label>Name *
-          <input type="text" name="name" required value="<%= contact.name %>" />
-        </label>
-
-        <div class="form-row">
-          <label>Email *
-            <input type="email" name="email" required value="<%= contact.email %>" />
+          <label>Name *
+            <input type="text" name="name" required value="<%= contact.name %>" />
           </label>
-          <label>Phone
-            <input type="text" name="phone" value="<%= contact.phone || '' %>" />
+
+          <div class="form-row">
+            <label>Email *
+              <input type="email" name="email" required value="<%= contact.email %>" />
+            </label>
+            <label>Phone
+              <input type="text" name="phone" value="<%= contact.phone || '' %>" />
+            </label>
+          </div>
+
+          <label>Source
+            <select name="source">
+              <option value="manual" <%= contact.source === 'manual' ? 'selected' : '' %>>Added manually</option>
+              <option value="contact_form" <%= contact.source === 'contact_form' ? 'selected' : '' %>>Contact form</option>
+              <option value="signup" <%= contact.source === 'signup' ? 'selected' : '' %>>Account signup</option>
+              <option value="order" <%= contact.source === 'order' ? 'selected' : '' %>>Order / checkout</option>
+              <option value="newsletter" <%= contact.source === 'newsletter' ? 'selected' : '' %>>Newsletter</option>
+            </select>
           </label>
-        </div>
 
-        <label>Source
-          <select name="source">
-            <option value="manual" <%= contact.source === 'manual' ? 'selected' : '' %>>Added manually</option>
-            <option value="contact_form" <%= contact.source === 'contact_form' ? 'selected' : '' %>>Contact form</option>
-            <option value="signup" <%= contact.source === 'signup' ? 'selected' : '' %>>Account signup</option>
-            <option value="order" <%= contact.source === 'order' ? 'selected' : '' %>>Order / checkout</option>
-            <option value="newsletter" <%= contact.source === 'newsletter' ? 'selected' : '' %>>Newsletter</option>
-          </select>
-        </label>
+          <label>Tags <span style="font-weight:400; color:#6b7280;">(comma-separated)</span>
+            <input type="text" name="tags" value="<%= (contact.tags || []).join(', ') %>" placeholder="hot, wholesale" />
+          </label>
 
-        <label>Tags <span style="font-weight:400; color:#6b7280;">(comma-separated)</span>
-          <input type="text" name="tags" value="<%= (contact.tags || []).join(', ') %>" placeholder="hot, wholesale" />
-        </label>
-
-        <button type="submit" class="btn btn-primary">Save changes</button>
-      </form>
-
-      <div class="panel crm-tasks-panel">
-        <h2>Tasks &amp; follow-ups</h2>
-
-        <form action="/dashboard/crm/contacts/<%= contact.id %>/tasks" method="POST" class="crm-task-form">
-          <input type="text" name="title" placeholder="e.g. Call to follow up" required />
-          <input type="date" name="due_date" />
-          <select name="assigned_to">
-            <option value="">Unassigned</option>
-            <% assignableUsers.forEach(function(u) { %>
-              <option value="<%= u.id %>"><%= u.name %><%= u.role === 'owner' ? ' (you)' : '' %></option>
-            <% }); %>
-          </select>
-          <button type="submit" class="btn btn-primary">Add task</button>
+          <button type="submit" class="btn btn-primary">Save changes</button>
         </form>
 
-        <ul class="crm-task-list">
-          <% tasks.forEach(function(t) { %>
-            <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>">
-              <form action="/dashboard/crm/tasks/<%= t.id %>/toggle" method="POST">
-                <input type="hidden" name="done" value="<%= t.done ? '0' : '1' %>" />
-                <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
-              </form>
-              <div class="crm-task-body">
-                <span class="crm-task-title"><%= t.title %></span>
-                <span class="crm-task-meta">
-                  <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
-                </span>
-              </div>
-              <form action="/dashboard/crm/tasks/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Delete this task?');">
-                <button type="submit" class="link-btn danger">Delete</button>
-              </form>
-            </li>
-          <% }); %>
-          <% if (tasks.length === 0) { %>
-            <li class="empty-state">No tasks yet — add a follow-up above.</li>
-          <% } %>
-        </ul>
+        <div class="panel crm-tasks-panel">
+          <h2>Tasks &amp; follow-ups</h2>
+
+          <form action="/dashboard/crm/contacts/<%= contact.id %>/tasks" method="POST" class="crm-task-form">
+            <input type="text" name="title" placeholder="e.g. Call to follow up" required />
+            <input type="date" name="due_date" />
+            <select name="assigned_to">
+              <option value="">Unassigned</option>
+              <% assignableUsers.forEach(function(u) { %>
+                <option value="<%= u.id %>"><%= u.name %><%= u.role === 'owner' ? ' (you)' : '' %></option>
+              <% }); %>
+            </select>
+            <button type="submit" class="btn btn-primary">Add task</button>
+          </form>
+
+          <ul class="crm-task-list">
+            <% tasks.forEach(function(t) { %>
+              <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>">
+                <form action="/dashboard/crm/tasks/<%= t.id %>/toggle" method="POST">
+                  <input type="hidden" name="done" value="<%= t.done ? '0' : '1' %>" />
+                  <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
+                </form>
+                <div class="crm-task-body">
+                  <a class="crm-task-title" href="/dashboard/crm/tasks/<%= t.id %>"><%= t.title %></a>
+                  <span class="crm-task-meta">
+                    <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %><%= t.priority && t.priority !== 'medium' ? ' · ' + t.priority + ' priority' : '' %>
+                  </span>
+                </div>
+                <form action="/dashboard/crm/tasks/<%= t.id %>/reassign" method="POST" class="crm-task-reassign">
+                  <select name="assigned_to" onchange="this.form.submit()">
+                    <option value="">Unassigned</option>
+                    <% assignableUsers.forEach(function(u) { %>
+                      <option value="<%= u.id %>" <%= t.assigned_to === u.id ? 'selected' : '' %>><%= u.name %><%= u.role === 'owner' ? ' (you)' : '' %></option>
+                    <% }); %>
+                  </select>
+                </form>
+                <form action="/dashboard/crm/tasks/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Delete this task?');">
+                  <button type="submit" class="link-btn danger">Delete</button>
+                </form>
+              </li>
+            <% }); %>
+            <% if (tasks.length === 0) { %>
+              <li class="empty-state">No tasks yet — add a follow-up above.</li>
+            <% } %>
+          </ul>
+        </div>
       </div>
+
+      <form action="/dashboard/crm/contacts/<%= contact.id %>/delete" method="POST" onsubmit="return confirm('Delete this contact? This also deletes its tasks.');" style="margin-top:16px;">
+        <button type="submit" class="link-btn danger">Delete contact</button>
+      </form>
     </div>
 
-    <form action="/dashboard/crm/contacts/<%= contact.id %>/delete" method="POST" onsubmit="return confirm('Delete this contact? This also deletes its tasks.');" style="margin-top:16px;">
-      <button type="submit" class="link-btn danger">Delete contact</button>
-    </form>
-  </main>
-</body>
-</html>
+<%- include('partials/footer') %>
