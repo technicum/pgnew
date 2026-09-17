@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { pool, THEMES, isReservedSubdomain, TABLES } = require('../db/database');
 const { storeUrl, rootUrl, adminPortalUrl } = require('../middleware/tenant');
-const { defaultFields } = require('../lib/sections');
+const { defaultFields, STORE_CATEGORIES } = require('../lib/sections');
 
 function slugify(str) {
   return (str || '')
@@ -19,10 +19,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // The category picked on the "Create a new site" popup (see
 // views/admin/dashboard.ejs's modal, which links straight into
-// /dashboard/new-store?category=<val>) — purely descriptive today, stored
-// on the store (see db/database.js's migrateStoreCategoryColumn) for future
-// use, not read anywhere that changes behavior yet.
-const STORE_CATEGORIES = ['online_store', 'lawyer', 'recruitment', 'car_dealer', 'real_estate'];
+// /dashboard/new-store?category=<val>) — now the single source of truth
+// (lib/sections.js) for which of a store's sections the page builder offers;
+// see isEcommerceCategory/sectionTypesForStore there.
 
 // ---------- Marketing homepage ----------
 // Only shown on the root domain — on a store's own subdomain, "/" is that

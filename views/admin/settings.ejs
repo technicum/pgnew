@@ -8,6 +8,16 @@
         <input type="text" name="name" value="<%= store.name %>" required />
       </label>
 
+      <label>Site type
+        <select name="category">
+          <option value="" <%= !store.category ? 'selected' : '' %>>Not set (treated as Online Store)</option>
+          <% storeCategories.forEach(function(c) { %>
+            <option value="<%= c %>" <%= store.category === c ? 'selected' : '' %>><%= categoryLabels[c] %></option>
+          <% }); %>
+        </select>
+      </label>
+      <p class="field-hint">Only "Online Store" has a product catalog — every other site type hides Product grid, Product spotlight and Collection list from the page builder.</p>
+
       <label>Theme</label>
       <div class="theme-picker">
         <% themes.forEach(function(t) { %>

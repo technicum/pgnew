@@ -16,6 +16,10 @@
           <form action="/admin/apps/<%= app.slug %>/activate" method="POST">
             <button type="submit" class="btn btn-primary">Activate</button>
           </form>
+        <% } else if (app.installed && !app.bundled) { %>
+          <form action="/admin/apps/<%= app.slug %>/deactivate" method="POST">
+            <button type="submit" class="btn btn-secondary">Deactivate</button>
+          </form>
         <% } %>
       </div>
     </div>

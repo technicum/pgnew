@@ -17,12 +17,15 @@ const {
   sanitizeRowBlock,
   sectionTypesForContext,
   sectionAllowedInContext,
+  sectionTypesForStore,
+  STORE_CATEGORIES,
+  STORE_CATEGORY_LABELS,
 } = require('../lib/sections');
 const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = require('../lib/themeTokens');
 const menusLib = require('../lib/menus');
 const { importDemoContent } = require('../lib/demoImport');
 const mediaLib = require('../lib/media');
-const { getActiveAppSlugs, listAppsForStore, activateApp } = require('../lib/apps');
+const { getActiveAppSlugs, listAppsForStore, activateApp, deactivateApp } = require('../lib/apps');
 const { sanitizeContact } = require('../lib/contacts');
 
 function slugify(str) {
@@ -632,7 +635,7 @@ async function scopeLoadSection(scope, sectionId) {
 async function scopeCreateSection(scope, req, res, next) {
   try {
     const { type } = req.body;
-    if (!sectionAllowedInContext(type, scopeContext(scope))) return res.status(400).json({ error: 'Unknown section type' });
+    if (!sectionAllowedInContext(type, scopeContext(scope), req.store.category)) return res.status(400).json({ error: 'Unknown section type' });
     const { sql, params } = scopeWhere(scope);
     const [[{ maxPos }]] = await pool.query(`SELECT COALESCE(MAX(position), -1) AS maxPos FROM ${TABLES.pageSections} WHERE ${sql}`, params);
     const fields = defaultFields(type);
@@ -1128,7 +1131,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       context: 'page',
       sectionsBase: `/admin/pages/${page.id}/sections`,
       sections,
-      sectionTypes: SECTION_TYPES,
+      sectionTypes: sectionTypesForStore(req.store.category),
       sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
@@ -1208,7 +1211,7 @@ router.get('/layout/:region', async (req, res, next) => {
       context: region,
       sectionsBase: `/admin/layout/${region}/sections`,
       sections,
-      sectionTypes: SECTION_TYPES,
+      sectionTypes: sectionTypesForStore(req.store.category),
       sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
@@ -1263,7 +1266,7 @@ router.get('/pages/:id/layout/:region/edit', async (req, res, next) => {
       context: region,
       sectionsBase: `/admin/pages/${page.id}/layout/${region}/sections`,
       sections,
-      sectionTypes: SECTION_TYPES,
+      sectionTypes: sectionTypesForStore(req.store.category),
       sectionDefaultFields: SECTION_DEFAULT_FIELDS,
       nestableTypes: NESTABLE_SECTION_TYPES,
       textElementFields: TEXT_ELEMENT_FIELDS,
@@ -2037,6 +2040,36 @@ router.post('/apps/:slug/activate', async (req, res, next) => {
   }
 });
 
+// Mirrors /activate. A plan-bundled app (pz_plan_apps) can't be turned off
+// here — listAppsForStore's `active` is bundled || installed, so flipping
+// pz_store_apps.is_active to 0 on one of those would silently do nothing
+// useful anyway; caught explicitly so a direct POST (the UI never offers
+// this button for a bundled app) gets a real error instead of a no-op
+// "deactivated" flash.
+router.post('/apps/:slug/deactivate', async (req, res, next) => {
+  try {
+    const [[app]] = await pool.query(`SELECT * FROM ${TABLES.apps} WHERE slug = ? AND status = 'published'`, [req.params.slug]);
+    if (!app) {
+      req.flash('error', 'App not found.');
+      return res.redirect('/admin/apps');
+    }
+    const [[bundle]] = await pool.query(
+      `SELECT pa.id FROM ${TABLES.planApps} pa JOIN ${TABLES.plans} p ON p.id = pa.plan_id
+       WHERE pa.app_id = ? AND p.slug = ?`,
+      [app.id, req.store.plan]
+    );
+    if (bundle) {
+      req.flash('error', `${app.name} is included in your plan and can't be deactivated.`);
+      return res.redirect('/admin/apps');
+    }
+    await deactivateApp(req.store.id, app.id);
+    req.flash('success', `${app.name} deactivated.`);
+    res.redirect('/admin/apps');
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------- Contacts (CRM) ----------
 // Gated behind the 'crm' app — see requireApp above. Deliberately a
 // superset of Customers: every person the store's admin should know
@@ -2182,7 +2215,7 @@ router.get('/settings', async (req, res, next) => {
        ORDER BY (ur.role = 'admin') DESC, u.name ASC`,
       [req.store.id]
     );
-    res.render('admin/settings', { title: 'Settings', themes: THEMES, team });
+    res.render('admin/settings', { title: 'Settings', themes: THEMES, team, storeCategories: STORE_CATEGORIES, categoryLabels: STORE_CATEGORY_LABELS });
   } catch (err) {
     next(err);
   }
@@ -2273,13 +2306,16 @@ router.post('/settings/store', async (req, res, next) => {
   try {
     const name = (req.body.name || '').trim();
     const theme = THEMES.includes(req.body.theme) ? req.body.theme : req.store.theme;
+    // '' (the form's "Not set" option) clears it back to NULL, which
+    // isEcommerceCategory (lib/sections.js) treats the same as 'online_store'.
+    const category = STORE_CATEGORIES.includes(req.body.category) ? req.body.category : null;
 
     if (!name) {
       req.flash('error', 'Store name is required.');
       return res.redirect('/admin/settings');
     }
 
-    await pool.query(`UPDATE ${TABLES.stores} SET name = ?, theme = ? WHERE id = ?`, [name, theme, req.store.id]);
+    await pool.query(`UPDATE ${TABLES.stores} SET name = ?, theme = ?, category = ? WHERE id = ?`, [name, theme, category, req.store.id]);
     req.flash('success', 'Store settings updated.');
     res.redirect('/admin/settings');
   } catch (err) {
