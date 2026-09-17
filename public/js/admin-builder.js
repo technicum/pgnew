@@ -517,12 +517,16 @@
           '<span>' + (DATA.products.length ? "showing " + Math.min(count, DATA.products.length) + " of " + DATA.products.length : "") + '</span></div>' +
           '<div class="b-prod-grid">' + cards + '</div></div>';
 
-      case "testimonials":
-        var q = (d.quotes && d.quotes[0]) || { quote: "", author: "" };
+      case "testimonials": {
+        var quotes = d.quotes && d.quotes.length ? d.quotes : [{ quote: "", author: "" }];
+        var testiCards = quotes.map(function (q, idx) {
+          return '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
+            '<div class="b-testi-quote" data-field="quotes.' + idx + '.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
+            '<div class="b-testi-name" data-field="quotes.' + idx + '.author" contenteditable="true">' + esc(q.author) + '</div></div>';
+        }).join("");
         return '<div class="b-sec-pad b-sec-testimonials"><div class="b-sec-heading-row" style="justify-content:center;"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
-          '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
-          '<div class="b-testi-quote" data-field="quotes.0.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
-          '<div class="b-testi-name" data-field="quotes.0.author" contenteditable="true">' + esc(q.author) + '</div></div></div>';
+          '<div class="b-testi-grid">' + testiCards + '</div></div>';
+      }
 
       case "newsletter":
         return '<div class="b-sec-pad b-newsletter">' +
@@ -1423,6 +1427,30 @@
     return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No questions yet — add one below.</div>') + '</div>' + addBtn;
   }
 
+  // Testimonials — same Elementor-style repeater as faqItemsEditorHtml
+  // above (data-testi-quote/data-testi-author, wired in wireInspector's
+  // focusout handler); clicking a quote/name directly on the canvas still
+  // works too. Capped at 3 to match lib/sections.js's sanitizeFields, which
+  // silently drops anything past that server-side.
+  function testimonialsItemsEditorHtml(quotes) {
+    var list = quotes || [];
+    var rows = list.map(function (it, i) {
+      return '<div class="b-faq-row" data-testi-row>' +
+        '<div class="b-faq-row-head">' +
+          '<span class="b-faq-row-num">Testimonial ' + (i + 1) + '</span>' +
+          '<button type="button" class="b-faq-row-dup" data-testi-duplicate data-index="' + i + '" aria-label="Duplicate testimonial" title="Duplicate">' + icon("dup") + '</button>' +
+          '<button type="button" class="b-faq-row-remove" data-testi-remove data-index="' + i + '" aria-label="Remove testimonial" title="Remove">' + icon("trash") + '</button>' +
+        '</div>' +
+        '<textarea class="b-text-native b-textarea-native" data-testi-quote data-index="' + i + '" placeholder="Quote" rows="2">' + esc(it.quote || "") + '</textarea>' +
+        '<input class="b-text-native" type="text" data-testi-author data-index="' + i + '" value="' + esc(it.author || "") + '" placeholder="Author" />' +
+      '</div>';
+    }).join("");
+    var addBtn = list.length < 3
+      ? '<button type="button" class="b-btn-outline b-faq-add" data-testi-add>' + icon("plus") + ' Add Item</button>'
+      : '<div class="b-field-hint">Up to 3 testimonials.</div>';
+    return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No testimonials yet — add one below.</div>') + '</div>' + addBtn;
+  }
+
   // link_columns — a "# Heading" line starts a new column, followed by
   // its "Label | url" link lines.
   function parseColumnsText(text) {
@@ -1474,7 +1502,9 @@
         return field("Products to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
           field("", '<div class="b-inspector-hint">Shows your ' + DATA.products.length + ' most recent products. Click the heading to edit it.</div>');
       case "testimonials":
-        return field("", '<div class="b-inspector-hint">Click the heading, quote or name on the canvas to edit it.</div>');
+        return field("Heading", textHtml("heading", d.heading, "What customers say")) +
+          field("Testimonials", testimonialsItemsEditorHtml(d.quotes)) +
+          field("", '<div class="b-inspector-hint">Click a quote or name directly on the canvas to edit its text — use Add, Duplicate, or Remove here to manage the list.</div>');
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
       case "richtext":
@@ -1499,7 +1529,8 @@
         return field("Names", textareaHtml("names", (d.names || []).join("\n"), "One name per line, up to 8")) +
           field("", '<div class="b-inspector-hint">Plain text only — good for press mentions or partner names.</div>');
       case "faq":
-        return field("Questions", faqItemsEditorHtml(d.items)) +
+        return field("Heading", textHtml("heading", d.heading, "Shipping & returns")) +
+          field("Questions", faqItemsEditorHtml(d.items)) +
           field("", '<div class="b-inspector-hint">Click a question or answer directly on the canvas to edit its text — use Add, Duplicate, or Remove here to manage the list.</div>');
       case "countdown":
         return field("Ends at", dateTimeHtml("end_at", d.end_at)) +
@@ -2594,6 +2625,40 @@
         renderInspector();
         return;
       }
+      var testiAddBtn = e.target.closest("[data-testi-add]");
+      if (testiAddBtn) {
+        var testiAddTarget = inspectorFieldTarget();
+        if (!testiAddTarget) return;
+        var testiAddQuotes = (testiAddTarget.fields.quotes || []).slice();
+        if (testiAddQuotes.length >= 3) return;
+        testiAddQuotes.push({ quote: "Fast shipping and exactly as described.", author: "A happy customer" });
+        testiAddTarget.save({ quotes: testiAddQuotes });
+        renderInspector();
+        return;
+      }
+      var testiDupBtn = e.target.closest("[data-testi-duplicate]");
+      if (testiDupBtn) {
+        var testiDupTarget = inspectorFieldTarget();
+        if (!testiDupTarget) return;
+        var testiDupIdx = parseInt(testiDupBtn.dataset.index, 10);
+        var testiDupQuotes = (testiDupTarget.fields.quotes || []).slice();
+        var testiDupItem = testiDupQuotes[testiDupIdx];
+        if (testiDupItem && testiDupQuotes.length < 3) testiDupQuotes.splice(testiDupIdx + 1, 0, Object.assign({}, testiDupItem));
+        testiDupTarget.save({ quotes: testiDupQuotes });
+        renderInspector();
+        return;
+      }
+      var testiRemoveBtn = e.target.closest("[data-testi-remove]");
+      if (testiRemoveBtn) {
+        var testiRemTarget = inspectorFieldTarget();
+        if (!testiRemTarget) return;
+        var testiRemIdx = parseInt(testiRemoveBtn.dataset.index, 10);
+        var testiRemQuotes = (testiRemTarget.fields.quotes || []).slice();
+        testiRemQuotes.splice(testiRemIdx, 1);
+        testiRemTarget.save({ quotes: testiRemQuotes });
+        renderInspector();
+        return;
+      }
       var colorClearBtn = e.target.closest("[data-color-clear]");
       if (colorClearBtn) {
         // "__text_color" -> "text_color" — same __-prefix convention as the
@@ -2829,6 +2894,28 @@
         if (!faqAItems[faqAIdx]) return;
         faqAItems[faqAIdx] = Object.assign({}, faqAItems[faqAIdx], { a: faqAIn.value.trim() });
         faqATarget.save({ items: faqAItems });
+        return;
+      }
+      var testiQuoteIn = e.target.closest("textarea[data-testi-quote]");
+      if (testiQuoteIn) {
+        var testiQuoteTarget = inspectorFieldTarget();
+        if (!testiQuoteTarget) return;
+        var testiQuoteIdx = parseInt(testiQuoteIn.dataset.index, 10);
+        var testiQuoteQuotes = (testiQuoteTarget.fields.quotes || []).slice();
+        if (!testiQuoteQuotes[testiQuoteIdx]) return;
+        testiQuoteQuotes[testiQuoteIdx] = Object.assign({}, testiQuoteQuotes[testiQuoteIdx], { quote: testiQuoteIn.value.trim() });
+        testiQuoteTarget.save({ quotes: testiQuoteQuotes });
+        return;
+      }
+      var testiAuthorIn = e.target.closest("input[data-testi-author]");
+      if (testiAuthorIn) {
+        var testiAuthorTarget = inspectorFieldTarget();
+        if (!testiAuthorTarget) return;
+        var testiAuthorIdx = parseInt(testiAuthorIn.dataset.index, 10);
+        var testiAuthorQuotes = (testiAuthorTarget.fields.quotes || []).slice();
+        if (!testiAuthorQuotes[testiAuthorIdx]) return;
+        testiAuthorQuotes[testiAuthorIdx] = Object.assign({}, testiAuthorQuotes[testiAuthorIdx], { author: testiAuthorIn.value.trim() });
+        testiAuthorTarget.save({ quotes: testiAuthorQuotes });
         return;
       }
       var ta = e.target.closest('textarea.b-textarea-native[data-field]');
