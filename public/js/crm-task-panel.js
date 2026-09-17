@@ -178,9 +178,20 @@
     var form = e.target;
     var isSelfDelete = form.classList.contains('crm-task-delete-self');
     var successMessage = form.dataset.successMessage || 'Saved';
-    var fd = new FormData(form);
 
-    fetch(form.getAttribute('action'), { method: 'POST', body: fd })
+    // FormData sent straight to fetch() gets encoded as multipart/form-data
+    // -- but the server only parses application/x-www-form-urlencoded
+    // (server.js's express.urlencoded()), same as a normal <form> submit
+    // sends. Left as FormData, every field silently vanishes server-side
+    // (req.body comes back empty), which is why "Save changes" looked like
+    // it did nothing: the title-required check failed on an empty title
+    // and redirected back with nothing saved, no visible error. Converting
+    // to URLSearchParams makes fetch send the same encoding a real form
+    // submit would.
+    var params = new URLSearchParams();
+    new FormData(form).forEach(function (value, key) { params.append(key, value); });
+
+    fetch(form.getAttribute('action'), { method: 'POST', body: params })
       .then(function (res) {
         if (!res.ok) {
           // A failed request's body is Express's plain error page, not this
