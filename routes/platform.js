@@ -17,6 +17,13 @@ function slugify(str) {
 const SUBDOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// The category picked on the "Create a new site" popup (see
+// views/admin/dashboard.ejs's modal, which links straight into
+// /dashboard/new-store?category=<val>) — purely descriptive today, stored
+// on the store (see db/database.js's migrateStoreCategoryColumn) for future
+// use, not read anywhere that changes behavior yet.
+const STORE_CATEGORIES = ['real_estate', 'recruiter', 'finance', 'law'];
+
 // ---------- Marketing homepage ----------
 // Only shown on the root domain — on a store's own subdomain, "/" is that
 // store's storefront home instead (handled by routes/storefront.js).
@@ -31,7 +38,7 @@ router.get('/', (req, res, next) => {
 router.get('/signup', (req, res) => {
   if (req.store || !req.isRootDomain) return res.redirect(rootUrl(req, '/signup'));
   res.render('platform/signup', {
-    title: 'Create your store',
+    title: 'Create your site',
     errors: [],
     themes: THEMES,
     values: { storeName: '', subdomain: '', ownerName: '', ownerEmail: '', theme: 'default' },
@@ -66,7 +73,7 @@ router.post('/signup', async (req, res, next) => {
   }
 
   if (errors.length) {
-    return res.status(400).render('platform/signup', { title: 'Create your store', errors, themes: THEMES, values });
+    return res.status(400).render('platform/signup', { title: 'Create your site', errors, themes: THEMES, values });
   }
 
   const conn = await pool.getConnection();
@@ -75,7 +82,7 @@ router.post('/signup', async (req, res, next) => {
     if (existing) {
       conn.release();
       return res.status(400).render('platform/signup', {
-        title: 'Create your store',
+        title: 'Create your site',
         errors: [`"${subdomain}" is already taken — please choose another store address.`],
         themes: THEMES,
         values,
@@ -96,7 +103,7 @@ router.post('/signup', async (req, res, next) => {
         await conn.rollback();
         conn.release();
         return res.status(400).render('platform/signup', {
-          title: 'Create your store',
+          title: 'Create your site',
           errors: [`An account already exists for ${ownerEmail} — enter its password to add another store, or log in instead.`],
           themes: THEMES,
           values,
@@ -145,7 +152,7 @@ router.post('/signup', async (req, res, next) => {
 
     req.session.account = { id: userId, name: sessionName, email: ownerEmail };
     req.session.admin = { id: userId, name: sessionName, email: ownerEmail, store_id: storeId, role: 'admin' };
-    req.flash('success', `Welcome to PageZaper, ${sessionName}! Your store "${storeName}" is ready — add your first products to get started.`);
+    req.flash('success', `Welcome to PageZaper, ${sessionName}! Your site "${storeName}" is ready — add your first products to get started.`);
     res.redirect(storeUrl(req, subdomain, '/admin'));
   } catch (err) {
     await conn.rollback();
@@ -219,7 +226,7 @@ router.get('/dashboard', requireAccount, async (req, res, next) => {
        ORDER BY (ur.role = 'admin') DESC, s.created_at ASC`,
       [req.session.account.id]
     );
-    res.render('platform/dashboard', { title: 'Your stores', account: req.session.account, stores });
+    res.render('platform/dashboard', { title: 'Your sites', account: req.session.account, stores });
   } catch (err) {
     next(err);
   }
@@ -269,11 +276,17 @@ router.post('/dashboard/logout', requireAccount, (req, res) => {
 // unlike /signup this needs no name/email/password fields, just the new
 // store's own details.
 router.get('/dashboard/new-store', requireAccount, (req, res) => {
+  // ?category=<val> arrives from the dashboard's "Create a new site" popup
+  // (see views/admin/dashboard.ejs) — an unrecognized or missing value just
+  // means no category badge shows on this form, not an error, since a
+  // merchant can also reach this page directly (e.g. "Back to your stores"
+  // then in again) with nothing picked.
+  const category = STORE_CATEGORIES.includes(req.query.category) ? req.query.category : '';
   res.render('platform/new-store', {
-    title: 'Create a new store',
+    title: 'Create a new site',
     errors: [],
     themes: THEMES,
-    values: { storeName: '', subdomain: '', theme: 'default' },
+    values: { storeName: '', subdomain: '', theme: 'default', category },
   });
 });
 
@@ -282,8 +295,9 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
   let subdomain = (req.body.subdomain || '').trim().toLowerCase();
   if (!subdomain && storeName) subdomain = slugify(storeName);
   const theme = THEMES.includes(req.body.theme) ? req.body.theme : 'default';
+  const category = STORE_CATEGORIES.includes(req.body.category) ? req.body.category : null;
 
-  const values = { storeName, subdomain, theme };
+  const values = { storeName, subdomain, theme, category: category || '' };
   const errors = [];
 
   if (!storeName) errors.push('Store name is required.');
@@ -294,7 +308,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
   }
 
   if (errors.length) {
-    return res.status(400).render('platform/new-store', { title: 'Create a new store', errors, themes: THEMES, values });
+    return res.status(400).render('platform/new-store', { title: 'Create a new site', errors, themes: THEMES, values });
   }
 
   const conn = await pool.getConnection();
@@ -303,7 +317,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
     if (existing) {
       conn.release();
       return res.status(400).render('platform/new-store', {
-        title: 'Create a new store',
+        title: 'Create a new site',
         errors: [`"${subdomain}" is already taken — please choose another store address.`],
         themes: THEMES,
         values,
@@ -313,8 +327,8 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
     await conn.beginTransaction();
 
     const [storeResult] = await conn.query(
-      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES (?, ?, ?, 'free', 'active')`,
-      [storeName, subdomain, theme]
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status, category) VALUES (?, ?, ?, 'free', 'active', ?)`,
+      [storeName, subdomain, theme, category]
     );
     const storeId = storeResult.insertId;
 
@@ -344,7 +358,7 @@ router.post('/dashboard/new-store', requireAccount, async (req, res, next) => {
       store_id: storeId,
       role: 'admin',
     };
-    req.flash('success', `Your store "${storeName}" is ready — add your first products to get started.`);
+    req.flash('success', `Your site "${storeName}" is ready — add your first products to get started.`);
     res.redirect(storeUrl(req, subdomain, '/admin'));
   } catch (err) {
     await conn.rollback();

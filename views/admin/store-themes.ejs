@@ -17,7 +17,7 @@
         <div class="theme-card-name"><%= t.name %></div>
         <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
         <div class="theme-card-actions">
-          <a href="/?preview_theme=<%= encodeURIComponent(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">Preview on my store ↗</a>
+          <a href="/?preview_theme=<%= encodeURIComponent(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">Preview on my site ↗</a>
           <% if (!isDemoStore && demoThemeUrl(t.slug)) { %>
             <a href="<%= demoThemeUrl(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">View demo ↗</a>
           <% } %>
@@ -44,7 +44,7 @@
 
 <% if (available.length) { %>
   <h2 class="theme-section-heading">Available to install</h2>
-  <p class="theme-section-sub">Registered on this server but not yet added to your store.</p>
+  <p class="theme-section-sub">Registered on this server but not yet added to your site.</p>
   <div class="theme-cards">
     <% available.forEach(function(t) { %>
       <div class="theme-card is-preview">
@@ -55,7 +55,7 @@
           <div class="theme-card-name"><%= t.name %></div>
           <% if (t.description) { %><p class="theme-card-desc"><%= t.description %></p><% } %>
           <div class="theme-card-actions">
-            <a href="/?preview_theme=<%= encodeURIComponent(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">Preview on my store ↗</a>
+            <a href="/?preview_theme=<%= encodeURIComponent(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">Preview on my site ↗</a>
             <% if (!isDemoStore && demoThemeUrl(t.slug)) { %>
               <a href="<%= demoThemeUrl(t.slug) %>" target="_blank" rel="noopener" class="theme-card-btn">View demo ↗</a>
             <% } %>
@@ -64,7 +64,7 @@
               <button type="submit" class="theme-card-btn primary">Install</button>
             </form>
             <% if (t.hasDemo && !isDemoStore) { %>
-              <form action="/admin/store/themes/import-demo" method="POST" onsubmit="return confirm(<%- JSON.stringify('Install and activate ' + t.name + ' with its demo content? Its sample products, categories, pages and sections will be added to your store. Continue?') %>);">
+              <form action="/admin/store/themes/import-demo" method="POST" onsubmit="return confirm(<%- JSON.stringify('Install and activate ' + t.name + ' with its demo content? Its sample products, categories, pages and sections will be added to your site. Continue?') %>);">
                 <input type="hidden" name="themeId" value="<%= t.theme_id %>" />
                 <button type="submit" class="theme-card-btn">Install with demo content</button>
               </form>

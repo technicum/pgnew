@@ -10,7 +10,7 @@
 <body class="admin-login-body">
   <div class="login-card signup-card">
     <a href="/dashboard" class="admin-logo" style="display:inline-block; text-decoration:none;">Page<span>Zaper</span></a>
-    <p class="signup-tagline">Add another store to your account.</p>
+    <p class="signup-tagline">Add another site to your account.</p>
 
     <% if (errors && errors.length) { %>
       <div class="flash flash-error">
@@ -20,21 +20,30 @@
       </div>
     <% } %>
 
+    <% if (values.category) { %>
+      <%
+        var categoryLabels = { real_estate: 'Real Estate', recruiter: 'Recruiter', finance: 'Finance', law: 'Law' };
+        var categoryLabel = categoryLabels[values.category] || values.category;
+      %>
+      <div class="new-site-category-badge">Building a <strong><%= categoryLabel %></strong> site</div>
+    <% } %>
+
     <form action="/dashboard/new-store" method="POST" id="new-store-form">
-      <label>Store name
+      <% if (values.category) { %><input type="hidden" name="category" value="<%= values.category %>" /><% } %>
+      <label>Site name
         <input type="text" name="storeName" id="storeName" value="<%= values.storeName %>" required autofocus placeholder="Riya's Boutique" />
       </label>
 
-      <label>Store address
+      <label>Site address
         <div class="subdomain-field">
           <input type="text" name="subdomain" id="subdomain" value="<%= values.subdomain %>" placeholder="riyas-boutique" pattern="[a-z0-9][a-z0-9-]{1,61}[a-z0-9]" required />
           <span class="subdomain-suffix">.<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %></span>
         </div>
       </label>
 
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create store</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create site</button>
     </form>
-    <p class="login-hint"><a href="/dashboard">Back to your stores</a></p>
+    <p class="login-hint"><a href="/dashboard">Back to your sites</a></p>
   </div>
 
   <script>

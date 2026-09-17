@@ -10,7 +10,7 @@
 <body class="admin-login-body">
   <div class="login-card signup-card">
     <a href="/" class="admin-logo" style="display:inline-block; text-decoration:none;">Page<span>Zaper</span></a>
-    <p class="signup-tagline">Create your store in under a minute.</p>
+    <p class="signup-tagline">Create your site in under a minute.</p>
 
     <% if (errors && errors.length) { %>
       <div class="flash flash-error">
@@ -21,11 +21,11 @@
     <% } %>
 
     <form action="/signup" method="POST" id="signup-form">
-      <label>Store name
+      <label>Site name
         <input type="text" name="storeName" id="storeName" value="<%= values.storeName %>" required autofocus placeholder="Riya's Boutique" />
       </label>
 
-      <label>Store address
+      <label>Site address
         <div class="subdomain-field">
           <input type="text" name="subdomain" id="subdomain" value="<%= values.subdomain %>" placeholder="riyas-boutique" pattern="[a-z0-9][a-z0-9-]{1,61}[a-z0-9]" required />
           <span class="subdomain-suffix">.<%= baseDomain %></span>
@@ -49,9 +49,9 @@
         </label>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create my store</button>
+      <button type="submit" class="btn btn-primary btn-block" style="margin-top:8px;">Create my site</button>
     </form>
-    <p class="login-hint">Already have a store? <a href="<%= typeof loginUrl !== 'undefined' ? loginUrl : '/login' %>">Log in</a></p>
+    <p class="login-hint">Already have a site? <a href="<%= typeof loginUrl !== 'undefined' ? loginUrl : '/login' %>">Log in</a></p>
   </div>
 
   <script>

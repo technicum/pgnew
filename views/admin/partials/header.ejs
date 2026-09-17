@@ -43,13 +43,13 @@
           <a href="/admin/blog" class="admin-nav-sub <%= isBlogScreen ? 'active' : '' %>">Blog posts</a>
         <% } %>
 
-        <a href="/admin/store/themes" class="<%= editStoreOpen ? 'active' : '' %>">Edit Store</a>
+        <a href="/admin/store/themes" class="<%= editStoreOpen ? 'active' : '' %>">Edit Site</a>
         <% if (editStoreOpen) { %>
           <a href="/admin/store/themes" class="admin-nav-sub <%= title && (title === 'Themes' || title.startsWith('Customize ')) ? 'active' : '' %>">Themes</a>
           <a href="/admin/layout/header" class="admin-nav-sub <%= title === 'Header' ? 'active' : '' %>">Header</a>
           <a href="/admin/layout/footer" class="admin-nav-sub <%= title === 'Footer' ? 'active' : '' %>">Footer</a>
           <a href="/admin/menus" class="admin-nav-sub <%= isMenusScreen ? 'active' : '' %>">Menus</a>
-          <a href="/" target="_blank" class="admin-nav-sub">View store ↗</a>
+          <a href="/" target="_blank" class="admin-nav-sub">View site ↗</a>
         <% } %>
 
         <div class="admin-nav-divider"></div>
@@ -73,7 +73,7 @@
     <div class="admin-main">
       <% if (typeof impersonation !== 'undefined' && impersonation) { %>
         <div class="impersonation-banner">
-          <span>You're viewing this store's admin as <strong><%= admin ? admin.name : '' %></strong>, logged in by platform admin <%= impersonation.platformAdminName %>.</span>
+          <span>You're viewing this site's admin as <strong><%= admin ? admin.name : '' %></strong>, logged in by platform admin <%= impersonation.platformAdminName %>.</span>
           <form action="/admin/exit-impersonation" method="POST">
             <button type="submit" class="link-btn">Return to Platform Admin</button>
           </form>

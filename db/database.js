@@ -884,6 +884,18 @@ async function migrateSectionBgColumns(conn) {
   }
 }
 
+// The category picked on the "Create a new site" popup (see routes/
+// platform.js's STORE_CATEGORIES and views/admin/dashboard.ejs's modal) —
+// purely descriptive for now (shown back on the account dashboard), not
+// read anywhere that changes behavior. NULL for every store created before
+// this existed, and for the very first store made via /signup (that flow
+// doesn't ask).
+async function migrateStoreCategoryColumn(conn) {
+  if (!(await columnExists(conn, TABLES.stores, 'category'))) {
+    await conn.query(`ALTER TABLE ${TABLES.stores} ADD COLUMN category VARCHAR(20) NULL`);
+  }
+}
+
 // Turns pz_page_sections into the shared storage for page content AND the
 // header/footer builder, instead of a separate table. Two additions make
 // this possible:
@@ -1488,6 +1500,7 @@ async function init() {
     await migratePageSectionSettings(conn);
     await migrateSectionStyleColumns(conn);
     await migrateSectionBgColumns(conn);
+    await migrateStoreCategoryColumn(conn);
     await migrateHeaderFooterSections(conn);
     await migrateDefaultHeaderFooter(conn);
     await migrateNavMenuSections(conn);

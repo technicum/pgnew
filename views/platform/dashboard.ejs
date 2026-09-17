@@ -28,14 +28,14 @@
     <% } %>
 
     <div class="dashboard-title-row">
-      <h1>Your stores</h1>
-      <a href="/dashboard/new-store" class="btn btn-primary">Create a new store</a>
+      <h1>Your sites</h1>
+      <a href="/dashboard/new-store" class="btn btn-primary">Create a new site</a>
     </div>
 
     <% if (!stores.length) { %>
       <div class="dashboard-empty">
-        <p>You don't manage any stores yet.</p>
-        <a href="/dashboard/new-store" class="btn btn-primary">Create your first store</a>
+        <p>You don't manage any sites yet.</p>
+        <a href="/dashboard/new-store" class="btn btn-primary">Create your first site</a>
       </div>
     <% } else { %>
       <div class="dashboard-store-list">
@@ -47,7 +47,7 @@
               <span class="dashboard-store-domain"><%= s.subdomain %>.<%= typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com' %></span>
             </div>
             <span class="dashboard-store-role"><%= s.role %></span>
-            <button type="submit" class="btn btn-primary">Enter store</button>
+            <button type="submit" class="btn btn-primary">Enter site</button>
           </form>
         <% }); %>
       </div>

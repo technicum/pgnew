@@ -133,6 +133,44 @@
 .dash-setup-card h3 { margin: 0 0 6px; font-size: 1rem; }
 .dash-setup-card p { margin: 0 0 16px; color: #6b7280; font-size: 0.88rem; }
 
+/* "Create new site" popup (views/admin/dashboard.ejs) — same fixed-overlay
+   pattern as .media-lightbox-overlay, just its own classes since this one
+   holds a grid of category cards rather than an image/video preview. */
+.new-site-modal-overlay {
+  position: fixed; inset: 0; background: rgba(17, 24, 39, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1100; padding: 20px;
+}
+.new-site-modal-overlay[hidden] { display: none; }
+.new-site-modal {
+  position: relative;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 28px;
+  max-width: 460px;
+  width: 100%;
+  text-align: center;
+}
+.new-site-modal h3 { margin: 0 0 4px; font-size: 1.15rem; }
+.new-site-modal p { margin: 0 0 20px; color: #6b7280; font-size: 0.88rem; }
+.new-site-modal-close {
+  position: absolute; top: 10px; right: 14px;
+  background: none; border: none; color: #9ca3af;
+  font-size: 1.6rem; line-height: 1; cursor: pointer; padding: 4px;
+}
+.new-site-modal-close:hover { color: #374151; }
+.new-site-category-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.new-site-category-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  padding: 18px 10px; text-decoration: none; color: #1f2937;
+  font-size: 0.85rem; font-weight: 600;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+.new-site-category-card:hover { border-color: var(--color-primary); background: #f9fafb; }
+.new-site-category-icon { width: 28px; height: 28px; color: var(--color-primary); }
+.new-site-category-icon svg { width: 100%; height: 100%; }
+
 .stat-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -353,6 +391,7 @@
 /* Signup page */
 .signup-card { max-width: 440px; }
 .signup-tagline { color: #6b7280; font-size: 0.88rem; margin: 4px 0 20px; }
+.new-site-category-badge { background: #f3f4f6; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; color: #374151; margin-bottom: 18px; }
 .signup-card .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 0; }
 .subdomain-field {
   display: flex;

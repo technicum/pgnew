@@ -39,15 +39,63 @@
   </div>
   <div class="dash-setup-card">
     <h3>Customize your homepage</h3>
-    <p>Use the page builder to change your store's look and content.</p>
+    <p>Use the page builder to change your site's look and content.</p>
     <a href="/admin/pages" class="btn btn-primary">Open builder</a>
   </div>
   <div class="dash-setup-card">
-    <h3>Store settings</h3>
-    <p>Update your store name, theme, and admin password.</p>
+    <h3>Site settings</h3>
+    <p>Update your site name, theme, and admin password.</p>
     <a href="/admin/settings" class="btn btn-primary">Go to settings</a>
   </div>
+  <div class="dash-setup-card">
+    <h3>Create new site</h3>
+    <p>Start a second site under the same account.</p>
+    <button type="button" class="btn btn-primary" id="newSiteBtn">Create new site</button>
+  </div>
 </div>
+
+<%
+  // The category picked here is purely descriptive today (see
+  // db/database.js's migrateStoreCategoryColumn) — it's just carried along
+  // as ?category=<val> into /dashboard/new-store, which lives on the
+  // account layer (admin.<baseDomain>), not this store's own subdomain, so
+  // the link has to cross domains explicitly rather than a plain relative href.
+  var newSiteBase = '//admin.' + (typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com') + '/dashboard/new-store';
+  var newSiteCategories = [
+    { val: 'real_estate', label: 'Real Estate', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M9.5 19.5V14h5v5.5"/></svg>' },
+    { val: 'recruiter', label: 'Recruiter', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M16 11.5l1.6 1.6L21 9.5"/></svg>' },
+    { val: 'finance', label: 'Finance', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5h16"/><path d="M7 19.5v-6M12 19.5v-10M17 19.5v-4"/></svg>' },
+    { val: 'law', label: 'Law', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 21h8"/><path d="M12 6 5 8.5l3 6.5a4 4 0 0 0 8 0l3-6.5L12 6Z"/></svg>' },
+  ];
+%>
+<div class="new-site-modal-overlay" id="newSiteModal" hidden>
+  <div class="new-site-modal">
+    <button type="button" class="new-site-modal-close" id="newSiteModalClose" aria-label="Close">&times;</button>
+    <h3>What kind of site are you creating?</h3>
+    <p>Pick a category to get started.</p>
+    <div class="new-site-category-grid">
+      <% newSiteCategories.forEach(function (c) { %>
+        <a class="new-site-category-card" href="<%= newSiteBase %>?category=<%= c.val %>">
+          <span class="new-site-category-icon"><%- c.icon %></span>
+          <span><%= c.label %></span>
+        </a>
+      <% }); %>
+    </div>
+  </div>
+</div>
+<script>
+  (function () {
+    var btn = document.getElementById('newSiteBtn');
+    var modal = document.getElementById('newSiteModal');
+    var closeBtn = document.getElementById('newSiteModalClose');
+    if (!btn || !modal) return;
+    btn.addEventListener('click', function () { modal.hidden = false; });
+    function close() { modal.hidden = true; }
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) close(); });
+  })();
+</script>
 
 <div class="dashboard-grid">
   <section class="panel">

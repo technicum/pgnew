@@ -2,9 +2,9 @@
 
 <div class="dashboard-grid">
   <section class="panel">
-    <h2>Store</h2>
+    <h2>Site</h2>
     <form action="/admin/settings/store" method="POST" class="admin-form">
-      <label>Store name
+      <label>Site name
         <input type="text" name="name" value="<%= store.name %>" required />
       </label>
 
@@ -19,7 +19,7 @@
         <% }); %>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="margin-top:8px;">Save store settings</button>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;">Save site settings</button>
     </form>
   </section>
 
@@ -51,7 +51,7 @@
             <td><span class="status-pill"><%= t.role %></span></td>
             <td class="admin-row-actions">
               <% if (admin && admin.role === 'admin') { %>
-                <form action="/admin/settings/team/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Remove ' + <%- JSON.stringify(t.name) %> + ' from this store?');">
+                <form action="/admin/settings/team/<%= t.id %>/delete" method="POST" onsubmit="return confirm('Remove ' + <%- JSON.stringify(t.name) %> + ' from this site?');">
                   <button type="submit" class="link-btn danger">Remove</button>
                 </form>
               <% } %>
