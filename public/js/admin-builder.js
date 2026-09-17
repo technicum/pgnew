@@ -404,6 +404,16 @@
   function el(html) { var d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstChild; }
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
   function money(n) { return "₹" + Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  // A testimonial's star rating (1-5, defaulting to 5 for anything already
+  // saved before this field existed — see lib/sections.js's sanitizeFields)
+  // as a plain filled/empty-star string, same ★/☆ characters the canvas
+  // preview and testimonialsItemsEditorHtml's picker both use.
+  function starsHtml(n) {
+    var count = Math.min(Math.max(parseInt(n, 10) || 5, 1), 5);
+    var out = "";
+    for (var i = 1; i <= 5; i++) out += i <= count ? "★" : "☆";
+    return out;
+  }
   // Wraps the first case-insensitive match of `query` inside `text` in
   // <mark>, HTML-escaping both the matched and unmatched parts — used by
   // the library and page-sections search boxes.
@@ -518,14 +528,22 @@
           '<div class="b-prod-grid">' + cards + '</div></div>';
 
       case "testimonials": {
-        var quotes = d.quotes && d.quotes.length ? d.quotes : [{ quote: "", author: "" }];
+        var quotes = d.quotes && d.quotes.length ? d.quotes : [{ quote: "", author: "", stars: 5 }];
         var testiCards = quotes.map(function (q, idx) {
-          return '<div class="b-testi-card"><div class="b-testi-stars">★★★★★</div>' +
+          return '<div class="b-testi-card"><div class="b-testi-stars">' + starsHtml(q.stars) + '</div>' +
             '<div class="b-testi-quote" data-field="quotes.' + idx + '.quote" contenteditable="true">"' + esc(q.quote) + '"</div>' +
             '<div class="b-testi-name" data-field="quotes.' + idx + '.author" contenteditable="true">' + esc(q.author) + '</div></div>';
         }).join("");
+        // Layout only changes how these same cards behave on the live
+        // storefront (a swipeable track vs. a plain wrapped grid — see
+        // section.ejs) — the canvas always previews them as a grid, same
+        // simplification the countdown/newsletter modules already make for
+        // behavior that only really means something at runtime.
+        var testiLayoutNote = d.layout === "slider"
+          ? '<div class="b-field-hint" style="text-align:center;margin-top:10px;">Shows as a swipeable slider on your live storefront.</div>'
+          : "";
         return '<div class="b-sec-pad b-sec-testimonials"><div class="b-sec-heading-row" style="justify-content:center;"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3></div>' +
-          '<div class="b-testi-grid">' + testiCards + '</div></div>';
+          '<div class="b-testi-grid">' + testiCards + '</div>' + testiLayoutNote + '</div>';
       }
 
       case "newsletter":
@@ -1435,19 +1453,25 @@
   function testimonialsItemsEditorHtml(quotes) {
     var list = quotes || [];
     var rows = list.map(function (it, i) {
+      var stars = Math.min(Math.max(parseInt(it.stars, 10) || 5, 1), 5);
+      var starBtns = [1, 2, 3, 4, 5].map(function (n) {
+        return '<button type="button" class="b-testi-star-btn' + (n <= stars ? " is-filled" : "") + '" data-testi-star-btn data-index="' + i + '" data-star="' + n + '" aria-label="' + n + " star" + (n > 1 ? "s" : "") + '">' + (n <= stars ? "★" : "☆") + '</button>';
+      }).join("");
       return '<div class="b-faq-row" data-testi-row>' +
         '<div class="b-faq-row-head">' +
           '<span class="b-faq-row-num">Testimonial ' + (i + 1) + '</span>' +
           '<button type="button" class="b-faq-row-dup" data-testi-duplicate data-index="' + i + '" aria-label="Duplicate testimonial" title="Duplicate">' + icon("dup") + '</button>' +
           '<button type="button" class="b-faq-row-remove" data-testi-remove data-index="' + i + '" aria-label="Remove testimonial" title="Remove">' + icon("trash") + '</button>' +
         '</div>' +
+        '<div class="b-testi-star-picker" data-testi-star-picker data-index="' + i + '">' + starBtns + '</div>' +
         '<textarea class="b-text-native b-textarea-native" data-testi-quote data-index="' + i + '" placeholder="Quote" rows="2">' + esc(it.quote || "") + '</textarea>' +
         '<input class="b-text-native" type="text" data-testi-author data-index="' + i + '" value="' + esc(it.author || "") + '" placeholder="Author" />' +
       '</div>';
     }).join("");
-    var addBtn = list.length < 3
-      ? '<button type="button" class="b-btn-outline b-faq-add" data-testi-add>' + icon("plus") + ' Add Item</button>'
-      : '<div class="b-field-hint">Up to 3 testimonials.</div>';
+    // No cap — same "keep adding, nothing truncates it" convention as
+    // gallery's images grid (lib/sections.js's sanitizeFields doesn't slice
+    // `quotes` either).
+    var addBtn = '<button type="button" class="b-btn-outline b-faq-add" data-testi-add>' + icon("plus") + ' Add Item</button>';
     return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No testimonials yet — add one below.</div>') + '</div>' + addBtn;
   }
 
@@ -1635,6 +1659,9 @@
         break;
       case "collections":
         typeStyle = field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols));
+        break;
+      case "testimonials":
+        typeStyle = field("Layout", segHtml("layout", [{ val: "cards", label: "Cards" }, { val: "slider", label: "Slider" }], d.layout || "cards"));
         break;
       case "spacer":
         typeStyle = field("Height", segHtml("height", [{ val: "s", label: "S" }, { val: "m", label: "M" }, { val: "l", label: "L" }, { val: "xl", label: "XL" }], d.height));
@@ -2630,8 +2657,7 @@
         var testiAddTarget = inspectorFieldTarget();
         if (!testiAddTarget) return;
         var testiAddQuotes = (testiAddTarget.fields.quotes || []).slice();
-        if (testiAddQuotes.length >= 3) return;
-        testiAddQuotes.push({ quote: "Fast shipping and exactly as described.", author: "A happy customer" });
+        testiAddQuotes.push({ quote: "Fast shipping and exactly as described.", author: "A happy customer", stars: 5 });
         testiAddTarget.save({ quotes: testiAddQuotes });
         renderInspector();
         return;
@@ -2643,8 +2669,20 @@
         var testiDupIdx = parseInt(testiDupBtn.dataset.index, 10);
         var testiDupQuotes = (testiDupTarget.fields.quotes || []).slice();
         var testiDupItem = testiDupQuotes[testiDupIdx];
-        if (testiDupItem && testiDupQuotes.length < 3) testiDupQuotes.splice(testiDupIdx + 1, 0, Object.assign({}, testiDupItem));
+        if (testiDupItem) testiDupQuotes.splice(testiDupIdx + 1, 0, Object.assign({}, testiDupItem));
         testiDupTarget.save({ quotes: testiDupQuotes });
+        renderInspector();
+        return;
+      }
+      var testiStarBtn = e.target.closest("[data-testi-star-btn]");
+      if (testiStarBtn) {
+        var testiStarTarget = inspectorFieldTarget();
+        if (!testiStarTarget) return;
+        var testiStarIdx = parseInt(testiStarBtn.dataset.index, 10);
+        var testiStarQuotes = (testiStarTarget.fields.quotes || []).slice();
+        if (!testiStarQuotes[testiStarIdx]) return;
+        testiStarQuotes[testiStarIdx] = Object.assign({}, testiStarQuotes[testiStarIdx], { stars: parseInt(testiStarBtn.dataset.star, 10) });
+        testiStarTarget.save({ quotes: testiStarQuotes });
         renderInspector();
         return;
       }

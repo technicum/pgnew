@@ -136,6 +136,22 @@
     if ((pzUniBgType === 'image' || pzUniBgType === 'video') && sec.bg_overlay) out += '<div class="pz-uni-bg-overlay"></div>';
     return out;
   }
+  // A testimonial's star rating (1-5, defaulting to 5 for anything saved
+  // before this field existed — see lib/sections.js's sanitizeFields), as a
+  // filled/empty-star string — same ★/☆ characters admin-builder.js's own
+  // starsHtml renders in the builder, so the canvas and the live page match.
+  function pzTestiStars(n) {
+    var count = Math.min(Math.max(parseInt(n, 10) || 5, 1), 5);
+    var out = '';
+    for (var i = 1; i <= 5; i++) out += i <= count ? '★' : '☆';
+    return out;
+  }
+  function pzTestiCardHtml(q) {
+    return '<blockquote class="testimonial-card">' +
+      '<div class="testimonial-stars">' + pzTestiStars(q.stars) + '</div>' +
+      '<p>&ldquo;' + pzEsc(q.quote) + '&rdquo;</p>' +
+      '<cite>&mdash; ' + pzEsc(q.author) + '</cite></blockquote>';
+  }
 %>
 <% if (section.type === 'hero') { %>
   <% var pzHeroLight = section.fields.bg_type !== 'none' && section.fields.text_theme === 'light'; %>
@@ -210,14 +226,38 @@
   <section id="<%= pzId %>" class="testimonials<%= pzExtra %>" style="<%= pzHeightStyle %>">
     <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
-    <div class="testimonial-grid">
-      <% section.fields.quotes.forEach(function(q) { %>
-        <blockquote class="testimonial-card">
-          <p>&ldquo;<%= q.quote %>&rdquo;</p>
-          <cite>&mdash; <%= q.author %></cite>
-        </blockquote>
-      <% }); %>
-    </div>
+    <% if (section.fields.layout === 'slider') { %>
+      <div class="testimonial-slider">
+        <button type="button" class="testi-slider-arrow testi-slider-prev" data-testi-prev aria-label="Previous testimonial">&#10094;</button>
+        <div class="testimonial-track" id="<%= pzId %>-track">
+          <%- section.fields.quotes.map(pzTestiCardHtml).join('') %>
+        </div>
+        <button type="button" class="testi-slider-arrow testi-slider-next" data-testi-next aria-label="Next testimonial">&#10095;</button>
+      </div>
+      <script>
+        (function () {
+          var track = document.getElementById(<%- JSON.stringify(pzId + '-track').split('/').join(String.fromCharCode(92) + '/') %>);
+          if (!track) return;
+          var wrap = track.closest('.testimonial-slider');
+          if (!wrap || wrap.dataset.pzWired) return;
+          wrap.dataset.pzWired = '1';
+          function step(dir) {
+            var card = track.querySelector('.testimonial-card');
+            var cs = card ? getComputedStyle(card) : null;
+            var amount = card ? card.getBoundingClientRect().width + (cs ? parseFloat(cs.marginRight || 0) : 0) + 20 : 300;
+            track.scrollBy({ left: dir * amount, behavior: 'smooth' });
+          }
+          var prevBtn = wrap.querySelector('[data-testi-prev]');
+          var nextBtn = wrap.querySelector('[data-testi-next]');
+          if (prevBtn) prevBtn.addEventListener('click', function () { step(-1); });
+          if (nextBtn) nextBtn.addEventListener('click', function () { step(1); });
+        })();
+      </script>
+    <% } else { %>
+      <div class="testimonial-grid">
+        <%- section.fields.quotes.map(pzTestiCardHtml).join('') %>
+      </div>
+    <% } %>
   </section>
 
 <% } else if (section.type === 'newsletter') { %>

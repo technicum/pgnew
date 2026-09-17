@@ -675,6 +675,13 @@ textarea[data-field="__custom_css"] { font-family: var(--b-font-mono); font-size
 .b-faq-row .b-text-native { width: 100%; }
 .b-faq-a-input { width: 100%; resize: vertical; min-height: 44px; }
 .b-faq-add { width: 100%; justify-content: center; gap: 6px; }
+
+/* Testimonials' per-row star-rating picker (Content tab) — five clickable
+   stars, same ★/☆ characters starsHtml() renders read-only on the canvas. */
+.b-testi-star-picker { display: flex; gap: 2px; }
+.b-testi-star-btn { border: none; background: transparent; padding: 0; width: 22px; height: 22px; font-size: 17px; line-height: 1; color: var(--b-line); cursor: pointer; }
+.b-testi-star-btn.is-filled { color: var(--b-accent); }
+.b-testi-star-btn:hover { color: var(--b-accent); }
 .b-faq-add svg { width: 13px; height: 13px; flex-shrink: 0; }
 
 .b-gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
