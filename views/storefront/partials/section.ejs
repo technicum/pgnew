@@ -162,10 +162,26 @@
   // fetched or initialized again. Shared by section.ejs (top-level) and
   // block.ejs (nested in a Row's column) — see this file's own closure,
   // which block.ejs's include() already relies on for pzElStyle etc.
-  function pzTestiSwiperHtml(uid, quotes) {
-    var slides = (quotes || []).map(function (q) { return '<div class="swiper-slide">' + pzTestiCardHtml(q) + '</div>'; }).join('');
+  function pzTestiSwiperHtml(uid, fields) {
+    var quotes = fields.quotes || [];
+    var slides = quotes.map(function (q) { return '<div class="swiper-slide">' + pzTestiCardHtml(q) + '</div>'; }).join('');
     var idJs = JSON.stringify(uid).split('/').join(String.fromCharCode(92) + '/');
-    return '<div class="pz-testi-swiper swiper" id="' + pzEsc(uid) + '">' +
+    // Style tab's "Arrow design"/"Arrow & dot color" (see
+    // lib/sections.js's sanitizeFields) — arrowClass switches which of
+    // style.css's pz-testi-swiper--* variants applies (circle is the plain
+    // .pz-testi-swiper default, no extra class needed); colorStyle sets
+    // Swiper's own --swiper-theme-color custom property, which both the
+    // arrows and pagination dots already key off.
+    var arrowStyle = ['circle', 'square', 'minimal'].indexOf(fields.slider_arrow_style) !== -1 ? fields.slider_arrow_style : 'circle';
+    var arrowClass = arrowStyle !== 'circle' ? ' pz-testi-swiper--' + arrowStyle : '';
+    var colorStyle = fields.slider_color ? ' style="--swiper-theme-color:' + pzEsc(fields.slider_color) + ';"' : '';
+    // "Infinite loop" defaults on (undefined counts as true, matching every
+    // slider saved before this option existed); loop only ever makes sense
+    // with more than one slide, checked at runtime since a merchant can add
+    // more testimonials without this markup re-rendering.
+    var loopJs = fields.slider_loop !== false ? 'true' : 'false';
+    var autoplayJs = fields.slider_autoplay ? 'autoplay: { delay: 3000, disableOnInteraction: false },' : '';
+    return '<div class="pz-testi-swiper swiper' + arrowClass + '" id="' + pzEsc(uid) + '"' + colorStyle + '">' +
         '<div class="swiper-wrapper">' + slides + '</div>' +
         '<div class="swiper-pagination"></div>' +
         '<div class="swiper-button-prev"></div>' +
@@ -178,7 +194,8 @@
             'if (!el || el.dataset.pzSwiperInit || typeof Swiper === "undefined") return;' +
             'el.dataset.pzSwiperInit = "1";' +
             'new Swiper(el, {' +
-              'loop: el.querySelectorAll(".swiper-slide").length > 1,' +
+              'loop: ' + loopJs + ' && el.querySelectorAll(".swiper-slide").length > 1,' +
+              autoplayJs +
               'spaceBetween: 20,' +
               'slidesPerView: 1,' +
               'pagination: { el: el.querySelector(".swiper-pagination"), clickable: true },' +
@@ -280,7 +297,7 @@
     <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <% if (section.fields.layout === 'slider') { %>
-      <%- pzTestiSwiperHtml(pzId + '-swiper', section.fields.quotes) %>
+      <%- pzTestiSwiperHtml(pzId + '-swiper', section.fields) %>
     <% } else { %>
       <div class="testimonial-grid">
         <%- section.fields.quotes.map(pzTestiCardHtml).join('') %>

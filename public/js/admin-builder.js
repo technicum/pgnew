@@ -1660,9 +1660,18 @@
       case "collections":
         typeStyle = field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols));
         break;
-      case "testimonials":
-        typeStyle = field("Layout", segHtml("layout", [{ val: "cards", label: "Cards" }, { val: "slider", label: "Slider" }], d.layout || "cards"));
+      case "testimonials": {
+        var testiLayout = d.layout || "cards";
+        var testiSliderFields = testiLayout === "slider"
+          ? field("", checkHtml("slider_autoplay", !!d.slider_autoplay, "Auto scroll")) +
+            field("", checkHtml("slider_loop", d.slider_loop !== false, "Infinite loop")) +
+            field("Arrow design", segHtml("slider_arrow_style", [{ val: "circle", label: "Circle" }, { val: "square", label: "Square" }, { val: "minimal", label: "Minimal" }], d.slider_arrow_style || "circle")) +
+            field("Arrow &amp; dot color", colorHtml("slider_color", d.slider_color || "#211e1b"))
+          : "";
+        typeStyle = field("Layout", segHtml("layout", [{ val: "cards", label: "Cards" }, { val: "slider", label: "Slider" }], testiLayout)) +
+          testiSliderFields;
         break;
+      }
       case "spacer":
         typeStyle = field("Height", segHtml("height", [{ val: "s", label: "S" }, { val: "m", label: "M" }, { val: "l", label: "L" }, { val: "xl", label: "XL" }], d.height));
         break;

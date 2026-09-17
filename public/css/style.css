@@ -666,6 +666,11 @@ main.container {
   border: 1px solid var(--color-border);
 }
 .pz-testi-swiper .swiper-button-prev:after, .pz-testi-swiper .swiper-button-next:after { font-size: 14px; font-weight: 700; }
+/* "Arrow design" (fields.slider_arrow_style) — "circle" above is the
+   default; these two just restyle the same .swiper-button-prev/-next. */
+.pz-testi-swiper--square .swiper-button-prev, .pz-testi-swiper--square .swiper-button-next { border-radius: 6px; }
+.pz-testi-swiper--minimal .swiper-button-prev, .pz-testi-swiper--minimal .swiper-button-next { width: 24px; height: 24px; background: transparent; border: none; }
+.pz-testi-swiper--minimal .swiper-button-prev:after, .pz-testi-swiper--minimal .swiper-button-next:after { font-size: 20px; }
 
 .newsletter {
   background: var(--color-surface);

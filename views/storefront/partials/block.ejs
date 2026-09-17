@@ -131,7 +131,7 @@
     <div class="testimonials">
       <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= b.fields.heading %></h2>
       <% if (b.fields.layout === 'slider') { %>
-        <%- pzTestiSwiperHtml('pz-block-' + b.id + '-swiper', b.fields.quotes) %>
+        <%- pzTestiSwiperHtml('pz-block-' + b.id + '-swiper', b.fields) %>
       <% } else { %>
         <div class="testimonial-grid">
           <%- b.fields.quotes.map(pzTestiCardHtml).join('') %>
