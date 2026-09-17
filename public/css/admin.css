@@ -266,6 +266,16 @@
   font-family: inherit;
 }
 .admin-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+.app-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.app-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.app-card-top h3 { margin: 0; font-size: 1rem; }
+.app-card-desc { margin: 0; color: #6b7280; font-size: 0.88rem; flex: 1; }
+.app-card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.app-card-price { font-weight: 600; color: #374151; font-size: 0.9rem; }
+.apps-marketplace-link { margin-top: 24px; font-size: 0.88rem; }
+
 /* .admin-form-field / .field-label: same visual weight as .admin-form label
    (used by every other field on this form), but as a <div>+<span> instead
    of a <label>, since the categories field wraps several REAL <label>

@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+
+<div class="panel-toolbar">
+  <a href="/admin/contacts/new" class="btn btn-primary">+ New contact</a>
+</div>
+
+<table class="admin-table">
+  <thead>
+    <tr><th>Name</th><th>Email</th><th>Phone</th><th>Source</th><th>Added</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% contacts.forEach(function(c) { %>
+      <tr>
+        <td><a href="/admin/contacts/<%= c.id %>/edit"><strong><%= c.name %></strong></a></td>
+        <td><%= c.email %></td>
+        <td><%= c.phone || '—' %></td>
+        <td><span class="status-pill status-paid"><%= c.source.replace('_', ' ') %></span></td>
+        <td><%= new Date(c.created_at).toLocaleDateString() %></td>
+        <td class="admin-row-actions">
+          <a href="/admin/contacts/<%= c.id %>/edit" class="link-btn">Edit</a>
+          <form action="/admin/contacts/<%= c.id %>/delete" method="POST" onsubmit="return confirm('Delete this contact?');">
+            <button type="submit" class="link-btn danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    <% }); %>
+    <% if (contacts.length === 0) { %>
+      <tr><td colspan="6" class="empty-state">No contacts yet — add one, or they'll show up here as leads come in.</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/footer') %>

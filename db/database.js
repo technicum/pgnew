@@ -105,6 +105,24 @@ const TABLES = {
   // app's content model stays minimal; see the CREATE TABLE below for the
   // full column story.
   blogPosts: `${PREFIX}blog_posts`,
+  // CRM (Contacts) — see the CREATE TABLE comments below for the full
+  // design story: contacts is a superset of customers that works for every
+  // store vertical, and listings is the non-ecommerce equivalent of
+  // products (a property, a vehicle, a rental unit, a bookable service).
+  contacts: `${PREFIX}contacts`,
+  listings: `${PREFIX}listings`,
+  // Paid apps (CRM is the first one) — mirrors the existing themes/
+  // store_themes structural marketplace pattern: `apps` is the catalog,
+  // `store_apps` is which store has which app switched on, and `plans` /
+  // `plan_apps` say which apps come bundled free at which plan tier (see
+  // the CREATE TABLE comments below). `stores.plan` itself stays the plain
+  // VARCHAR slug it already was — PLANS above is still the source of truth
+  // for which slugs are valid; `plans` here only adds pricing/bundling on
+  // top, it doesn't replace that check.
+  apps: `${PREFIX}apps`,
+  storeApps: `${PREFIX}store_apps`,
+  plans: `${PREFIX}plans`,
+  planApps: `${PREFIX}plan_apps`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -490,6 +508,132 @@ CREATE TABLE IF NOT EXISTS ${TABLES.media} (
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
   FOREIGN KEY (uploaded_by) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_store_created (store_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- CRM: every person a store's admin should know about, whether or not they
+-- ever created a login. Deliberately separate from ${TABLES.customers} (an
+-- authentication account with a password_hash) rather than merged into it —
+-- most contacts here will never log in at all: a lead, a guest checkout, a
+-- newsletter signup, someone who submitted a contact form or requested a
+-- quote. customer_id links back to a real ecommerce account ONLY once that
+-- contact actually creates one (matched by email at write time); NULL means
+-- the CRM knows about this person without them ever having authenticated.
+-- Works the same way for every store type/vertical, not just ecommerce —
+-- see ${TABLES.listings} below for the vertical-specific thing a contact's
+-- inquiry might actually be about (a property, a vehicle, a service).
+CREATE TABLE IF NOT EXISTS ${TABLES.contacts} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  customer_id INT NULL,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  -- How this contact entered the CRM: 'signup' (created a customer login),
+  -- 'guest_checkout' (ordered without one), 'inquiry_form', 'newsletter',
+  -- or 'manual' (added by the store admin directly). Plain string, not an
+  -- ENUM, so a new source never needs a schema migration to exist.
+  source VARCHAR(30) NOT NULL DEFAULT 'manual',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (customer_id) REFERENCES ${TABLES.customers}(id) ON DELETE SET NULL,
+  UNIQUE KEY uniq_store_contact_email (store_id, email),
+  INDEX idx_contact_source (source)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Vertical-agnostic "thing a store showcases that isn't an ecommerce
+-- product" — a property (real estate), a vehicle (car dealer), a rental
+-- unit, or a bookable service (a lawyer's consultation type, a salon
+-- appointment). Deliberately not a ${TABLES.products} row: no stock/cart/
+-- checkout concept applies to any of these. listing_type is a plain string
+-- discriminator (not an ENUM) so a brand-new vertical never needs a schema
+-- migration to exist — it just starts writing a new listing_type value.
+-- Whatever's specific to that vertical (bedrooms/bathrooms for a property,
+-- make/model/year for a vehicle, deposit/daily_rate for a rental) lives in
+-- the details column, mirroring how ${TABLES.pageSections}.fields already stores
+-- type-specific data as JSON rather than needing a column per section type.
+CREATE TABLE IF NOT EXISTS ${TABLES.listings} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  listing_type VARCHAR(30) NOT NULL DEFAULT 'general',
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NULL,
+  image_url VARCHAR(1000),
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  details JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_listing_slug (store_id, slug),
+  INDEX idx_listing_type_status (listing_type, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Plan pricing — mirrors ${TABLES.themes}'s own catalog shape (a price on
+-- the catalog row itself). ${TABLES.stores}.plan stays a plain VARCHAR slug
+-- ('free'/'starter'/'pro', validated against the PLANS array in this file)
+-- rather than becoming a real foreign key here — that would touch every
+-- place PLANS is already checked against for comparatively little benefit.
+-- This table just gives each of those slugs a real price and a place to
+-- attach bundled apps (see ${TABLES.planApps} below). No payment processor
+-- is wired up yet (see PLANS' own comment above) — a store's plan is still
+-- moved by hand from /platform-admin/stores/:id until Razorpay billing
+-- exists; this table is what that screen will show a price for.
+CREATE TABLE IF NOT EXISTS ${TABLES.plans} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(20) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  price_cents INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- The paid-app catalog (CRM is the first entry — see migrateSeedApps below
+-- for how it gets seeded). Same shape as ${TABLES.themes}: a slug, a price,
+-- and a status so an app can be unpublished without deleting it (and
+-- orphaning every store that already has it switched on).
+CREATE TABLE IF NOT EXISTS ${TABLES.apps} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  price_cents INT NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'published',
+  description TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Which apps come bundled free at which plan tier (e.g. CRM included on
+-- Pro, but not on Starter) — a store on that plan gets the app active with
+-- no separate ${TABLES.storeApps} row needed; see lib/apps.js (once it
+-- exists) for the combined "is this app active for this store" check that
+-- reads both tables. Many-to-many since a plan can bundle several apps and
+-- an app could be bundled into more than one tier.
+CREATE TABLE IF NOT EXISTS ${TABLES.planApps} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  plan_id INT NOT NULL,
+  app_id INT NOT NULL,
+  FOREIGN KEY (plan_id) REFERENCES ${TABLES.plans}(id) ON DELETE CASCADE,
+  FOREIGN KEY (app_id) REFERENCES ${TABLES.apps}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_plan_app (plan_id, app_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Which store has which app switched on beyond whatever their plan already
+-- bundles for free — i.e. a standalone purchase (a Starter store buying
+-- CRM on its own rather than upgrading to Pro). Mirrors ${TABLES.storeThemes}
+-- exactly: is_active lets an app be paused (payment lapsed) without losing
+-- the row/its history, same as a theme can be installed but not the active
+-- one.
+CREATE TABLE IF NOT EXISTS ${TABLES.storeApps} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  app_id INT NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (app_id) REFERENCES ${TABLES.apps}(id) ON DELETE RESTRICT,
+  UNIQUE KEY uniq_store_app (store_id, app_id),
+  INDEX idx_store_app_active (store_id, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -885,11 +1029,12 @@ async function migrateSectionBgColumns(conn) {
 }
 
 // The category picked on the "Create a new site" popup (see routes/
-// platform.js's STORE_CATEGORIES and views/admin/dashboard.ejs's modal) —
-// purely descriptive for now (shown back on the account dashboard), not
-// read anywhere that changes behavior. NULL for every store created before
-// this existed, and for the very first store made via /signup (that flow
-// doesn't ask).
+// platform.js's STORE_CATEGORIES and views/admin/dashboard.ejs's modal).
+// 'online_store' is the only ecommerce category — every other value (and
+// NULL, for stores created before this column existed or via /signup, which
+// doesn't ask) means the storefront has no product catalog, which is what
+// hides Commerce-group sections (products/spotlight/collections) from the
+// builder — see isEcommerceCategory in lib/sections.js.
 async function migrateStoreCategoryColumn(conn) {
   if (!(await columnExists(conn, TABLES.stores, 'category'))) {
     await conn.query(`ALTER TABLE ${TABLES.stores} ADD COLUMN category VARCHAR(20) NULL`);
@@ -1262,6 +1407,63 @@ async function migrateStoreThemes(conn) {
   }
 }
 
+// Seeds the three existing plan slugs (PLANS above) into pz_plans with real
+// prices, and the CRM app into pz_apps, bundling CRM into 'pro' by default
+// (a 'starter' store can still buy it standalone once pz_store_apps has a
+// real purchase flow wired up — see this file's comment above
+// TABLES.planApps). Safe to run on every boot: an existing row is left
+// alone once created, so a price changed later from platform-admin is never
+// silently overwritten here. price_cents is paise (INR) throughout, same
+// convention as pz_themes' own price_cents column.
+//
+// NOTE: the plan prices below (Starter ₹1,000/mo, Pro ₹5,000/mo) reflect
+// what was actually decided; the CRM app's own standalone price does NOT —
+// it's seeded at 0 as a placeholder since no standalone price was set, and
+// should be updated from platform-admin (or here) before any store is
+// actually charged for it on its own.
+async function migrateSeedPlansAndApps(conn) {
+  const planSeed = [
+    { slug: 'free', name: 'Free', price_cents: 0 },
+    { slug: 'starter', name: 'Starter', price_cents: 100000 }, // ₹1,000/mo
+    { slug: 'pro', name: 'Pro', price_cents: 500000 }, // ₹5,000/mo
+  ];
+  const planIds = {};
+  for (const p of planSeed) {
+    const [[existing]] = await conn.query(`SELECT id FROM ${TABLES.plans} WHERE slug = ?`, [p.slug]);
+    if (existing) {
+      planIds[p.slug] = existing.id;
+    } else {
+      const [result] = await conn.query(
+        `INSERT INTO ${TABLES.plans} (slug, name, price_cents) VALUES (?, ?, ?)`,
+        [p.slug, p.name, p.price_cents]
+      );
+      planIds[p.slug] = result.insertId;
+    }
+  }
+
+  const [[existingCrmApp]] = await conn.query(`SELECT id FROM ${TABLES.apps} WHERE slug = 'crm'`);
+  let crmAppId;
+  if (existingCrmApp) {
+    crmAppId = existingCrmApp.id;
+  } else {
+    const [result] = await conn.query(
+      `INSERT INTO ${TABLES.apps} (slug, name, price_cents, description) VALUES (?, ?, ?, ?)`,
+      ['crm', 'CRM', 0, 'Contacts, leads and listings for every store type, not just ecommerce.']
+    );
+    crmAppId = result.insertId;
+  }
+
+  if (planIds.pro) {
+    const [[existingBundle]] = await conn.query(
+      `SELECT id FROM ${TABLES.planApps} WHERE plan_id = ? AND app_id = ?`,
+      [planIds.pro, crmAppId]
+    );
+    if (!existingBundle) {
+      await conn.query(`INSERT INTO ${TABLES.planApps} (plan_id, app_id) VALUES (?, ?)`, [planIds.pro, crmAppId]);
+    }
+  }
+}
+
 // Each catalog theme can point at a real, fully-built store to use as its
 // public "View demo" showcase (see middleware/tenant.js's storeUrl usage in
 // routes/admin.js's /store/themes + views/admin/store-themes.ejs) — the same
@@ -1509,6 +1711,7 @@ async function init() {
     await migrateAdminsToUsers(conn);
     await migrateThemesFromManifests(conn);
     await migrateStoreThemes(conn);
+    await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);

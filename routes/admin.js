@@ -22,6 +22,8 @@ const { resolveTokens, sanitizeTokenPatch, themeDefaultTokens, RADIUS_PX } = req
 const menusLib = require('../lib/menus');
 const { importDemoContent } = require('../lib/demoImport');
 const mediaLib = require('../lib/media');
+const { getActiveAppSlugs, listAppsForStore, activateApp } = require('../lib/apps');
+const { sanitizeContact } = require('../lib/contacts');
 
 function slugify(str) {
   return str
@@ -91,6 +93,32 @@ router.post('/exit-impersonation', (req, res) => {
 
 // Everything below requires admin auth for this store
 router.use(requireAdmin);
+
+// Which paid apps (CRM, etc.) are on for this store right now — bundled by
+// its plan or individually activated. Computed once per request so both
+// the nav (header.ejs reads res.locals.activeAppSlugs) and the route guard
+// below agree with the Apps marketplace screen without each querying it
+// separately. Fails open to "no apps active" rather than breaking the page
+// if the query has a problem.
+router.use(async (req, res, next) => {
+  try {
+    res.locals.activeAppSlugs = await getActiveAppSlugs(req.store.id, req.store.plan);
+  } catch (err) {
+    res.locals.activeAppSlugs = [];
+  }
+  next();
+});
+
+// Gates a path prefix behind a paid app being active for this store —
+// used for /contacts below. Sends merchants who haven't activated the app
+// to the Apps screen instead of a raw 403.
+function requireApp(slug, label) {
+  return (req, res, next) => {
+    if (res.locals.activeAppSlugs && res.locals.activeAppSlugs.includes(slug)) return next();
+    req.flash('error', `${label} isn't active for this store yet — activate it from Apps first.`);
+    res.redirect('/admin/apps');
+  };
+}
 
 // ---------- Dashboard ----------
 // Everything on this page is a real number from real data — no fabricated
@@ -677,12 +705,6 @@ async function applySectionsDiff(scope, incoming) {
       const textColor = settings.text_color || null;
       const bgColor = settings.bg_color || null;
       const textAlign = settings.text_align || null;
-      // Universal background (see lib/sections.js's sanitizeSectionSettings) —
-      // same NULL-means-"no override" convention as textColor/bgColor/textAlign.
-      const bgType = settings.bg_type || null;
-      const bgImageUrl = settings.bg_image_url || null;
-      const bgVideoUrl = settings.bg_video_url || null;
-      const bgOverlay = settings.bg_overlay ? 1 : 0;
 
       const incomingId = Number.isInteger(item.id) ? item.id : parseInt(item.id, 10);
       if (incomingId && existingIds.has(incomingId)) {
@@ -693,25 +715,24 @@ async function applySectionsDiff(scope, incoming) {
                  hide_desktop = ?, hide_tablet = ?, hide_mobile = ?,
                  margin_top = ?, margin_bottom = ?, margin_left = ?, margin_right = ?,
                  padding_top = ?, padding_bottom = ?, padding_left = ?, padding_right = ?, element_styles = ?,
-                 text_color = ?, bg_color = ?, text_align = ?, bg_type = ?, bg_image_url = ?, bg_video_url = ?, bg_overlay = ?
+                 text_color = ?, bg_color = ?, text_align = ?
            WHERE id = ?`,
           [i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
             marginTop, marginBottom, marginLeft, marginRight,
             paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson,
-            textColor, bgColor, textAlign, bgType, bgImageUrl, bgVideoUrl, bgOverlay, incomingId]
+            textColor, bgColor, textAlign, incomingId]
         );
       } else {
         const [result] = await pool.query(
           `INSERT INTO ${TABLES.pageSections}
              (store_id, page_id, region, type, position, fields, hidden, custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
               margin_top, margin_bottom, margin_left, margin_right,
-              padding_top, padding_bottom, padding_left, padding_right, element_styles, text_color, bg_color, text_align,
-              bg_type, bg_image_url, bg_video_url, bg_overlay)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              padding_top, padding_bottom, padding_left, padding_right, element_styles, text_color, bg_color, text_align)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [scope.storeId, scope.pageId, scope.region, item.type, i, JSON.stringify(fields), hidden, customClass, customCss, minHeight, hideDesktop, hideTablet, hideMobile,
             marginTop, marginBottom, marginLeft, marginRight,
             paddingTop, paddingBottom, paddingLeft, paddingRight, elementStylesJson,
-            textColor, bgColor, textAlign, bgType, bgImageUrl, bgVideoUrl, bgOverlay]
+            textColor, bgColor, textAlign]
         );
         keepIds.add(result.insertId);
       }
@@ -860,10 +881,6 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
     if (patch.text_color !== undefined) { sets.push('text_color = ?'); values.push(patch.text_color || null); }
     if (patch.bg_color !== undefined) { sets.push('bg_color = ?'); values.push(patch.bg_color || null); }
     if (patch.text_align !== undefined) { sets.push('text_align = ?'); values.push(patch.text_align || null); }
-    if (patch.bg_type !== undefined) { sets.push('bg_type = ?'); values.push(patch.bg_type || null); }
-    if (patch.bg_image_url !== undefined) { sets.push('bg_image_url = ?'); values.push(patch.bg_image_url || null); }
-    if (patch.bg_video_url !== undefined) { sets.push('bg_video_url = ?'); values.push(patch.bg_video_url || null); }
-    if (patch.bg_overlay !== undefined) { sets.push('bg_overlay = ?'); values.push(patch.bg_overlay ? 1 : 0); }
     if (sets.length) {
       values.push(section.id);
       await pool.query(`UPDATE ${TABLES.pageSections} SET ${sets.join(', ')} WHERE id = ?`, values);
@@ -873,7 +890,7 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
       `SELECT custom_class, custom_css, min_height, hide_desktop, hide_tablet, hide_mobile,
               margin_top, margin_bottom, margin_left, margin_right,
               padding_top, padding_bottom, padding_left, padding_right,
-              text_color, bg_color, text_align, bg_type, bg_image_url, bg_video_url, bg_overlay
+              text_color, bg_color, text_align
        FROM ${TABLES.pageSections} WHERE id = ?`,
       [section.id]
     );
@@ -896,10 +913,6 @@ async function scopeUpdateSectionSettings(scope, sectionId, req, res, next) {
       text_color: updated.text_color || '',
       bg_color: updated.bg_color || '',
       text_align: updated.text_align || '',
-      bg_type: updated.bg_type || '',
-      bg_image_url: updated.bg_image_url || '',
-      bg_video_url: updated.bg_video_url || '',
-      bg_overlay: !!updated.bg_overlay,
     });
   } catch (err) {
     next(err);
@@ -2000,10 +2013,125 @@ router.get('/markets', (req, res) => {
 });
 
 // ---------- Apps ----------
-// No app/integration marketplace exists yet — this says so plainly rather
-// than showing fake installed apps.
-router.get('/apps', (req, res) => {
-  res.render('admin/apps', { title: 'Apps' });
+router.get('/apps', async (req, res, next) => {
+  try {
+    const apps = await listAppsForStore(req.store.id, req.store.plan);
+    res.render('admin/apps', { title: 'Apps', apps });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/apps/:slug/activate', async (req, res, next) => {
+  try {
+    const [[app]] = await pool.query(`SELECT * FROM ${TABLES.apps} WHERE slug = ? AND status = 'published'`, [req.params.slug]);
+    if (!app) {
+      req.flash('error', 'App not found.');
+      return res.redirect('/admin/apps');
+    }
+    await activateApp(req.store.id, app.id);
+    req.flash('success', `${app.name} activated.`);
+    res.redirect('/admin/apps');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Contacts (CRM) ----------
+// Gated behind the 'crm' app — see requireApp above. Deliberately a
+// superset of Customers: every person the store's admin should know
+// about, not just people with a pz_customers login (see db/database.js's
+// pz_contacts comment for the full design story).
+router.use('/contacts', requireApp('crm', 'CRM'));
+
+router.get('/contacts', async (req, res, next) => {
+  try {
+    const [contacts] = await pool.query(
+      `SELECT * FROM ${TABLES.contacts} WHERE store_id = ? ORDER BY created_at DESC`,
+      [req.store.id]
+    );
+    res.render('admin/contacts', { title: 'Contacts', contacts });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/contacts/new', (req, res) => {
+  res.render('admin/contact-form', { title: 'New Contact', contact: null });
+});
+
+router.post('/contacts/new', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const data = sanitizeContact(req.body);
+    if (!data.name || !data.email) {
+      req.flash('error', 'Name and email are required.');
+      return res.redirect('/admin/contacts/new');
+    }
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ?`, [storeId, data.email]);
+    if (existing) {
+      req.flash('error', `A contact with email "${data.email}" already exists.`);
+      return res.redirect('/admin/contacts/new');
+    }
+    await pool.query(
+      `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source) VALUES (?, ?, ?, ?, ?)`,
+      [storeId, data.name, data.email, data.phone, data.source]
+    );
+    req.flash('success', 'Contact added.');
+    res.redirect('/admin/contacts');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/contacts/:id/edit', async (req, res, next) => {
+  try {
+    const [[contact]] = await pool.query(`SELECT * FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect('/admin/contacts');
+    }
+    res.render('admin/contact-form', { title: 'Edit Contact', contact });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/contacts/:id/edit', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const data = sanitizeContact(req.body);
+    if (!data.name || !data.email) {
+      req.flash('error', 'Name and email are required.');
+      return res.redirect(`/admin/contacts/${req.params.id}/edit`);
+    }
+    const [[existing]] = await pool.query(
+      `SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ? AND id != ?`,
+      [storeId, data.email, req.params.id]
+    );
+    if (existing) {
+      req.flash('error', `A contact with email "${data.email}" already exists.`);
+      return res.redirect(`/admin/contacts/${req.params.id}/edit`);
+    }
+    await pool.query(
+      `UPDATE ${TABLES.contacts} SET name = ?, email = ?, phone = ?, source = ? WHERE store_id = ? AND id = ?`,
+      [data.name, data.email, data.phone, data.source, storeId, req.params.id]
+    );
+    req.flash('success', 'Contact updated.');
+    res.redirect('/admin/contacts');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/contacts/:id/delete', async (req, res, next) => {
+  try {
+    await pool.query(`DELETE FROM ${TABLES.contacts} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
+    req.flash('success', 'Contact deleted.');
+    res.redirect('/admin/contacts');
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ---------- Settings ----------

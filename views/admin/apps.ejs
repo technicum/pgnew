@@ -1,8 +1,30 @@
 <%- include('partials/header') %>
 
-<section class="panel" style="text-align:center; padding: 48px 24px;">
-  <h2>No apps installed</h2>
-  <p style="color:#6b7280;">PageZaper doesn't have an app marketplace yet. When it does, integrations (payment gateways, shipping, marketing tools) will show up here.</p>
-</section>
+<div class="apps-grid">
+  <% apps.forEach(function(app) { %>
+    <div class="app-card">
+      <div class="app-card-top">
+        <h3><%= app.name %></h3>
+        <% if (app.active) { %>
+          <span class="status-pill status-delivered"><%= app.bundled ? 'Included in plan' : 'Active' %></span>
+        <% } %>
+      </div>
+      <p class="app-card-desc"><%= app.description || '' %></p>
+      <div class="app-card-bottom">
+        <span class="app-card-price"><%= app.price_cents > 0 ? '₹' + Math.round(app.price_cents / 100) + '/mo' : 'Free' %></span>
+        <% if (!app.active) { %>
+          <form action="/admin/apps/<%= app.slug %>/activate" method="POST">
+            <button type="submit" class="btn btn-primary">Activate</button>
+          </form>
+        <% } %>
+      </div>
+    </div>
+  <% }); %>
+  <% if (apps.length === 0) { %>
+    <div class="empty-state">No apps available yet.</div>
+  <% } %>
+</div>
+
+<p class="apps-marketplace-link"><a href="https://apps.pagezaper.com" target="_blank" rel="noopener">Browse the full app marketplace ↗</a></p>
 
 <%- include('partials/footer') %>

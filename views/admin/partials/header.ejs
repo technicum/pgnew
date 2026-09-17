@@ -72,6 +72,10 @@
         <% } %>
         <a href="/admin/analytics" class="<%= title === 'Analytics' ? 'active' : '' %>">Analytics</a>
 
+        <% if (typeof activeAppSlugs !== 'undefined' && activeAppSlugs.indexOf('crm') !== -1) { %>
+          <a href="/admin/contacts" class="<%= title && (title === 'Contacts' || title === 'New Contact' || title === 'Edit Contact') ? 'active' : '' %>">Contacts</a>
+        <% } %>
+
         <a href="/admin/apps" class="<%= title === 'Apps' ? 'active' : '' %>">Apps</a>
         <% if (title === 'Apps') { %>
           <a href="/admin/apps" class="admin-nav-sub active">Manage apps</a>

@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+
+<form action="<%= contact ? '/admin/contacts/' + contact.id + '/edit' : '/admin/contacts/new' %>" method="POST" class="admin-form">
+  <label>Name *
+    <input type="text" name="name" required value="<%= contact ? contact.name : '' %>" placeholder="Jane Doe" />
+  </label>
+
+  <div class="form-row">
+    <label>Email *
+      <input type="email" name="email" required value="<%= contact ? contact.email : '' %>" placeholder="jane@example.com" />
+    </label>
+    <label>Phone
+      <input type="text" name="phone" value="<%= contact && contact.phone ? contact.phone : '' %>" placeholder="+91 98765 43210" />
+    </label>
+  </div>
+
+  <label>Source
+    <select name="source">
+      <option value="manual" <%= !contact || contact.source === 'manual' ? 'selected' : '' %>>Added manually</option>
+      <option value="contact_form" <%= contact && contact.source === 'contact_form' ? 'selected' : '' %>>Contact form</option>
+      <option value="signup" <%= contact && contact.source === 'signup' ? 'selected' : '' %>>Account signup</option>
+      <option value="order" <%= contact && contact.source === 'order' ? 'selected' : '' %>>Order / checkout</option>
+      <option value="newsletter" <%= contact && contact.source === 'newsletter' ? 'selected' : '' %>>Newsletter</option>
+    </select>
+  </label>
+
+  <button type="submit" class="btn btn-primary"><%= contact ? 'Save changes' : 'Add contact' %></button>
+</form>
+
+<%- include('partials/footer') %>
