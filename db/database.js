@@ -535,7 +535,14 @@ CREATE TABLE IF NOT EXISTS ${TABLES.media} (
 -- inquiry might actually be about (a property, a vehicle, a service).
 CREATE TABLE IF NOT EXISTS ${TABLES.contacts} (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  store_id INT NOT NULL,
+  -- Nullable: a lead isn't always about one specific site -- a general
+  -- business inquiry can exist with no site attached at all. owner_user_id
+  -- is set ONLY in that case (store_id IS NULL), so CRM can still tell
+  -- whose contact this is -- normally ownership is derived through
+  -- store_id -> pz_user_roles instead (see lib/crm.js's getOwnerStoreIds),
+  -- which is why owner_user_id stays NULL whenever store_id is set.
+  store_id INT NULL,
+  owner_user_id INT NULL,
   customer_id INT NULL,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
@@ -552,6 +559,7 @@ CREATE TABLE IF NOT EXISTS ${TABLES.contacts} (
   tags JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
   FOREIGN KEY (customer_id) REFERENCES ${TABLES.customers}(id) ON DELETE SET NULL,
   UNIQUE KEY uniq_store_contact_email (store_id, email),
   INDEX idx_contact_source (source)
@@ -1473,6 +1481,26 @@ async function migrateContactsTagsColumn(conn) {
   }
 }
 
+// Lets a lead be created with no site at all (see the CREATE TABLE comment
+// above) -- relaxes store_id to nullable and adds owner_user_id for that
+// case. columnIsNullable lets this skip the MODIFY on an install that's
+// already been migrated, same idempotency pattern as every migrate*
+// function in this file.
+async function migrateContactsOptionalStore(conn) {
+  if (!(await tableExists(conn, TABLES.contacts))) return;
+  if (!(await columnIsNullable(conn, TABLES.contacts, 'store_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.contacts} MODIFY COLUMN store_id INT NULL`);
+  }
+  if (!(await columnExists(conn, TABLES.contacts, 'owner_user_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.contacts} ADD COLUMN owner_user_id INT NULL AFTER store_id`);
+  }
+  if (!(await foreignKeyExists(conn, TABLES.contacts, 'owner_user_id'))) {
+    await conn.query(
+      `ALTER TABLE ${TABLES.contacts} ADD FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE`
+    );
+  }
+}
+
 async function migrateAppsScopeColumn(conn) {
   if (!(await tableExists(conn, TABLES.apps))) return;
   if (!(await columnExists(conn, TABLES.apps, 'scope'))) {
@@ -1777,6 +1805,7 @@ async function init() {
     await migrateThemesFromManifests(conn);
     await migrateStoreThemes(conn);
     await migrateContactsTagsColumn(conn);
+    await migrateContactsOptionalStore(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);

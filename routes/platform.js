@@ -525,25 +525,36 @@ router.get('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (req
 router.post('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const ownerUserId = req.crm.ownerUserId;
-    const storeIds = await crmLib.getOwnerStoreIds(ownerUserId);
-    const storeId = parseInt(req.body.store_id, 10);
-    if (!storeIds.includes(storeId)) {
-      req.flash('error', 'Please choose one of your sites.');
-      return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
+    // Site is optional -- an empty selection means a general inquiry not
+    // tied to any one site (see pz_contacts.store_id's CREATE TABLE
+    // comment). owner_user_id only gets set in that case; a site-attached
+    // contact still derives its owner through store_id as before.
+    const storeId = req.body.store_id ? parseInt(req.body.store_id, 10) : null;
+    if (storeId) {
+      const storeIds = await crmLib.getOwnerStoreIds(ownerUserId);
+      if (!storeIds.includes(storeId)) {
+        req.flash('error', 'Please choose one of your sites.');
+        return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
+      }
     }
     const data = sanitizeContact(req.body);
     if (!data.name || !data.email) {
       req.flash('error', 'Name and email are required.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
     }
-    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ?`, [storeId, data.email]);
+    const [[existing]] = await pool.query(
+      storeId
+        ? `SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND email = ?`
+        : `SELECT id FROM ${TABLES.contacts} WHERE store_id IS NULL AND owner_user_id = ? AND email = ?`,
+      [storeId || ownerUserId, data.email]
+    );
     if (existing) {
-      req.flash('error', `A contact with email "${data.email}" already exists for that site.`);
+      req.flash('error', `A contact with email "${data.email}" already exists${storeId ? ' for that site' : ''}.`);
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/contacts/new'));
     }
     await pool.query(
-      `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, ?)`,
-      [storeId, data.name, data.email, data.phone, data.source, JSON.stringify(data.tags)]
+      `INSERT INTO ${TABLES.contacts} (store_id, owner_user_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [storeId, storeId ? null : ownerUserId, data.name, data.email, data.phone, data.source, JSON.stringify(data.tags)]
     );
     req.flash('success', 'Contact added.');
     res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
@@ -615,6 +626,10 @@ router.post('/dashboard/crm/contacts/:id/convert', requireAccount, requireCrm, a
     req.flash('success', `${contact.name} moved to Customers.`);
     res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
   } catch (err) {
+    if (err && err.message) {
+      req.flash('error', err.message);
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${req.params.id}`));
+    }
     next(err);
   }
 });

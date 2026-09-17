@@ -39,7 +39,7 @@
           <div class="crm-task-body">
             <span class="crm-task-title"><%= t.title %></span>
             <span class="crm-task-meta">
-              <a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <%= t.store_name %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
+              <a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <%= t.store_name || 'General inquiry' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
             </span>
           </div>
         </li>

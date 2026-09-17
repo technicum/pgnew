@@ -34,8 +34,9 @@
     <% } %>
 
     <form action="/dashboard/crm/contacts/new" method="POST" class="admin-form">
-      <label>Site *
-        <select name="store_id" required>
+      <label>Site <span style="font-weight:400; color:#6b7280;">(optional — leave blank for a general inquiry not tied to one site)</span>
+        <select name="store_id">
+          <option value="">No specific site</option>
           <% stores.forEach(function(s) { %>
             <option value="<%= s.id %>"><%= s.name %></option>
           <% }); %>
