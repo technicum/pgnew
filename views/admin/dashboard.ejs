@@ -62,10 +62,11 @@
   // the link has to cross domains explicitly rather than a plain relative href.
   var newSiteBase = '//admin.' + (typeof baseDomain !== 'undefined' ? baseDomain : 'pagezaper.com') + '/dashboard/new-store';
   var newSiteCategories = [
+    { val: 'online_store', label: 'Online Store', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>' },
+    { val: 'lawyer', label: 'Lawyer', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 21h8"/><path d="M12 6 5 8.5l3 6.5a4 4 0 0 0 8 0l3-6.5L12 6Z"/></svg>' },
+    { val: 'recruitment', label: 'Recruitment', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M16 11.5l1.6 1.6L21 9.5"/></svg>' },
+    { val: 'car_dealer', label: 'Car Dealer', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V12l2-5h12l2 5v4"/><path d="M4 16h16"/><circle cx="7.5" cy="16.5" r="1.6"/><circle cx="16.5" cy="16.5" r="1.6"/></svg>' },
     { val: 'real_estate', label: 'Real Estate', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M9.5 19.5V14h5v5.5"/></svg>' },
-    { val: 'recruiter', label: 'Recruiter', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M16 11.5l1.6 1.6L21 9.5"/></svg>' },
-    { val: 'finance', label: 'Finance', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5h16"/><path d="M7 19.5v-6M12 19.5v-10M17 19.5v-4"/></svg>' },
-    { val: 'law', label: 'Law', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 21h8"/><path d="M12 6 5 8.5l3 6.5a4 4 0 0 0 8 0l3-6.5L12 6Z"/></svg>' },
   ];
 %>
 <div class="new-site-modal-overlay" id="newSiteModal" hidden>

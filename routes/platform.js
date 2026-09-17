@@ -22,7 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // /dashboard/new-store?category=<val>) — purely descriptive today, stored
 // on the store (see db/database.js's migrateStoreCategoryColumn) for future
 // use, not read anywhere that changes behavior yet.
-const STORE_CATEGORIES = ['real_estate', 'recruiter', 'finance', 'law'];
+const STORE_CATEGORIES = ['online_store', 'lawyer', 'recruitment', 'car_dealer', 'real_estate'];
 
 // ---------- Marketing homepage ----------
 // Only shown on the root domain — on a store's own subdomain, "/" is that

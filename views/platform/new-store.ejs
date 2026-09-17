@@ -22,7 +22,7 @@
 
     <% if (values.category) { %>
       <%
-        var categoryLabels = { real_estate: 'Real Estate', recruiter: 'Recruiter', finance: 'Finance', law: 'Law' };
+        var categoryLabels = { online_store: 'Online Store', lawyer: 'Lawyer', recruitment: 'Recruitment', car_dealer: 'Car Dealer', real_estate: 'Real Estate' };
         var categoryLabel = categoryLabels[values.category] || values.category;
       %>
       <div class="new-site-category-badge">Building a <strong><%= categoryLabel %></strong> site</div>
