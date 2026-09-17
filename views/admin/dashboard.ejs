@@ -1,11 +1,18 @@
 <%- include('partials/header') %>
 
+<%
+  // Same "is this an e-commerce site" gate as partials/header.ejs's nav —
+  // Orders/Products/Customers/Discounts/Markets/Finance don't apply to a
+  // Lawyer/Recruitment/Car Dealer/Real Estate site.
+  var isOnlineStore = !(store && store.category) || store.category === 'online_store';
+%>
+
 <div class="dash-hero">
   <h2>Hey there!</h2>
   <p>Let's keep growing <%= store.name %>.</p>
 </div>
 
-<% if (toFulfill > 0 || toCollect > 0) { %>
+<% if (isOnlineStore && (toFulfill > 0 || toCollect > 0)) { %>
   <div class="dash-chips">
     <% if (toFulfill > 0) { %>
       <a href="/admin/orders" class="dash-chip">Fulfill orders <span class="dash-chip-count"><%= toFulfill %></span></a>
@@ -16,6 +23,7 @@
   </div>
 <% } %>
 
+<% if (isOnlineStore) { %>
 <div class="stat-cards">
   <div class="stat-card">
     <span class="stat-label">Orders (30 days)</span>
@@ -30,13 +38,16 @@
     <span class="stat-value"><%= productCount %></span>
   </div>
 </div>
+<% } %>
 
 <div class="dash-setup-cards">
+  <% if (isOnlineStore) { %>
   <div class="dash-setup-card">
     <h3>Add a product</h3>
     <p>List what you're selling so customers can start buying.</p>
     <a href="/admin/products/new" class="btn btn-primary">Add product</a>
   </div>
+  <% } %>
   <div class="dash-setup-card">
     <h3>Customize your homepage</h3>
     <p>Use the page builder to change your site's look and content.</p>
@@ -98,6 +109,7 @@
   })();
 </script>
 
+<% if (isOnlineStore) { %>
 <div class="dashboard-grid">
   <section class="panel">
     <h2>Recent orders</h2>
@@ -139,5 +151,6 @@
     <% } %>
   </section>
 </div>
+<% } %>
 
 <%- include('partials/footer') %>
