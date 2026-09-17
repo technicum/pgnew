@@ -131,6 +131,7 @@ function toRenderSection(s) {
     // Universal Style-tab controls (see lib/sections.js's sanitizeSectionSettings) —
     // '' (not null) so section.ejs's pzStyleAttrs can treat "no override" uniformly.
     text_color: s.text_color || '', bg_color: s.bg_color || '', text_align: s.text_align || '',
+    bg_type: s.bg_type || '', bg_image_url: s.bg_image_url || '', bg_video_url: s.bg_video_url || '', bg_overlay: !!s.bg_overlay,
   };
 }
 
@@ -294,6 +295,7 @@ async function renderStorePage(req, res, next, page) {
         padding_left: s.padding_left || 0, padding_right: s.padding_right || 0,
         element_styles: s.element_styles ? (typeof s.element_styles === 'string' ? JSON.parse(s.element_styles) : s.element_styles) : {},
         text_color: s.text_color || '', bg_color: s.bg_color || '', text_align: s.text_align || '',
+        bg_type: s.bg_type || '', bg_image_url: s.bg_image_url || '', bg_video_url: s.bg_video_url || '', bg_overlay: !!s.bg_overlay,
       };
       if (s.type === 'products') {
         section.products = allProducts.slice(0, fields.limit || 12);

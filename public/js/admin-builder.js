@@ -836,8 +836,49 @@
     // out here — setting rootEl.style.backgroundColor = "" would otherwise
     // clear just that longhand out of the "background:" shorthand the type
     // field already set, same failure shape as the text-align case below.
-    if (sec.bg_color) rootEl.style.backgroundColor = sec.bg_color;
+    // bg_type 'image'/'video' hands the background off to
+    // applyUniversalBgMedia below instead of the flat color; explicit 'none'
+    // means the merchant turned a previously-set bg_color back off, so it
+    // must NOT show here even though sec.bg_color itself is still whatever
+    // it was last set to (segHtml's "None" only flips bg_type, it doesn't
+    // clear bg_color, since flipping back to "Color" should remember it).
+    // bg_type unset/'' (every section saved before this existed) falls back
+    // to "color" here so a pre-existing plain bg_color keeps rendering
+    // exactly as it always did.
+    var bgType = sec.bg_type || (sec.bg_color ? "color" : "none");
+    if (sec.bg_color && bgType === "color") rootEl.style.backgroundColor = sec.bg_color;
     if (sec.text_align) rootEl.style.textAlign = sec.text_align;
+    applyUniversalBgMedia(rootEl, sec);
+  }
+
+  // The universal background's image/video option (__bg_type/__bg_image_url/
+  // __bg_video_url/__bg_overlay — see inspectorStyleFieldsFor's "uniBg"
+  // block) needs actual DOM nodes, not just an inline style, so it's applied
+  // here rather than folded into the plain color/align properties above.
+  // 'hero'/'heading' skip this entirely — they render their own equivalent
+  // background straight from fields.bg_type in renderSectionInner, and
+  // showing both would just double up. rootEl is always a freshly-rendered
+  // node (renderCanvas just rebuilt wrap.innerHTML from scratch), so there's
+  // never a stale video/overlay from a previous render to clean up first.
+  function applyUniversalBgMedia(rootEl, sec) {
+    if (!rootEl || sec.type === "hero" || sec.type === "heading") return;
+    var bgType = sec.bg_type || (sec.bg_color ? "color" : "none");
+    if (bgType === "image" && sec.bg_image_url) {
+      rootEl.style.backgroundImage = "url('" + sec.bg_image_url.replace(/'/g, "%27") + "')";
+      rootEl.style.backgroundSize = "cover";
+      rootEl.style.backgroundPosition = "center";
+    } else if (bgType === "video" && sec.bg_video_url) {
+      rootEl.style.position = rootEl.style.position || "relative";
+      var mediaWrap = document.createElement("div");
+      mediaWrap.innerHTML = bgVideoHtml(sec.bg_video_url, "b-uni-bg-video");
+      if (mediaWrap.firstChild) rootEl.insertBefore(mediaWrap.firstChild, rootEl.firstChild);
+    }
+    if ((bgType === "image" || bgType === "video") && sec.bg_overlay) {
+      rootEl.style.position = rootEl.style.position || "relative";
+      var overlay = document.createElement("div");
+      overlay.className = "b-uni-bg-overlay";
+      rootEl.insertBefore(overlay, rootEl.firstChild);
+    }
   }
 
   // Per-element spacing: margin/padding/height on one text field inside a
@@ -1668,8 +1709,40 @@
     if (!isTopLevelSection) {
       return typeStyle || '<div class="b-inspector-hint">No style options for items nested inside a Row yet — select the Row section itself for background/text color and alignment.</div>';
     }
+    // 'hero' and 'heading' already have their own richer background picker
+    // above (their own fields.bg_type/bg_image_url/bg_video_url/bg_overlay,
+    // plus a text-theme toggle), and 'promo_bar' already has its own simple
+    // required Background/Text color pair right above (it always needs some
+    // fill, so it isn't "background: none, image or video") — showing this
+    // universal one on top of any of those would just be two competing
+    // "Background" controls on the same section. Every other type gets this
+    // one instead: the same color/image/video/overlay option, generalized
+    // onto the section-level settings (see lib/sections.js's
+    // sanitizeSectionSettings) since those types have no fields of their own
+    // to hold it.
+    var uniBg = "";
+    if (["hero", "heading", "promo_bar"].indexOf(owner.type) === -1) {
+      // Legacy stores that set a background color before this existed have
+      // bg_type NULL/'' but a real bg_color — shown here as "Color" (matching
+      // what's actually rendered) rather than "None", so the segmented
+      // control never contradicts the canvas.
+      var uniBgType = owner.bg_type || (owner.bg_color ? "color" : "none");
+      var uniBgFields = "";
+      if (uniBgType === "color") {
+        uniBgFields = field("Background color", colorWithClearHtml("__bg_color", owner.bg_color));
+      } else if (uniBgType === "image") {
+        uniBgFields = field("Background image URL", imageFieldHtml("__bg_image_url", owner.bg_image_url, "https://…")) +
+          field("", checkHtml("__bg_overlay", !!owner.bg_overlay, "Darken for text readability"));
+      } else if (uniBgType === "video") {
+        uniBgFields = field("Background video URL", imageFieldHtml("__bg_video_url", owner.bg_video_url, "https://….mp4, a YouTube link, or a Vimeo link", "video/")) +
+          field("", '<div class="b-inspector-hint">A direct video file link (.mp4 or .webm), or a YouTube/Vimeo link — pasting either works.</div>') +
+          field("", checkHtml("__bg_overlay", !!owner.bg_overlay, "Darken for text readability"));
+      }
+      uniBg = field("Background", segHtml("__bg_type", [{ val: "none", label: "None" }, { val: "color", label: "Color" }, { val: "image", label: "Image" }, { val: "video", label: "Video" }], uniBgType)) +
+        uniBgFields;
+    }
     var universal = field("Text color", colorWithClearHtml("__text_color", owner.text_color)) +
-      field("Background color", colorWithClearHtml("__bg_color", owner.bg_color)) +
+      uniBg +
       field("Text alignment", segHtml("__text_align", [{ val: "", label: "Default" }, { val: "left", label: "Left" }, { val: "center", label: "Center" }, { val: "right", label: "Right" }], owner.text_align || ""));
     return typeStyle + (typeStyle ? '<div class="b-inspector-divider"></div><div class="b-inspector-section-label">Color &amp; alignment</div>' : "") + universal;
   }
@@ -2660,9 +2733,24 @@
       }
       var pickBtn = e.target.closest("[data-media-pick]");
       if (pickBtn) {
+        var pickField = pickBtn.dataset.mediaPick;
+        // A "__"-prefixed field (the universal background's __bg_image_url/
+        // __bg_video_url) is a section-level setting — sec itself just needs
+        // to exist for mediaPickerReady's checks, not a fields target.
+        if (pickField.indexOf("__") === 0) {
+          if (!mediaPickerReady(sec)) return;
+          var pickKey = pickField.slice(2);
+          MediaPicker.open(function (file) {
+            var uPatch = {};
+            uPatch[pickKey] = file.url;
+            sec[pickKey] = file.url;
+            saveSettings(sec.id, uPatch);
+            renderInspector();
+          }, { accept: pickBtn.dataset.mediaAccept || "image/" });
+          return;
+        }
         var pickTarget = inspectorFieldTarget();
         if (!mediaPickerReady(pickTarget)) return;
-        var pickField = pickBtn.dataset.mediaPick;
         MediaPicker.open(function (file) {
           var patch = {};
           patch[pickField] = file.url;
@@ -2836,6 +2924,20 @@
         boolTarget.save(boolPatch);
         return;
       }
+      // The universal background's "Darken for text readability" overlay
+      // toggle (__bg_overlay) — a section-level setting like __bg_type/
+      // __bg_color above, not a type field, so it goes through saveSettings()
+      // rather than boolTarget.save(). Checked ahead of "__show_" below,
+      // which is its own more specific "__"-prefixed checkbox.
+      var uniBoolBox = e.target.closest('input[type="checkbox"][data-field^="__"]:not([data-field^="__show_"])');
+      if (uniBoolBox) {
+        var uBoolKey = uniBoolBox.dataset.field.slice(2);
+        sec[uBoolKey] = uniBoolBox.checked;
+        var uBoolPatch = {};
+        uBoolPatch[uBoolKey] = uniBoolBox.checked;
+        saveSettings(sec.id, uBoolPatch);
+        return;
+      }
       // "Show on Desktop/Tablet/Mobile" checkboxes are the positive framing
       // on screen, but stored/sent as the inverse hide_* flags.
       var showBox = e.target.closest('input[type="checkbox"][data-field^="__show_"]');
@@ -2918,9 +3020,16 @@
       }
       var input = e.target.closest('input.b-text-native[data-field]');
       if (input && input.type !== "datetime-local" && input.type !== "number") {
-        if (input.dataset.field === "__custom_class") {
-          sec.custom_class = input.value;
-          saveSettings(sec.id, { custom_class: input.value });
+        // Any "__"-prefixed text input (custom_class, and the universal
+        // background's __bg_image_url/__bg_video_url) is a section-level
+        // setting, not a type field — same convention as the color/seg/
+        // checkbox handlers elsewhere in this file.
+        if (input.dataset.field.indexOf("__") === 0) {
+          var uKey = input.dataset.field.slice(2);
+          var uPatch = {};
+          uPatch[uKey] = input.value;
+          sec[uKey] = input.value;
+          saveSettings(sec.id, uPatch);
           return;
         }
         var inTarget = inspectorFieldTarget();

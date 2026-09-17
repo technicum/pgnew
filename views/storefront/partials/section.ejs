@@ -30,8 +30,24 @@
   // inline style same as everything else above, so it always wins over the
   // theme's own CSS without needing a stylesheet rebuild per store.
   if (section.text_color) pzHeightStyle += 'color:' + section.text_color + ';';
-  if (section.bg_color) pzHeightStyle += 'background-color:' + section.bg_color + ';';
   if (section.text_align) pzHeightStyle += 'text-align:' + section.text_align + ';';
+  // The universal background (color/image/video/overlay) every OTHER type
+  // gets, generalized from 'hero'/'heading's own private fields.bg_type (see
+  // pzHeroBgStyle below) since those types have no fields of their own to
+  // hold it — set from the Style tab's "Background" control. Hero/heading
+  // keep their existing behavior exactly as it was: just the plain,
+  // pre-existing universal bg_color layered under whatever their own
+  // fields.bg_type chose, with no image/video option at this level (setting
+  // one isn't offered to them in the builder, to avoid two competing
+  // "Background" controls on the same section).
+  var pzUniBgType = section.bg_type || (section.bg_color ? 'color' : 'none');
+  if (section.type === 'hero' || section.type === 'heading') {
+    if (section.bg_color) pzHeightStyle += 'background-color:' + section.bg_color + ';';
+  } else if (pzUniBgType === 'color' && section.bg_color) {
+    pzHeightStyle += 'background-color:' + section.bg_color + ';';
+  } else if (pzUniBgType === 'image' && section.bg_image_url) {
+    pzHeightStyle += "background-image:url('" + section.bg_image_url.replace(/'/g, '%27') + "');background-size:cover;background-position:center;";
+  }
 %>
 <%
   // Per-element spacing: margin/padding on a single text field inside this
@@ -108,6 +124,18 @@
     }
     return '<iframe class="' + cssClass + '" src="' + pzEsc(embed.src) + '" style="pointer-events:none;border:0;" allow="autoplay; encrypted-media" loading="lazy"></iframe>';
   }
+  // The universal background's video/overlay markup (pzUniBgType, computed
+  // above into pzHeightStyle for color/image) — every section type except
+  // 'hero'/'heading' (which render their own equivalent from fields.bg_type)
+  // calls this right inside its own wrapper tag. Empty string for every
+  // other bg type/section, so it's always safe to splice in unconditionally.
+  function pzUniBgExtras(sec) {
+    if (sec.type === 'hero' || sec.type === 'heading') return '';
+    var out = '';
+    if (pzUniBgType === 'video' && sec.bg_video_url) out += pzBgVideoHtml(sec.bg_video_url, 'pz-uni-bg-video');
+    if ((pzUniBgType === 'image' || pzUniBgType === 'video') && sec.bg_overlay) out += '<div class="pz-uni-bg-overlay"></div>';
+    return out;
+  }
 %>
 <% if (section.type === 'hero') { %>
   <% var pzHeroLight = section.fields.bg_type !== 'none' && section.fields.text_theme === 'light'; %>
@@ -146,6 +174,7 @@
 
 <% } else if (section.type === 'products') { %>
   <section id="<%= pzId %>" class="product-grid-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="product-grid">
       <% if (section.products.length === 0) { %>
@@ -169,6 +198,7 @@
 
 <% } else if (section.type === 'text_image') { %>
   <section id="<%= pzId %>" class="text-image text-image-<%= section.fields.side === 'left' ? 'left' : 'right' %><%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <div class="text-image-media" style="<%= section.fields.image_url ? `background-image:url('${section.fields.image_url}')` : '' %>"></div>
     <div class="text-image-copy">
       <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
@@ -178,6 +208,7 @@
 
 <% } else if (section.type === 'testimonials') { %>
   <section id="<%= pzId %>" class="testimonials<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="testimonial-grid">
       <% section.fields.quotes.forEach(function(q) { %>
@@ -191,6 +222,7 @@
 
 <% } else if (section.type === 'newsletter') { %>
   <section id="<%= pzId %>" class="newsletter<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <p style="<%= pzElStyle('subtext') %>"><%= section.fields.subtext %></p>
     <form class="newsletter-form" action="/newsletter" method="POST">
@@ -201,12 +233,14 @@
 
 <% } else if (section.type === 'richtext') { %>
   <section id="<%= pzId %>" class="richtext richtext-<%= section.fields.width === 'wide' ? 'wide' : 'narrow' %><%= pzExtra %>" style="<%= pzHeightStyle %>text-align:<%= section.fields.align === 'left' ? 'left' : 'center' %>;">
+    <%- pzUniBgExtras(section) %>
     <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <p style="<%= pzElStyle('body') %>"><%= section.fields.body %></p>
   </section>
 
 <% } else if (section.type === 'gallery' && section.fields.images && section.fields.images.length) { %>
   <section id="<%= pzId %>" class="gallery<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <% if (section.fields.heading) { %><h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2><% } %>
     <div class="gallery-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
       <% section.fields.images.forEach(function(url) { %>
@@ -217,6 +251,7 @@
 
 <% } else if (section.type === 'video' && section.fields.embed_url) { %>
   <section id="<%= pzId %>" class="video-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="video-frame">
       <iframe src="<%= section.fields.embed_url %>" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
@@ -225,6 +260,7 @@
 
 <% } else if (section.type === 'spotlight' && section.product) { %>
   <section id="<%= pzId %>" class="spotlight spotlight-<%= section.fields.side === 'left' ? 'left' : 'right' %><%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <div class="spotlight-media" style="<%= section.product.image_url ? `background-image:url('${section.product.image_url}')` : '' %>"></div>
     <div class="spotlight-copy">
       <h2><%= section.product.title %></h2>
@@ -239,6 +275,7 @@
 
 <% } else if (section.type === 'collections' && typeof categories !== 'undefined' && categories.length) { %>
   <section id="<%= pzId %>" class="collections<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="collections-grid" data-cols="<%= section.fields.cols === '2' ? '2' : '3' %>">
       <% categories.forEach(function(c) { %>
@@ -249,11 +286,13 @@
 
 <% } else if (section.type === 'logos' && section.fields.names && section.fields.names.length) { %>
   <section id="<%= pzId %>" class="logostrip<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <% section.fields.names.forEach(function(n) { %><span><%= n %></span><% }); %>
   </section>
 
 <% } else if (section.type === 'faq' && section.fields.items && section.fields.items.length) { %>
   <section id="<%= pzId %>" class="faq<%= pzExtra %>" style="<%= pzHeightStyle %>max-width:640px;margin:0 auto;">
+    <%- pzUniBgExtras(section) %>
     <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <% section.fields.items.forEach(function(f) { %>
       <details class="faq-item">
@@ -265,6 +304,7 @@
 
 <% } else if (section.type === 'countdown' && section.fields.end_at) { %>
   <section id="<%= pzId %>" class="countdown<%= pzExtra %>" data-end="<%= section.fields.end_at %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
     <div class="countdown-timers">
       <div><b data-u="d">00</b><small>Days</small></div>
@@ -305,6 +345,7 @@
     var pzTemplate = pzCols.map(function (c) { return (c.width || 1) + 'fr'; }).join(' ') || '1fr';
   %>
   <section id="<%= pzId %>" class="pz-row<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <div class="pz-row-inner" style="grid-template-columns:<%= pzTemplate %>;">
       <% pzCols.forEach(function (col) { %>
         <div class="pz-row-col">
@@ -330,11 +371,13 @@
     var pzHtmlDoc = (section.fields.html || '') + (section.fields.css ? '<style>' + section.fields.css + '</style>' : '');
   %>
   <div id="<%= pzId %>" class="pz-html-block<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <iframe class="pz-html-frame" sandbox="allow-scripts" loading="lazy" title="Custom HTML block" srcdoc="<%= pzHtmlDoc %>"></iframe>
   </div>
 
 <% } else if (section.type === 'logo') { %>
   <div id="<%= pzId %>" class="pz-logo-block<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <a href="/" class="pz-logo-link">
       <% if (section.fields.image_url) { %>
         <img class="pz-logo-img" src="<%= section.fields.image_url %>" alt="<%= typeof store !== 'undefined' && store ? store.name : '' %>" style="height:<%= section.fields.height || 32 %>px;" />
@@ -346,6 +389,7 @@
 
 <% } else if (section.type === 'nav_menu') { %>
   <nav id="<%= pzId %>" class="pz-nav-block<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <div class="pz-nav-links">
       <% // The picked menu, already resolved to real page/category/product/
          // custom-link urls by routes/storefront.js's loadResolvedMenus (see
@@ -418,6 +462,7 @@
 
 <% } else if (section.type === 'link_columns' && section.fields.columns && section.fields.columns.length) { %>
   <div id="<%= pzId %>" class="pz-linkcols<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <% section.fields.columns.forEach(function (c) { %>
       <div class="pz-linkcol">
         <h4><%= c.heading %></h4>
@@ -430,6 +475,7 @@
 
 <% } else if (section.type === 'social_icons' && section.fields.links && section.fields.links.length) { %>
   <div id="<%= pzId %>" class="pz-social-icons<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <% section.fields.links.forEach(function (l) { %>
       <%
         // socialIcons (res.locals, see server.js + lib/socialIcons.js) is
@@ -446,6 +492,7 @@
 
 <% } else if (section.type === 'copyright') { %>
   <div id="<%= pzId %>" class="pz-copyright<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
     <div style="<%= pzElStyle('text') %>"><%= section.fields.text || ('© ' + new Date().getFullYear() + ' ' + (typeof store !== 'undefined' && store ? store.name : '') + '. All rights reserved.') %></div>
     <% if (section.fields.show_powered_by || section.fields.show_admin_link) { %>
       <div class="pz-copyright-links">
@@ -456,13 +503,13 @@
   </div>
 
 <% } else if (section.type === 'spacer') { %>
-  <div id="<%= pzId %>" class="section-spacer section-spacer-<%= section.fields.height %><%= pzExtra %>"></div>
+  <div id="<%= pzId %>" class="section-spacer section-spacer-<%= section.fields.height %><%= pzExtra %>" style="<%= pzHeightStyle %>"><%- pzUniBgExtras(section) %></div>
 
 <% } else if (section.type === 'divider') { %>
   <% if (section.fields.style === 'dots') { %>
-    <div id="<%= pzId %>" class="section-divider section-divider-dots<%= pzExtra %>">&bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;</div>
+    <div id="<%= pzId %>" class="section-divider section-divider-dots<%= pzExtra %>" style="<%= pzHeightStyle %>"><%- pzUniBgExtras(section) %>&bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;&nbsp; &bull;</div>
   <% } else { %>
-    <hr id="<%= pzId %>" class="section-divider<%= pzExtra %>" />
+    <hr id="<%= pzId %>" class="section-divider<%= pzExtra %>" style="<%= pzHeightStyle %>" />
   <% } %>
 <% } %>
 

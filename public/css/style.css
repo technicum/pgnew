@@ -156,6 +156,25 @@ main.container {
 .hero-text-light h1 { color: #fff; }
 .hero-text-light p { color: rgba(255, 255, 255, .85); }
 
+/* Universal background (Style tab, every section type except hero/heading —
+   which keep their own dedicated version above/below — see section.ejs's
+   pzUniBgExtras and lib/sections.js's sanitizeSectionSettings). Same
+   video/overlay treatment, just not scoped to one type's own markup. */
+.pz-uni-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+}
+.pz-uni-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .35);
+  z-index: -1;
+}
+
 /* Product grid */
 .section-title { margin: 40px 0 16px; }
 

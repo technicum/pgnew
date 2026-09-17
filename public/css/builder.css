@@ -291,6 +291,14 @@ body.builder-body button { font-family: inherit; }
 .b-csec.is-flash-target::after { content: ""; position: absolute; inset: 0; outline: 2px solid var(--b-accent); outline-offset: -2px; pointer-events: none; z-index: 2; border-radius: 2px; animation: b-flash .9s ease-out; }
 @keyframes b-flash { 0% { outline-color: var(--b-accent); background: rgba(245,166,35,.14); } 100% { outline-color: transparent; background: transparent; } }
 
+/* Universal background (Style tab, every type except hero/heading — see
+   applyUniversalBgMedia): same video/overlay treatment as hero's and
+   heading's own .b-sec-hero-video/.b-sec-hero-overlay above, just not
+   scoped to one type's markup since this is inserted into whichever
+   section/div renderSectionInner produced. */
+.b-uni-bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+.b-uni-bg-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: -1; }
+
 /* Dims a section on the canvas when it's hidden on whichever device the
    desktop/tablet/mobile viewport switcher is currently previewing — a
    different, per-device flag from is-hidden-sec above (hidden everywhere). */
