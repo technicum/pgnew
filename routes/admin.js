@@ -2041,8 +2041,10 @@ router.post('/apps/:slug/activate', async (req, res, next) => {
 // lib/crm.js) — it now works across every store one login runs, not just
 // this one, so it no longer lives nested in a single store's own /admin.
 // Old links into this store's /admin/contacts still land somewhere useful
-// instead of 404ing.
-router.get('/contacts*', (req, res) => res.redirect(adminPortalUrl(req, '/dashboard/crm/leads')));
+// instead of 404ing. router.use (not a '/contacts*' route) because Express
+// 5's router no longer accepts a bare trailing '*' wildcard in a path
+// string -- router.use already matches the prefix and everything under it.
+router.use('/contacts', (req, res) => res.redirect(adminPortalUrl(req, '/dashboard/crm/leads')));
 
 // ---------- Settings ----------
 router.get('/settings', async (req, res, next) => {
