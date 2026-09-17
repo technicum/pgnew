@@ -1509,8 +1509,9 @@
       case "richtext":
         return field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Width and alignment live on the Style tab.</div>');
       case "gallery":
-        return field("Images (" + (d.images || []).length + ")", galleryImagesGridHtml("images", d.images)) +
-          field("", '<div class="b-inspector-hint">Click + to add an image from your library, or the trash icon on a tile to remove it. Click the heading to edit it. Columns live on the Style tab.</div>');
+        return field("Heading (optional)", textHtml("heading", d.heading, "From the studio")) +
+          field("Images (" + (d.images || []).length + ")", galleryImagesGridHtml("images", d.images)) +
+          field("", '<div class="b-inspector-hint">Leave the heading blank to hide it. You can also click it directly on the canvas to edit it. Columns live on the Style tab.</div>');
       case "video":
         return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
           field("", '<div class="b-inspector-hint">Paste an embeddable video link — a YouTube/Vimeo “embed” URL works best. Click the heading to edit it.</div>');
