@@ -2204,14 +2204,48 @@
     var iconName = kind === "insert" ? payload : findSection(payload).type;
     ghost.innerHTML = icon(iconName) + "<span>" + esc(label) + "</span>";
     ghost.hidden = false;
-    drag = { kind: kind, payload: payload };
+    drag = { kind: kind, payload: payload, pointer: { clientX: e.clientX, clientY: e.clientY } };
     moveGhost(e.clientX, e.clientY);
 
     function clearColDropMarkers() { document.querySelectorAll(".b-row-col").forEach(function (n) { n.classList.remove("is-drop-target", "is-drop-blocked"); }); }
 
+    var AUTOSCROLL_EDGE = 56, AUTOSCROLL_MAX = 22;
+    function autoScrollDelta(rect, clientY) {
+      if (clientY - rect.top < AUTOSCROLL_EDGE) return -Math.ceil((AUTOSCROLL_EDGE - (clientY - rect.top)) / AUTOSCROLL_EDGE * AUTOSCROLL_MAX);
+      if (rect.bottom - clientY < AUTOSCROLL_EDGE) return Math.ceil((AUTOSCROLL_EDGE - (rect.bottom - clientY)) / AUTOSCROLL_EDGE * AUTOSCROLL_MAX);
+      return 0;
+    }
+    // Runs once per animation frame rather than once per raw pointermove —
+    // which can fire far more often than the screen repaints — so the
+    // drop-target recompute in processPointer (it walks every section's
+    // bounding rect) can't fall behind the pointer and make the drag feel
+    // laggy on a page with a lot of sections. Also drives auto-scroll:
+    // holding the ghost at the canvas/Layers-list edge keeps nudging that
+    // panel's scroll position every frame, since without this a plain
+    // pointermove-driven drag strands a merchant unable to drag a section
+    // past whatever's on screen without letting go, scrolling by hand, and
+    // re-grabbing it.
+    var rafId = requestAnimationFrame(tick);
+    function tick() {
+      if (!drag) return;
+      rafId = requestAnimationFrame(tick);
+      var p = drag.pointer;
+      [document.getElementById("bLayersBody"), document.querySelector(".b-canvas-scroll")].forEach(function (el) {
+        if (!el) return;
+        var r = el.getBoundingClientRect();
+        if (p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom) return;
+        var delta = autoScrollDelta(r, p.clientY);
+        if (delta) el.scrollTop += delta;
+      });
+      processPointer(p);
+    }
+
     function onMove(ev) {
       var p = ev.touches ? ev.touches[0] : ev;
+      drag.pointer = p;
       moveGhost(p.clientX, p.clientY);
+    }
+    function processPointer(p) {
       // Dragging a nestable library item over a row's column drops it into
       // that column instead of at the top level — checked first since a
       // column sits visually inside the section list computeDropIndex
@@ -2270,6 +2304,7 @@
     function onUp() {
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
+      cancelAnimationFrame(rafId);
       ghost.hidden = true;
       clearDropMarkers();
       clearColDropMarkers();
