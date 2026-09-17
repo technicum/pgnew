@@ -112,17 +112,18 @@
 
     <script>
       // Upgrades the always-visible #taskDescriptionInput textarea into a
-      // WYSIWYG (Quill) editor once the library has actually loaded --
-      // until then, and if it never does (CDN blocked/offline/slow), the
-      // plain textarea IS the description field, so it's never blank or
-      // uneditable. Written to run both on a normal full-page load AND
-      // when injected into the slide-over panel (public/js/crm-task-panel.js
+      // WYSIWYG (Quill) editor once the library has loaded -- until then,
+      // the plain textarea IS the description field, so it's never blank
+      // or uneditable. Quill's files are vendored locally under
+      // public/vendor/quill/ (not pulled from a CDN) so this doesn't
+      // depend on outbound network access working from wherever this is
+      // deployed. Written to run both on a normal full-page load AND when
+      // injected into the slide-over panel (public/js/crm-task-panel.js
       // re-executes any <script> tag found in fetched content) -- so it
-      // loads the Quill library into <head> itself (persists across panel
-      // content swaps, loaded at most once per page session, with a 6s cap
-      // so a hung request doesn't leave things half-initialized) rather
-      // than via a <script src> tag in this markup, which would otherwise
-      // be re-fetched/re-run on every panel refresh.
+      // loads the library into <head> itself (persists across panel
+      // content swaps, loaded at most once per page session) rather than
+      // via a <script src> tag in this markup, which would otherwise be
+      // re-fetched/re-run on every panel refresh.
       (function () {
         function loadQuill() {
           if (window.Quill) return Promise.resolve();
@@ -132,11 +133,11 @@
 
             var link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = 'https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css';
+            link.href = '/vendor/quill/quill.snow.css';
             document.head.appendChild(link);
 
             var script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js';
+            script.src = '/vendor/quill/quill.min.js';
             script.onload = function () { clearTimeout(timer); resolve(); };
             script.onerror = function () { clearTimeout(timer); reject(new Error('Quill failed to load')); };
             document.head.appendChild(script);
