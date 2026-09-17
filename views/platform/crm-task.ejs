@@ -13,8 +13,8 @@
       </p>
 
       <div class="crm-contact-layout">
-        <form action="/dashboard/crm/tasks/<%= task.id %>/edit" method="POST" class="admin-form">
-          <label>Title *
+        <form id="taskEditForm" action="/dashboard/crm/tasks/<%= task.id %>/edit" method="POST" class="admin-form" data-success-message="Task saved">
+          <label class="task-panel-title-field">Title *
             <input type="text" name="title" required value="<%= task.title %>" />
           </label>
 
@@ -26,18 +26,11 @@
                  swaps in the WYSIWYG editor once Quill has actually loaded
                  and mounted successfully, and keeps this field in sync as
                  the field submitted. -->
-            <textarea id="taskDescriptionInput" name="description" rows="6" placeholder="Describe what needs to be done..."><%= task.description || '' %></textarea>
+            <textarea id="taskDescriptionInput" name="description" rows="8" placeholder="Describe what needs to be done..."><%= task.description || '' %></textarea>
             <div id="taskDescriptionEditor" class="crm-task-editor" hidden></div>
           </label>
 
           <div class="form-row">
-            <label>Priority
-              <select name="priority">
-                <% priorities.forEach(function(p) { %>
-                  <option value="<%= p %>" <%= task.priority === p ? 'selected' : '' %>><%= p.charAt(0).toUpperCase() + p.slice(1) %></option>
-                <% }); %>
-              </select>
-            </label>
             <label>Due date
               <input type="date" name="due_date" value="<%= task.due_date ? new Date(task.due_date).toISOString().slice(0,10) : '' %>" />
             </label>
@@ -46,31 +39,52 @@
           <button type="submit" class="btn btn-primary">Save changes</button>
         </form>
 
-        <div class="panel">
-          <h2>Status &amp; assignee</h2>
-          <p class="crm-task-priority crm-task-priority-<%= task.priority %>"><%= task.priority.charAt(0).toUpperCase() + task.priority.slice(1) %> priority</p>
+        <div class="task-panel-meta">
+          <div class="task-panel-meta-field">
+            <label>Status</label>
+            <form action="/dashboard/crm/tasks/<%= task.id %>/toggle" method="POST">
+              <input type="hidden" name="done" value="<%= task.done ? '0' : '1' %>" />
+              <button type="submit" class="btn task-panel-mark-done <%= task.done ? '' : 'btn-primary' %>"><%= task.done ? '✓ Done' : 'Mark done' %></button>
+            </form>
+          </div>
 
-          <form action="/dashboard/crm/tasks/<%= task.id %>/toggle" method="POST">
-            <input type="hidden" name="done" value="<%= task.done ? '0' : '1' %>" />
-            <button type="submit" class="btn <%= task.done ? '' : 'btn-primary' %>"><%= task.done ? 'Mark not done' : 'Mark done' %></button>
-          </form>
+          <div class="task-panel-meta-field">
+            <label>Priority</label>
+            <!-- form="taskEditForm" submits this select as part of THAT form
+                 (not a separate request with stale copies of title/
+                 description) -- requestSubmit() fires its real submit
+                 event, so whatever's currently typed in the title/
+                 description fields goes along with it, not a snapshot from
+                 page load. -->
+            <select name="priority" form="taskEditForm" onchange="this.form.requestSubmit()">
+              <% priorities.forEach(function(p) { %>
+                <option value="<%= p %>" <%= task.priority === p ? 'selected' : '' %>><%= p.charAt(0).toUpperCase() + p.slice(1) %></option>
+              <% }); %>
+            </select>
+            <p class="crm-task-priority crm-task-priority-<%= task.priority %>" style="margin-top:8px;"><%= task.priority.charAt(0).toUpperCase() + task.priority.slice(1) %> priority</p>
+          </div>
 
-          <form action="/dashboard/crm/tasks/<%= task.id %>/reassign" method="POST" class="crm-task-form" style="margin-top:12px;">
-            <label style="width:100%;">Assigned to
+          <div class="task-panel-meta-field">
+            <label>Assigned to</label>
+            <form action="/dashboard/crm/tasks/<%= task.id %>/reassign" method="POST" class="crm-task-form" data-success-message="Reassigned">
               <select name="assigned_to" onchange="this.form.submit()">
                 <option value="">Unassigned</option>
                 <% assignableUsers.forEach(function(u) { %>
                   <option value="<%= u.id %>" <%= task.assigned_to === u.id ? 'selected' : '' %>><%= u.name %><%= u.id === account.id ? ' (you)' : '' %></option>
                 <% }); %>
               </select>
-            </label>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
 
       <div class="panel crm-tasks-panel" style="margin-top:24px;">
-        <h2>Subtasks</h2>
-        <form action="/dashboard/crm/tasks/<%= task.id %>/subtasks" method="POST" class="crm-task-form">
+        <div class="task-panel-subtasks-head">
+          <h2>Subtasks</h2>
+          <% var doneCount = subtasks.filter(function(t) { return t.done; }).length; %>
+          <% if (subtasks.length > 0) { %><span class="task-panel-subtask-count"><%= doneCount %>/<%= subtasks.length %> done</span><% } %>
+        </div>
+        <form action="/dashboard/crm/tasks/<%= task.id %>/subtasks" method="POST" class="crm-task-form" data-success-message="Subtask added">
           <input type="text" name="title" placeholder="e.g. Draft the outline" required />
           <input type="date" name="due_date" />
           <select name="assigned_to">
@@ -106,9 +120,11 @@
         </ul>
       </div>
 
-      <form action="/dashboard/crm/tasks/<%= task.id %>/delete" method="POST" class="crm-task-delete-self" onsubmit="return confirm('Delete this task? This also deletes its subtasks.');" style="margin-top:16px;">
-        <button type="submit" class="link-btn danger">Delete task</button>
-      </form>
+      <div class="task-panel-delete">
+        <form action="/dashboard/crm/tasks/<%= task.id %>/delete" method="POST" class="crm-task-delete-self" onsubmit="return confirm('Delete this task? This also deletes its subtasks.');">
+          <button type="submit" class="link-btn danger">Delete task</button>
+        </form>
+      </div>
     </div>
 
     <link rel="stylesheet" href="/vendor/quill/quill.snow.css?v=<%= assetVersion %>">

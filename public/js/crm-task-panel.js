@@ -15,6 +15,9 @@
   var backdrop = null;
   var panelBody = null;
 
+  var toast = null;
+  var toastTimer = null;
+
   function buildPanel() {
     if (panel) return;
 
@@ -26,14 +29,28 @@
     panel.className = 'task-panel';
     panel.innerHTML =
       '<div class="task-panel-head">' +
+      '<div class="task-panel-toast" hidden></div>' +
       '<button type="button" class="task-panel-close" aria-label="Close">&times;</button>' +
       '</div>' +
       '<div class="task-panel-body"><div class="task-panel-loading">Loading…</div></div>';
     panel.querySelector('.task-panel-close').addEventListener('click', closePanel);
     panelBody = panel.querySelector('.task-panel-body');
+    toast = panel.querySelector('.task-panel-toast');
 
     document.body.appendChild(backdrop);
     document.body.appendChild(panel);
+  }
+
+  function showToast(message, isError) {
+    if (!toast) return;
+    clearTimeout(toastTimer);
+    toast.textContent = message;
+    toast.classList.toggle('task-panel-toast-error', !!isError);
+    toast.hidden = false;
+    toast.classList.add('show');
+    toastTimer = setTimeout(function () {
+      toast.classList.remove('show');
+    }, 2200);
   }
 
   function extractAdminContent(html) {
@@ -164,21 +181,31 @@
 
     var form = e.target;
     var isSelfDelete = form.classList.contains('crm-task-delete-self');
+    var successMessage = form.dataset.successMessage || 'Saved';
     var fd = new FormData(form);
 
     fetch(form.getAttribute('action'), { method: 'POST', body: fd })
       .then(function (res) {
+        if (!res.ok) {
+          // A failed request's body is Express's plain error page, not this
+          // app's markup -- rendering it into the panel would just show
+          // broken/empty-looking output. Leave the panel's current content
+          // alone and surface the failure instead.
+          showToast('Something went wrong -- try again.', true);
+          return null;
+        }
         if (isSelfDelete) {
           closePanel();
-          return;
+          return null;
         }
         return res.text().then(function (html) {
           renderInto(panelBody, html);
           history.replaceState({ taskPanel: true }, '', res.url);
+          showToast(successMessage);
         });
       })
       .catch(function () {
-        panelBody.innerHTML = '<p class="empty-state">Something went wrong. Try again.</p>';
+        showToast('Something went wrong -- try again.', true);
       });
   });
 })();

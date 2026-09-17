@@ -467,18 +467,65 @@ body.task-panel-open { overflow: hidden; }
 }
 .task-panel.open { transform: translateX(0); }
 .task-panel-head {
-  flex-shrink: 0; display: flex; justify-content: flex-end;
-  padding: 12px 16px; border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 24px; border-bottom: 1px solid #e5e7eb;
 }
+.task-panel-toast {
+  font-size: 0.82rem; font-weight: 600; color: #166534; background: #dcfce7;
+  padding: 6px 14px; border-radius: 999px;
+  opacity: 0; transform: translateY(-4px); transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.task-panel-toast.show { opacity: 1; transform: translateY(0); }
+.task-panel-toast-error { color: #991b1b; background: #fee2e2; }
 .task-panel-close {
-  width: 32px; height: 32px; border: none; background: transparent;
+  width: 32px; height: 32px; flex-shrink: 0; border: none; background: transparent;
   font-size: 1.4rem; line-height: 1; color: #6b7280; cursor: pointer; border-radius: 6px;
+  margin-left: auto;
 }
 .task-panel-close:hover { background: #f3f4f6; color: #111827; }
-.task-panel-body { flex: 1; overflow-y: auto; overflow-wrap: anywhere; padding: 20px 24px 32px; }
+.task-panel-body { flex: 1; overflow-y: auto; overflow-wrap: anywhere; padding: 28px 36px 40px; }
 .task-panel-loading { color: #6b7280; font-size: 0.9rem; }
 .task-panel .dashboard-main.crm-main { max-width: none; padding: 0; }
-.task-panel .crm-contact-layout { grid-template-columns: 1fr; }
+.task-panel .crm-contact-layout { grid-template-columns: 1fr 280px; gap: 36px; align-items: start; }
+@media (max-width: 720px) { .task-panel .crm-contact-layout { grid-template-columns: 1fr; } }
+/* The edit form reads as the panel's primary content (title + description),
+   not a boxed form card like the metadata sidebar next to it. */
+.task-panel .crm-contact-layout > form.admin-form { background: none; border: none; padding: 0; }
+
+/* Task title styled as a document heading, not a form field -- the label
+   text shrinks to a caption so the input itself reads as the page title. */
+.task-panel-title-field { margin-bottom: 24px; }
+.task-panel-title-field label {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: #9ca3af; font-weight: 700; margin-bottom: 4px;
+}
+.task-panel-title-field input {
+  border: none; border-bottom: 2px solid transparent; border-radius: 0;
+  padding: 2px 0; margin-top: 2px;
+  font-size: 1.5rem; font-weight: 700; color: #111827;
+}
+.task-panel-title-field input:focus { outline: none; box-shadow: none; border-bottom-color: var(--color-primary); }
+
+/* Metadata sidebar (status/priority/assignee) -- a compact stacked card
+   instead of a generic .panel, to read as "fields about this task" rather
+   than another content block competing with the description. */
+.task-panel-meta { display: flex; flex-direction: column; gap: 18px; }
+.task-panel-meta-field label {
+  display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: #9ca3af; font-weight: 700; margin-bottom: 6px;
+}
+.task-panel-meta-field select {
+  width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 0.88rem; font-family: inherit; background: #fff;
+}
+.task-panel-mark-done {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+.task-panel-subtasks-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.task-panel-subtask-count { font-size: 0.8rem; color: #6b7280; font-weight: 600; }
+
+.task-panel-delete { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
 
 /* Profile page */
 .profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }
