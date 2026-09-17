@@ -135,6 +135,8 @@ const TABLES = {
   crmMembers: `${PREFIX}crm_members`,
   // A follow-up/to-do attached to a CRM contact.
   crmTasks: `${PREFIX}crm_tasks`,
+  // Discussion thread on one crmTasks row -- shown in the task detail panel.
+  crmTaskComments: `${PREFIX}crm_task_comments`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -734,6 +736,22 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   INDEX idx_task_owner_done (owner_user_id, done),
   INDEX idx_task_contact (contact_id),
   INDEX idx_task_parent (parent_task_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A comment on one ${TABLES.crmTasks} row -- plain text (rendered escaped,
+-- not the rich-HTML treatment the description field gets), ordered oldest
+-- first like a normal discussion thread. user_id is whichever pz_users
+-- login posted it -- the owner or any of their crmMembers, same as who can
+-- touch the task itself.
+CREATE TABLE IF NOT EXISTS ${TABLES.crmTaskComments} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  task_id INT NOT NULL,
+  user_id INT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  INDEX idx_task_comment_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 

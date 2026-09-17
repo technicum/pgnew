@@ -120,6 +120,29 @@
         </ul>
       </div>
 
+      <div class="panel crm-tasks-panel" style="margin-top:24px;">
+        <h2>Comments</h2>
+        <form action="/dashboard/crm/tasks/<%= task.id %>/comments" method="POST" class="task-panel-comment-form" data-success-message="Comment added">
+          <textarea name="body" rows="3" placeholder="Write a comment..." required></textarea>
+          <button type="submit" class="btn btn-primary">Comment</button>
+        </form>
+
+        <ul class="task-panel-comment-list">
+          <% comments.forEach(function(c) { %>
+            <li class="task-panel-comment">
+              <div class="task-panel-comment-head">
+                <strong><%= c.author_name %></strong>
+                <span class="task-panel-comment-time"><%= new Date(c.created_at).toLocaleString() %></span>
+              </div>
+              <div class="task-panel-comment-body"><%= c.body %></div>
+            </li>
+          <% }); %>
+          <% if (comments.length === 0) { %>
+            <li class="empty-state">No comments yet.</li>
+          <% } %>
+        </ul>
+      </div>
+
       <div class="task-panel-delete">
         <form action="/dashboard/crm/tasks/<%= task.id %>/delete" method="POST" class="crm-task-delete-self" onsubmit="return confirm('Delete this task? This also deletes its subtasks.');">
           <button type="submit" class="link-btn danger">Delete task</button>

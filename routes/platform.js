@@ -779,9 +779,10 @@ router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, r
       req.flash('error', 'Task not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
     }
-    const [subtasks, assignableUsers] = await Promise.all([
+    const [subtasks, assignableUsers, comments] = await Promise.all([
       crmLib.listSubtasks(task.id),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
+      crmLib.listTaskComments(task.id),
     ]);
     res.render('platform/crm-task', {
       title: 'Task',
@@ -790,6 +791,7 @@ router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, r
       task,
       subtasks,
       assignableUsers,
+      comments,
       priorities: crmLib.TASK_PRIORITIES,
     });
   } catch (err) {
@@ -853,6 +855,29 @@ router.post('/dashboard/crm/tasks/:id/subtasks', requireAccount, requireCrm, asy
       parent_task_id: task.id,
     });
     req.flash('success', 'Subtask added.');
+    res.redirect(`/dashboard/crm/tasks/${task.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Adds a comment -- any CRM member can comment on any task under this
+// owner's CRM, same access as everything else here. Relative redirect (see
+// /edit above) since this is reachable via fetch() from the slide-over panel.
+router.post('/dashboard/crm/tasks/:id/comments', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const task = await crmLib.getTask(req.crm.ownerUserId, req.params.id);
+    if (!task) {
+      req.flash('error', 'Task not found.');
+      return res.redirect('/dashboard/crm/tasks');
+    }
+    const body = (req.body.body || '').trim();
+    if (!body) {
+      req.flash('error', 'Comment cannot be empty.');
+      return res.redirect(`/dashboard/crm/tasks/${task.id}`);
+    }
+    await crmLib.addTaskComment(task.id, req.session.account.id, body);
+    req.flash('success', 'Comment added.');
     res.redirect(`/dashboard/crm/tasks/${task.id}`);
   } catch (err) {
     next(err);

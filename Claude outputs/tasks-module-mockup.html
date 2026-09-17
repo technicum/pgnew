@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tasks module — mockup</title>
+<style>
+  :root {
+    --green: #16a34a;
+    --green-dark: #15803d;
+    --border: #e5e7eb;
+    --text: #111827;
+    --muted: #6b7280;
+    --muted-light: #9ca3af;
+    --bg: #f9fafb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* ---- Sidebar (this is the "side menu" concept for review — see note banner) ---- */
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: #111827;
+    color: #d1d5db;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+  }
+  .sidebar-logo { font-weight: 700; font-size: 1.1rem; color: #fff; padding: 0 20px 20px; }
+  .sidebar-logo span { color: var(--green); }
+  .sidebar-section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; padding: 16px 20px 6px; }
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    color: #d1d5db;
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-left: 3px solid transparent;
+  }
+  .sidebar-link:hover { background: rgba(255,255,255,0.05); color: #fff; }
+  .sidebar-link.active { background: rgba(22,163,74,0.15); color: #fff; border-left-color: var(--green); font-weight: 600; }
+  .sidebar-icon { width: 18px; text-align: center; opacity: 0.8; }
+
+  .main { flex: 1; padding: 28px 32px; max-width: 1000px; }
+  .main h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  .review-note {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    font-size: 0.82rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    max-width: 720px;
+  }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0; flex-wrap: wrap; }
+  .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+  .filter-bar input, .filter-bar select {
+    padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #fff;
+  }
+  .btn {
+    display: inline-block; padding: 9px 16px; border-radius: 8px; border: none; font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; text-decoration: none;
+  }
+  .btn-primary { background: var(--green); color: #fff; }
+  .btn-primary:hover { background: var(--green-dark); }
+  .btn-secondary { background: #f3f4f6; color: #374151; }
+
+  .task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
+  .task-row {
+    display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; background: #fff; cursor: pointer;
+  }
+  .task-row:hover { border-color: #c7d2fe; }
+  .task-check {
+    width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 1px solid #d1d5db; background: #fff;
+    color: var(--green); font-weight: 700; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .task-row.done .task-check { background: var(--green); color: #fff; border-color: var(--green); }
+  .task-row.done .task-title { text-decoration: line-through; color: var(--muted); }
+  .task-body { flex: 1; min-width: 0; }
+  .task-title-row { display: flex; align-items: center; gap: 6px; }
+  .task-title { font-weight: 600; font-size: 0.92rem; }
+  .priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .priority-dot.low { background: #9ca3af; }
+  .priority-dot.medium { background: #f59e0b; }
+  .priority-dot.high { background: #dc2626; }
+  .task-meta { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .task-row select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.82rem; font-family: inherit; background: #fff; }
+  .task-row .delete-link { color: #dc2626; font-size: 0.82rem; background: none; border: none; cursor: pointer; }
+
+  /* ---- Drawer / task panel ---- */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(17,24,39,0.45); z-index: 40; display: none;
+  }
+  .backdrop.open { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(860px, 92vw);
+    background: #fff; box-shadow: -8px 0 24px rgba(17,24,39,0.18); z-index: 41;
+    overflow-y: auto; padding: 24px 32px 40px; transform: translateX(100%); transition: transform 0.18s ease;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .drawer-header .eyebrow { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .drawer-close { font-size: 1.6rem; line-height: 1; color: var(--muted-light); background: none; border: none; cursor: pointer; }
+  .drawer-close:hover { color: var(--text); }
+
+  .drawer-grid { display: grid; grid-template-columns: 1fr 260px; gap: 32px; }
+  @media (max-width: 700px) { .drawer-grid { grid-template-columns: 1fr; } }
+
+  .field-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+  .field-label .req { color: #dc2626; }
+  .title-input {
+    width: 100%; font-size: 1.15rem; font-weight: 700; border: none; border-bottom: 2px solid transparent; padding: 4px 0;
+    margin-bottom: 18px; font-family: inherit;
+  }
+  .title-input:focus { outline: none; border-bottom-color: var(--green); }
+
+  .rte-toolbar { display: flex; gap: 4px; margin-bottom: 6px; }
+  .rte-toolbar button {
+    min-width: 28px; height: 28px; padding: 0 6px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff;
+    cursor: pointer; font-size: 0.8rem; color: #374151;
+  }
+  .rte-toolbar button:hover { background: #f3f4f6; }
+  .rte-editor {
+    min-height: 110px; max-height: 240px; overflow-y: auto; border: 1px solid #d1d5db; border-radius: 8px;
+    padding: 10px 12px; font-size: 0.9rem; margin-bottom: 18px;
+  }
+  .rte-editor:empty::before { content: attr(data-placeholder); color: var(--muted-light); }
+  .rte-editor img { max-width: 100%; }
+
+  .due-date-input {
+    padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; font-family: inherit; margin-bottom: 20px;
+  }
+
+  .side-box { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+  .side-box .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; margin-bottom: 10px; }
+  .side-box select {
+    width: 100%; padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #fff;
+  }
+  .btn-mark-done { width: 100%; padding: 11px; font-size: 0.92rem; }
+  .priority-badge { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 600; }
+  .priority-badge.low { background: #f3f4f6; color: #4b5563; }
+  .priority-badge.medium { background: #ede9fe; color: #6d28d9; }
+  .priority-badge.high { background: #fee2e2; color: #b91c1c; }
+
+  .subtasks-panel { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 20px; margin-top: 8px; }
+  .subtasks-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .subtasks-panel-header h2 { font-size: 1rem; margin: 0; }
+  .subtasks-counter { font-size: 0.82rem; color: var(--muted); }
+  .subtask-form { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .subtask-form input[type="text"] { flex: 1 1 200px; }
+  .subtask-form input, .subtask-form select {
+    padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.86rem; font-family: inherit;
+  }
+  .subtask-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .subtask-row { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .subtask-row.done .subtask-title { text-decoration: line-through; color: var(--muted); }
+  .subtask-row .task-check { width: 20px; height: 20px; }
+  .subtask-row.done .task-check { background: var(--green); color: #fff; border-color: var(--green); }
+  .subtask-title { font-weight: 600; font-size: 0.88rem; }
+  .subtask-meta { font-size: 0.76rem; color: var(--muted); }
+  .subtask-row .delete-link { margin-left: auto; }
+  .empty-state { color: var(--muted-light); font-size: 0.85rem; padding: 10px 0; }
+
+  .drawer-footer { grid-column: 1 / -1; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .delete-task-link { color: #dc2626; background: none; border: none; font-size: 0.86rem; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <div class="sidebar-logo">Page<span>Zaper</span></div>
+      <div class="sidebar-section-label">Account</div>
+      <a href="#" class="sidebar-link"><span class="sidebar-icon">&#8962;</span> Dashboard</a>
+      <div class="sidebar-section-label">CRM</div>
+      <a href="#" class="sidebar-link"><span class="sidebar-icon">&#9733;</span> Leads</a>
+      <a href="#" class="sidebar-link"><span class="sidebar-icon">&#128100;</span> Customers</a>
+      <a href="#" class="sidebar-link active"><span class="sidebar-icon">&#10003;</span> Tasks</a>
+      <a href="#" class="sidebar-link"><span class="sidebar-icon">&#128101;</span> Team</a>
+    </nav>
+
+    <main class="main">
+      <h1>Tasks</h1>
+      <div class="review-note">
+        This is a static mockup for review only — nothing here is wired up to your real data yet.
+        The sidebar on the left is just to show what a side-menu version of the CRM nav could look like;
+        we haven't decided whether it replaces the current tab bar. Click a task row to preview the panel.
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-bar">
+          <input type="text" placeholder="e.g. Follow up on renewal" />
+          <input type="date" />
+          <select>
+            <option>Everyone</option>
+            <option>Unassigned</option>
+            <option>You</option>
+            <option>Test</option>
+          </select>
+          <button class="btn btn-secondary">Filter</button>
+        </div>
+        <button class="btn btn-primary" onclick="openDrawer('new')">+ New task</button>
+      </div>
+
+      <ul class="task-list" id="taskList">
+        <li class="task-row" data-id="1" onclick="openDrawer('1')">
+          <button class="task-check" onclick="toggleDone(event, this)"></button>
+          <div class="task-body">
+            <div class="task-title-row">
+              <span class="task-title">do calls</span>
+              <span class="priority-dot low"></span>
+            </div>
+            <div class="task-meta">Standalone task · due 9/16/2026</div>
+          </div>
+          <select onclick="event.stopPropagation()"><option>test</option><option>Unassigned</option></select>
+          <button class="delete-link" onclick="event.stopPropagation()">Delete</button>
+        </li>
+        <li class="task-row done" data-id="2">
+          <button class="task-check" onclick="toggleDone(event, this)">&#10003;</button>
+          <div class="task-body">
+            <div class="task-title-row">
+              <span class="task-title">Email the vendor</span>
+              <span class="priority-dot medium"></span>
+            </div>
+            <div class="task-meta">John Doe · auraavie</div>
+          </div>
+          <select onclick="event.stopPropagation()"><option>Unassigned</option><option>test</option></select>
+          <button class="delete-link" onclick="event.stopPropagation()">Delete</button>
+        </li>
+        <li class="task-row" data-id="3">
+          <button class="task-check" onclick="toggleDone(event, this)"></button>
+          <div class="task-body">
+            <div class="task-title-row">
+              <span class="task-title">Renew domain</span>
+              <span class="priority-dot high"></span>
+            </div>
+            <div class="task-meta">Standalone task · due 9/20/2026</div>
+          </div>
+          <select onclick="event.stopPropagation()"><option>Unassigned</option><option>test</option></select>
+          <button class="delete-link" onclick="event.stopPropagation()">Delete</button>
+        </li>
+      </ul>
+    </main>
+  </div>
+
+  <div class="backdrop" id="backdrop" onclick="closeDrawer()"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-header">
+      <span class="eyebrow" id="drawerEyebrow">Standalone task</span>
+      <button class="drawer-close" onclick="closeDrawer()">&times;</button>
+    </div>
+
+    <div class="drawer-grid">
+      <div>
+        <input class="title-input" id="titleInput" placeholder="Task title" value="do calls" />
+
+        <label class="field-label">Description</label>
+        <div class="rte-toolbar">
+          <button type="button" data-cmd="bold"><b>B</b></button>
+          <button type="button" data-cmd="italic"><i>I</i></button>
+          <button type="button" data-cmd="underline"><u>U</u></button>
+          <button type="button" data-cmd="strikeThrough"><s>S</s></button>
+          <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">&#8226;&#8801;</button>
+          <button type="button" data-cmd="insertOrderedList" title="Numbered list">1.&#8801;</button>
+          <button type="button" data-cmd="link" title="Insert link">&#128279;</button>
+          <button type="button" data-cmd="image" title="Insert image">&#128247;</button>
+          <button type="button" data-cmd="removeFormat" title="Clear formatting">T&times;</button>
+        </div>
+        <div class="rte-editor" id="rteEditor" contenteditable="true" data-placeholder="Describe what needs to be done...">https://docs.google.com/document/d/1KeTxf3BH56b8pYKo-oBZfTgEeUmpJlKulBmqE-KZplM/edit?tab=t.0<br><br>hello there</div>
+
+        <label class="field-label">Due date</label><br>
+        <input type="date" class="due-date-input" value="2026-09-16" />
+        <br>
+        <button class="btn btn-primary">Save changes</button>
+      </div>
+
+      <div>
+        <div class="side-box">
+          <div class="label">Status</div>
+          <button class="btn btn-primary btn-mark-done" id="markDoneBtn" onclick="toggleDrawerDone()">Mark done</button>
+        </div>
+
+        <div class="side-box">
+          <div class="label">Priority</div>
+          <select id="prioritySelect" onchange="updatePriorityBadge()">
+            <option value="low" selected>Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <span class="priority-badge low" id="priorityBadge">Low priority</span>
+        </div>
+
+        <div class="side-box">
+          <div class="label">Assigned to</div>
+          <select>
+            <option>Unassigned</option>
+            <option selected>test</option>
+            <option>You</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="subtasks-panel">
+        <div class="subtasks-panel-header">
+          <h2>Subtasks</h2>
+          <span class="subtasks-counter" id="subtaskCounter">0/1 done</span>
+        </div>
+        <div class="subtask-form">
+          <input type="text" placeholder="e.g. Draft the outline" />
+          <input type="date" />
+          <select><option>Unassigned</option><option>test</option></select>
+          <button class="btn btn-primary" onclick="addSubtask()">Add subtask</button>
+        </div>
+        <ul class="subtask-list" id="subtaskList">
+          <li class="subtask-row">
+            <button class="task-check" onclick="toggleSubtask(this)"></button>
+            <div>
+              <div class="subtask-title">dfdf</div>
+              <div class="subtask-meta">Unassigned</div>
+            </div>
+            <button class="delete-link" onclick="this.closest('li').remove(); updateSubtaskCounter();">Delete</button>
+          </li>
+        </ul>
+      </div>
+
+      <div class="drawer-footer">
+        <button class="delete-task-link">Delete task</button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    function openDrawer(id) {
+      document.getElementById('backdrop').classList.add('open');
+      document.getElementById('drawer').classList.add('open');
+    }
+    function closeDrawer() {
+      document.getElementById('backdrop').classList.remove('open');
+      document.getElementById('drawer').classList.remove('open');
+    }
+    function toggleDone(e, btn) {
+      e.stopPropagation();
+      const row = btn.closest('.task-row');
+      row.classList.toggle('done');
+      btn.innerHTML = row.classList.contains('done') ? '&#10003;' : '';
+    }
+    function toggleDrawerDone() {
+      const btn = document.getElementById('markDoneBtn');
+      const done = btn.textContent.trim() === 'Mark done';
+      btn.textContent = done ? 'Mark not done' : 'Mark done';
+      btn.classList.toggle('btn-secondary', !done);
+    }
+    function updatePriorityBadge() {
+      const val = document.getElementById('prioritySelect').value;
+      const badge = document.getElementById('priorityBadge');
+      badge.className = 'priority-badge ' + val;
+      badge.textContent = val.charAt(0).toUpperCase() + val.slice(1) + ' priority';
+    }
+    function toggleSubtask(btn) {
+      const row = btn.closest('.subtask-row');
+      row.classList.toggle('done');
+      btn.innerHTML = row.classList.contains('done') ? '&#10003;' : '';
+      updateSubtaskCounter();
+    }
+    function updateSubtaskCounter() {
+      const rows = document.querySelectorAll('#subtaskList .subtask-row');
+      const done = document.querySelectorAll('#subtaskList .subtask-row.done').length;
+      document.getElementById('subtaskCounter').textContent = done + '/' + rows.length + ' done';
+    }
+    function addSubtask() {
+      const form = document.querySelector('.subtask-form');
+      const titleInput = form.querySelector('input[type="text"]');
+      const dateInput = form.querySelector('input[type="date"]');
+      const select = form.querySelector('select');
+      if (!titleInput.value.trim()) return;
+      const li = document.createElement('li');
+      li.className = 'subtask-row';
+      li.innerHTML = `
+        <button class="task-check" onclick="toggleSubtask(this)"></button>
+        <div>
+          <div class="subtask-title">${titleInput.value}</div>
+          <div class="subtask-meta">${select.value}${dateInput.value ? ' · due ' + dateInput.value : ''}</div>
+        </div>
+        <button class="delete-link" onclick="this.closest('li').remove(); updateSubtaskCounter();">Delete</button>
+      `;
+      document.getElementById('subtaskList').appendChild(li);
+      titleInput.value = '';
+      dateInput.value = '';
+      updateSubtaskCounter();
+    }
+    // Rich text toolbar
+    document.querySelectorAll('.rte-toolbar').forEach(function (toolbar) {
+      const editor = toolbar.nextElementSibling;
+      toolbar.querySelectorAll('button[data-cmd]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const cmd = btn.getAttribute('data-cmd');
+          editor.focus();
+          if (cmd === 'link') {
+            const url = window.prompt('Link URL:');
+            if (url) document.execCommand('createLink', false, url);
+          } else if (cmd === 'image') {
+            const src = window.prompt('Image URL:');
+            if (src) document.execCommand('insertImage', false, src);
+          } else {
+            document.execCommand(cmd, false, null);
+          }
+        });
+      });
+    });
+    updateSubtaskCounter();
+  </script>
+</body>
+</html>
