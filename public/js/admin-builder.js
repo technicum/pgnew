@@ -638,9 +638,16 @@
         var rows = items.map(function (f, idx) {
           return '<div class="b-faq-item">' +
             '<div class="b-faq-q" data-field="items.' + idx + '.q" contenteditable="true">' + esc(f.q) + '</div>' +
-            '<div class="b-faq-a" data-field="items.' + idx + '.a" contenteditable="true">' + esc(f.a) + '</div></div>';
+            '<div class="b-faq-a" data-field="items.' + idx + '.a" contenteditable="true">' + esc(f.a) + '</div>' +
+            '<button type="button" class="b-faq-item-remove" data-faq-remove data-index="' + idx + '" title="Remove question" aria-label="Remove question">' + icon("trash") + '</button></div>';
         }).join("");
-        return '<div class="b-sec-pad b-sec-faq" style="max-width:640px;margin:0 auto;"><h3 style="margin-bottom:6px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + rows + '</div>';
+        // Up to 6 questions (lib/sections.js's sanitizeFields caps `items` the
+        // same way) — the add button just disappears past that rather than
+        // erroring, same convention as social_icons' "up to 8" limit.
+        var faqAddBtn = items.length < 6
+          ? '<button type="button" class="b-btn-outline b-faq-add" data-faq-add>' + icon("plus") + ' Add question</button>'
+          : '<div class="b-field-hint">Up to 6 questions.</div>';
+        return '<div class="b-sec-pad b-sec-faq" style="max-width:640px;margin:0 auto;"><h3 style="margin-bottom:6px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + rows + faqAddBtn + '</div>';
       }
 
       case "countdown":
@@ -1570,7 +1577,7 @@
         return field("Names", textareaHtml("names", (d.names || []).join("\n"), "One name per line, up to 8")) +
           field("", '<div class="b-inspector-hint">Plain text only — good for press mentions or partner names.</div>');
       case "faq":
-        return field("", '<div class="b-inspector-hint">Click any question or answer on the canvas to edit it.</div>');
+        return field("", '<div class="b-inspector-hint">Click any question or answer on the canvas to edit it. Use "Add question" below the list to add another (up to 6), or hover a question and click the trash icon to remove it.</div>');
       case "countdown":
         return field("Ends at", dateTimeHtml("end_at", d.end_at)) +
           field("", '<div class="b-inspector-hint">Shown in your local time here, but counts down to the same moment for every visitor. Click the heading to edit it.</div>');
@@ -2534,6 +2541,38 @@
         var saveBlockHost = blockSaveBtn.closest("[data-block-id]");
         var foundForSave = saveBlockHost ? findBlockInSection(sec, saveBlockHost.dataset.blockId) : null;
         if (foundForSave) saveAsComponent(foundForSave.block);
+        return;
+      }
+
+      // FAQ's "Add question"/per-item remove — same array-item pattern as
+      // gallery's images grid (data-gal-remove) and social_icons' rows, just
+      // placed straight on the canvas next to each contenteditable q/a
+      // rather than in the inspector, since that's already where a merchant
+      // edits a FAQ item's text. Resolves its own owner (section, or a
+      // block nested inside a Row's column) straight from the DOM instead
+      // of state.selectedId/selectedBlockId, since this button can be
+      // clicked on a FAQ that isn't the currently-selected section.
+      var faqAddBtn = e.target.closest("[data-faq-add]");
+      var faqRemoveBtn = e.target.closest("[data-faq-remove]");
+      if (faqAddBtn || faqRemoveBtn) {
+        var faqBlockHost = e.target.closest("[data-block-id]");
+        var faqFound = faqBlockHost ? findBlockInSection(sec, faqBlockHost.dataset.blockId) : null;
+        var faqOwnerFields = faqFound ? faqFound.block.fields : sec.fields;
+        var faqItems = (faqOwnerFields.items || []).slice();
+        if (faqAddBtn) {
+          if (faqItems.length < 6) faqItems.push({ q: "New question", a: "Add your answer here." });
+        } else {
+          faqItems.splice(parseInt(faqRemoveBtn.dataset.index, 10), 1);
+        }
+        if (faqFound) {
+          faqFound.block.fields.items = faqItems;
+          renderAll();
+          saveField(id, { columns: sec.fields.columns });
+        } else {
+          sec.fields.items = faqItems;
+          renderAll();
+          saveField(id, { items: faqItems });
+        }
         return;
       }
 

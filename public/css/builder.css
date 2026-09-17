@@ -354,7 +354,7 @@ body.builder-body button { font-family: inherit; }
    though a neighboring section's handle occupies the same shared pixel
    band when both sit at zero margin. */
 .b-csec-margin { position: absolute; left: 8px; right: 8px; height: 10px; cursor: row-resize; touch-action: none; z-index: 6; opacity: 0; transition: opacity .12s; }
-.b-csec-margin::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
+.b-csec-margin::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--b-accent-soft); border: 1px solid var(--b-accent); border-radius: 2px; }
 .b-csec.is-selected .b-csec-margin, .b-csec:hover .b-csec-margin { opacity: .85; }
 .b-csec-margin:hover, .b-csec-margin:active { opacity: 1 !important; }
 .b-csec-margin-top { top: -17px; }
@@ -367,7 +367,7 @@ body.builder-body button { font-family: inherit; }
    boundary would be unreachable. Sitting just inside the edge keeps it
    clickable regardless. */
 .b-csec-margin-v { position: absolute; top: 8px; bottom: 8px; width: 10px; cursor: col-resize; touch-action: none; z-index: 6; opacity: 0; transition: opacity .12s; }
-.b-csec-margin-v::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--b-accent-soft); border: 1px dashed var(--b-accent); border-radius: 2px; }
+.b-csec-margin-v::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: var(--b-accent-soft); border: 1px solid var(--b-accent); border-radius: 2px; }
 .b-csec.is-selected .b-csec-margin-v, .b-csec:hover .b-csec-margin-v { opacity: .85; }
 .b-csec-margin-v:hover, .b-csec-margin-v:active { opacity: 1 !important; }
 .b-csec-margin-left { left: 4px; }
@@ -524,10 +524,15 @@ body.builder-body button { font-family: inherit; }
 .b-logostrip span { font-family: var(--b-font-display); font-weight: 800; font-size: 16px; color: var(--b-muted); opacity: .55; }
 
 .b-sec-faq { padding-top: 24px; padding-bottom: 40px; }
-.b-faq-item { border-bottom: 1px solid var(--b-line); padding: 14px 2px; }
+.b-faq-item { position: relative; border-bottom: 1px solid var(--b-line); padding: 14px 34px 14px 2px; }
 .b-faq-item:first-child { border-top: 1px solid var(--b-line); }
 .b-faq-q { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
 .b-faq-a { font-size: 13px; color: var(--b-muted); line-height: 1.6; }
+.b-faq-item-remove { position: absolute; top: 14px; right: 2px; width: 22px; height: 22px; border: none; border-radius: 6px; background: transparent; color: var(--b-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .12s ease, background-color .12s ease, color .12s ease; }
+.b-faq-item-remove svg { width: 12px; height: 12px; }
+.b-faq-item:hover .b-faq-item-remove, .b-faq-item-remove:focus-visible { opacity: 1; }
+.b-faq-item-remove:hover { background: var(--b-danger); color: #fff; }
+.b-faq-add { margin-top: 14px; }
 
 /* Header/footer canvas section types — logo, nav_menu, promo_bar,
    link_columns, social_icons, copyright (see admin-builder.js's
