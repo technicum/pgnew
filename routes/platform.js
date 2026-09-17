@@ -720,13 +720,26 @@ router.post('/dashboard/crm/tasks/:id/delete', requireAccount, requireCrm, async
 // Team-wide task board: every task under this CRM, standalone or attached
 // to a contact, with a reassign control on each -- where "assign it to
 // someone else" happens outside of any one contact's page.
+// ?offset= is also how the board's infinite scroll (public/js/crm-task-panel.js)
+// fetches further pages -- it fetches this same route and pulls the new
+// <li> rows out of the response's own task list, so this always renders a
+// complete, normal page (works with no JS too, at just the first page).
 router.get('/dashboard/crm/tasks', requireAccount, requireCrm, async (req, res, next) => {
   try {
-    const [tasks, assignableUsers] = await Promise.all([
-      crmLib.listAllTasks(req.crm.ownerUserId),
+    const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;
+    const [{ tasks, hasMore, nextOffset }, assignableUsers] = await Promise.all([
+      crmLib.listAllTasks(req.crm.ownerUserId, offset),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
     ]);
-    res.render('platform/crm-tasks', { title: 'Tasks', account: req.session.account, crm: req.crm, tasks, assignableUsers });
+    res.render('platform/crm-tasks', {
+      title: 'Tasks',
+      account: req.session.account,
+      crm: req.crm,
+      tasks,
+      assignableUsers,
+      hasMore,
+      nextOffset,
+    });
   } catch (err) {
     next(err);
   }
@@ -785,12 +798,20 @@ router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, r
 });
 
 // Saves the description/priority/due-date edits made on the detail screen.
+// Redirects with a bare relative path (not adminPortalUrl's absolute
+// admin.<domain> URL) -- this route is reachable via fetch() from inside
+// the slide-over panel (public/js/crm-task-panel.js), and unlike a normal
+// full-page form submission, fetch's redirect-following is subject to
+// CORS: if the page wasn't loaded from exactly that admin.<domain> origin,
+// following an absolute cross-origin redirect fails outright and the save
+// silently "does nothing" from the user's side. A relative path is always
+// same-origin as whatever host actually served the request.
 router.post('/dashboard/crm/tasks/:id/edit', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const title = (req.body.title || '').trim();
     if (!title) {
       req.flash('error', 'Task title is required.');
-      return res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${req.params.id}`));
+      return res.redirect(`/dashboard/crm/tasks/${req.params.id}`);
     }
     await crmLib.updateTask(req.crm.ownerUserId, req.params.id, {
       title,
@@ -799,7 +820,7 @@ router.post('/dashboard/crm/tasks/:id/edit', requireAccount, requireCrm, async (
       due_date: req.body.due_date || null,
     });
     req.flash('success', 'Task updated.');
-    res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${req.params.id}`));
+    res.redirect(`/dashboard/crm/tasks/${req.params.id}`);
   } catch (err) {
     next(err);
   }
@@ -807,22 +828,23 @@ router.post('/dashboard/crm/tasks/:id/edit', requireAccount, requireCrm, async (
 
 // Adds a subtask under this task -- same assignability rule as every other
 // task create (owner or any CRM member can assign it to any other member).
+// Same relative-redirect reasoning as the /edit route above.
 router.post('/dashboard/crm/tasks/:id/subtasks', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const task = await crmLib.getTask(req.crm.ownerUserId, req.params.id);
     if (!task) {
       req.flash('error', 'Task not found.');
-      return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
+      return res.redirect('/dashboard/crm/tasks');
     }
     const title = (req.body.title || '').trim();
     if (!title) {
       req.flash('error', 'Subtask title is required.');
-      return res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
+      return res.redirect(`/dashboard/crm/tasks/${task.id}`);
     }
     const assignedTo = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
     if (!(await crmLib.isAssignable(req.crm.ownerUserId, assignedTo))) {
       req.flash('error', "That person isn't on this CRM team.");
-      return res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
+      return res.redirect(`/dashboard/crm/tasks/${task.id}`);
     }
     await crmLib.createTask(req.crm.ownerUserId, null, {
       title,
@@ -831,7 +853,7 @@ router.post('/dashboard/crm/tasks/:id/subtasks', requireAccount, requireCrm, asy
       parent_task_id: task.id,
     });
     req.flash('success', 'Subtask added.');
-    res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
+    res.redirect(`/dashboard/crm/tasks/${task.id}`);
   } catch (err) {
     next(err);
   }

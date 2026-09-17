@@ -2,12 +2,21 @@
 // anywhere (the Tasks board, My Tasks, a contact's task panel, or a
 // subtask row inside the panel itself) opens/updates this panel instead of
 // navigating away -- the underlying GET /dashboard/crm/tasks/:id page is
-// still a full, working page on its own (direct link, reload, no-JS), this
-// just fetches that same page and shows only its ".admin-content" in a
-// drawer. Every form inside the panel (edit, reassign, subtasks, toggle)
-// posts through fetch the same way, then swaps the panel's content for
-// whatever the server redirected back to -- no page-specific wiring needed
-// as routes change.
+// still a full, working page on its own (direct link, no-JS), this just
+// fetches that same page and shows only its ".admin-content" in a drawer.
+// Every form inside the panel (edit, reassign, subtasks, toggle) posts
+// through fetch the same way, then swaps the panel's content for whatever
+// the server redirected back to -- no page-specific wiring needed as
+// routes change.
+//
+// Deliberately does NOT touch the URL bar or browser history (no
+// pushState/popstate) -- it's pure client-side overlay state on top of
+// whatever list page you're already on. That means it isn't deep-linkable
+// (a shared URL never opens the panel by itself, only the full page's own
+// GET route can), but the tradeoff is deliberate: reloading the page while
+// the panel is open always lands back on that underlying list, never on
+// the task's own full-page view -- which is what you want when the panel
+// is meant to feel like a transient overlay, not a real navigation.
 (function () {
   var TASK_URL_RE = /^\/dashboard\/crm\/tasks\/\d+$/;
 
@@ -99,18 +108,12 @@
     return !!panel && panel.classList.contains('open');
   }
 
-  function openPanel(url, replace) {
+  function openPanel(url) {
     buildPanel();
     panelBody.innerHTML = '<div class="task-panel-loading">Loading…</div>';
     panel.classList.add('open');
     backdrop.classList.add('open');
     document.body.classList.add('task-panel-open');
-
-    if (replace) {
-      history.replaceState({ taskPanel: true }, '', url);
-    } else {
-      history.pushState({ taskPanel: true }, '', url);
-    }
     loadInto(url);
   }
 
@@ -125,20 +128,19 @@
 
   function closePanel() {
     if (!isOpen()) return;
-    history.back(); // popstate handler below does the actual hide + refresh
-  }
-
-  function hidePanelVisual() {
-    if (!panel) return;
     panel.classList.remove('open');
     backdrop.classList.remove('open');
     document.body.classList.remove('task-panel-open');
+    // Always re-fetch the underlying page -- cheap, and simpler/more
+    // reliably correct than trying to track whether anything inside the
+    // panel actually changed before deciding to bother.
+    refreshMainContent();
   }
 
-  // Re-fetches whatever page we've landed back on and patches its own
-  // ".admin-content" in place, so edits made inside the panel (reassign,
-  // priority, a completed subtask...) show up on the list underneath
-  // without a full reload.
+  // Re-fetches the page you're actually on (never changed by the panel)
+  // and patches its own ".admin-content" in place, so edits made inside
+  // the panel (reassign, priority, a completed subtask...) show up on the
+  // list underneath without a full reload.
   function refreshMainContent() {
     fetch(location.href)
       .then(function (res) { return res.text(); })
@@ -148,12 +150,6 @@
       })
       .catch(function () {});
   }
-
-  window.addEventListener('popstate', function () {
-    if (!isOpen()) return;
-    hidePanelVisual();
-    refreshMainContent();
-  });
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && isOpen()) closePanel();
@@ -167,7 +163,7 @@
     var href = link.getAttribute('href') || '';
     if (!TASK_URL_RE.test(href)) return;
     e.preventDefault();
-    openPanel(href, isOpen());
+    openPanel(href);
   });
 
   // Every form submitted from inside the panel goes through fetch instead
@@ -200,7 +196,6 @@
         }
         return res.text().then(function (html) {
           renderInto(panelBody, html);
-          history.replaceState({ taskPanel: true }, '', res.url);
           showToast(successMessage);
         });
       })
@@ -208,4 +203,70 @@
         showToast('Something went wrong -- try again.', true);
       });
   });
+})();
+
+// Tasks board infinite scroll -- no-ops on every other page (the list only
+// exists on views/platform/crm-tasks.ejs). Fetches the same GET
+// /dashboard/crm/tasks route with ?offset=, then pulls just the new <li>
+// rows out of the response and appends them -- same fetch-a-real-page-and-
+// extract-a-piece approach as the slide-over panel above, so the route
+// itself never needs a separate JSON/fragment mode.
+(function () {
+  var list = document.getElementById('crmTaskList');
+  var sentinel = document.querySelector('.crm-task-load-status');
+  if (!list || !sentinel) return;
+
+  var loading = false;
+  var observer = null;
+
+  function nearViewport(el) {
+    var rect = el.getBoundingClientRect();
+    return rect.top < window.innerHeight + 600;
+  }
+
+  function loadMore() {
+    if (loading || list.dataset.hasMore !== '1') return;
+    loading = true;
+    sentinel.hidden = false;
+    sentinel.textContent = 'Loading more…';
+
+    fetch('/dashboard/crm/tasks?offset=' + encodeURIComponent(list.dataset.nextOffset))
+      .then(function (res) { return res.text(); })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var freshList = doc.getElementById('crmTaskList');
+        if (freshList) {
+          Array.prototype.forEach.call(freshList.children, function (li) {
+            list.appendChild(li);
+          });
+          list.dataset.hasMore = freshList.dataset.hasMore || '';
+          list.dataset.nextOffset = freshList.dataset.nextOffset || '0';
+        } else {
+          list.dataset.hasMore = '';
+        }
+      })
+      .catch(function () {
+        sentinel.textContent = 'Could not load more -- scroll to retry.';
+      })
+      .then(function () {
+        loading = false;
+        sentinel.hidden = true;
+        if (list.dataset.hasMore !== '1') {
+          if (observer) observer.disconnect();
+        } else if (nearViewport(sentinel)) {
+          // The page just appended is short enough that the sentinel is
+          // still on screen -- IntersectionObserver only fires on an
+          // enter/exit transition, so without this it would never refire
+          // and loading would silently stall on a tall viewport.
+          loadMore();
+        }
+      });
+  }
+
+  if (list.dataset.hasMore === '1' && 'IntersectionObserver' in window) {
+    observer = new IntersectionObserver(function (entries) {
+      if (entries.some(function (entry) { return entry.isIntersecting; })) loadMore();
+    }, { rootMargin: '600px' });
+    observer.observe(sentinel);
+  }
 })();
