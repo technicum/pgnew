@@ -5,9 +5,8 @@
 // still a full, working page on its own (direct link, no-JS), this just
 // fetches that same page and shows only its ".admin-content" in a drawer.
 // Every form inside the panel (edit, reassign, subtasks, toggle) posts
-// through fetch the same way, then swaps the panel's content for whatever
-// the server redirected back to -- no page-specific wiring needed as
-// routes change.
+// through fetch the same way, then re-fetches the task page currently
+// shown in the panel -- no page-specific wiring needed as routes change.
 //
 // Deliberately does NOT touch the URL bar or browser history (no
 // pushState/popstate) -- it's pure client-side overlay state on top of
@@ -26,6 +25,18 @@
 
   var toast = null;
   var toastTimer = null;
+
+  // The task page currently loaded into the panel -- kept in sync only by
+  // openPanel() (a real navigation, e.g. clicking a task/subtask title).
+  // Re-fetched after every in-panel form submit instead of trusting the
+  // POST's own redirect target, because that target isn't always this page:
+  // /toggle and /reassign redirect to req.get('Referer'), which -- since
+  // the panel never touches the URL bar -- is always the underlying list
+  // page the panel is floating over, not the task page shown inside it. A
+  // toggle from the panel would otherwise swap the panel's content for that
+  // list page, which (having none of the .task-panel-* markup) reads as the
+  // panel having closed.
+  var currentUrl = null;
 
   function buildPanel() {
     if (panel) return;
@@ -114,6 +125,7 @@
     panel.classList.add('open');
     backdrop.classList.add('open');
     document.body.classList.add('task-panel-open');
+    currentUrl = url;
     loadInto(url);
   }
 
@@ -199,16 +211,18 @@
           // broken/empty-looking output. Leave the panel's current content
           // alone and surface the failure instead.
           showToast('Something went wrong -- try again.', true);
-          return null;
+          return;
         }
         if (isSelfDelete) {
           closePanel();
-          return null;
+          return;
         }
-        return res.text().then(function (html) {
-          renderInto(panelBody, html);
-          showToast(successMessage);
-        });
+        // Re-fetch the task page the panel is actually showing rather than
+        // rendering whatever this POST redirected to (see currentUrl above)
+        // -- for /toggle and /reassign that redirect target is not this
+        // page.
+        showToast(successMessage);
+        loadInto(currentUrl);
       })
       .catch(function () {
         showToast('Something went wrong -- try again.', true);
