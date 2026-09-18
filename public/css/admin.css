@@ -420,6 +420,17 @@
 .crm-task-form input, .crm-task-form select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; }
 .crm-task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .crm-task-list-wide { max-width: 640px; }
+/* Asana-style section headers, JS-inserted (crm-task-panel.js) between
+   date-based groups of an otherwise flat .crm-task-list-dated list. */
+.crm-task-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin-top: 16px; padding: 0;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+  font-weight: 700; color: #6b7280;
+}
+.crm-task-divider:first-child { margin-top: 0; }
+.crm-task-divider::after { content: ""; flex: 1; height: 1px; background: #e5e7eb; }
+.crm-task-divider-overdue { color: #b91c1c; }
 .crm-task-load-status { max-width: 640px; padding: 14px 0; text-align: center; font-size: 0.82rem; color: #6b7280; }
 .crm-task { display: flex; align-items: center; gap: 10px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; background: #fff; }
 .crm-task-check { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #16a34a; font-weight: 700; font-size: 0.8rem; cursor: pointer; }

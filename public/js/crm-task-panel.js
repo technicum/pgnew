@@ -16,6 +16,67 @@
 // the panel is open always lands back on that underlying list, never on
 // the task's own full-page view -- which is what you want when the panel
 // is meant to feel like a transient overlay, not a real navigation.
+
+// Asana-style date-group dividers ("Overdue" / "Due today" / "Upcoming" /
+// "No due date" / "Completed") for any task list marked .crm-task-list-dated
+// (the Tasks board and My Tasks -- NOT a task's own subtask checklist,
+// which stays a plain list). Exposed on window so both the slide-over panel
+// (whose renderInto() swaps in freshly-fetched, divider-less markup on every
+// refresh) and the infinite-scroll loader below can re-run it after they
+// change what's in the DOM, instead of each re-implementing the grouping.
+window.__crmApplyTaskDividers = (function () {
+  var LABELS = { overdue: 'Overdue', today: 'Due today', upcoming: 'Upcoming', none: 'No due date', done: 'Completed' };
+
+  // Local calendar day as YYYY-MM-DD, matching the plain date strings
+  // data-due carries -- new Date().toISOString() would use UTC and could
+  // put "today" on the wrong side of midnight depending on the visitor's
+  // timezone.
+  function todayStr() {
+    var d = new Date();
+    var tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d - tzOffset).toISOString().slice(0, 10);
+  }
+
+  function bucketFor(li, today) {
+    if (li.dataset.done === '1') return 'done';
+    var due = li.dataset.due;
+    if (!due) return 'none';
+    if (due < today) return 'overdue';
+    if (due === today) return 'today';
+    return 'upcoming';
+  }
+
+  function applyTo(list) {
+    var today = todayStr();
+    // Rebuilt from scratch every time rather than patched in place -- the
+    // list can grow (infinite scroll) or be entirely replaced (a panel
+    // refresh) between calls, and re-deriving from each row's own
+    // data-due/data-done is simpler and always correct than trying to
+    // track where a previous set of dividers ended.
+    Array.prototype.forEach.call(list.querySelectorAll('.crm-task-divider'), function (el) { el.remove(); });
+
+    var lastBucket = null;
+    Array.prototype.forEach.call(list.querySelectorAll(':scope > .crm-task'), function (li) {
+      var bucket = bucketFor(li, today);
+      if (bucket !== lastBucket) {
+        var divider = document.createElement('li');
+        divider.className = 'crm-task-divider' + (bucket === 'overdue' ? ' crm-task-divider-overdue' : '');
+        divider.textContent = LABELS[bucket];
+        list.insertBefore(divider, li);
+        lastBucket = bucket;
+      }
+    });
+  }
+
+  return function (root) {
+    var scope = root || document;
+    var lists = scope.classList && scope.classList.contains('crm-task-list-dated')
+      ? [scope]
+      : scope.querySelectorAll('.crm-task-list-dated');
+    Array.prototype.forEach.call(lists, applyTo);
+  };
+})();
+
 (function () {
   var TASK_URL_RE = /^\/dashboard\/crm\/tasks\/\d+$/;
 
@@ -113,6 +174,11 @@
   function renderInto(target, html) {
     target.innerHTML = extractAdminContent(html);
     runScripts(target);
+    // The fetched markup is a fresh render with no dividers of its own --
+    // this covers both the panel's own task-list-less content and, via
+    // refreshMainContent() below, the Tasks board / My Tasks list patched
+    // in behind it.
+    window.__crmApplyTaskDividers(target);
   }
 
   function isOpen() {
@@ -271,6 +337,7 @@
           });
           list.dataset.hasMore = freshList.dataset.hasMore || '';
           list.dataset.nextOffset = freshList.dataset.nextOffset || '0';
+          window.__crmApplyTaskDividers(list);
         } else {
           list.dataset.hasMore = '';
         }
@@ -300,3 +367,8 @@
     observer.observe(sentinel);
   }
 })();
+
+// Divider pass for whatever .crm-task-list-dated list the page loaded with
+// server-rendered (before any panel refresh or infinite-scroll append ever
+// runs) -- this script is `defer`red, so the DOM is already parsed here.
+window.__crmApplyTaskDividers(document);

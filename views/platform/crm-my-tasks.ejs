@@ -1,9 +1,9 @@
 <%- include('partials/header') %>
 
     <div class="dashboard-main crm-main">
-      <ul class="crm-task-list crm-task-list-wide">
+      <ul class="crm-task-list crm-task-list-wide crm-task-list-dated">
         <% tasks.forEach(function(t) { %>
-          <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>">
+          <li class="crm-task <%= t.done ? 'crm-task-done' : '' %>" data-due="<%= t.due_date ? new Date(t.due_date).toISOString().slice(0,10) : '' %>" data-done="<%= t.done ? '1' : '' %>">
             <form action="/dashboard/crm/tasks/<%= t.id %>/toggle" method="POST">
               <input type="hidden" name="done" value="<%= t.done ? '0' : '1' %>" />
               <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
