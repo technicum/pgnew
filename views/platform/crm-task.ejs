@@ -42,7 +42,7 @@
         <div class="task-panel-meta">
           <div class="task-panel-meta-field">
             <label>Status</label>
-            <form action="/dashboard/crm/tasks/<%= task.id %>/toggle" method="POST">
+            <form action="/dashboard/crm/tasks/<%= task.id %>/toggle" method="POST" class="task-panel-status-form">
               <input type="hidden" name="done" value="<%= task.done ? '0' : '1' %>" />
               <button type="submit" class="btn task-panel-mark-done <%= task.done ? '' : 'btn-primary' %>"><%= task.done ? '✓ Done' : 'Mark done' %></button>
             </form>

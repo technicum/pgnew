@@ -189,6 +189,11 @@
 
     var form = e.target;
     var isSelfDelete = form.classList.contains('crm-task-delete-self');
+    // The task's own status form (not a subtask row's) -- marking it done
+    // closes the panel instead of leaving it open on a finished task;
+    // reopening it (unchecking) just refreshes in place as usual.
+    var isMarkingDone = form.classList.contains('task-panel-status-form') &&
+      form.querySelector('input[name="done"]').value === '1';
     var successMessage = form.dataset.successMessage || 'Saved';
 
     // FormData sent straight to fetch() gets encoded as multipart/form-data
@@ -213,7 +218,7 @@
           showToast('Something went wrong -- try again.', true);
           return;
         }
-        if (isSelfDelete) {
+        if (isSelfDelete || isMarkingDone) {
           closePanel();
           return;
         }
