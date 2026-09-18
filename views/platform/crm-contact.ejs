@@ -70,7 +70,7 @@
                 <div class="crm-task-body">
                   <a class="crm-task-title" href="/dashboard/crm/tasks/<%= t.id %>"><%= t.title %></a>
                   <span class="crm-task-meta">
-                    <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %><%= t.priority && t.priority !== 'medium' ? ' · ' + t.priority + ' priority' : '' %>
+                    <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + formatDueDate(t.due_date) : '' %><%= t.priority && t.priority !== 'medium' ? ' · ' + t.priority + ' priority' : '' %>
                   </span>
                 </div>
                 <form action="/dashboard/crm/tasks/<%= t.id %>/reassign" method="POST" class="crm-task-reassign">

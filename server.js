@@ -37,6 +37,20 @@ app.set('trust proxy', true);
 // Available in every view via app.locals, no per-route wiring needed.
 app.locals.assetVersion = Date.now();
 
+// Shared "18 Sept 2026" formatting for a CRM task's due date, used anywhere
+// one shows up as read-only text (task/subtask list rows) -- not the
+// <input type="date"> fields, which the browser formats itself per the
+// visitor's own locale/OS settings and can't be overridden from the server.
+// Spelled out by hand (not Intl's 'short' month, which gives "Sep") so it
+// reads exactly like the requested "18 Sept 2026", everywhere, regardless
+// of the server's ICU data/locale.
+const DUE_DATE_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+app.locals.formatDueDate = (d) => {
+  if (!d) return '';
+  const date = new Date(d);
+  return `${date.getDate()} ${DUE_DATE_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+};
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use((req, res, next) => {
