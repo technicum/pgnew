@@ -108,10 +108,15 @@
                 <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
               </form>
               <div class="crm-task-body">
-                <!-- Plain text, not a link -- a subtask is just a point on
-                     this task's checklist, with no detail page of its own
-                     to drill into. -->
-                <span class="crm-task-title"><%= t.title %></span>
+                <!-- Edits the title in place -- a subtask has no detail
+                     page of its own to do this from. due_date/priority ride
+                     along as hidden fields so this save doesn't blank them
+                     out (the /edit route takes the whole task, not a diff). -->
+                <form action="/dashboard/crm/tasks/<%= t.id %>/edit" method="POST" class="crm-task-title-form" data-success-message="Subtask updated">
+                  <input type="text" name="title" class="crm-task-title-input" value="<%= t.title %>" required onchange="this.form.requestSubmit()">
+                  <input type="hidden" name="due_date" value="<%= t.due_date ? new Date(t.due_date).toISOString().slice(0,10) : '' %>">
+                  <input type="hidden" name="priority" value="<%= t.priority %>">
+                </form>
                 <span class="crm-task-meta">
                   <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
                 </span>
