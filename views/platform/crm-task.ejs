@@ -108,7 +108,10 @@
                 <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
               </form>
               <div class="crm-task-body">
-                <a class="crm-task-title" href="/dashboard/crm/tasks/<%= t.id %>"><%= t.title %></a>
+                <!-- Plain text, not a link -- a subtask is just a point on
+                     this task's checklist, with no detail page of its own
+                     to drill into. -->
+                <span class="crm-task-title"><%= t.title %></span>
                 <span class="crm-task-meta">
                   <%= t.assignee_name ? t.assignee_name : 'Unassigned' %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %>
                 </span>

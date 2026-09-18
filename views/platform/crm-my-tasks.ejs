@@ -9,12 +9,20 @@
               <button type="submit" class="crm-task-check" aria-label="Toggle done"><%= t.done ? '✓' : '' %></button>
             </form>
             <div class="crm-task-body">
-              <a class="crm-task-title" href="/dashboard/crm/tasks/<%= t.id %>"><%= t.title %></a>
+              <!-- A subtask is just a point on its parent's checklist -- no
+                   detail page of its own to link into. -->
+              <% if (t.parent_task_id) { %>
+                <span class="crm-task-title"><%= t.title %></span>
+              <% } else { %>
+                <a class="crm-task-title" href="/dashboard/crm/tasks/<%= t.id %>"><%= t.title %></a>
+              <% } %>
               <span class="crm-task-meta">
                 <% if (t.parent_task_id) { %>Subtask of <%= t.parent_title %><% } else if (t.contact_id) { %><a href="/dashboard/crm/contacts/<%= t.contact_id %>"><%= t.contact_name %></a> · <%= t.store_name || 'General inquiry' %><% } else { %>Standalone task<% } %><%= t.due_date ? ' · due ' + new Date(t.due_date).toLocaleDateString() : '' %><%= t.priority && t.priority !== 'medium' ? ' · ' + t.priority + ' priority' : '' %>
               </span>
             </div>
-            <a href="/dashboard/crm/tasks/<%= t.id %>" class="link-btn">Open</a>
+            <% if (!t.parent_task_id) { %>
+              <a href="/dashboard/crm/tasks/<%= t.id %>" class="link-btn">Open</a>
+            <% } %>
           </li>
         <% }); %>
         <% if (tasks.length === 0) { %>
