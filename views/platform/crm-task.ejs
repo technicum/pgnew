@@ -18,6 +18,7 @@
             <input type="text" name="title" required value="<%= task.title %>" />
           </label>
 
+          <% if (!task.parent_task_id) { %>
           <label>Description
             <!-- Progressive enhancement: this textarea is the real,
                  always-visible field (works with no JS, or if the locally
@@ -29,6 +30,9 @@
             <textarea id="taskDescriptionInput" name="description" rows="8" placeholder="Describe what needs to be done..."><%= task.description || '' %></textarea>
             <div id="taskDescriptionEditor" class="crm-task-editor" hidden></div>
           </label>
+          <% } %>
+          <!-- A subtask is just a point on its parent's checklist, not a
+               full task -- no description field for it to edit. -->
 
           <div class="form-row">
             <label>Due date
