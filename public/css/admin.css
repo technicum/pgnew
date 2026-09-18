@@ -437,16 +437,21 @@
 .crm-task-priority-high { background: #fee2e2; color: #b91c1c; }
 .crm-task-title { color: #111827; text-decoration: none; }
 .crm-task-title:hover { text-decoration: underline; }
-/* Subtask row's inline title editor -- reads as plain text, not a form
-   field, until it's actually focused. */
-.crm-task-title-form { display: block; }
+/* Subtask row's inline title + due date editor -- the title reads as plain
+   text, not a form field, until it's actually focused; no detail page
+   exists for a subtask to edit these from otherwise. */
+.crm-task-title-form { display: flex; align-items: center; gap: 10px; }
 .crm-task-title-input {
-  display: block; width: 100%; border: none; background: transparent;
+  flex: 1; min-width: 0; border: none; background: transparent;
   padding: 1px 0; margin: 0; font-family: inherit;
   font-weight: 600; font-size: 0.92rem; color: #111827;
 }
 .crm-task-title-input:focus { outline: none; box-shadow: none; text-decoration: underline; }
 .crm-task-done .crm-task-title-input { text-decoration: line-through; color: inherit; }
+.crm-subtask-due-input {
+  flex-shrink: 0; padding: 4px 6px; border: 1px solid #e5e7eb; border-radius: 6px;
+  font-family: inherit; font-size: 0.78rem; color: #374151; background: #fff;
+}
 .crm-task-editor { min-height: 160px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
 .crm-task-editor .ql-toolbar { border: none; border-bottom: 1px solid #e5e7eb; border-radius: 8px 8px 0 0; }
 .crm-task-editor .ql-container { border: none; border-radius: 0 0 8px 8px; font-family: inherit; font-size: 0.92rem; min-height: 120px; }
