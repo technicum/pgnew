@@ -650,8 +650,7 @@ router.post('/dashboard/crm/contacts/:id/delete', requireAccount, requireCrm, as
   }
 });
 
-// ---- Tasks -- created here tied to one contact; see /dashboard/crm/tasks
-// below for the standalone board that also handles reassignment. ----
+// ---- Tasks (attached to a contact) ----
 router.post('/dashboard/crm/contacts/:id/tasks', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
@@ -669,7 +668,8 @@ router.post('/dashboard/crm/contacts/:id/tasks', requireAccount, requireCrm, asy
       req.flash('error', "That person isn't on this CRM team.");
       return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
     }
-    await crmLib.createTask(req.crm.ownerUserId, contact.id, {
+    await crmLib.createTask(req.crm.ownerUserId, {
+      contactId: contact.id,
       title,
       due_date: req.body.due_date || null,
       assigned_to: assignedTo,
@@ -681,28 +681,14 @@ router.post('/dashboard/crm/contacts/:id/tasks', requireAccount, requireCrm, asy
   }
 });
 
+// redirect (a hidden field on the form) lets each view send the user back
+// to exactly where it makes sense -- the list, or the drawer they were
+// already in -- rather than guessing from Referer.
 router.post('/dashboard/crm/tasks/:id/toggle', requireAccount, requireCrm, async (req, res, next) => {
   try {
     await crmLib.setTaskDone(req.crm.ownerUserId, req.params.id, req.body.done === '1');
-    res.redirect(req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/my-tasks'));
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Hands a task to someone else on the CRM team -- available to any member,
-// not just the owner, so a member can pass a task to a teammate the same
-// way the owner assigns one in the first place.
-router.post('/dashboard/crm/tasks/:id/reassign', requireAccount, requireCrm, async (req, res, next) => {
-  try {
-    const assignedTo = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
-    if (!(await crmLib.isAssignable(req.crm.ownerUserId, assignedTo))) {
-      req.flash('error', "That person isn't on this CRM team.");
-      return res.redirect(req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/tasks'));
-    }
-    await crmLib.reassignTask(req.crm.ownerUserId, req.params.id, assignedTo);
-    req.flash('success', 'Task reassigned.');
-    res.redirect(req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/tasks'));
+    req.flash('success', 'Task saved.');
+    res.redirect(req.body.redirect || req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/tasks'));
   } catch (err) {
     next(err);
   }
@@ -711,24 +697,40 @@ router.post('/dashboard/crm/tasks/:id/reassign', requireAccount, requireCrm, asy
 router.post('/dashboard/crm/tasks/:id/delete', requireAccount, requireCrm, async (req, res, next) => {
   try {
     await crmLib.deleteTask(req.crm.ownerUserId, req.params.id);
-    res.redirect(req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/my-tasks'));
+    req.flash('success', 'Task deleted.');
+    res.redirect(req.body.redirect || adminPortalUrl(req, '/dashboard/crm/tasks'));
   } catch (err) {
     next(err);
   }
 });
 
-// Team-wide task board: every task under this CRM, standalone or attached
-// to a contact, with a reassign control on each -- where "assign it to
-// someone else" happens outside of any one contact's page.
-// ?offset= is also how the board's infinite scroll (public/js/crm-task-panel.js)
-// fetches further pages -- it fetches this same route and pulls the new
-// <li> rows out of the response's own task list, so this always renders a
-// complete, normal page (works with no JS too, at just the first page).
-router.get('/dashboard/crm/tasks', requireAccount, requireCrm, async (req, res, next) => {
+router.post('/dashboard/crm/tasks/:id/reassign', requireAccount, requireCrm, async (req, res, next) => {
   try {
-    const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;
-    const [{ tasks, hasMore, nextOffset }, assignableUsers] = await Promise.all([
-      crmLib.listAllTasks(req.crm.ownerUserId, offset),
+    const assignedTo = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
+    if (!(await crmLib.isAssignable(req.crm.ownerUserId, assignedTo))) {
+      req.flash('error', "That person isn't on this CRM team.");
+    } else {
+      await crmLib.reassignTask(req.crm.ownerUserId, req.params.id, assignedTo);
+      req.flash('success', 'Task saved.');
+    }
+    res.redirect(req.body.redirect || req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/tasks'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- The Tasks tab -- every task under this CRM, contact-linked or
+// standalone, with a slide-over panel for viewing/editing one (or creating
+// a new one) rendered by the same view. /new and /:id both render
+// 'platform/crm-tasks' with openTask set -- either null (create mode) or
+// the loaded task (edit mode) -- so the list and the panel are always one
+// consistent server render, matching the rest of this app's no-AJAX,
+// full-page-navigation pattern.
+async function renderCrmTasks(req, res, next, { openTask, subtasks, mode }) {
+  try {
+    const filters = { search: req.query.q, due: req.query.due, assignee: req.query.assignee };
+    const [tasks, assignableUsers] = await Promise.all([
+      crmLib.listTasks(req.crm.ownerUserId, filters),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
     ]);
     res.render('platform/crm-tasks', {
@@ -737,41 +739,54 @@ router.get('/dashboard/crm/tasks', requireAccount, requireCrm, async (req, res, 
       crm: req.crm,
       tasks,
       assignableUsers,
-      hasMore,
-      nextOffset,
+      filters,
+      openTask: openTask || null,
+      // Full link to the linked contact's site, for the drawer's breadcrumb
+      // ("Follow-up on <contact> · <site domain>") -- only meaningful when
+      // the task is attached to a contact that has a site.
+      storeLink: openTask && openTask.store_subdomain ? storeUrl(req, openTask.store_subdomain) : null,
+      subtasks: subtasks || [],
+      mode: mode || 'view', // 'new' | 'edit' | 'view' (drawer closed)
     });
   } catch (err) {
     next(err);
   }
-});
+}
 
-router.post('/dashboard/crm/tasks', requireAccount, requireCrm, async (req, res, next) => {
+router.get('/dashboard/crm/tasks', requireAccount, requireCrm, (req, res, next) =>
+  renderCrmTasks(req, res, next, { mode: 'view' })
+);
+
+router.get('/dashboard/crm/tasks/new', requireAccount, requireCrm, (req, res, next) =>
+  renderCrmTasks(req, res, next, { mode: 'new' })
+);
+
+router.post('/dashboard/crm/tasks/new', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const title = (req.body.title || '').trim();
     if (!title) {
       req.flash('error', 'Task title is required.');
-      return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks/new'));
     }
     const assignedTo = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
     if (!(await crmLib.isAssignable(req.crm.ownerUserId, assignedTo))) {
       req.flash('error', "That person isn't on this CRM team.");
-      return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks/new'));
     }
-    await crmLib.createTask(req.crm.ownerUserId, null, {
+    const taskId = await crmLib.createTask(req.crm.ownerUserId, {
       title,
+      description: req.body.description,
+      priority: req.body.priority,
       due_date: req.body.due_date || null,
       assigned_to: assignedTo,
     });
-    req.flash('success', 'Task added.');
-    res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
+    req.flash('success', 'Task saved.');
+    res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${taskId}`));
   } catch (err) {
     next(err);
   }
 });
 
-// Task detail: description (a WYSIWYG field that can hold embedded media --
-// see the Quill setup in the view), priority, and its subtask checklist --
-// what clicking a task from any of the lists above opens into.
 router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const task = await crmLib.getTask(req.crm.ownerUserId, req.params.id);
@@ -779,106 +794,81 @@ router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, r
       req.flash('error', 'Task not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
     }
-    const [subtasks, assignableUsers, comments] = await Promise.all([
-      crmLib.listSubtasks(task.id),
-      crmLib.listAssignableUsers(req.crm.ownerUserId),
-      crmLib.listTaskComments(task.id),
-    ]);
-    res.render('platform/crm-task', {
-      title: 'Task',
-      account: req.session.account,
-      crm: req.crm,
-      task,
-      subtasks,
-      assignableUsers,
-      comments,
-      priorities: crmLib.TASK_PRIORITIES,
-    });
+    const subtasks = await crmLib.listSubtasks(task.id);
+    renderCrmTasks(req, res, next, { openTask: task, subtasks, mode: 'edit' });
   } catch (err) {
     next(err);
   }
 });
 
-// Saves the description/priority/due-date edits made on the detail screen.
-// Redirects with a bare relative path (not adminPortalUrl's absolute
-// admin.<domain> URL) -- this route is reachable via fetch() from inside
-// the slide-over panel (public/js/crm-task-panel.js), and unlike a normal
-// full-page form submission, fetch's redirect-following is subject to
-// CORS: if the page wasn't loaded from exactly that admin.<domain> origin,
-// following an absolute cross-origin redirect fails outright and the save
-// silently "does nothing" from the user's side. A relative path is always
-// same-origin as whatever host actually served the request.
 router.post('/dashboard/crm/tasks/:id/edit', requireAccount, requireCrm, async (req, res, next) => {
-  try {
-    const title = (req.body.title || '').trim();
-    if (!title) {
-      req.flash('error', 'Task title is required.');
-      return res.redirect(`/dashboard/crm/tasks/${req.params.id}`);
-    }
-    await crmLib.updateTask(req.crm.ownerUserId, req.params.id, {
-      title,
-      description: req.body.description,
-      priority: req.body.priority,
-      due_date: req.body.due_date || null,
-    });
-    req.flash('success', 'Task updated.');
-    res.redirect(`/dashboard/crm/tasks/${req.params.id}`);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Adds a subtask under this task -- same assignability rule as every other
-// task create (owner or any CRM member can assign it to any other member).
-// Same relative-redirect reasoning as the /edit route above.
-router.post('/dashboard/crm/tasks/:id/subtasks', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const task = await crmLib.getTask(req.crm.ownerUserId, req.params.id);
     if (!task) {
       req.flash('error', 'Task not found.');
-      return res.redirect('/dashboard/crm/tasks');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
     }
     const title = (req.body.title || '').trim();
     if (!title) {
-      req.flash('error', 'Subtask title is required.');
-      return res.redirect(`/dashboard/crm/tasks/${task.id}`);
+      req.flash('error', 'Task title is required.');
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
     }
     const assignedTo = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
     if (!(await crmLib.isAssignable(req.crm.ownerUserId, assignedTo))) {
       req.flash('error', "That person isn't on this CRM team.");
-      return res.redirect(`/dashboard/crm/tasks/${task.id}`);
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
     }
-    await crmLib.createTask(req.crm.ownerUserId, null, {
+    await crmLib.updateTask(req.crm.ownerUserId, task.id, {
       title,
+      description: req.body.description,
+      priority: req.body.priority,
       due_date: req.body.due_date || null,
       assigned_to: assignedTo,
-      parent_task_id: task.id,
     });
-    req.flash('success', 'Subtask added.');
-    res.redirect(`/dashboard/crm/tasks/${task.id}`);
+    req.flash('success', 'Task saved.');
+    res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${task.id}`));
   } catch (err) {
     next(err);
   }
 });
 
-// Adds a comment -- any CRM member can comment on any task under this
-// owner's CRM, same access as everything else here. Relative redirect (see
-// /edit above) since this is reachable via fetch() from the slide-over panel.
-router.post('/dashboard/crm/tasks/:id/comments', requireAccount, requireCrm, async (req, res, next) => {
+// ---- Subtasks (nested under one task's drawer) ----
+router.post('/dashboard/crm/tasks/:id/subtasks', requireAccount, requireCrm, async (req, res, next) => {
   try {
-    const task = await crmLib.getTask(req.crm.ownerUserId, req.params.id);
-    if (!task) {
-      req.flash('error', 'Task not found.');
-      return res.redirect('/dashboard/crm/tasks');
+    const title = (req.body.title || '').trim();
+    if (title) {
+      const assignedTo = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
+      if (await crmLib.isAssignable(req.crm.ownerUserId, assignedTo)) {
+        await crmLib.createSubtask(req.crm.ownerUserId, req.params.id, {
+          title,
+          due_date: req.body.due_date || null,
+          assigned_to: assignedTo,
+        });
+      } else {
+        req.flash('error', "That person isn't on this CRM team.");
+      }
     }
-    const body = (req.body.body || '').trim();
-    if (!body) {
-      req.flash('error', 'Comment cannot be empty.');
-      return res.redirect(`/dashboard/crm/tasks/${task.id}`);
-    }
-    await crmLib.addTaskComment(task.id, req.session.account.id, body);
-    req.flash('success', 'Comment added.');
-    res.redirect(`/dashboard/crm/tasks/${task.id}`);
+    res.redirect(adminPortalUrl(req, `/dashboard/crm/tasks/${req.params.id}`));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/subtasks/:id/toggle', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    await crmLib.setSubtaskDone(req.crm.ownerUserId, req.params.id, req.body.done === '1');
+    const taskId = req.body.task_id || (await crmLib.getSubtaskTaskId(req.crm.ownerUserId, req.params.id));
+    res.redirect(adminPortalUrl(req, taskId ? `/dashboard/crm/tasks/${taskId}` : '/dashboard/crm/tasks'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/subtasks/:id/delete', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const taskId = req.body.task_id || (await crmLib.getSubtaskTaskId(req.crm.ownerUserId, req.params.id));
+    await crmLib.deleteSubtask(req.crm.ownerUserId, req.params.id);
+    res.redirect(adminPortalUrl(req, taskId ? `/dashboard/crm/tasks/${taskId}` : '/dashboard/crm/tasks'));
   } catch (err) {
     next(err);
   }

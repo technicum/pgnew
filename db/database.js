@@ -133,10 +133,11 @@ const TABLES = {
   // store's products/orders/pages). CRM access and store-staff access are
   // independent grants; see the CREATE TABLE comment below.
   crmMembers: `${PREFIX}crm_members`,
-  // A follow-up/to-do attached to a CRM contact.
+  // A follow-up/to-do — either attached to a CRM contact, or "standalone"
+  // (contact_id NULL) for work that isn't about any one lead/customer.
   crmTasks: `${PREFIX}crm_tasks`,
-  // Discussion thread on one crmTasks row -- shown in the task detail panel.
-  crmTaskComments: `${PREFIX}crm_task_comments`,
+  // Small checklist items nested under one crm_tasks row.
+  crmSubtasks: `${PREFIX}crm_subtasks`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -698,60 +699,47 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmMembers} (
   UNIQUE KEY uniq_owner_member (owner_user_id, member_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- A follow-up/to-do, optionally attached to one ${TABLES.contacts} row --
--- contact_id is nullable so a task can also be a standalone to-do (see
--- migrateTasksOptionalContact for installs that predate this). assigned_to
--- is checked in app code (either the owner themself or one of their
--- ${TABLES.crmMembers}) rather than by the FK, since either table could
--- hold that user, and any of them can assign a task to any other -- there's
--- no owner-only restriction on who does the assigning. owner_user_id is
--- denormalized from the contact's store (rather than joined through
--- contacts -> stores -> user_roles every time) purely so "my tasks" /
--- "tasks I've assigned" stay a single cheap query.
+-- A follow-up/to-do, either attached to one ${TABLES.contacts} row or
+-- "standalone" (contact_id NULL) for CRM work that isn't about any one
+-- lead/customer. assigned_to is checked in app code (either the owner
+-- themself or one of their ${TABLES.crmMembers}) rather than by the FK,
+-- since either table could hold that user. owner_user_id is denormalized
+-- from the contact's store (rather than joined through contacts -> stores
+-- -> user_roles every time) purely so "my tasks" / "tasks I've assigned"
+-- stay a single cheap query, and is set directly for standalone tasks.
+-- description holds a small amount of sanitized rich-text HTML from the
+-- task panel's editor (see lib/crm.js's sanitizeDescriptionHtml).
 CREATE TABLE IF NOT EXISTS ${TABLES.crmTasks} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   owner_user_id INT NOT NULL,
   contact_id INT NULL,
-  -- Self-reference for subtasks (the task detail page's checklist). A
-  -- subtask is an ordinary row here, just scoped under its parent instead
-  -- of a contact -- it gets its own title/description/priority/assignee,
-  -- but is left out of the top-level board/contact listings (see
-  -- listAllTasks/listTasksForContact's "parent_task_id IS NULL" filter) so
-  -- it only shows up nested in its parent's detail view.
-  parent_task_id INT NULL,
   title VARCHAR(255) NOT NULL,
-  -- MEDIUMTEXT (not TEXT) because the description editor (see
-  -- views/platform/crm-task.ejs) is a WYSIWYG field that can hold embedded
-  -- (base64) images, not just plain text.
   description MEDIUMTEXT NULL,
-  priority VARCHAR(10) NOT NULL DEFAULT 'medium',
+  priority ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium',
   due_date DATE NULL,
   assigned_to INT NULL,
   done TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
   FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE CASCADE,
-  FOREIGN KEY (parent_task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
   FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_task_owner_done (owner_user_id, done),
-  INDEX idx_task_contact (contact_id),
-  INDEX idx_task_parent (parent_task_id)
+  INDEX idx_task_contact (contact_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- A comment on one ${TABLES.crmTasks} row -- plain text (rendered escaped,
--- not the rich-HTML treatment the description field gets), ordered oldest
--- first like a normal discussion thread. user_id is whichever pz_users
--- login posted it -- the owner or any of their crmMembers, same as who can
--- touch the task itself.
-CREATE TABLE IF NOT EXISTS ${TABLES.crmTaskComments} (
+-- A small checklist item nested under one crm_tasks row (the "Subtasks"
+-- card). Deliberately minimal -- no description/priority of its own.
+CREATE TABLE IF NOT EXISTS ${TABLES.crmSubtasks} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   task_id INT NOT NULL,
-  user_id INT NOT NULL,
-  body TEXT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  due_date DATE NULL,
+  assigned_to INT NULL,
+  done TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
-  INDEX idx_task_comment_task (task_id)
+  FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
+  INDEX idx_subtask_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 
@@ -844,14 +832,6 @@ async function columnIsNullable(conn, table, column) {
     [table, column]
   );
   return rows.length > 0 && rows[0].is_nullable === 'YES';
-}
-
-async function columnDataType(conn, table, column) {
-  const [rows] = await conn.query(
-    `SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
-    [table, column]
-  );
-  return rows.length > 0 ? rows[0].data_type : null;
 }
 
 async function indexExists(conn, table, indexName) {
@@ -1545,47 +1525,30 @@ async function migrateContactsOptionalStore(conn) {
   }
 }
 
-// Lets a task stand on its own (a general to-do assigned to a CRM team
-// member) instead of always being a follow-up on one contact -- relaxes
-// contact_id to nullable. Same idempotency pattern as every migrate*
-// function in this file.
-async function migrateTasksOptionalContact(conn) {
-  if (!(await tableExists(conn, TABLES.crmTasks))) return;
-  if (!(await columnIsNullable(conn, TABLES.crmTasks, 'contact_id'))) {
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN contact_id INT NULL`);
-  }
-}
-
-// Adds the task detail screen's fields (description, priority) and subtask
-// support (parent_task_id, self-referencing) to installs that created
-// ${TABLES.crmTasks} before these existed. Same idempotency pattern as
-// every migrate* function in this file.
-async function migrateTasksDetail(conn) {
-  if (!(await tableExists(conn, TABLES.crmTasks))) return;
-  if (!(await columnExists(conn, TABLES.crmTasks, 'description'))) {
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN description MEDIUMTEXT NULL AFTER title`);
-  } else if ((await columnDataType(conn, TABLES.crmTasks, 'description')) === 'text') {
-    // Widened from TEXT (64KB) to MEDIUMTEXT (16MB) once the description
-    // editor started allowing embedded (base64) images -- see
-    // views/platform/crm-task.ejs's Quill setup.
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN description MEDIUMTEXT NULL`);
-  }
-  if (!(await columnExists(conn, TABLES.crmTasks, 'priority'))) {
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN priority VARCHAR(10) NOT NULL DEFAULT 'medium' AFTER description`);
-  }
-  if (!(await columnExists(conn, TABLES.crmTasks, 'parent_task_id'))) {
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN parent_task_id INT NULL AFTER contact_id`);
-    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD INDEX idx_task_parent (parent_task_id)`);
-    await conn.query(
-      `ALTER TABLE ${TABLES.crmTasks} ADD FOREIGN KEY (parent_task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE`
-    );
-  }
-}
-
 async function migrateAppsScopeColumn(conn) {
   if (!(await tableExists(conn, TABLES.apps))) return;
   if (!(await columnExists(conn, TABLES.apps, 'scope'))) {
     await conn.query(`ALTER TABLE ${TABLES.apps} ADD COLUMN scope VARCHAR(10) NOT NULL DEFAULT 'store' AFTER slug`);
+  }
+}
+
+// Adds the Tasks-panel fields (description, priority) to an existing
+// install and relaxes contact_id to nullable so a task can be "standalone"
+// -- not attached to any contact. Fresh installs already get this shape
+// from the CREATE TABLE above; crm_subtasks is a brand-new table on both,
+// so it needs no migrate function (CREATE TABLE IF NOT EXISTS covers it).
+async function migrateCrmTasksEnhancements(conn) {
+  if (!(await tableExists(conn, TABLES.crmTasks))) return;
+  if (!(await columnExists(conn, TABLES.crmTasks, 'description'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} ADD COLUMN description MEDIUMTEXT NULL AFTER title`);
+  }
+  if (!(await columnExists(conn, TABLES.crmTasks, 'priority'))) {
+    await conn.query(
+      `ALTER TABLE ${TABLES.crmTasks} ADD COLUMN priority ENUM('low', 'medium', 'high') NOT NULL DEFAULT 'medium' AFTER description`
+    );
+  }
+  if (!(await columnIsNullable(conn, TABLES.crmTasks, 'contact_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmTasks} MODIFY COLUMN contact_id INT NULL`);
   }
 }
 
@@ -1887,8 +1850,7 @@ async function init() {
     await migrateStoreThemes(conn);
     await migrateContactsTagsColumn(conn);
     await migrateContactsOptionalStore(conn);
-    await migrateTasksOptionalContact(conn);
-    await migrateTasksDetail(conn);
+    await migrateCrmTasksEnhancements(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);

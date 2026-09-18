@@ -420,18 +420,6 @@
 .crm-task-form input, .crm-task-form select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; }
 .crm-task-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .crm-task-list-wide { max-width: 640px; }
-/* Asana-style section headers, JS-inserted (crm-task-panel.js) between
-   date-based groups of an otherwise flat .crm-task-list-dated list. */
-.crm-task-divider {
-  display: flex; align-items: center; gap: 12px;
-  margin-top: 16px; padding: 0;
-  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
-  font-weight: 700; color: #6b7280;
-}
-.crm-task-divider:first-child { margin-top: 0; }
-.crm-task-divider::after { content: ""; flex: 1; height: 1px; background: #e5e7eb; }
-.crm-task-divider-overdue { color: #b91c1c; }
-.crm-task-load-status { max-width: 640px; padding: 14px 0; text-align: center; font-size: 0.82rem; color: #6b7280; }
 .crm-task { display: flex; align-items: center; gap: 10px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; background: #fff; }
 .crm-task-check { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #16a34a; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
 .crm-task-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -440,132 +428,110 @@
 .crm-task-meta a { color: inherit; }
 .crm-task-done { opacity: 0.55; }
 .crm-task-done .crm-task-title { text-decoration: line-through; }
-.crm-task-reassign { flex-shrink: 0; }
-.crm-task-reassign select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; font-family: inherit; background: #fff; }
-.crm-task-priority { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; margin: 0 0 16px; }
-.crm-task-priority-low { background: #f3f4f6; color: #4b5563; }
-.crm-task-priority-medium { background: #eef2ff; color: #4338ca; }
-.crm-task-priority-high { background: #fee2e2; color: #b91c1c; }
-.crm-task-title { color: #111827; text-decoration: none; }
-.crm-task-title:hover { text-decoration: underline; }
-/* Subtask row's inline title + due date editor -- the title reads as plain
-   text, not a form field, until it's actually focused; no detail page
-   exists for a subtask to edit these from otherwise. */
-.crm-task-title-form { display: flex; align-items: center; gap: 10px; }
-.crm-task-title-input {
-  flex: 1; min-width: 0; border: none; background: transparent;
-  padding: 1px 0; margin: 0; font-family: inherit;
-  font-weight: 600; font-size: 0.92rem; color: #111827;
-}
-.crm-task-title-input:focus { outline: none; box-shadow: none; text-decoration: underline; }
-.crm-task-done .crm-task-title-input { text-decoration: line-through; color: inherit; }
-.crm-subtask-due-input {
-  flex-shrink: 0; padding: 4px 6px; border: 1px solid #e5e7eb; border-radius: 6px;
-  font-family: inherit; font-size: 0.78rem; color: #374151; background: #fff;
-}
-.crm-task-editor { min-height: 160px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
-.crm-task-editor .ql-toolbar { border: none; border-bottom: 1px solid #e5e7eb; border-radius: 8px 8px 0 0; }
-.crm-task-editor .ql-container { border: none; border-radius: 0 0 8px 8px; font-family: inherit; font-size: 0.92rem; min-height: 120px; }
-/* .admin-form textarea's own "display: block" above outranks the browser's
-   built-in [hidden] rule (higher specificity), so #taskDescriptionInput
-   stayed visible even once JS set its hidden attribute after Quill mounted
-   -- this rule needs to win instead. */
-.admin-form textarea[hidden] { display: none; }
-.crm-task-editor[hidden] { display: none; }
 
-/* Task detail slide-over (public/js/crm-task-panel.js) -- fetches the same
-   full page GET /dashboard/crm/tasks/:id renders and shows only its
-   .admin-content here, so the CSS below only needs to handle the chrome
-   (backdrop/panel/close button); the content itself reuses .crm-* rules
-   above as-is. */
-body.task-panel-open { overflow: hidden; }
-.task-panel-backdrop {
-  position: fixed; inset: 0; background: rgba(17, 24, 39, 0.45);
-  opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
-  z-index: 1000;
-}
-.task-panel-backdrop.open { opacity: 1; pointer-events: auto; }
-.task-panel {
-  position: fixed; top: 0; right: 0; bottom: 0;
-  width: min(850px, 100vw);
-  background: #fff; box-shadow: -8px 0 24px rgba(17, 24, 39, 0.18);
-  transform: translateX(100%); transition: transform 0.22s ease;
-  z-index: 1001; display: flex; flex-direction: column;
-}
-.task-panel.open { transform: translateX(0); }
-.task-panel-head {
-  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 14px 24px; border-bottom: 1px solid #e5e7eb;
-}
-.task-panel-toast {
-  font-size: 0.82rem; font-weight: 600; color: #166534; background: #dcfce7;
-  padding: 6px 14px; border-radius: 999px;
-  opacity: 0; transform: translateY(-4px); transition: opacity 0.18s ease, transform 0.18s ease;
-}
-.task-panel-toast.show { opacity: 1; transform: translateY(0); }
-.task-panel-toast-error { color: #991b1b; background: #fee2e2; }
-.task-panel-close {
-  width: 32px; height: 32px; flex-shrink: 0; border: none; background: transparent;
-  font-size: 1.4rem; line-height: 1; color: #6b7280; cursor: pointer; border-radius: 6px;
-  margin-left: auto;
-}
-.task-panel-close:hover { background: #f3f4f6; color: #111827; }
-.task-panel-body { flex: 1; overflow-y: auto; overflow-wrap: anywhere; padding: 28px 36px 40px; }
-.task-panel-loading { color: #6b7280; font-size: 0.9rem; }
-.task-panel .dashboard-main.crm-main { max-width: none; padding: 0; }
-.task-panel .crm-contact-layout { grid-template-columns: 1fr 280px; gap: 36px; align-items: start; }
-@media (max-width: 720px) { .task-panel .crm-contact-layout { grid-template-columns: 1fr; } }
-/* The edit form reads as the panel's primary content (title + description),
-   not a boxed form card like the metadata sidebar next to it. */
-.task-panel .crm-contact-layout > form.admin-form { background: none; border: none; padding: 0; }
+/* ---- Tasks tab (views/platform/crm-tasks.ejs) ----
+   Deliberately its own "tp-" (task panel) namespace with an indigo accent,
+   matching the reference design the user approved, rather than reusing the
+   green .crm-* / --color-primary used elsewhere in this app. */
+.tp-list-dimmed { opacity: 0.45; pointer-events: none; filter: blur(1px); }
 
-/* Task title styled as a document heading, not a form field -- the label
-   text shrinks to a caption so the input itself reads as the page title. */
-.task-panel-title-field { margin-bottom: 24px; }
-.task-panel-title-field label {
-  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
-  color: #9ca3af; font-weight: 700; margin-bottom: 4px;
-}
-.task-panel-title-field input {
-  border: none; border-bottom: 2px solid transparent; border-radius: 0;
-  padding: 2px 0; margin-top: 2px;
-  font-size: 1.5rem; font-weight: 700; color: #111827;
-}
-.task-panel-title-field input:focus { outline: none; box-shadow: none; border-bottom-color: var(--color-primary); }
+.tp-btn-primary { background: #4f46e5; color: #fff; border: none; }
+.tp-btn-primary:hover { background: #4338ca; }
 
-/* Metadata sidebar (status/priority/assignee) -- a compact stacked card
-   instead of a generic .panel, to read as "fields about this task" rather
-   than another content block competing with the description. */
-.task-panel-meta { display: flex; flex-direction: column; gap: 18px; }
-.task-panel-meta-field label {
-  display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
-  color: #9ca3af; font-weight: 700; margin-bottom: 6px;
+.tp-task-list { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-width: 700px; }
+.tp-task-row { display: flex; align-items: center; gap: 10px; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; background: #fff; }
+.tp-task-row:hover { border-color: #c7d2fe; }
+.tp-check {
+  width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; border: 1px solid #d1d5db; background: #fff;
+  color: #16a34a; font-weight: 700; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.task-panel-meta-field select {
-  width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
-  font-size: 0.88rem; font-family: inherit; background: #fff;
-}
-.task-panel-mark-done {
-  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
-}
+.tp-task-row.done .tp-check { background: #16a34a; color: #fff; border-color: #16a34a; }
+.tp-task-row.done .tp-task-title { text-decoration: line-through; color: #6b7280; }
+.tp-task-body { flex: 1; min-width: 0; text-decoration: none; color: inherit; display: block; }
+.tp-task-title-row { display: flex; align-items: center; gap: 6px; }
+.tp-task-title { font-weight: 600; font-size: 0.92rem; color: #111827; }
+.tp-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.tp-priority-dot.tp-priority-low { background: #9ca3af; }
+.tp-priority-dot.tp-priority-medium { background: #f59e0b; }
+.tp-priority-dot.tp-priority-high { background: #dc2626; }
+.tp-task-meta { font-size: 0.78rem; color: #6b7280; margin-top: 2px; }
+.tp-inline-assignee select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.82rem; font-family: inherit; background: #fff; }
 
-.task-panel-subtasks-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.task-panel-subtask-count { font-size: 0.8rem; color: #6b7280; font-weight: 600; }
-
-.task-panel-delete { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
-
-.task-panel-comment-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.task-panel-comment-form textarea {
-  width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px;
-  font-size: 0.9rem; font-family: inherit; resize: vertical;
+.tp-backdrop { position: fixed; inset: 0; background: rgba(17,24,39,0.45); z-index: 40; display: block; }
+.tp-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(850px, 94vw); background: #fff;
+  box-shadow: -8px 0 24px rgba(17,24,39,0.18); z-index: 41; display: flex; flex-direction: column;
 }
-.task-panel-comment-form button { align-self: flex-end; }
-.task-panel-comment-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.task-panel-comment { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; background: #fff; }
-.task-panel-comment-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; font-size: 0.82rem; }
-.task-panel-comment-head strong { color: #111827; }
-.task-panel-comment-time { color: #9ca3af; flex-shrink: 0; }
-.task-panel-comment-body { font-size: 0.9rem; color: #374151; white-space: pre-wrap; }
+.tp-drawer-head { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; border-bottom: 1px solid #e5e7eb; }
+.tp-toast {
+  font-size: 0.82rem; font-weight: 600; color: #166534; background: #dcfce7; padding: 6px 14px; border-radius: 999px;
+  opacity: 0; transition: opacity 0.15s ease;
+}
+.tp-toast.show { opacity: 1; }
+.tp-drawer-close { width: 32px; height: 32px; flex-shrink: 0; background: transparent; border: none; color: #6b7280; font-size: 1.4rem; line-height: 1; margin-left: auto; text-decoration: none; display: flex; align-items: center; justify-content: center; }
+.tp-drawer-close:hover { color: #111827; }
+
+.tp-drawer-body { flex: 1; overflow-y: auto; padding: 28px 36px 40px; }
+.tp-breadcrumb { margin: 0 0 16px; font-size: 0.85rem; color: #6b7280; }
+.tp-breadcrumb a { color: #4f46e5; text-decoration: none; }
+.tp-breadcrumb a:hover { text-decoration: underline; }
+
+.tp-grid { display: grid; grid-template-columns: 1fr 280px; gap: 36px; align-items: start; }
+@media (max-width: 720px) { .tp-grid { grid-template-columns: 1fr; } }
+
+.tp-label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; font-weight: 700; margin-bottom: 6px; }
+.tp-title-field { margin-bottom: 24px; }
+.tp-title-input {
+  width: 100%; border: none; border-bottom: 2px solid #4f46e5; border-radius: 0; padding: 2px 0; margin-top: 2px;
+  font-size: 1.5rem; font-weight: 700; color: #111827; font-family: inherit; background: transparent; box-sizing: border-box;
+}
+.tp-title-input:focus { outline: none; }
+
+.tp-rte-box { margin-top: 6px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+.tp-rte-toolbar { display: flex; align-items: center; gap: 2px; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+.tp-rte-toolbar button {
+  width: 26px; height: 26px; border-radius: 6px; border: none; background: transparent; display: flex;
+  align-items: center; justify-content: center; font-size: 0.82rem; color: #374151; cursor: pointer;
+}
+.tp-rte-toolbar button:hover { background: #f3f4f6; }
+.tp-rte-divider { width: 1px; align-self: stretch; background: #e5e7eb; margin: 4px 4px; }
+.tp-rte-editor { min-height: 160px; max-height: 280px; overflow-y: auto; padding: 14px 16px; font-size: 0.92rem; color: #374151; line-height: 1.6; }
+.tp-rte-editor:empty::before { content: attr(data-placeholder); color: #9ca3af; }
+.tp-rte-editor img { max-width: 100%; }
+.tp-rte-editor ul, .tp-rte-editor ol { margin: 0 0 10px; padding-left: 20px; }
+.tp-rte-editor p { margin: 0 0 10px; }
+
+.tp-due-field { margin-top: 16px; max-width: 260px; }
+.tp-due-input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.92rem; font-family: inherit; margin-top: 2px; box-sizing: border-box; }
+
+.tp-save-btn { margin-top: 20px; padding: 10px 20px; }
+
+.tp-side-col { display: flex; flex-direction: column; gap: 18px; }
+.tp-side-col select {
+  width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.92rem; font-family: inherit; background: #fff; box-sizing: border-box;
+}
+.tp-mark-done-btn { width: 100%; padding: 10px; }
+.tp-priority-badge { margin: 8px 0 0; display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; }
+.tp-priority-badge.tp-priority-low { background: #f3f4f6; color: #4b5563; }
+.tp-priority-badge.tp-priority-medium { background: #ede9fe; color: #6d28d9; }
+.tp-priority-badge.tp-priority-high { background: #fee2e2; color: #b91c1c; }
+
+.tp-subtasks-card { margin-top: 24px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; }
+.tp-subtasks-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.tp-subtasks-head h2 { margin: 0; font-size: 1rem; }
+.tp-subtasks-counter { font-size: 0.8rem; color: #6b7280; font-weight: 600; }
+.tp-subtask-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.tp-subtask-form input[type="text"] { flex: 1 1 200px; }
+.tp-subtask-form input, .tp-subtask-form select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.86rem; font-family: inherit; }
+.tp-subtask-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tp-subtask-row { display: flex; align-items: center; gap: 10px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; }
+.tp-subtask-row.done { opacity: 0.55; }
+.tp-subtask-row.done .tp-subtask-title { text-decoration: line-through; }
+.tp-subtask-body { flex: 1; }
+.tp-subtask-title { font-weight: 600; font-size: 0.92rem; color: #111827; }
+.tp-subtask-meta { font-size: 0.78rem; color: #6b7280; }
+
+.tp-drawer-footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e5e7eb; background: none; border-left: none; border-right: none; border-bottom: none; }
 
 /* Profile page */
 .profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }

@@ -1,43 +1,79 @@
-<%- include('partials/header') %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · PageZaper</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+</head>
+<body class="dashboard-body">
+  <header class="dashboard-header">
+    <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
+    <div class="dashboard-header-right">
+      <span class="dashboard-account-name"><%= account.name %></span>
+      <a href="/dashboard" class="link-btn">Your sites</a>
+      <form action="/dashboard/logout" method="POST" style="display:inline;">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    </div>
+  </header>
 
-    <div class="dashboard-main crm-main">
-      <div class="panel-toolbar crm-toolbar">
-        <form action="/dashboard/crm/<%= segment %>" method="GET" class="crm-filter-bar">
-          <select name="store" onchange="this.form.submit()">
-            <option value="">All sites</option>
-            <% stores.forEach(function(s) { %>
-              <option value="<%= s.id %>" <%= selectedStore === s.id ? 'selected' : '' %>><%= s.name %></option>
-            <% }); %>
-          </select>
-        </form>
-        <a href="/dashboard/crm/contacts/new" class="btn btn-primary">+ New contact</a>
-      </div>
-
-      <table class="admin-table">
-        <thead>
-          <tr><th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Source</th><th>Added</th></tr>
-        </thead>
-        <tbody>
-          <% contacts.forEach(function(c) { %>
-            <tr>
-              <td><a href="/dashboard/crm/contacts/<%= c.id %>"><strong><%= c.name %></strong></a></td>
-              <td><%= c.email %></td>
-              <td><%= c.phone || '—' %></td>
-              <td><%= c.store_name || 'General inquiry' %></td>
-              <td class="crm-tags">
-                <% (c.tags || []).forEach(function(t) { %><span class="crm-tag"><%= t %></span><% }); %>
-              </td>
-              <td><span class="status-pill status-paid"><%= c.source.replace('_', ' ') %></span></td>
-              <td><%= new Date(c.created_at).toLocaleDateString() %></td>
-            </tr>
-          <% }); %>
-          <% if (contacts.length === 0) { %>
-            <tr><td colspan="7" class="empty-state">
-              <%= segment === 'customers' ? 'No converted customers yet — a lead lands here once they create an account.' : "No leads yet — they'll show up here from your contact forms, or add one manually." %>
-            </td></tr>
-          <% } %>
-        </tbody>
-      </table>
+  <main class="dashboard-main crm-main">
+    <div class="crm-tabs">
+      <a href="/dashboard/crm/leads" class="crm-tab <%= title === 'Leads' ? 'active' : '' %>">Leads</a>
+      <a href="/dashboard/crm/customers" class="crm-tab <%= title === 'CRM Customers' ? 'active' : '' %>">Customers</a>
+      <a href="/dashboard/crm/tasks" class="crm-tab">Tasks</a>
+      <a href="/dashboard/crm/my-tasks" class="crm-tab <%= title === 'My Tasks' ? 'active' : '' %>">My Tasks</a>
+      <% if (crm.role === 'owner') { %>
+        <a href="/dashboard/crm/team" class="crm-tab <%= title === 'CRM Team' ? 'active' : '' %>">Team</a>
+      <% } %>
     </div>
 
-<%- include('partials/footer') %>
+    <% if (typeof success !== 'undefined' && success && success.length) { %>
+      <div class="flash flash-success"><%= success[0] %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error && error.length) { %>
+      <div class="flash flash-error"><%= error[0] %></div>
+    <% } %>
+
+    <div class="panel-toolbar crm-toolbar">
+      <form action="/dashboard/crm/<%= segment %>" method="GET" class="crm-filter-bar">
+        <select name="store" onchange="this.form.submit()">
+          <option value="">All sites</option>
+          <% stores.forEach(function(s) { %>
+            <option value="<%= s.id %>" <%= selectedStore === s.id ? 'selected' : '' %>><%= s.name %></option>
+          <% }); %>
+        </select>
+      </form>
+      <a href="/dashboard/crm/contacts/new" class="btn btn-primary">+ New contact</a>
+    </div>
+
+    <table class="admin-table">
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Source</th><th>Added</th></tr>
+      </thead>
+      <tbody>
+        <% contacts.forEach(function(c) { %>
+          <tr>
+            <td><a href="/dashboard/crm/contacts/<%= c.id %>"><strong><%= c.name %></strong></a></td>
+            <td><%= c.email %></td>
+            <td><%= c.phone || '—' %></td>
+            <td><%= c.store_name || 'General inquiry' %></td>
+            <td class="crm-tags">
+              <% (c.tags || []).forEach(function(t) { %><span class="crm-tag"><%= t %></span><% }); %>
+            </td>
+            <td><span class="status-pill status-paid"><%= c.source.replace('_', ' ') %></span></td>
+            <td><%= new Date(c.created_at).toLocaleDateString() %></td>
+          </tr>
+        <% }); %>
+        <% if (contacts.length === 0) { %>
+          <tr><td colspan="7" class="empty-state">
+            <%= segment === 'customers' ? 'No converted customers yet — a lead lands here once they create an account.' : "No leads yet — they'll show up here from your contact forms, or add one manually." %>
+          </td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>
