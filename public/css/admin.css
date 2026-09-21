@@ -355,19 +355,6 @@
 .login-hint a { color: var(--color-primary); font-weight: 600; }
 
 /* Account dashboard */
-.dashboard-body { background: #f9fafb; min-height: 100vh; }
-.dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 32px;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
-}
-.dashboard-header .admin-logo { color: #111827; font-weight: 800; font-size: 1.2rem; }
-.dashboard-header .admin-logo span { color: var(--color-primary); }
-.dashboard-header-right { display: flex; align-items: center; gap: 18px; }
-.dashboard-account-name { color: #6b7280; font-size: 0.85rem; font-weight: 600; }
 .dashboard-main { max-width: 760px; margin: 0 auto; padding: 40px 24px; }
 .dashboard-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 .dashboard-title-row h1 { font-size: 1.4rem; margin: 0; }
@@ -396,13 +383,9 @@
 .dashboard-store-role { font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 600; background: #f3f4f6; padding: 4px 10px; border-radius: 999px; }
 
 /* CRM (account-level, views/platform/crm-*.ejs) -- wider than the default
-   .dashboard-main so tables have room; the tab row replaces a sidebar since
-   this area (unlike a store's own /admin) has never had one. */
+   .dashboard-main so tables have room. Sub-navigation lives in the shared
+   admin sidebar (partials/header.ejs), not here. */
 .dashboard-main.crm-main { max-width: 1000px; }
-.crm-tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 24px; }
-.crm-tab { padding: 10px 16px; font-size: 0.9rem; font-weight: 600; color: #6b7280; text-decoration: none; border-bottom: 2px solid transparent; }
-.crm-tab:hover { color: #111827; }
-.crm-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 
 .crm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .crm-filter-bar select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #fff; }

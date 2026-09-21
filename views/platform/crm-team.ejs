@@ -1,33 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= title %> · PageZaper</title>
-  <link rel="stylesheet" href="/css/style.css" />
-  <link rel="stylesheet" href="/css/admin.css" />
-</head>
-<body class="dashboard-body">
-  <header class="dashboard-header">
-    <a href="/dashboard" class="admin-logo" style="text-decoration:none;">Page<span>Zaper</span></a>
-    <div class="dashboard-header-right">
-      <span class="dashboard-account-name"><%= account.name %></span>
-      <a href="/dashboard" class="link-btn">Your sites</a>
-      <form action="/dashboard/logout" method="POST" style="display:inline;">
-        <button type="submit" class="link-btn">Log out</button>
-      </form>
-    </div>
-  </header>
+<%- include('partials/header') %>
 
-  <main class="dashboard-main crm-main">
-    <div class="crm-tabs">
-      <a href="/dashboard/crm/leads" class="crm-tab">Leads</a>
-      <a href="/dashboard/crm/customers" class="crm-tab">Customers</a>
-      <a href="/dashboard/crm/tasks" class="crm-tab">Tasks</a>
-      <a href="/dashboard/crm/my-tasks" class="crm-tab">My Tasks</a>
-      <a href="/dashboard/crm/team" class="crm-tab active">Team</a>
-    </div>
-
+    <div class="dashboard-main crm-main">
     <% if (typeof success !== 'undefined' && success && success.length) { %>
       <div class="flash flash-success"><%= success[0] %></div>
     <% } %>
@@ -82,6 +55,6 @@
       </label>
       <button type="submit" class="btn btn-primary">Add to CRM team</button>
     </form>
-  </main>
-</body>
-</html>
+    </div>
+
+<%- include('partials/footer') %>
