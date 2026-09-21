@@ -775,12 +775,11 @@ router.post('/dashboard/crm/contacts/:id/convert', requireAccount, requireCrm, a
       req.flash('error', 'Contact not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
     }
-    if (contact.customer_id) {
+    if (contact.is_customer) {
       req.flash('error', 'Already a customer.');
       return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
     }
-    const storeId = req.body.store_id ? parseInt(req.body.store_id, 10) : null;
-    await crmLib.convertToCustomer(req.crm.ownerUserId, contact.id, storeId);
+    await crmLib.convertToCustomer(req.crm.ownerUserId, contact.id);
     req.flash('success', `${contact.name} moved to Customers.`);
     res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
   } catch (err) {
@@ -799,7 +798,7 @@ router.post('/dashboard/crm/contacts/:id/delete', requireAccount, requireCrm, as
       req.flash('error', 'Contact not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
     }
-    const segment = contact.customer_id ? 'customers' : 'leads';
+    const segment = contact.is_customer ? 'customers' : 'leads';
     await pool.query(`DELETE FROM ${TABLES.contacts} WHERE id = ?`, [contact.id]);
     req.flash('success', 'Contact deleted.');
     res.redirect(adminPortalUrl(req, `/dashboard/crm/${segment}`));

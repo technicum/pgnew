@@ -564,6 +564,10 @@ CREATE TABLE IF NOT EXISTS ${TABLES.contacts} (
   store_id INT NULL,
   owner_user_id INT NULL,
   customer_id INT NULL,
+  -- 1 once this contact has been moved to Customers. Separate from customer_id
+  -- because a contact with no site can be a customer without any store login
+  -- (customer_id stays NULL for those). Every Leads/Customers split reads this.
+  is_customer TINYINT(1) NOT NULL DEFAULT 0,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   phone VARCHAR(50),
@@ -1583,6 +1587,17 @@ async function migrateAppsScopeColumn(conn) {
 // -- not attached to any contact. Fresh installs already get this shape
 // from the CREATE TABLE above; crm_subtasks is a brand-new table on both,
 // so it needs no migrate function (CREATE TABLE IF NOT EXISTS covers it).
+// Adds contacts.is_customer (see the CREATE TABLE comment) and marks every
+// contact that was already linked to a store login as a customer, so nobody
+// silently moves back to Leads. Only the column add is guarded, so the
+// backfill runs exactly once, on the run that adds it.
+async function migrateContactsIsCustomer(conn) {
+  if (!(await tableExists(conn, TABLES.contacts))) return;
+  if (await columnExists(conn, TABLES.contacts, 'is_customer')) return;
+  await conn.query(`ALTER TABLE ${TABLES.contacts} ADD COLUMN is_customer TINYINT(1) NOT NULL DEFAULT 0 AFTER customer_id`);
+  await conn.query(`UPDATE ${TABLES.contacts} SET is_customer = 1 WHERE customer_id IS NOT NULL`);
+}
+
 async function migrateCrmTasksEnhancements(conn) {
   if (!(await tableExists(conn, TABLES.crmTasks))) return;
   if (!(await columnExists(conn, TABLES.crmTasks, 'description'))) {
@@ -1897,6 +1912,7 @@ async function init() {
     await migrateContactsTagsColumn(conn);
     await migrateContactsOptionalStore(conn);
     await migrateCrmTasksEnhancements(conn);
+    await migrateContactsIsCustomer(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);

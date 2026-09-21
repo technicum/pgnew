@@ -21,7 +21,7 @@
     <span class="crm-fu-meta">
       <% if (showContact) { %>
         <a href="/dashboard/crm/contacts/<%= f.contact_id %>"><%= f.contact_name %></a>
-        <span class="status-pill <%= f.contact_customer_id ? 'status-delivered' : 'status-paid' %> crm-fu-kind-pill"><%= f.contact_customer_id ? 'Customer' : 'Lead' %></span>
+        <span class="status-pill <%= f.contact_is_customer ? 'status-delivered' : 'status-paid' %> crm-fu-kind-pill"><%= f.contact_is_customer ? 'Customer' : 'Lead' %></span>
         <%= f.store_name || 'General inquiry' %> ·
       <% } %>
       <span class="<%= fOverdue ? 'crm-fu-due-overdue' : '' %>"><%= fOverdue ? 'Overdue · ' : '' %><%= fLabel %><%= fTime ? ' · ' + fTime : '' %></span>

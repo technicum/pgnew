@@ -8,7 +8,7 @@
       var dateOpts = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
       var dateTimeOpts = { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' };
 
-      var isCustomer = !!contact.customer_id;
+      var isCustomer = !!contact.is_customer;
       var initial = (contact.name || '?').trim().charAt(0).toUpperCase() || '?';
       var doneCount = 0, openCount = 0, overdueCount = 0;
       history.forEach(function (h) {

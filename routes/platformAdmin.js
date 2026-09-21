@@ -266,14 +266,14 @@ router.post('/stores/:id/login-as-owner', async (req, res, next) => {
 });
 
 // ---------- Leads (every lead and customer, across every site + the CRM) ----------
-// pz_contacts is the CRM's table: leads (customer_id NULL) and customers
-// (customer_id set), each tagged with its site — or no site, for a general
+// pz_contacts is the CRM's table: leads (is_customer = 0) and customers
+// (is_customer = 1), each tagged with its site — or no site, for a general
 // inquiry that belongs to an owner. Storefront shoppers with a login live in
 // pz_customers, and nothing guarantees each also has a contact row, so those
 // without one are unioned in as customers; otherwise they'd be missing here.
 const LEADS_SOURCE = `(
   SELECT c.id, c.name, c.email, c.phone, c.source, c.tags, c.created_at, c.store_id, c.owner_user_id,
-         IF(c.customer_id IS NULL, 'lead', 'customer') AS kind
+         IF(c.is_customer = 1, 'customer', 'lead') AS kind
   FROM ${TABLES.contacts} c
   UNION ALL
   SELECT cu.id, cu.name, cu.email, cu.phone, 'signup', NULL, cu.created_at, cu.store_id, NULL, 'customer'
