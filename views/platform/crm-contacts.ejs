@@ -20,6 +20,15 @@
       <a href="/dashboard/crm/contacts/new" class="btn btn-primary">+ New contact</a>
     </div>
 
+    <%
+      var tagPalette = ['crm-tag-indigo', 'crm-tag-violet', 'crm-tag-teal', 'crm-tag-amber', 'crm-tag-rose', 'crm-tag-slate'];
+      function tagColorClass(tag) {
+        var hash = 0;
+        for (var i = 0; i < tag.length; i++) { hash = (hash * 31 + tag.charCodeAt(i)) >>> 0; }
+        return tagPalette[hash % tagPalette.length];
+      }
+      var maxVisibleTags = 3;
+    %>
     <table class="admin-table">
       <thead>
         <tr><th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Source</th><th>Added</th></tr>
@@ -32,7 +41,10 @@
             <td><%= c.phone || '—' %></td>
             <td><%= c.store_name || 'General inquiry' %></td>
             <td class="crm-tags">
-              <% (c.tags || []).forEach(function(t) { %><span class="crm-tag"><%= t %></span><% }); %>
+              <% var cTags = c.tags || []; %>
+              <% cTags.slice(0, maxVisibleTags).forEach(function(t) { %><span class="crm-tag <%= tagColorClass(t) %>"><%= t %></span><% }); %>
+              <% if (cTags.length > maxVisibleTags) { %><span class="crm-tag crm-tag-more">+<%= cTags.length - maxVisibleTags %></span><% } %>
+              <% if (cTags.length === 0) { %><span class="crm-tags-empty">—</span><% } %>
             </td>
             <td><span class="status-pill status-paid"><%= c.source.replace('_', ' ') %></span></td>
             <td><%= new Date(c.created_at).toLocaleDateString() %></td>

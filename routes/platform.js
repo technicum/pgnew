@@ -570,11 +570,12 @@ router.get('/dashboard/crm/contacts/:id', requireAccount, requireCrm, async (req
       req.flash('error', 'Contact not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
     }
-    const [tasks, assignableUsers] = await Promise.all([
+    const [tasks, assignableUsers, stores] = await Promise.all([
       crmLib.listTasksForContact(contact.id),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
+      crmLib.getOwnerStores(req.crm.ownerUserId),
     ]);
-    res.render('platform/crm-contact', { title: 'Contact', account: req.session.account, crm: req.crm, contact, tasks, assignableUsers });
+    res.render('platform/crm-contact', { title: 'Contact', account: req.session.account, crm: req.crm, contact, tasks, assignableUsers, stores });
   } catch (err) {
     next(err);
   }
@@ -622,7 +623,8 @@ router.post('/dashboard/crm/contacts/:id/convert', requireAccount, requireCrm, a
       req.flash('error', 'Already a customer.');
       return res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
     }
-    await crmLib.convertToCustomer(req.crm.ownerUserId, contact.id);
+    const storeId = req.body.store_id ? parseInt(req.body.store_id, 10) : null;
+    await crmLib.convertToCustomer(req.crm.ownerUserId, contact.id, storeId);
     req.flash('success', `${contact.name} moved to Customers.`);
     res.redirect(adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`));
   } catch (err) {
