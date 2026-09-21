@@ -30,7 +30,7 @@
         <% } else if (stores.length) { %>
           <form action="/dashboard/crm/contacts/<%= contact.id %>/convert" method="POST" class="crm-convert-form" onsubmit="return confirm('Move this lead to Customers? This creates a real customer account for them on the site you pick.');">
             <select name="store_id" required aria-label="Site for the new customer account">
-              <option value="">Choose a site…</option>
+              <% if (stores.length > 1) { %><option value="">Choose a site…</option><% } %>
               <% stores.forEach(function(s) { %>
                 <option value="<%= s.id %>"><%= s.name %></option>
               <% }); %>

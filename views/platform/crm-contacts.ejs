@@ -10,12 +10,14 @@
 
     <div class="panel-toolbar crm-toolbar">
       <form action="/dashboard/crm/<%= segment %>" method="GET" class="crm-filter-bar">
-        <select name="store" onchange="this.form.submit()">
-          <option value="">All sites</option>
-          <% stores.forEach(function(s) { %>
-            <option value="<%= s.id %>" <%= selectedStore === s.id ? 'selected' : '' %>><%= s.name %></option>
-          <% }); %>
-        </select>
+        <% if (stores.length > 0) { %>
+          <select name="store" onchange="this.form.submit()">
+            <option value="">All sites</option>
+            <% stores.forEach(function(s) { %>
+              <option value="<%= s.id %>" <%= selectedStore === s.id ? 'selected' : '' %>><%= s.name %></option>
+            <% }); %>
+          </select>
+        <% } %>
       </form>
       <div class="crm-toolbar-actions">
         <% if (segment === 'leads') { %>
@@ -23,14 +25,17 @@
             <summary class="btn btn-secondary">Import leads</summary>
             <div class="crm-import-body">
               <form action="/dashboard/crm/leads/import" method="POST" enctype="multipart/form-data" id="crmImportForm" class="crm-import-form">
-                <label>Site <span style="font-weight:400; color:#6b7280;">(optional — leave blank for a general inquiry)</span>
-                  <select name="store_id">
-                    <option value="">No specific site</option>
-                    <% stores.forEach(function(s) { %>
-                      <option value="<%= s.id %>"><%= s.name %></option>
-                    <% }); %>
-                  </select>
-                </label>
+                <%# Only shown if there's a site to pick; with exactly one it's selected by default. %>
+                <% if (stores.length > 0) { %>
+                  <label>Site <span style="font-weight:400; color:#6b7280;">(optional — leave blank for a general inquiry)</span>
+                    <select name="store_id">
+                      <option value="">No specific site</option>
+                      <% stores.forEach(function(s) { %>
+                        <option value="<%= s.id %>" <%= stores.length === 1 ? 'selected' : '' %>><%= s.name %></option>
+                      <% }); %>
+                    </select>
+                  </label>
+                <% } %>
                 <label>File
                   <input type="file" name="file" id="crmImportFile" accept=".csv,.xlsx,.xls" required />
                 </label>
