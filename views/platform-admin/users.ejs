@@ -2,34 +2,38 @@
 
 <div class="panel-toolbar" style="justify-content: space-between; align-items: center;">
   <form action="/platform-admin/users" method="GET" style="display:flex; gap:8px;">
-    <input type="search" name="q" value="<%= q %>" placeholder="Search name or email" style="min-width:260px;" />
+    <input type="search" name="q" value="<%= q %>" placeholder="Search name, email or site" style="min-width:260px;" />
     <button type="submit" class="btn btn-secondary">Search</button>
     <% if (q) { %><a href="/platform-admin/users" class="btn btn-secondary">Clear</a><% } %>
   </form>
-  <span class="muted"><%= users.length %> account<%= users.length === 1 ? '' : 's' %><%= users.length === 200 ? ' (showing the first 200 — narrow your search)' : '' %></span>
+  <span class="muted"><%= users.length %> user<%= users.length === 1 ? '' : 's' %><%= users.length === 500 ? ' (showing the first 500 — narrow your search)' : '' %></span>
 </div>
 
 <table class="admin-table">
   <thead>
-    <tr><th>Name</th><th>Email</th><th>Sites</th><th>Joined</th><th></th></tr>
+    <tr><th>Name</th><th>Email</th><th>Role</th><th>Site</th><th>Since</th><th></th></tr>
   </thead>
   <tbody>
     <% users.forEach(function(u) { %>
       <tr>
-        <td><a href="/platform-admin/users/<%= u.id %>"><strong><%= u.name %></strong></a></td>
+        <td><a href="/platform-admin/users/<%= u.user_id %>"><strong><%= u.name %></strong></a></td>
         <td><%= u.email %></td>
-        <td><%= u.site_count ? u.site_names : '—' %></td>
+        <td><span class="status-pill"><%= u.role %></span></td>
+        <td>
+          <a href="/platform-admin/stores/<%= u.store_id %>"><%= u.store_name %></a>
+          <% if (u.store_status !== 'active') { %><span class="status-pill status-cancelled"><%= u.store_status %></span><% } %>
+        </td>
         <td><%= new Date(u.created_at).toLocaleDateString() %></td>
         <td class="admin-row-actions">
-          <a href="/platform-admin/users/<%= u.id %>">Manage</a>
-          <form action="/platform-admin/users/<%= u.id %>/login-as-account" method="POST">
+          <a href="/platform-admin/users/<%= u.user_id %>">Manage</a>
+          <form action="/platform-admin/users/<%= u.id %>/login-as" method="POST">
             <button type="submit" class="link-btn">Log in as</button>
           </form>
         </td>
       </tr>
     <% }); %>
     <% if (users.length === 0) { %>
-      <tr><td colspan="5" class="empty-state"><%= q ? 'No users match that search.' : 'No users yet.' %></td></tr>
+      <tr><td colspan="6" class="empty-state"><%= q ? 'No users match that search.' : 'No site admins yet.' %></td></tr>
     <% } %>
   </tbody>
 </table>

@@ -6,6 +6,7 @@ const path = require('path');
 const { pool, TABLES, PLANS, THEMES, isReservedSubdomain } = require('../db/database');
 const { requirePlatformAdmin } = require('../middleware/auth');
 const { rootUrl, storeUrl, adminPortalUrl } = require('../middleware/tenant');
+const { VALID_SOURCES } = require('../lib/contacts');
 
 const SUBDOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -262,6 +263,115 @@ router.post('/stores/:id/login-as-owner', async (req, res, next) => {
   }
 });
 
+// ---------- Leads (every lead and customer, across every site + the CRM) ----------
+// pz_contacts is the CRM's table: leads (customer_id NULL) and customers
+// (customer_id set), each tagged with its site — or no site, for a general
+// inquiry that belongs to an owner. Storefront shoppers with a login live in
+// pz_customers, and nothing guarantees each also has a contact row, so those
+// without one are unioned in as customers; otherwise they'd be missing here.
+const LEADS_SOURCE = `(
+  SELECT c.id, c.name, c.email, c.phone, c.source, c.tags, c.created_at, c.store_id, c.owner_user_id,
+         IF(c.customer_id IS NULL, 'lead', 'customer') AS kind
+  FROM ${TABLES.contacts} c
+  UNION ALL
+  SELECT cu.id, cu.name, cu.email, cu.phone, 'signup', NULL, cu.created_at, cu.store_id, NULL, 'customer'
+  FROM ${TABLES.customers} cu
+  WHERE NOT EXISTS (SELECT 1 FROM ${TABLES.contacts} c2 WHERE c2.store_id = cu.store_id AND c2.email = cu.email)
+)`;
+const LEADS_PAGE_SIZE = 50;
+
+router.get('/leads', async (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim().slice(0, 100);
+    const kind = ['lead', 'customer'].includes(req.query.kind) ? req.query.kind : '';
+    const source = VALID_SOURCES.includes(req.query.source) ? req.query.source : '';
+    const site = req.query.site === 'none' ? 'none' : (parseId(req.query.site) || '');
+    const page = Math.max(1, parseId(req.query.page) || 1);
+
+    // Everything except `kind`, so the All / Leads / Customers tabs can each
+    // show their count under the same search, site and source filters.
+    const conds = [];
+    const params = [];
+    if (q) {
+      const like = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+      conds.push('(l.name LIKE ? OR l.email LIKE ? OR l.phone LIKE ?)');
+      params.push(like, like, like);
+    }
+    if (site === 'none') {
+      conds.push('l.store_id IS NULL');
+    } else if (site) {
+      conds.push('l.store_id = ?');
+      params.push(site);
+    }
+    if (source) {
+      conds.push('l.source = ?');
+      params.push(source);
+    }
+    const baseWhere = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+
+    const [countRows] = await pool.query(
+      `SELECT l.kind, COUNT(*) AS c FROM ${LEADS_SOURCE} l ${baseWhere} GROUP BY l.kind`,
+      params
+    );
+    const counts = { lead: 0, customer: 0 };
+    countRows.forEach((r) => { counts[r.kind] = Number(r.c); });
+    const total = kind ? counts[kind] : counts.lead + counts.customer;
+    const totalPages = Math.max(1, Math.ceil(total / LEADS_PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+
+    const listWhere = kind ? `${baseWhere ? `${baseWhere} AND` : 'WHERE'} l.kind = ?` : baseWhere;
+    const [rows] = await pool.query(
+      `SELECT l.*, s.name AS store_name, u.name AS owner_name
+       FROM ${LEADS_SOURCE} l
+       LEFT JOIN ${TABLES.stores} s ON s.id = l.store_id
+       LEFT JOIN ${TABLES.users} u ON u.id = l.owner_user_id
+       ${listWhere}
+       ORDER BY l.created_at DESC, l.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, ...(kind ? [kind] : []), LEADS_PAGE_SIZE, (currentPage - 1) * LEADS_PAGE_SIZE]
+    );
+    // tags is JSON on pz_contacts but comes back as text through the UNION.
+    rows.forEach((r) => {
+      let tags = r.tags;
+      if (typeof tags === 'string') {
+        try { tags = JSON.parse(tags); } catch (e) { tags = []; }
+      }
+      r.tags = Array.isArray(tags) ? tags : [];
+    });
+
+    const [stores] = await pool.query(`SELECT id, name FROM ${TABLES.stores} ORDER BY name`);
+
+    // Links that keep the current filters, for the tabs and pager.
+    const urlFor = (overrides) => {
+      const f = { q, kind, site, source, page: 1, ...overrides };
+      const sp = new URLSearchParams();
+      ['q', 'kind', 'site', 'source'].forEach((k) => { if (f[k]) sp.set(k, f[k]); });
+      if (f.page > 1) sp.set('page', f.page);
+      const qs = sp.toString();
+      return `/platform-admin/leads${qs ? `?${qs}` : ''}`;
+    };
+
+    res.render('platform-admin/leads', {
+      title: 'Leads',
+      rows,
+      stores,
+      sources: VALID_SOURCES,
+      filters: { q, kind, site, source },
+      counts,
+      total,
+      page: currentPage,
+      totalPages,
+      tabUrls: { all: urlFor({ kind: '' }), lead: urlFor({ kind: 'lead' }), customer: urlFor({ kind: 'customer' }) },
+      prevUrl: currentPage > 1 ? urlFor({ page: currentPage - 1 }) : null,
+      nextUrl: currentPage < totalPages ? urlFor({ page: currentPage + 1 }) : null,
+      clearUrl: kind ? urlFor({ q: '', site: '', source: '' }) : '/platform-admin/leads',
+      pageSize: LEADS_PAGE_SIZE,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------- Plans overview ----------
 router.get('/plans', async (req, res, next) => {
   try {
@@ -278,32 +388,31 @@ router.get('/plans', async (req, res, next) => {
   }
 });
 
-// ---------- Users ----------
-// A pz_users row is one login ("account"); it can hold a role at several
-// stores through pz_user_roles. The list below is one row per account, the
-// detail page shows that account's per-store roles. The :roleId in the
-// login-as/delete routes further down is a pz_user_roles.id, not a user id.
+// ---------- Users (the admins and managers of every site) ----------
+// A pz_users row is one login; it can hold a role at several sites through
+// pz_user_roles. The list is one row per (person, site, role) — i.e. each
+// site's admins and managers, with the site they run. `ur.id` is that
+// pz_user_roles.id, which is what the login-as/delete routes below take;
+// `user_id` links to the person's account page (edit, reset password).
 router.get('/users', async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim().slice(0, 100);
     const params = [];
-    let where = '';
+    let search = '';
     if (q) {
       const like = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
-      where = 'WHERE u.name LIKE ? OR u.email LIKE ?';
-      params.push(like, like);
+      search = 'AND (u.name LIKE ? OR u.email LIKE ? OR s.name LIKE ? OR s.subdomain LIKE ?)';
+      params.push(like, like, like, like);
     }
     const [users] = await pool.query(
-      `SELECT u.id, u.name, u.email, u.created_at,
-              COUNT(DISTINCT s.id) AS site_count,
-              GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS site_names
-       FROM ${TABLES.users} u
-       LEFT JOIN ${TABLES.userRoles} ur ON ur.user_id = u.id AND ur.role IN ('admin', 'manager')
-       LEFT JOIN ${TABLES.stores} s ON s.id = ur.store_id
-       ${where}
-       GROUP BY u.id
-       ORDER BY u.created_at DESC, u.id DESC
-       LIMIT 200`,
+      `SELECT ur.id, u.id AS user_id, u.name, u.email, ur.role, ur.created_at,
+              s.id AS store_id, s.name AS store_name, s.subdomain, s.status AS store_status
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.users} u ON u.id = ur.user_id
+       JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       WHERE ur.role IN ('admin', 'manager') ${search}
+       ORDER BY s.name, (ur.role = 'admin') DESC, ur.created_at
+       LIMIT 500`,
       params
     );
     res.render('platform-admin/users', { title: 'Users', users, q });
