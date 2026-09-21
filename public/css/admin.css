@@ -561,8 +561,25 @@
 .crm-bulk-tags .crm-tag-field { margin: 0 0 12px; }
 .crm-bulk-count { font-weight: 400; color: #6b7280; }
 
+/* Contact page header (avatar, name, badges, Move to Customer). */
+.crm-contact-head { display: flex; align-items: center; gap: 14px; margin: 12px 0 20px; flex-wrap: wrap; }
+.crm-avatar {
+  width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--color-primary) 14%, #fff); color: var(--color-primary-dark);
+  font-size: 1.2rem; font-weight: 700;
+}
+.crm-contact-head-info { flex: 1; min-width: 0; }
+.crm-contact-name { margin: 0; font-size: 1.25rem; color: #111827; overflow-wrap: anywhere; }
+.crm-contact-sub { margin: 4px 0 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.85rem; color: #6b7280; }
+.crm-contact-sub-dot { color: #d1d5db; }
+.crm-contact-head-note { font-size: 0.82rem; color: #9ca3af; }
+.crm-contact-head .btn { padding: 8px 14px; font-size: 0.85rem; }
+
 .crm-contact-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 .crm-contact-layout .admin-form { max-width: none; }
+/* The form column is narrow here, so Email/Phone stack instead of splitting. */
+.crm-contact-layout .crm-form .form-row { grid-template-columns: 1fr; gap: 0; }
 .crm-contact-site { margin: 0 0 16px; font-size: 0.85rem; color: #6b7280; }
 .crm-convert-form { display: inline-flex; align-items: center; gap: 6px; }
 .crm-convert-form select { padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; font-family: inherit; background: #fff; }
