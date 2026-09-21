@@ -61,7 +61,7 @@
       </form>
 
       <div class="panel crm-followups-panel crm-followup-more">
-        <h2>Other follow-ups with <%= followup.contact_name %></h2>
+        <h2>Other follow-ups with <%= followup.contact_name %> <a href="/dashboard/crm/contacts/<%= followup.contact_id %>/followups" class="crm-fu-history-link">View full history</a></h2>
 
         <ul class="crm-fu-list">
           <% otherFollowups.forEach(function(f) { %>

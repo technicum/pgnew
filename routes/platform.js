@@ -1097,6 +1097,35 @@ router.get('/dashboard/crm/followups', requireAccount, requireCrm, async (req, r
   }
 });
 
+// One contact's whole follow-up history: every follow-up with its dates and
+// notes, newest first, plus a form to schedule the next one.
+router.get('/dashboard/crm/contacts/:id/followups', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    }
+    const [history, assignableUsers, linkableTasks] = await Promise.all([
+      crmLib.listFollowupHistory(req.crm.ownerUserId, contact.id),
+      crmLib.listAssignableUsers(req.crm.ownerUserId),
+      crmLib.listLinkableTasks(req.crm.ownerUserId, contact.id),
+    ]);
+    res.render('platform/crm-followup-history', {
+      title: 'Follow-up History',
+      account: req.session.account,
+      crm: req.crm,
+      contact,
+      history,
+      today: crmLib.todayStr(),
+      assignableUsers,
+      linkableTasks,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/dashboard/crm/contacts/:id/followups', requireAccount, requireCrm, async (req, res, next) => {
   try {
     const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);

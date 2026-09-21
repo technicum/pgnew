@@ -21,6 +21,8 @@
         </p>
       </div>
 
+      <a href="/dashboard/crm/contacts/<%= contact.id %>/followups" class="btn btn-secondary">Follow-up history<%= followups.length ? ' (' + followups.length + ')' : '' %></a>
+
       <%# Kept outside the edit form below on purpose: a <form> can't be nested inside another <form>. %>
       <% if (!isCustomer) { %>
         <% if (contact.store_id) { %>

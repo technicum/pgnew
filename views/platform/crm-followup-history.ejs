@@ -1,0 +1,89 @@
+<% var pageTitle = 'Follow-up history · ' + contact.name; %>
+<%- include('partials/header') %>
+
+    <div class="dashboard-main crm-main">
+    <%
+      var pad = function (n) { return String(n).padStart(2, '0'); };
+      var ymdOf = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+      var dateOpts = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+      var dateTimeOpts = { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' };
+
+      var isCustomer = !!contact.customer_id;
+      var initial = (contact.name || '?').trim().charAt(0).toUpperCase() || '?';
+      var doneCount = 0, openCount = 0, overdueCount = 0;
+      history.forEach(function (h) {
+        if (h.done) { doneCount++; return; }
+        openCount++;
+        if (ymdOf(new Date(h.due_date)) < today) overdueCount++;
+      });
+    %>
+    <a href="/dashboard/crm/contacts/<%= contact.id %>" class="crm-back-link">&larr; Back to <%= contact.name %></a>
+
+    <div class="crm-contact-head">
+      <span class="crm-avatar" aria-hidden="true"><%= initial %></span>
+      <div class="crm-contact-head-info">
+        <h2 class="crm-contact-name">Follow-up history</h2>
+        <p class="crm-contact-sub">
+          <a href="/dashboard/crm/contacts/<%= contact.id %>"><%= contact.name %></a>
+          <span class="status-pill <%= isCustomer ? 'status-delivered' : 'status-paid' %>"><%= isCustomer ? 'Customer' : 'Lead' %></span>
+          <span><%= contact.store_name || 'General inquiry' %></span>
+        </p>
+      </div>
+    </div>
+
+    <div class="crm-fu-stats">
+      <div class="crm-fu-stat"><strong><%= history.length %></strong><span>Total</span></div>
+      <div class="crm-fu-stat"><strong><%= doneCount %></strong><span>Completed</span></div>
+      <div class="crm-fu-stat"><strong><%= openCount %></strong><span>Open</span></div>
+      <div class="crm-fu-stat <%= overdueCount ? 'crm-fu-stat-overdue' : '' %>"><strong><%= overdueCount %></strong><span>Overdue</span></div>
+    </div>
+
+    <details class="crm-fu-add crm-fu-history-add" <%= history.length === 0 ? 'open' : '' %>>
+      <summary class="crm-fu-add-link">+ Add new follow-up</summary>
+      <%- include('partials/followup-form', { contactId: contact.id, today: today, redirect: '/dashboard/crm/contacts/' + contact.id + '/followups' }) %>
+    </details>
+
+    <ol class="crm-fu-timeline">
+      <% history.forEach(function (h) {
+        var d = new Date(h.due_date);
+        var hYmd = ymdOf(d);
+        var state = h.done ? 'done' : (hYmd < today ? 'overdue' : (hYmd === today ? 'today' : 'scheduled'));
+        var stateLabel = { done: 'Completed', overdue: 'Overdue', today: 'Due today', scheduled: 'Scheduled' }[state];
+        var hTime = h.due_time ? String(h.due_time).slice(0, 5) : '';
+      %>
+        <li class="crm-fu-tl-item crm-fu-tl-<%= state %>">
+          <span class="crm-fu-tl-dot" aria-hidden="true"></span>
+          <div class="crm-fu-tl-card">
+            <div class="crm-fu-tl-top">
+              <a class="crm-fu-title" href="/dashboard/crm/followups/<%= h.id %>"><%= h.title %></a>
+              <span class="crm-fu-tl-state"><%= stateLabel %></span>
+            </div>
+            <dl class="crm-fu-tl-dates">
+              <div><dt>Follow-up date</dt><dd><%= d.toLocaleDateString(undefined, dateOpts) %><%= hTime ? ' · ' + hTime : '' %></dd></div>
+              <% if (h.done && h.done_at) { %>
+                <div><dt>Completed</dt><dd><%= new Date(h.done_at).toLocaleString(undefined, dateTimeOpts) %></dd></div>
+              <% } %>
+              <div><dt>Created</dt><dd><%= new Date(h.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) %></dd></div>
+              <div><dt>Assigned to</dt><dd><%= h.assignee_name || 'Unassigned' %></dd></div>
+            </dl>
+            <% if (h.note) { %>
+              <p class="crm-fu-tl-note"><%= h.note %></p>
+            <% } else { %>
+              <p class="crm-fu-tl-note crm-fu-tl-note-empty">No notes.</p>
+            <% } %>
+            <div class="crm-fu-tl-foot">
+              <% if (h.task_id) { %>
+                <a class="crm-fu-task <%= h.task_done ? 'crm-fu-task-done' : '' %>" href="/dashboard/crm/tasks/<%= h.task_id %>">Task: <%= h.task_title %><%= h.task_done ? ' (done)' : '' %></a>
+              <% } %>
+              <a class="crm-fu-tl-edit" href="/dashboard/crm/followups/<%= h.id %>">Edit</a>
+            </div>
+          </div>
+        </li>
+      <% }); %>
+      <% if (history.length === 0) { %>
+        <li class="empty-state">No follow-ups yet for <%= contact.name %>. Schedule the first one above.</li>
+      <% } %>
+    </ol>
+    </div>
+
+<%- include('partials/footer') %>

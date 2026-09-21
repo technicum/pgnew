@@ -560,6 +560,39 @@
 .crm-fu-chip-overdue { background: #fee2e2; color: #b91c1c; }
 .crm-fu-more { margin-left: 4px; font-size: 0.72rem; color: #9ca3af; white-space: nowrap; }
 .crm-followup-more { max-width: 760px; margin-top: 24px; }
+.crm-fu-history-link { margin-left: 8px; font-size: 0.8rem; font-weight: 600; color: var(--color-primary-dark); text-decoration: none; }
+.crm-fu-history-link:hover { text-decoration: underline; }
+
+/* Follow-up history (views/platform/crm-followup-history.ejs). */
+.crm-fu-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; max-width: 760px; margin-bottom: 20px; }
+.crm-fu-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; display: flex; flex-direction: column; gap: 2px; }
+.crm-fu-stat strong { font-size: 1.4rem; color: #111827; line-height: 1.2; }
+.crm-fu-stat span { font-size: 0.78rem; color: #6b7280; }
+.crm-fu-stat-overdue strong { color: #dc2626; }
+.crm-fu-history-add { max-width: 760px; margin: 0 0 20px; }
+.crm-fu-timeline { list-style: none; margin: 0; padding: 0 0 0 22px; max-width: 760px; position: relative; display: flex; flex-direction: column; gap: 14px; }
+.crm-fu-timeline::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: #e5e7eb; }
+.crm-fu-tl-item { position: relative; }
+.crm-fu-tl-dot { position: absolute; left: -22px; top: 16px; width: 14px; height: 14px; border-radius: 50%; background: #93c5fd; border: 3px solid #fff; box-shadow: 0 0 0 1px #d1d5db; }
+.crm-fu-tl-done .crm-fu-tl-dot { background: #22c55e; }
+.crm-fu-tl-overdue .crm-fu-tl-dot { background: #dc2626; }
+.crm-fu-tl-today .crm-fu-tl-dot { background: #f59e0b; }
+.crm-fu-tl-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
+.crm-fu-tl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.crm-fu-tl-state { padding: 2px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; background: #dbeafe; color: #1e40af; }
+.crm-fu-tl-done .crm-fu-tl-state { background: #dcfce7; color: #166534; }
+.crm-fu-tl-overdue .crm-fu-tl-state { background: #fee2e2; color: #b91c1c; }
+.crm-fu-tl-today .crm-fu-tl-state { background: #fef3c7; color: #92400e; }
+.crm-fu-tl-dates { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 10px 0 0; }
+.crm-fu-tl-dates dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: #9ca3af; }
+.crm-fu-tl-dates dd { margin: 1px 0 0; font-size: 0.86rem; color: #374151; }
+.crm-fu-tl-note { margin: 12px 0 0; padding: 10px 12px; background: #f9fafb; border-radius: 8px; font-size: 0.88rem; color: #374151; white-space: pre-wrap; overflow-wrap: anywhere; }
+.crm-fu-tl-note-empty { color: #9ca3af; font-style: italic; }
+.crm-fu-tl-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.crm-fu-tl-foot .crm-fu-task { margin-top: 0; }
+.crm-fu-tl-edit { margin-left: auto; font-size: 0.8rem; color: #6b7280; text-decoration: none; }
+.crm-fu-tl-edit:hover { color: #111827; text-decoration: underline; }
+@media (max-width: 600px) { .crm-fu-stats { grid-template-columns: repeat(2, 1fr); } }
 .crm-fu-add { margin-top: 14px; }
 .crm-fu-add-link { display: inline-block; cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--color-primary-dark); list-style: none; }
 .crm-fu-add-link::-webkit-details-marker { display: none; }
