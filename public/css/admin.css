@@ -505,6 +505,13 @@
 }
 .crm-tag-suggestion:hover { background: #eef2ff; }
 
+/* Bulk-tag bar under the leads/customers table. */
+.crm-select-col { width: 36px; text-align: center; }
+.crm-bulk-tags { margin-top: 16px; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
+.crm-bulk-tags label { display: block; font-size: 0.85rem; font-weight: 600; }
+.crm-bulk-tags .crm-tag-field { margin: 0 0 12px; }
+.crm-bulk-count { font-weight: 400; color: #6b7280; }
+
 .crm-contact-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 .crm-contact-layout .admin-form { max-width: none; }
 .crm-contact-site { margin: 0 0 16px; font-size: 0.85rem; color: #6b7280; }

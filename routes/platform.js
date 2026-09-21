@@ -7,7 +7,7 @@ const { storeUrl, rootUrl, adminPortalUrl } = require('../middleware/tenant');
 const { defaultFields } = require('../lib/sections');
 const appsLib = require('../lib/apps');
 const crmLib = require('../lib/crm');
-const { sanitizeContact } = require('../lib/contacts');
+const { sanitizeContact, sanitizeTags, mergeTags } = require('../lib/contacts');
 const leadImportLib = require('../lib/leadImport');
 const settingsLib = require('../lib/settings');
 
@@ -506,9 +506,10 @@ router.post('/dashboard/crm/activate', requireAccount, async (req, res, next) =>
 async function renderCrmContacts(req, res, next, segment) {
   try {
     const storeId = req.query.store ? parseInt(req.query.store, 10) : null;
-    const [contacts, stores, googleDrive] = await Promise.all([
+    const [contacts, stores, popularTags, googleDrive] = await Promise.all([
       crmLib.listContacts(req.crm.ownerUserId, segment, storeId),
       crmLib.getOwnerStores(req.crm.ownerUserId),
+      crmLib.listTagCounts(req.crm.ownerUserId),
       // Saved in Platform Admin > Settings; falls back to the .env values.
       settingsLib.getGroup('google_drive'),
     ]);
@@ -517,6 +518,7 @@ async function renderCrmContacts(req, res, next, segment) {
       segment,
       contacts,
       stores,
+      popularTags,
       selectedStore: storeId,
       crm: req.crm,
       account: req.session.account,
@@ -538,6 +540,38 @@ router.get('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (req
       crmLib.listTagCounts(req.crm.ownerUserId),
     ]);
     res.render('platform/crm-contact-form', { title: 'New Contact', account: req.session.account, crm: req.crm, contact: null, stores, popularTags });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Bulk-add tags to the leads/customers ticked on the list page. Tags are
+// merged into each contact's existing ones (never replaced); contacts the
+// owner can't see are skipped, since getContact scopes by owner.
+router.post('/dashboard/crm/contacts/bulk-tags', requireAccount, requireCrm, async (req, res, next) => {
+  const segment = req.body.segment === 'customers' ? 'customers' : 'leads';
+  const store = parseInt(req.body.store, 10);
+  const backUrl = adminPortalUrl(req, `/dashboard/crm/${segment}${store ? `?store=${store}` : ''}`);
+  try {
+    const ids = [...new Set([].concat(req.body.ids || []).map((id) => parseInt(id, 10)).filter(Boolean))];
+    const tags = sanitizeTags(req.body.tags);
+    if (!ids.length) {
+      req.flash('error', 'Select at least one contact to tag.');
+      return res.redirect(backUrl);
+    }
+    if (!tags.length) {
+      req.flash('error', 'Enter at least one tag to add.');
+      return res.redirect(backUrl);
+    }
+    let updated = 0;
+    for (const id of ids) {
+      const contact = await crmLib.getContact(req.crm.ownerUserId, id);
+      if (!contact) continue;
+      await pool.query(`UPDATE ${TABLES.contacts} SET tags = ? WHERE id = ?`, [JSON.stringify(mergeTags(contact.tags, tags)), contact.id]);
+      updated++;
+    }
+    req.flash('success', `Added ${tags.length === 1 ? 'the tag' : 'the tags'} to ${updated} contact${updated === 1 ? '' : 's'}.`);
+    res.redirect(backUrl);
   } catch (err) {
     next(err);
   }

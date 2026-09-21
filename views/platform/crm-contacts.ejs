@@ -59,11 +59,15 @@
     %>
     <table class="admin-table">
       <thead>
-        <tr><th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Source</th><th>Added</th></tr>
+        <tr>
+          <th class="crm-select-col"><input type="checkbox" id="crmSelectAll" aria-label="Select all <%= segment %>" form="crmBulkTagForm" /></th>
+          <th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Source</th><th>Added</th>
+        </tr>
       </thead>
       <tbody>
         <% contacts.forEach(function(c) { %>
           <tr>
+            <td class="crm-select-col"><input type="checkbox" name="ids" value="<%= c.id %>" form="crmBulkTagForm" class="crm-select-row" aria-label="Select <%= c.name %>" /></td>
             <td><a href="/dashboard/crm/contacts/<%= c.id %>"><strong><%= c.name %></strong></a></td>
             <td><%= c.email %></td>
             <td><%= c.phone || '—' %></td>
@@ -79,12 +83,32 @@
           </tr>
         <% }); %>
         <% if (contacts.length === 0) { %>
-          <tr><td colspan="7" class="empty-state">
+          <tr><td colspan="8" class="empty-state">
             <%= segment === 'customers' ? 'No converted customers yet — a lead lands here once they create an account.' : "No leads yet — they'll show up here from your contact forms, or add one manually." %>
           </td></tr>
         <% } %>
       </tbody>
     </table>
+
+    <% if (contacts.length > 0) { %>
+      <form action="/dashboard/crm/contacts/bulk-tags" method="POST" id="crmBulkTagForm" class="crm-bulk-tags">
+        <input type="hidden" name="segment" value="<%= segment %>" />
+        <% if (selectedStore) { %><input type="hidden" name="store" value="<%= selectedStore %>" /><% } %>
+        <div class="crm-tag-field">
+          <label>Add tags to selected <%= segment %> <span class="crm-bulk-count" id="crmBulkCount">(none selected)</span>
+            <input type="text" name="tags" data-tag-input placeholder="hot, wholesale" />
+          </label>
+          <% if (popularTags.length) { %>
+            <div class="crm-tag-suggestions">
+              <span class="crm-tag-suggestions-label">Choose from the most used tags:</span>
+              <% popularTags.forEach(function(t) { %><button type="button" class="crm-tag-suggestion" data-tag="<%= t %>"><%= t %></button><% }); %>
+            </div>
+          <% } %>
+        </div>
+        <button type="submit" class="btn btn-primary" id="crmBulkApply" disabled>Apply tags</button>
+      </form>
+      <script src="/js/crm-bulk-tags.js?v=<%= assetVersion %>" defer></script>
+    <% } %>
     </div>
 
 <%- include('partials/footer') %>
