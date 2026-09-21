@@ -8,6 +8,7 @@ const { defaultFields } = require('../lib/sections');
 const appsLib = require('../lib/apps');
 const crmLib = require('../lib/crm');
 const { sanitizeContact } = require('../lib/contacts');
+const leadImportLib = require('../lib/leadImport');
 
 function slugify(str) {
   return (str || '')
@@ -504,6 +505,8 @@ async function renderCrmContacts(req, res, next, segment) {
       selectedStore: storeId,
       crm: req.crm,
       account: req.session.account,
+      googleDriveClientId: process.env.GOOGLE_DRIVE_CLIENT_ID || '',
+      googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY || '',
     });
   } catch (err) {
     next(err);
@@ -565,6 +568,85 @@ router.post('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (re
     next(err);
   }
 });
+
+// Bulk-imports leads from an uploaded .xlsx/.xls/.csv file -- either
+// selected from the merchant's own computer, or fetched client-side from
+// Google Drive and handed to this same route as an ordinary upload (see
+// public/js/crm-lead-import.js). Leads only, not Customers -- a real
+// customer login isn't something a spreadsheet row can create on its own
+// (see convertToCustomer for that path).
+router.post(
+  '/dashboard/crm/leads/import',
+  requireAccount,
+  requireCrm,
+  (req, res, next) => {
+    leadImportLib.upload.single('file')(req, res, (err) => {
+      if (err) {
+        req.flash('error', err.code === 'LIMIT_FILE_SIZE' ? 'That file is too large (5MB max).' : 'Could not read that file.');
+        return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+      }
+      next();
+    });
+  },
+  async (req, res, next) => {
+    try {
+      const ownerUserId = req.crm.ownerUserId;
+      if (!req.file) {
+        req.flash('error', 'Choose a file to import.');
+        return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+      }
+
+      const storeId = req.body.store_id ? parseInt(req.body.store_id, 10) : null;
+      if (storeId) {
+        const storeIds = await crmLib.getOwnerStoreIds(ownerUserId);
+        if (!storeIds.includes(storeId)) {
+          req.flash('error', 'Please choose one of your sites.');
+          return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+        }
+      }
+
+      let parsed;
+      try {
+        parsed = leadImportLib.parseLeadFile(req.file.buffer);
+      } catch (err) {
+        req.flash('error', err.message);
+        return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+      }
+
+      const [existingRows] = await pool.query(
+        storeId
+          ? `SELECT email FROM ${TABLES.contacts} WHERE store_id = ?`
+          : `SELECT email FROM ${TABLES.contacts} WHERE store_id IS NULL AND owner_user_id = ?`,
+        [storeId || ownerUserId]
+      );
+      const existingEmails = new Set(existingRows.map((r) => r.email));
+      const seenInFile = new Set();
+
+      let imported = 0;
+      let skipped = 0;
+      for (const row of parsed.rows) {
+        if (existingEmails.has(row.email) || seenInFile.has(row.email)) {
+          skipped++;
+          continue;
+        }
+        seenInFile.add(row.email);
+        await pool.query(
+          `INSERT INTO ${TABLES.contacts} (store_id, owner_user_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, 'import', ?)`,
+          [storeId, storeId ? null : ownerUserId, row.name, row.email, row.phone, JSON.stringify(row.tags)]
+        );
+        imported++;
+      }
+
+      const summary = [`Imported ${imported} lead${imported === 1 ? '' : 's'}.`];
+      if (skipped) summary.push(`Skipped ${skipped} already in your CRM.`);
+      if (parsed.errors.length) summary.push(`${parsed.errors.length} row${parsed.errors.length === 1 ? '' : 's'} could not be imported.`);
+      req.flash(imported ? 'success' : 'error', summary.join(' '));
+      res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 router.get('/dashboard/crm/contacts/:id', requireAccount, requireCrm, async (req, res, next) => {
   try {
