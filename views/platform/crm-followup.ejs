@@ -59,6 +59,24 @@
           <a href="/dashboard/crm/followups" class="btn btn-secondary">Back to follow-ups</a>
         </div>
       </form>
+
+      <div class="panel crm-followups-panel crm-followup-more">
+        <h2>Other follow-ups with <%= followup.contact_name %></h2>
+
+        <ul class="crm-fu-list">
+          <% otherFollowups.forEach(function(f) { %>
+            <%- include('partials/followup-row', { f: f, today: today, redirect: '/dashboard/crm/followups/' + followup.id, showContact: false }) %>
+          <% }); %>
+          <% if (otherFollowups.length === 0) { %>
+            <li class="empty-state">No other follow-ups scheduled for this contact.</li>
+          <% } %>
+        </ul>
+
+        <details class="crm-fu-add">
+          <summary class="crm-fu-add-link">+ Add new follow-up</summary>
+          <%- include('partials/followup-form', { contactId: followup.contact_id, today: today, redirect: '/dashboard/crm/followups/' + followup.id }) %>
+        </details>
+      </div>
     </div>
 
 <%- include('partials/footer') %>

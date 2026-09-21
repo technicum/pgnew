@@ -522,6 +522,7 @@ async function renderCrmContacts(req, res, next, segment) {
       contacts,
       stores,
       popularTags,
+      today: crmLib.todayStr(),
       selectedStore: storeId,
       crm: req.crm,
       account: req.session.account,
@@ -1072,9 +1073,11 @@ router.get('/dashboard/crm/followups', requireAccount, requireCrm, async (req, r
     // Defaults to "mine"; 'all' = everyone, 'unassigned', or a specific user id.
     const assigneeParam = req.query.assignee || 'me';
     const assignee = assigneeParam === 'me' ? String(req.session.account.id) : assigneeParam === 'all' ? '' : assigneeParam;
+    // '' = leads and customers together.
+    const kind = req.query.kind === 'lead' || req.query.kind === 'customer' ? req.query.kind : '';
     const [followups, counts, assignableUsers] = await Promise.all([
-      crmLib.listFollowups(req.crm.ownerUserId, { view, assignee }),
-      crmLib.countFollowups(req.crm.ownerUserId, assignee),
+      crmLib.listFollowups(req.crm.ownerUserId, { view, assignee, kind }),
+      crmLib.countFollowups(req.crm.ownerUserId, assignee, kind),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
     ]);
     res.render('platform/crm-followups', {
@@ -1084,6 +1087,7 @@ router.get('/dashboard/crm/followups', requireAccount, requireCrm, async (req, r
       followups,
       counts,
       view,
+      kind,
       assigneeParam,
       assignableUsers,
       today: crmLib.todayStr(),
@@ -1100,7 +1104,9 @@ router.post('/dashboard/crm/contacts/:id/followups', requireAccount, requireCrm,
       req.flash('error', 'Contact not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
     }
-    const back = adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`);
+    // Created from the contact page by default, or from a follow-up's own
+    // page (which sends redirect) so you land back where you were.
+    const back = crmRedirect(req, req.body.redirect, `/dashboard/crm/contacts/${contact.id}`);
     const parsed = await parseFollowupBody(req);
     if (parsed.error) {
       req.flash('error', parsed.error);
@@ -1121,15 +1127,19 @@ router.get('/dashboard/crm/followups/:id', requireAccount, requireCrm, async (re
       req.flash('error', 'Follow-up not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/followups'));
     }
-    const [assignableUsers, linkableTasks] = await Promise.all([
+    const [assignableUsers, linkableTasks, contactFollowups] = await Promise.all([
       crmLib.listAssignableUsers(req.crm.ownerUserId),
       crmLib.listLinkableTasks(req.crm.ownerUserId, followup.contact_id),
+      crmLib.listFollowupsForContact(req.crm.ownerUserId, followup.contact_id),
     ]);
     res.render('platform/crm-followup', {
       title: 'Follow-up',
       account: req.session.account,
       crm: req.crm,
       followup,
+      // The contact's other follow-ups, shown under this one.
+      otherFollowups: contactFollowups.filter((f) => f.id !== followup.id),
+      today: crmLib.todayStr(),
       assignableUsers,
       linkableTasks,
     });

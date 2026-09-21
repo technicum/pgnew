@@ -1,0 +1,26 @@
+<%
+  // "Schedule a follow-up" form, shared by the contact page and a follow-up's
+  // own page. Locals: contactId, today (YYYY-MM-DD), redirect (where to land
+  // afterwards, or '' for the contact page), plus the page's account,
+  // assignableUsers and linkableTasks.
+%>
+<form action="/dashboard/crm/contacts/<%= contactId %>/followups" method="POST" class="crm-task-form crm-fu-form">
+  <% if (redirect) { %><input type="hidden" name="redirect" value="<%= redirect %>" /><% } %>
+  <input type="text" name="title" placeholder="e.g. Call to check on the quote" maxlength="255" required />
+  <input type="date" name="due_date" value="<%= today %>" required aria-label="Follow-up date" />
+  <input type="time" name="due_time" aria-label="Follow-up time (optional)" />
+  <select name="assigned_to" aria-label="Assign to">
+    <option value="">Unassigned</option>
+    <% assignableUsers.forEach(function(u) { %>
+      <option value="<%= u.id %>" <%= u.id === account.id ? 'selected' : '' %>><%= u.name %><%= u.id === account.id ? ' (you)' : '' %></option>
+    <% }); %>
+  </select>
+  <select name="task_id" aria-label="Link a task">
+    <option value="">No linked task</option>
+    <% linkableTasks.forEach(function(t) { %>
+      <option value="<%= t.id %>"><%= t.title %><%= t.contact_id ? '' : ' (standalone)' %></option>
+    <% }); %>
+  </select>
+  <input type="text" name="note" placeholder="Note (optional)" maxlength="2000" />
+  <button type="submit" class="btn btn-primary">Schedule follow-up</button>
+</form>

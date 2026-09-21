@@ -550,6 +550,21 @@
 .crm-fu-done { opacity: 0.6; }
 .crm-fu-done .crm-fu-title { text-decoration: line-through; }
 .crm-fu-reschedule input { padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.78rem; font-family: inherit; }
+.crm-fu-kind-pill { margin: 0 2px; padding: 1px 8px; font-size: 0.68rem; }
+.crm-fu-kinds { display: flex; gap: 6px; margin-bottom: 16px; }
+.crm-fu-kind { padding: 4px 12px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; color: #4b5563; font-size: 0.82rem; font-weight: 600; text-decoration: none; }
+.crm-fu-kind:hover { background: #f9fafb; }
+.crm-fu-kind.active { background: color-mix(in srgb, var(--color-primary) 12%, #fff); border-color: var(--color-primary); color: var(--color-primary-dark); }
+.crm-fu-chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 600; text-decoration: none; background: #f3f4f6; color: #4b5563; white-space: nowrap; }
+.crm-fu-chip-today { background: #fef3c7; color: #92400e; }
+.crm-fu-chip-overdue { background: #fee2e2; color: #b91c1c; }
+.crm-fu-more { margin-left: 4px; font-size: 0.72rem; color: #9ca3af; white-space: nowrap; }
+.crm-followup-more { max-width: 760px; margin-top: 24px; }
+.crm-fu-add { margin-top: 14px; }
+.crm-fu-add-link { display: inline-block; cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--color-primary-dark); list-style: none; }
+.crm-fu-add-link::-webkit-details-marker { display: none; }
+.crm-fu-add-link:hover { text-decoration: underline; }
+.crm-fu-add[open] > .crm-fu-add-link { margin-bottom: 12px; }
 .crm-fu-form select, .crm-fu-form input[type="text"] { min-width: 0; }
 .crm-fu-form input[name="note"] { flex: 1 1 100%; }
 @media (max-width: 600px) { .crm-fu { flex-wrap: wrap; } }

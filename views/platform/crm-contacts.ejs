@@ -61,7 +61,7 @@
       <thead>
         <tr>
           <th class="crm-select-col"><input type="checkbox" id="crmSelectAll" aria-label="Select all <%= segment %>" form="crmBulkTagForm" /></th>
-          <th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Source</th><th>Added</th>
+          <th>Name</th><th>Email</th><th>Phone</th><th>Site</th><th>Tags</th><th>Next follow-up</th><th>Source</th><th>Added</th>
         </tr>
       </thead>
       <tbody>
@@ -78,12 +78,25 @@
               <% if (cTags.length > maxVisibleTags) { %><span class="crm-tag crm-tag-more">+<%= cTags.length - maxVisibleTags %></span><% } %>
               <% if (cTags.length === 0) { %><span class="crm-tags-empty">—</span><% } %>
             </td>
+            <td>
+              <% if (c.next_followup) {
+                var nd = new Date(c.next_followup);
+                var nYmd = nd.getFullYear() + '-' + String(nd.getMonth() + 1).padStart(2, '0') + '-' + String(nd.getDate()).padStart(2, '0');
+                var nState = nYmd < today ? 'overdue' : (nYmd === today ? 'today' : 'later');
+                var nLabel = nYmd === today ? 'Today' : nd.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+              %>
+                <a href="/dashboard/crm/contacts/<%= c.id %>" class="crm-fu-chip crm-fu-chip-<%= nState %>"><%= nState === 'overdue' ? 'Overdue · ' : '' %><%= nLabel %></a>
+                <% if (c.open_followups > 1) { %><span class="crm-fu-more">+<%= c.open_followups - 1 %> more</span><% } %>
+              <% } else { %>
+                <span class="crm-tags-empty">—</span>
+              <% } %>
+            </td>
             <td><span class="status-pill status-paid"><%= c.source.replace('_', ' ') %></span></td>
             <td><%= new Date(c.created_at).toLocaleDateString() %></td>
           </tr>
         <% }); %>
         <% if (contacts.length === 0) { %>
-          <tr><td colspan="8" class="empty-state">
+          <tr><td colspan="9" class="empty-state">
             <%= segment === 'customers' ? 'No converted customers yet — a lead lands here once they create an account.' : "No leads yet — they'll show up here from your contact forms, or add one manually." %>
           </td></tr>
         <% } %>

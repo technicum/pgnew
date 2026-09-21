@@ -19,7 +19,11 @@
   <div class="crm-fu-body">
     <a class="crm-fu-title" href="/dashboard/crm/followups/<%= f.id %>"><%= f.title %></a>
     <span class="crm-fu-meta">
-      <% if (showContact) { %><a href="/dashboard/crm/contacts/<%= f.contact_id %>"><%= f.contact_name %></a> · <%= f.store_name || 'General inquiry' %> · <% } %>
+      <% if (showContact) { %>
+        <a href="/dashboard/crm/contacts/<%= f.contact_id %>"><%= f.contact_name %></a>
+        <span class="status-pill <%= f.contact_customer_id ? 'status-delivered' : 'status-paid' %> crm-fu-kind-pill"><%= f.contact_customer_id ? 'Customer' : 'Lead' %></span>
+        <%= f.store_name || 'General inquiry' %> ·
+      <% } %>
       <span class="<%= fOverdue ? 'crm-fu-due-overdue' : '' %>"><%= fOverdue ? 'Overdue · ' : '' %><%= fLabel %><%= fTime ? ' · ' + fTime : '' %></span>
       · <%= f.assignee_name || 'Unassigned' %>
     </span>
