@@ -1,0 +1,41 @@
+<%
+  // One follow-up row, shared by the Follow-ups screen and the contact page.
+  // Locals: f (the follow-up), today (YYYY-MM-DD), redirect (where the row's
+  // actions send you back to), showContact (bool -- false on the contact
+  // page, where the contact is already obvious).
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var fd = new Date(f.due_date);
+  var fYmd = fd.getFullYear() + '-' + pad(fd.getMonth() + 1) + '-' + pad(fd.getDate());
+  var fOverdue = !f.done && fYmd < today;
+  var fLabel = fYmd === today ? 'Today' : fd.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  var fTime = f.due_time ? String(f.due_time).slice(0, 5) : '';
+%>
+<li class="crm-fu <%= f.done ? 'crm-fu-done' : '' %> <%= fOverdue ? 'crm-fu-overdue' : '' %>">
+  <form action="/dashboard/crm/followups/<%= f.id %>/toggle" method="POST">
+    <input type="hidden" name="done" value="<%= f.done ? '0' : '1' %>" />
+    <input type="hidden" name="redirect" value="<%= redirect %>" />
+    <button type="submit" class="crm-fu-check" aria-label="<%= f.done ? 'Reopen follow-up' : 'Mark follow-up done' %>"><%= f.done ? '✓' : '' %></button>
+  </form>
+  <div class="crm-fu-body">
+    <a class="crm-fu-title" href="/dashboard/crm/followups/<%= f.id %>"><%= f.title %></a>
+    <span class="crm-fu-meta">
+      <% if (showContact) { %><a href="/dashboard/crm/contacts/<%= f.contact_id %>"><%= f.contact_name %></a> · <%= f.store_name || 'General inquiry' %> · <% } %>
+      <span class="<%= fOverdue ? 'crm-fu-due-overdue' : '' %>"><%= fOverdue ? 'Overdue · ' : '' %><%= fLabel %><%= fTime ? ' · ' + fTime : '' %></span>
+      · <%= f.assignee_name || 'Unassigned' %>
+    </span>
+    <% if (f.note) { %><span class="crm-fu-note"><%= f.note %></span><% } %>
+    <% if (f.task_id) { %>
+      <a class="crm-fu-task <%= f.task_done ? 'crm-fu-task-done' : '' %>" href="/dashboard/crm/tasks/<%= f.task_id %>">Task: <%= f.task_title %><%= f.task_done ? ' (done)' : '' %></a>
+    <% } %>
+  </div>
+  <% if (!f.done) { %>
+    <form action="/dashboard/crm/followups/<%= f.id %>/reschedule" method="POST" class="crm-fu-reschedule">
+      <input type="hidden" name="redirect" value="<%= redirect %>" />
+      <input type="date" name="due_date" value="<%= fYmd %>" aria-label="Reschedule to" onchange="this.form.submit()" />
+    </form>
+  <% } %>
+  <form action="/dashboard/crm/followups/<%= f.id %>/delete" method="POST" onsubmit="return confirm('Delete this follow-up?');">
+    <input type="hidden" name="redirect" value="<%= redirect %>" />
+    <button type="submit" class="link-btn danger">Delete</button>
+  </form>
+</li>

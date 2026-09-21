@@ -71,11 +71,45 @@
         <button type="submit" class="btn btn-primary">Save changes</button>
       </form>
 
+      <div class="crm-contact-side">
+      <div class="panel crm-followups-panel">
+        <h2>Follow-ups</h2>
+
+        <form action="/dashboard/crm/contacts/<%= contact.id %>/followups" method="POST" class="crm-task-form crm-fu-form">
+          <input type="text" name="title" placeholder="e.g. Call to check on the quote" maxlength="255" required />
+          <input type="date" name="due_date" value="<%= today %>" required aria-label="Follow-up date" />
+          <input type="time" name="due_time" aria-label="Follow-up time (optional)" />
+          <select name="assigned_to" aria-label="Assign to">
+            <option value="">Unassigned</option>
+            <% assignableUsers.forEach(function(u) { %>
+              <option value="<%= u.id %>" <%= u.id === account.id ? 'selected' : '' %>><%= u.name %><%= u.id === account.id ? ' (you)' : '' %></option>
+            <% }); %>
+          </select>
+          <select name="task_id" aria-label="Link a task">
+            <option value="">No linked task</option>
+            <% linkableTasks.forEach(function(t) { %>
+              <option value="<%= t.id %>"><%= t.title %><%= t.contact_id ? '' : ' (standalone)' %></option>
+            <% }); %>
+          </select>
+          <input type="text" name="note" placeholder="Note (optional)" maxlength="2000" />
+          <button type="submit" class="btn btn-primary">Schedule follow-up</button>
+        </form>
+
+        <ul class="crm-fu-list">
+          <% followups.forEach(function(f) { %>
+            <%- include('partials/followup-row', { f: f, today: today, redirect: '/dashboard/crm/contacts/' + contact.id, showContact: false }) %>
+          <% }); %>
+          <% if (followups.length === 0) { %>
+            <li class="empty-state">No follow-ups scheduled for this contact.</li>
+          <% } %>
+        </ul>
+      </div>
+
       <div class="panel crm-tasks-panel">
-        <h2>Tasks &amp; follow-ups</h2>
+        <h2>Tasks</h2>
 
         <form action="/dashboard/crm/contacts/<%= contact.id %>/tasks" method="POST" class="crm-task-form">
-          <input type="text" name="title" placeholder="e.g. Call to follow up" required />
+          <input type="text" name="title" placeholder="e.g. Send the proposal" required />
           <input type="date" name="due_date" />
           <select name="assigned_to">
             <option value="">Unassigned</option>
@@ -105,9 +139,10 @@
             </li>
           <% }); %>
           <% if (tasks.length === 0) { %>
-            <li class="empty-state">No tasks yet — add a follow-up above.</li>
+            <li class="empty-state">No tasks yet — add one above.</li>
           <% } %>
         </ul>
+      </div>
       </div>
     </div>
 

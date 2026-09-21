@@ -142,6 +142,9 @@ const TABLES = {
   crmTasks: `${PREFIX}crm_tasks`,
   // Small checklist items nested under one crm_tasks row.
   crmSubtasks: `${PREFIX}crm_subtasks`,
+  // A scheduled "reach out to this contact on this day" -- separate from
+  // crm_tasks, and can optionally link to one task.
+  crmFollowups: `${PREFIX}crm_followups`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -754,6 +757,35 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmSubtasks} (
   FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
   FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_subtask_task (task_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A scheduled follow-up with one contact: who to get back to and on which
+-- day (optionally at what time). Deliberately its own thing rather than a
+-- crm_tasks row -- the Follow-ups screen is the "what do I need to do today"
+-- list. task_id optionally links it to one crm_tasks row (the work that
+-- follow-up is about) and is cleared, not cascaded, if that task is deleted.
+-- assigned_to is checked in app code like crm_tasks.assigned_to. owner_user_id
+-- is denormalized the same way crm_tasks does it, so the today/overdue
+-- queries stay a single table scan.
+CREATE TABLE IF NOT EXISTS ${TABLES.crmFollowups} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  owner_user_id INT NOT NULL,
+  contact_id INT NOT NULL,
+  task_id INT NULL,
+  title VARCHAR(255) NOT NULL,
+  note TEXT NULL,
+  due_date DATE NOT NULL,
+  due_time TIME NULL,
+  assigned_to INT NULL,
+  done TINYINT(1) NOT NULL DEFAULT 0,
+  done_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE CASCADE,
+  FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE SET NULL,
+  FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
+  INDEX idx_followup_owner_due (owner_user_id, done, due_date),
+  INDEX idx_followup_contact (contact_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 

@@ -78,7 +78,7 @@
       <div class="tp-drawer-body">
         <p class="tp-breadcrumb">
           <% if (mode === 'edit' && openTask.contact_id_ref) { %>
-            Follow-up on <a href="/dashboard/crm/contacts/<%= openTask.contact_id_ref %>"><%= openTask.contact_name %></a><%= storeLink ? ' · ' + storeLink.replace(/^https?:\/\//, '') : '' %>
+            Task for <a href="/dashboard/crm/contacts/<%= openTask.contact_id_ref %>"><%= openTask.contact_name %></a><%= storeLink ? ' · ' + storeLink.replace(/^https?:\/\//, '') : '' %>
           <% } else { %>
             Standalone task
           <% } %>

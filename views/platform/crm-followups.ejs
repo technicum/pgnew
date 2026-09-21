@@ -1,0 +1,50 @@
+<%- include('partials/header') %>
+
+    <div class="dashboard-main crm-main">
+    <%
+      var tabs = [
+        { key: 'today', label: 'Today', count: counts.today },
+        { key: 'overdue', label: 'Overdue', count: counts.overdue },
+        { key: 'upcoming', label: 'Upcoming', count: counts.upcoming },
+        { key: 'done', label: 'Done', count: null }
+      ];
+      var emptyMessages = {
+        today: "Nothing to follow up on today. Schedule one from a lead's page.",
+        overdue: 'Nothing overdue — you\'re all caught up.',
+        upcoming: 'No upcoming follow-ups scheduled.',
+        done: 'No completed follow-ups yet.'
+      };
+    %>
+    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+      <% tabs.forEach(function(t) { %>
+        <a href="/dashboard/crm/followups?view=<%= t.key %>&assignee=<%= assigneeParam %>" class="btn <%= view === t.key ? 'btn-primary' : 'btn-secondary' %>">
+          <%= t.label %><% if (t.count !== null) { %> (<%= t.count %>)<% } %>
+        </a>
+      <% }); %>
+
+      <form action="/dashboard/crm/followups" method="GET" style="margin-left:auto;">
+        <input type="hidden" name="view" value="<%= view %>" />
+        <select name="assignee" onchange="this.form.submit()" aria-label="Show follow-ups for">
+          <option value="me" <%= assigneeParam === 'me' ? 'selected' : '' %>>Assigned to me</option>
+          <option value="all" <%= assigneeParam === 'all' ? 'selected' : '' %>>Everyone</option>
+          <option value="unassigned" <%= assigneeParam === 'unassigned' ? 'selected' : '' %>>Unassigned</option>
+          <% assignableUsers.forEach(function(u) { %>
+            <% if (u.id !== account.id) { %>
+              <option value="<%= u.id %>" <%= assigneeParam === String(u.id) ? 'selected' : '' %>><%= u.name %></option>
+            <% } %>
+          <% }); %>
+        </select>
+      </form>
+    </div>
+
+    <ul class="crm-fu-list">
+      <% followups.forEach(function(f) { %>
+        <%- include('partials/followup-row', { f: f, today: today, redirect: '/dashboard/crm/followups?view=' + view + '&assignee=' + assigneeParam, showContact: true }) %>
+      <% }); %>
+      <% if (followups.length === 0) { %>
+        <li class="empty-state"><%= emptyMessages[view] %></li>
+      <% } %>
+    </ul>
+    </div>
+
+<%- include('partials/footer') %>

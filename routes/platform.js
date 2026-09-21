@@ -458,6 +458,9 @@ async function requireCrm(req, res, next) {
     const access = await crmLib.resolveCrmAccess(req.session.account.id);
     if (!access) return res.redirect(adminPortalUrl(req, '/dashboard/crm/activate'));
     req.crm = access;
+    // Badge on the sidebar's Follow-ups link: this person's open follow-ups
+    // due today or already overdue.
+    res.locals.crmFollowupsDue = await crmLib.countFollowupsDue(access.ownerUserId, req.session.account.id);
     next();
   } catch (err) {
     next(err);
@@ -719,13 +722,15 @@ router.get('/dashboard/crm/contacts/:id', requireAccount, requireCrm, async (req
       req.flash('error', 'Contact not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
     }
-    const [tasks, assignableUsers, stores, popularTags] = await Promise.all([
+    const [tasks, followups, linkableTasks, assignableUsers, stores, popularTags] = await Promise.all([
       crmLib.listTasksForContact(contact.id),
+      crmLib.listFollowupsForContact(req.crm.ownerUserId, contact.id),
+      crmLib.listLinkableTasks(req.crm.ownerUserId, contact.id),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
       crmLib.getOwnerStores(req.crm.ownerUserId),
       crmLib.listTagCounts(req.crm.ownerUserId),
     ]);
-    res.render('platform/crm-contact', { title: 'Contact', account: req.session.account, crm: req.crm, contact, tasks, assignableUsers, stores, popularTags });
+    res.render('platform/crm-contact', { title: 'Contact', account: req.session.account, crm: req.crm, contact, tasks, followups, linkableTasks, today: crmLib.todayStr(), assignableUsers, stores, popularTags });
   } catch (err) {
     next(err);
   }
@@ -1032,6 +1037,157 @@ router.get('/dashboard/crm/my-tasks', requireAccount, requireCrm, async (req, re
   try {
     const tasks = await crmLib.listTasksForAssignee(req.crm.ownerUserId, req.session.account.id);
     res.render('platform/crm-my-tasks', { title: 'My Tasks', account: req.session.account, crm: req.crm, tasks });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Follow-ups -- scheduled "get back to this contact" reminders, separate
+// from tasks (a follow-up can optionally link to one task). The Follow-ups
+// screen is the daily list: Today / Overdue / Upcoming / Done, defaulting to
+// what's assigned to the person looking at it. ----
+const FOLLOWUP_VIEWS = ['today', 'overdue', 'upcoming', 'done'];
+
+// Only ever redirect back to another CRM screen, never an arbitrary URL a
+// form field asked for.
+function crmRedirect(req, target, fallback) {
+  const path = typeof target === 'string' && /^\/dashboard\/crm\/[\w\-/?=&.]*$/.test(target) ? target : fallback;
+  return adminPortalUrl(req, path);
+}
+
+// Validates the fields shared by create and edit. Returns { error } or { data }.
+async function parseFollowupBody(req) {
+  const title = (req.body.title || '').trim().slice(0, 255);
+  if (!title) return { error: 'Follow-up title is required.' };
+  const due_date = crmLib.sanitizeDueDate(req.body.due_date);
+  if (!due_date) return { error: 'Pick a date for the follow-up.' };
+  const assigned_to = req.body.assigned_to ? parseInt(req.body.assigned_to, 10) : null;
+  if (!(await crmLib.isAssignable(req.crm.ownerUserId, assigned_to))) return { error: "That person isn't on this CRM team." };
+  return { data: { title, note: req.body.note, due_date, due_time: req.body.due_time, assigned_to, task_id: req.body.task_id } };
+}
+
+router.get('/dashboard/crm/followups', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const view = FOLLOWUP_VIEWS.includes(req.query.view) ? req.query.view : 'today';
+    // Defaults to "mine"; 'all' = everyone, 'unassigned', or a specific user id.
+    const assigneeParam = req.query.assignee || 'me';
+    const assignee = assigneeParam === 'me' ? String(req.session.account.id) : assigneeParam === 'all' ? '' : assigneeParam;
+    const [followups, counts, assignableUsers] = await Promise.all([
+      crmLib.listFollowups(req.crm.ownerUserId, { view, assignee }),
+      crmLib.countFollowups(req.crm.ownerUserId, assignee),
+      crmLib.listAssignableUsers(req.crm.ownerUserId),
+    ]);
+    res.render('platform/crm-followups', {
+      title: 'Follow-ups',
+      account: req.session.account,
+      crm: req.crm,
+      followups,
+      counts,
+      view,
+      assigneeParam,
+      assignableUsers,
+      today: crmLib.todayStr(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/contacts/:id/followups', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const contact = await crmLib.getContact(req.crm.ownerUserId, req.params.id);
+    if (!contact) {
+      req.flash('error', 'Contact not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
+    }
+    const back = adminPortalUrl(req, `/dashboard/crm/contacts/${contact.id}`);
+    const parsed = await parseFollowupBody(req);
+    if (parsed.error) {
+      req.flash('error', parsed.error);
+      return res.redirect(back);
+    }
+    await crmLib.createFollowup(req.crm.ownerUserId, { contactId: contact.id, ...parsed.data });
+    req.flash('success', 'Follow-up scheduled.');
+    res.redirect(back);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/dashboard/crm/followups/:id', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const followup = await crmLib.getFollowup(req.crm.ownerUserId, req.params.id);
+    if (!followup) {
+      req.flash('error', 'Follow-up not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/followups'));
+    }
+    const [assignableUsers, linkableTasks] = await Promise.all([
+      crmLib.listAssignableUsers(req.crm.ownerUserId),
+      crmLib.listLinkableTasks(req.crm.ownerUserId, followup.contact_id),
+    ]);
+    res.render('platform/crm-followup', {
+      title: 'Follow-up',
+      account: req.session.account,
+      crm: req.crm,
+      followup,
+      assignableUsers,
+      linkableTasks,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/followups/:id/edit', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const followup = await crmLib.getFollowup(req.crm.ownerUserId, req.params.id);
+    if (!followup) {
+      req.flash('error', 'Follow-up not found.');
+      return res.redirect(adminPortalUrl(req, '/dashboard/crm/followups'));
+    }
+    const parsed = await parseFollowupBody(req);
+    if (parsed.error) {
+      req.flash('error', parsed.error);
+      return res.redirect(adminPortalUrl(req, `/dashboard/crm/followups/${followup.id}`));
+    }
+    await crmLib.updateFollowup(req.crm.ownerUserId, followup, parsed.data);
+    req.flash('success', 'Follow-up saved.');
+    res.redirect(adminPortalUrl(req, '/dashboard/crm/followups'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/followups/:id/toggle', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    await crmLib.setFollowupDone(req.crm.ownerUserId, req.params.id, req.body.done === '1');
+    req.flash('success', req.body.done === '1' ? 'Follow-up marked done.' : 'Follow-up reopened.');
+    res.redirect(crmRedirect(req, req.body.redirect, '/dashboard/crm/followups'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/followups/:id/reschedule', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const dueDate = crmLib.sanitizeDueDate(req.body.due_date);
+    if (dueDate) {
+      await crmLib.rescheduleFollowup(req.crm.ownerUserId, req.params.id, dueDate);
+      req.flash('success', 'Follow-up rescheduled.');
+    } else {
+      req.flash('error', 'Pick a date to reschedule to.');
+    }
+    res.redirect(crmRedirect(req, req.body.redirect, '/dashboard/crm/followups'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/dashboard/crm/followups/:id/delete', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    await crmLib.deleteFollowup(req.crm.ownerUserId, req.params.id);
+    req.flash('success', 'Follow-up deleted.');
+    res.redirect(crmRedirect(req, req.body.redirect, '/dashboard/crm/followups'));
   } catch (err) {
     next(err);
   }

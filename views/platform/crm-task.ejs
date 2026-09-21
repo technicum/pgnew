@@ -6,7 +6,7 @@
         <% if (task.parent_task_id) { %>
           Subtask of <a href="/dashboard/crm/tasks/<%= task.parent_task_id %>"><%= task.parent_title %></a>
         <% } else if (task.contact_id) { %>
-          Follow-up on <a href="/dashboard/crm/contacts/<%= task.contact_id %>"><%= task.contact_name %></a> · <%= task.store_name || 'General inquiry' %>
+          Task for <a href="/dashboard/crm/contacts/<%= task.contact_id %>"><%= task.contact_name %></a> · <%= task.store_name || 'General inquiry' %>
         <% } else { %>
           Standalone task
         <% } %>
