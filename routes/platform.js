@@ -515,8 +515,11 @@ router.get('/dashboard/crm/customers', requireAccount, requireCrm, (req, res, ne
 
 router.get('/dashboard/crm/contacts/new', requireAccount, requireCrm, async (req, res, next) => {
   try {
-    const stores = await crmLib.getOwnerStores(req.crm.ownerUserId);
-    res.render('platform/crm-contact-form', { title: 'New Contact', account: req.session.account, crm: req.crm, contact: null, stores });
+    const [stores, popularTags] = await Promise.all([
+      crmLib.getOwnerStores(req.crm.ownerUserId),
+      crmLib.listTagCounts(req.crm.ownerUserId),
+    ]);
+    res.render('platform/crm-contact-form', { title: 'New Contact', account: req.session.account, crm: req.crm, contact: null, stores, popularTags });
   } catch (err) {
     next(err);
   }
@@ -570,12 +573,13 @@ router.get('/dashboard/crm/contacts/:id', requireAccount, requireCrm, async (req
       req.flash('error', 'Contact not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
     }
-    const [tasks, assignableUsers, stores] = await Promise.all([
+    const [tasks, assignableUsers, stores, popularTags] = await Promise.all([
       crmLib.listTasksForContact(contact.id),
       crmLib.listAssignableUsers(req.crm.ownerUserId),
       crmLib.getOwnerStores(req.crm.ownerUserId),
+      crmLib.listTagCounts(req.crm.ownerUserId),
     ]);
-    res.render('platform/crm-contact', { title: 'Contact', account: req.session.account, crm: req.crm, contact, tasks, assignableUsers, stores });
+    res.render('platform/crm-contact', { title: 'Contact', account: req.session.account, crm: req.crm, contact, tasks, assignableUsers, stores, popularTags });
   } catch (err) {
     next(err);
   }

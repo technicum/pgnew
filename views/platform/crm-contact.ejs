@@ -55,9 +55,17 @@
           </select>
         </label>
 
-        <label>Tags <span style="font-weight:400; color:#6b7280;">(comma-separated)</span>
-          <input type="text" name="tags" value="<%= (contact.tags || []).join(', ') %>" placeholder="hot, wholesale" />
-        </label>
+        <div class="crm-tag-field">
+          <label>Tags <span class="crm-tag-hint" style="font-weight:400; color:#6b7280;">(comma-separated)</span>
+            <input type="text" name="tags" data-tag-input value="<%= (contact.tags || []).join(', ') %>" placeholder="hot, wholesale" />
+          </label>
+          <% if (typeof popularTags !== 'undefined' && popularTags.length) { %>
+            <div class="crm-tag-suggestions">
+              <span class="crm-tag-suggestions-label">Choose from the most used tags:</span>
+              <% popularTags.forEach(function(t) { %><button type="button" class="crm-tag-suggestion" data-tag="<%= t %>"><%= t %></button><% }); %>
+            </div>
+          <% } %>
+        </div>
 
         <button type="submit" class="btn btn-primary">Save changes</button>
       </form>
