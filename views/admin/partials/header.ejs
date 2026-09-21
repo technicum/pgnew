@@ -12,7 +12,7 @@
   <div class="admin-layout">
     <aside class="admin-sidebar">
       <div class="admin-logo"><%= typeof store !== 'undefined' && store ? store.name : 'PageZaper' %> <small>Admin</small></div>
-      <% if (!impersonation) { %>
+      <% if (!impersonation || impersonation.viaAccount) { %>
         <a href="<%= accountDashboardUrl %>" class="admin-exit-store">&larr; Exit store</a>
       <% } %>
       <%

@@ -1,0 +1,68 @@
+<%- include('partials/header') %>
+
+<p><a href="/platform-admin/users">&larr; All users</a></p>
+
+<div class="dashboard-grid">
+  <section class="panel">
+    <h2>Account</h2>
+    <form action="/platform-admin/users/<%= user.id %>/edit" method="POST" class="stack-form" style="display:grid; gap:12px;">
+      <label>Name
+        <input type="text" name="name" value="<%= user.name %>" maxlength="255" required />
+      </label>
+      <label>Email
+        <input type="email" name="email" value="<%= user.email %>" maxlength="255" required />
+      </label>
+      <p class="muted" style="margin:0;">Joined <%= new Date(user.created_at).toLocaleDateString() %></p>
+      <div><button type="submit" class="btn btn-primary">Save changes</button></div>
+    </form>
+
+    <form action="/platform-admin/users/<%= user.id %>/login-as-account" method="POST" style="margin-top:16px;">
+      <button type="submit" class="btn btn-secondary">Log in as this user</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Reset password</h2>
+    <form action="/platform-admin/users/<%= user.id %>/password" method="POST" class="stack-form" style="display:grid; gap:12px;">
+      <label>New password
+        <input type="password" name="password" minlength="6" autocomplete="new-password" required />
+      </label>
+      <label>Confirm new password
+        <input type="password" name="confirmPassword" minlength="6" autocomplete="new-password" required />
+      </label>
+      <div><button type="submit" class="btn btn-primary">Change password</button></div>
+    </form>
+  </section>
+</div>
+
+<section class="panel" style="margin-top:20px;">
+  <h2>Sites</h2>
+  <% if (roles.length === 0) { %>
+    <p class="empty-state">This account doesn't own or manage any sites.</p>
+  <% } else { %>
+    <table class="admin-table">
+      <thead><tr><th>Site</th><th>Subdomain</th><th>Role</th><th>Status</th><th>Since</th><th></th></tr></thead>
+      <tbody>
+        <% roles.forEach(function(r) { %>
+          <tr>
+            <td><a href="/platform-admin/stores/<%= r.store_id %>"><%= r.store_name %></a></td>
+            <td><%= r.subdomain %></td>
+            <td><span class="status-pill"><%= r.role %></span></td>
+            <td><span class="status-pill <%= r.store_status === 'active' ? 'status-delivered' : 'status-cancelled' %>"><%= r.store_status %></span></td>
+            <td><%= new Date(r.created_at).toLocaleDateString() %></td>
+            <td class="admin-row-actions">
+              <form action="/platform-admin/users/<%= r.id %>/login-as" method="POST">
+                <button type="submit" class="link-btn">Open site admin</button>
+              </form>
+              <form action="/platform-admin/users/<%= r.id %>/delete" method="POST" onsubmit="return confirm('Remove this person\'s access to this site? Their account stays.');">
+                <button type="submit" class="link-btn danger">Remove access</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
+<%- include('partials/footer') %>

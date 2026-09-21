@@ -41,6 +41,14 @@
       </form>
     </aside>
     <div class="admin-main">
+      <% if (typeof impersonation !== 'undefined' && impersonation) { %>
+        <div class="impersonation-banner">
+          <span>You're viewing this account as <strong><%= typeof account !== 'undefined' && account ? account.name : '' %></strong>, logged in by platform admin <%= impersonation.platformAdminName %>.</span>
+          <form action="/dashboard/exit-impersonation" method="POST">
+            <button type="submit" class="link-btn">Return to Platform Admin</button>
+          </form>
+        </div>
+      <% } %>
       <header class="admin-topbar">
         <h1><%= title %></h1>
         <% if (typeof account !== 'undefined' && account) { %><span class="admin-user">Hi, <%= account.name %></span><% } %>

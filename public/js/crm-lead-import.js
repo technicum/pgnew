@@ -120,6 +120,14 @@
   }
 
   button.addEventListener('click', function () {
+    if (!clientId || !apiKey) {
+      window.alert(
+        "Google Drive import isn't set up on this server yet.\n\n" +
+        'Ask the site admin to set GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_API_KEY ' +
+        '(see .env.example), then restart the app. Meanwhile you can upload a file from your computer.'
+      );
+      return;
+    }
     setBusy('Connecting to Google…');
     loadGoogle()
       .then(requestToken)

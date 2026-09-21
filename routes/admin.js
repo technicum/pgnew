@@ -86,6 +86,9 @@ router.post('/logout', (req, res) => {
 router.post('/exit-impersonation', (req, res) => {
   if (!req.session.impersonation) return res.redirect('/admin');
   req.session.admin = null;
+  // Also drop the account session: an account-level "log in as" (see
+  // routes/platformAdmin.js) sets it, and it must not outlive the exit.
+  req.session.account = null;
   req.session.impersonation = null;
   res.redirect(rootUrl(req, '/platform-admin'));
 });

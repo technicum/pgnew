@@ -41,6 +41,13 @@
       </tbody>
     </table>
 
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
+      <a href="<%= storefrontUrl %>" target="_blank" rel="noopener" class="btn btn-secondary">Open storefront</a>
+      <form action="/platform-admin/stores/<%= store.id %>/login-as-owner" method="POST">
+        <button type="submit" class="btn btn-secondary" <%= store.status === 'active' && admins.length ? '' : 'disabled' %>>Log in as owner</button>
+      </form>
+    </div>
+
     <% if (store.status === 'active') { %>
       <form action="/platform-admin/stores/<%= store.id %>/status" method="POST" style="margin-top:16px;" onsubmit="return confirm('Suspend this store? Its storefront and admin will stop working.');">
         <input type="hidden" name="status" value="suspended" />
@@ -80,6 +87,44 @@
           <% }); %>
         </tbody>
       </table>
+    <% } %>
+  </section>
+</div>
+
+<div class="dashboard-grid" style="margin-top:20px;">
+  <section class="panel">
+    <h2>Edit store</h2>
+    <form action="/platform-admin/stores/<%= store.id %>/edit" method="POST" style="display:grid; gap:12px;"
+          onsubmit="var s = this.subdomain; if (s.value.trim().toLowerCase() !== s.defaultValue) { return confirm('Change the subdomain? The old address (<%= store.subdomain %>) will stop working immediately, and any links to it will break.'); }">
+      <label>Store name
+        <input type="text" name="name" value="<%= store.name %>" maxlength="255" required />
+      </label>
+      <label>Subdomain
+        <input type="text" name="subdomain" value="<%= store.subdomain %>" maxlength="63" required />
+      </label>
+      <label>Theme
+        <select name="theme">
+          <% themes.forEach(function(t) { %>
+            <option value="<%= t %>" <%= store.theme === t ? 'selected' : '' %>><%= t %></option>
+          <% }); %>
+        </select>
+      </label>
+      <div><button type="submit" class="btn btn-primary">Save changes</button></div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2 style="color: var(--color-danger);">Delete store</h2>
+    <% if (!canDelete) { %>
+      <p class="muted">This is a reserved platform store (it backs the theme demos) and can't be deleted here.</p>
+    <% } else { %>
+      <p>Permanently deletes this store and everything in it — products, orders, pages, contacts and uploaded files. Its owners' accounts are kept. This can't be undone.</p>
+      <form action="/platform-admin/stores/<%= store.id %>/delete" method="POST" style="display:grid; gap:12px;">
+        <label>Type <strong><%= store.subdomain %></strong> to confirm
+          <input type="text" name="confirm" autocomplete="off" required />
+        </label>
+        <div><button type="submit" class="btn" style="border:1px solid var(--color-danger); color: var(--color-danger);">Delete this store</button></div>
+      </form>
     <% } %>
   </section>
 </div>

@@ -1,29 +1,35 @@
 <%- include('partials/header') %>
 
+<div class="panel-toolbar" style="justify-content: space-between; align-items: center;">
+  <form action="/platform-admin/users" method="GET" style="display:flex; gap:8px;">
+    <input type="search" name="q" value="<%= q %>" placeholder="Search name or email" style="min-width:260px;" />
+    <button type="submit" class="btn btn-secondary">Search</button>
+    <% if (q) { %><a href="/platform-admin/users" class="btn btn-secondary">Clear</a><% } %>
+  </form>
+  <span class="muted"><%= users.length %> account<%= users.length === 1 ? '' : 's' %><%= users.length === 200 ? ' (showing the first 200 — narrow your search)' : '' %></span>
+</div>
+
 <table class="admin-table">
   <thead>
-    <tr><th>Name</th><th>Email</th><th>Role</th><th>Store</th><th>Since</th><th></th></tr>
+    <tr><th>Name</th><th>Email</th><th>Sites</th><th>Joined</th><th></th></tr>
   </thead>
   <tbody>
     <% users.forEach(function(u) { %>
       <tr>
-        <td><%= u.name %></td>
+        <td><a href="/platform-admin/users/<%= u.id %>"><strong><%= u.name %></strong></a></td>
         <td><%= u.email %></td>
-        <td><span class="status-pill"><%= u.role %></span></td>
-        <td><a href="/platform-admin/stores/<%= u.store_id %>"><%= u.store_name %></a></td>
+        <td><%= u.site_count ? u.site_names : '—' %></td>
         <td><%= new Date(u.created_at).toLocaleDateString() %></td>
         <td class="admin-row-actions">
-          <form action="/platform-admin/users/<%= u.id %>/login-as" method="POST">
+          <a href="/platform-admin/users/<%= u.id %>">Manage</a>
+          <form action="/platform-admin/users/<%= u.id %>/login-as-account" method="POST">
             <button type="submit" class="link-btn">Log in as</button>
-          </form>
-          <form action="/platform-admin/users/<%= u.id %>/delete" method="POST" onsubmit="return confirm('Delete this user? They will no longer be able to log in.');">
-            <button type="submit" class="link-btn danger">Delete</button>
           </form>
         </td>
       </tr>
     <% }); %>
     <% if (users.length === 0) { %>
-      <tr><td colspan="6" class="empty-state">No users yet.</td></tr>
+      <tr><td colspan="5" class="empty-state"><%= q ? 'No users match that search.' : 'No users yet.' %></td></tr>
     <% } %>
   </tbody>
 </table>

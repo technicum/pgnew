@@ -37,16 +37,12 @@
                 <p class="crm-import-hint">First row must be headers: Name and Email are required; Phone and Tags are optional.</p>
                 <div class="crm-import-actions">
                   <button type="submit" class="btn btn-primary">Import file</button>
-                  <% if (googleDriveClientId && googleDriveApiKey) { %>
-                    <button type="button" id="crmImportFromDrive" class="btn btn-secondary" data-google-client-id="<%= googleDriveClientId %>" data-google-api-key="<%= googleDriveApiKey %>">Import from Google Drive</button>
-                  <% } %>
+                  <button type="button" id="crmImportFromDrive" class="btn btn-secondary" data-google-client-id="<%= googleDriveClientId %>" data-google-api-key="<%= googleDriveApiKey %>">Import from Google Drive</button>
                 </div>
               </form>
             </div>
           </details>
-          <% if (googleDriveClientId && googleDriveApiKey) { %>
-            <script src="/js/crm-lead-import.js?v=<%= assetVersion %>" defer></script>
-          <% } %>
+          <script src="/js/crm-lead-import.js?v=<%= assetVersion %>" defer></script>
         <% } %>
         <a href="/dashboard/crm/contacts/new" class="btn btn-primary">+ New contact</a>
       </div>

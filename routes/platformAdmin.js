@@ -1,9 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const { pool, TABLES, PLANS } = require('../db/database');
+const fs = require('fs');
+const path = require('path');
+const { pool, TABLES, PLANS, THEMES, isReservedSubdomain } = require('../db/database');
 const { requirePlatformAdmin } = require('../middleware/auth');
-const { rootUrl, storeUrl } = require('../middleware/tenant');
+const { rootUrl, storeUrl, adminPortalUrl } = require('../middleware/tenant');
+
+const SUBDOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Route params arrive as strings; anything that isn't a plain positive
+// integer can't be a row id, so treat it as "not found" up front.
+function parseId(value) {
+  return /^\d+$/.test(String(value)) ? parseInt(value, 10) : null;
+}
 
 // The platform admin only makes sense on the root domain (pagezaper.com),
 // never on a store's own subdomain — send those requests back to the root.
@@ -71,7 +82,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/stores/:id', async (req, res, next) => {
   try {
-    const [[store]] = await pool.query(`SELECT * FROM ${TABLES.stores} WHERE id = ?`, [req.params.id]);
+    const [[store]] = await pool.query(`SELECT * FROM ${TABLES.stores} WHERE id = ?`, [parseId(req.params.id)]);
     if (!store) {
       req.flash('error', 'Store not found.');
       return res.redirect('/platform-admin');
@@ -99,6 +110,11 @@ router.get('/stores/:id', async (req, res, next) => {
       orderCount,
       revenue: Number(total),
       plans: PLANS,
+      // A store on a theme no longer in THEMES still needs to show as
+      // selected rather than silently flipping to the first option on save.
+      themes: THEMES.includes(store.theme) ? THEMES : [store.theme, ...THEMES],
+      storefrontUrl: storeUrl(req, store.subdomain, '/'),
+      canDelete: !isReservedSubdomain(store.subdomain),
     });
   } catch (err) {
     next(err);
@@ -136,6 +152,116 @@ router.post('/stores/:id/plan', async (req, res, next) => {
   }
 });
 
+router.post('/stores/:id/edit', async (req, res, next) => {
+  try {
+    const storeId = parseId(req.params.id);
+    const back = `/platform-admin/stores/${storeId}`;
+    const [[store]] = await pool.query(`SELECT * FROM ${TABLES.stores} WHERE id = ?`, [storeId]);
+    if (!store) {
+      req.flash('error', 'Store not found.');
+      return res.redirect('/platform-admin');
+    }
+
+    const name = String(req.body.name || '').trim().slice(0, 255);
+    const subdomain = String(req.body.subdomain || '').trim().toLowerCase();
+    const theme = String(req.body.theme || '');
+
+    if (!name) {
+      req.flash('error', 'Store name is required.');
+      return res.redirect(back);
+    }
+    // Only validate the subdomain when it's actually changing — a store that
+    // already sits on a reserved word (the demo store) must stay editable.
+    if (subdomain !== store.subdomain) {
+      if (!SUBDOMAIN_RE.test(subdomain)) {
+        req.flash('error', 'Subdomain must be 3-63 characters: lowercase letters, numbers and hyphens, not starting or ending with a hyphen.');
+        return res.redirect(back);
+      }
+      if (isReservedSubdomain(subdomain)) {
+        req.flash('error', `"${subdomain}" is reserved — choose another subdomain.`);
+        return res.redirect(back);
+      }
+      const [[taken]] = await pool.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = ? AND id != ?`, [subdomain, store.id]);
+      if (taken) {
+        req.flash('error', `The subdomain "${subdomain}" is already in use.`);
+        return res.redirect(back);
+      }
+    }
+    if (theme !== store.theme && !THEMES.includes(theme)) {
+      req.flash('error', 'Invalid theme.');
+      return res.redirect(back);
+    }
+
+    try {
+      await pool.query(`UPDATE ${TABLES.stores} SET name = ?, subdomain = ?, theme = ? WHERE id = ?`, [name, subdomain, theme, store.id]);
+    } catch (err) {
+      // Lost a race for the same subdomain between the check above and here.
+      if (err.code !== 'ER_DUP_ENTRY') throw err;
+      req.flash('error', `The subdomain "${subdomain}" is already in use.`);
+      return res.redirect(back);
+    }
+    req.flash('success', 'Store updated.');
+    res.redirect(back);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Permanent. Every store-scoped table cascades off pz_stores (products,
+// orders, pages, contacts, ...), so the DELETE below is the whole database
+// cleanup; only the uploaded files on disk need removing by hand. The
+// owner's pz_users login is left alone — it may hold roles at other stores.
+router.post('/stores/:id/delete', async (req, res, next) => {
+  try {
+    const storeId = parseId(req.params.id);
+    const [[store]] = await pool.query(`SELECT * FROM ${TABLES.stores} WHERE id = ?`, [storeId]);
+    if (!store) {
+      req.flash('error', 'Store not found.');
+      return res.redirect('/platform-admin');
+    }
+    const back = `/platform-admin/stores/${store.id}`;
+    // The platform's own demo/showcase stores back the theme marketplace.
+    if (isReservedSubdomain(store.subdomain)) {
+      req.flash('error', "That's a reserved platform store and can't be deleted here.");
+      return res.redirect(back);
+    }
+    if (String(req.body.confirm || '').trim().toLowerCase() !== store.subdomain) {
+      req.flash('error', `Type "${store.subdomain}" exactly to confirm deleting this store.`);
+      return res.redirect(back);
+    }
+
+    await pool.query(`DELETE FROM ${TABLES.stores} WHERE id = ?`, [store.id]);
+    try {
+      fs.rmSync(path.join(__dirname, '..', 'public', 'uploads', `store-${store.id}`), { recursive: true, force: true });
+    } catch (err) {
+      console.error(`Deleted store ${store.id} but could not remove its uploads folder:`, err);
+    }
+    req.flash('success', `Store "${store.name}" was deleted.`);
+    res.redirect('/platform-admin');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Shortcut for "log in as this store's owner": the earliest Admin role, so
+// the platform admin doesn't have to hunt through the team list first.
+router.post('/stores/:id/login-as-owner', async (req, res, next) => {
+  try {
+    const storeId = parseId(req.params.id);
+    const [[owner]] = await pool.query(
+      `SELECT id FROM ${TABLES.userRoles} WHERE store_id = ? AND role = 'admin' ORDER BY created_at, id LIMIT 1`,
+      [storeId]
+    );
+    if (!owner) {
+      req.flash('error', 'That store has no admin to log in as.');
+      return res.redirect(`/platform-admin/stores/${storeId}`);
+    }
+    await loginAsRole(req, res, owner.id, `/platform-admin/stores/${storeId}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------- Plans overview ----------
 router.get('/plans', async (req, res, next) => {
   try {
@@ -152,21 +278,163 @@ router.get('/plans', async (req, res, next) => {
   }
 });
 
-// ---------- Users (every store admin/manager, across every store) ----------
-// A pz_users login can hold a role at more than one store, so this lists
-// one row per (user, store, role) — i.e. per pz_user_roles row, not per
-// person. The :roleId in the routes below is that pz_user_roles.id.
+// ---------- Users ----------
+// A pz_users row is one login ("account"); it can hold a role at several
+// stores through pz_user_roles. The list below is one row per account, the
+// detail page shows that account's per-store roles. The :roleId in the
+// login-as/delete routes further down is a pz_user_roles.id, not a user id.
 router.get('/users', async (req, res, next) => {
   try {
+    const q = String(req.query.q || '').trim().slice(0, 100);
+    const params = [];
+    let where = '';
+    if (q) {
+      const like = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+      where = 'WHERE u.name LIKE ? OR u.email LIKE ?';
+      params.push(like, like);
+    }
     const [users] = await pool.query(
-      `SELECT ur.id, u.name, u.email, ur.role, ur.created_at, s.id AS store_id, s.name AS store_name, s.subdomain
-       FROM ${TABLES.userRoles} ur
-       JOIN ${TABLES.users} u ON u.id = ur.user_id
-       JOIN ${TABLES.stores} s ON s.id = ur.store_id
-       WHERE ur.role IN ('admin', 'manager')
-       ORDER BY s.name, ur.created_at`
+      `SELECT u.id, u.name, u.email, u.created_at,
+              COUNT(DISTINCT s.id) AS site_count,
+              GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS site_names
+       FROM ${TABLES.users} u
+       LEFT JOIN ${TABLES.userRoles} ur ON ur.user_id = u.id AND ur.role IN ('admin', 'manager')
+       LEFT JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       ${where}
+       GROUP BY u.id
+       ORDER BY u.created_at DESC, u.id DESC
+       LIMIT 200`,
+      params
     );
-    res.render('platform-admin/users', { title: 'Users', users });
+    res.render('platform-admin/users', { title: 'Users', users, q });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/users/:id', async (req, res, next) => {
+  try {
+    const [[user]] = await pool.query(
+      `SELECT id, name, email, created_at FROM ${TABLES.users} WHERE id = ?`,
+      [parseId(req.params.id)]
+    );
+    if (!user) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/platform-admin/users');
+    }
+    const [roles] = await pool.query(
+      `SELECT ur.id, ur.role, ur.created_at, s.id AS store_id, s.name AS store_name, s.subdomain, s.status AS store_status
+       FROM ${TABLES.userRoles} ur
+       JOIN ${TABLES.stores} s ON s.id = ur.store_id
+       WHERE ur.user_id = ? AND ur.role IN ('admin', 'manager')
+       ORDER BY (ur.role = 'admin') DESC, s.name`,
+      [user.id]
+    );
+    res.render('platform-admin/user-detail', { title: user.name, activeNav: 'users', user, roles });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/users/:id/edit', async (req, res, next) => {
+  try {
+    const userId = parseId(req.params.id);
+    const back = `/platform-admin/users/${userId}`;
+    const [[user]] = await pool.query(`SELECT id FROM ${TABLES.users} WHERE id = ?`, [userId]);
+    if (!user) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/platform-admin/users');
+    }
+
+    const name = String(req.body.name || '').trim().slice(0, 255);
+    const email = String(req.body.email || '').trim().toLowerCase().slice(0, 255);
+    if (!name) {
+      req.flash('error', 'Name is required.');
+      return res.redirect(back);
+    }
+    if (!EMAIL_RE.test(email)) {
+      req.flash('error', 'Enter a valid email address.');
+      return res.redirect(back);
+    }
+    const [[taken]] = await pool.query(`SELECT id FROM ${TABLES.users} WHERE email = ? AND id != ?`, [email, user.id]);
+    if (taken) {
+      req.flash('error', `Another account already uses ${email}.`);
+      return res.redirect(back);
+    }
+
+    try {
+      await pool.query(`UPDATE ${TABLES.users} SET name = ?, email = ? WHERE id = ?`, [name, email, user.id]);
+    } catch (err) {
+      if (err.code !== 'ER_DUP_ENTRY') throw err;
+      req.flash('error', `Another account already uses ${email}.`);
+      return res.redirect(back);
+    }
+    req.flash('success', 'User updated.');
+    res.redirect(back);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Sets a new password without needing the old one (the "forgot password"
+// case). Existing logins keep working until they expire — sessions are not
+// tied to the password hash.
+router.post('/users/:id/password', async (req, res, next) => {
+  try {
+    const userId = parseId(req.params.id);
+    const back = `/platform-admin/users/${userId}`;
+    const [[user]] = await pool.query(`SELECT id FROM ${TABLES.users} WHERE id = ?`, [userId]);
+    if (!user) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/platform-admin/users');
+    }
+
+    const password = String(req.body.password || '');
+    if (password.length < 6) {
+      req.flash('error', 'Password must be at least 6 characters.');
+      return res.redirect(back);
+    }
+    if (password !== String(req.body.confirmPassword || '')) {
+      req.flash('error', "Passwords don't match.");
+      return res.redirect(back);
+    }
+
+    await pool.query(`UPDATE ${TABLES.users} SET password_hash = ? WHERE id = ?`, [bcrypt.hashSync(password, 10), user.id]);
+    req.flash('success', 'Password changed.');
+    res.redirect(back);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Logs the platform admin into a merchant's account dashboard (the "Your
+// sites" screen on admin.<domain>) as that person, without their password.
+// Sets the same account-level session a normal login does, plus the
+// `impersonation` marker that drives the "you're logged in as ..." banner
+// and its way back (see views/platform/partials/header.ejs).
+router.post('/users/:id/login-as-account', async (req, res, next) => {
+  try {
+    const [[user]] = await pool.query(
+      `SELECT id, name, email FROM ${TABLES.users} WHERE id = ?`,
+      [parseId(req.params.id)]
+    );
+    if (!user) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/platform-admin/users');
+    }
+
+    req.session.account = { id: user.id, name: user.name, email: user.email };
+    req.session.admin = null;
+    // viaAccount: they can move between the dashboard and this account's
+    // stores, so the store admin keeps its "Exit store" link (see
+    // views/admin/partials/header.ejs).
+    req.session.impersonation = {
+      platformAdminId: req.session.platformAdmin.id,
+      platformAdminName: req.session.platformAdmin.name,
+      viaAccount: true,
+    };
+
+    res.redirect(adminPortalUrl(req, '/dashboard'));
   } catch (err) {
     next(err);
   }
@@ -176,30 +444,34 @@ router.get('/users', async (req, res, next) => {
 // knowing their password. The session gains an `impersonation` marker
 // (shown as a banner in views/admin/partials/header.ejs) so it's always
 // visible that this isn't a normal store-admin session, with a way back to
-// the platform admin.
+// the platform admin. `back` is where to return if that role can't be used.
+async function loginAsRole(req, res, roleId, back) {
+  const [[row]] = await pool.query(
+    `SELECT ur.role, u.id AS user_id, u.name, u.email, s.id AS store_id, s.subdomain, s.status AS store_status
+     FROM ${TABLES.userRoles} ur
+     JOIN ${TABLES.users} u ON u.id = ur.user_id
+     JOIN ${TABLES.stores} s ON s.id = ur.store_id
+     WHERE ur.id = ?`,
+    [roleId]
+  );
+  if (!row) {
+    req.flash('error', 'User not found.');
+    return res.redirect(back);
+  }
+  if (row.store_status !== 'active') {
+    req.flash('error', "That store is suspended — reactivate it first to log in as this user.");
+    return res.redirect(back);
+  }
+
+  req.session.admin = { id: row.user_id, name: row.name, email: row.email, store_id: row.store_id, role: row.role };
+  req.session.impersonation = { platformAdminId: req.session.platformAdmin.id, platformAdminName: req.session.platformAdmin.name };
+
+  res.redirect(storeUrl(req, row.subdomain, '/admin'));
+}
+
 router.post('/users/:roleId/login-as', async (req, res, next) => {
   try {
-    const [[row]] = await pool.query(
-      `SELECT ur.role, u.id AS user_id, u.name, u.email, s.id AS store_id, s.subdomain, s.status AS store_status
-       FROM ${TABLES.userRoles} ur
-       JOIN ${TABLES.users} u ON u.id = ur.user_id
-       JOIN ${TABLES.stores} s ON s.id = ur.store_id
-       WHERE ur.id = ?`,
-      [req.params.roleId]
-    );
-    if (!row) {
-      req.flash('error', 'User not found.');
-      return res.redirect('/platform-admin/users');
-    }
-    if (row.store_status !== 'active') {
-      req.flash('error', "That store is suspended — reactivate it first to log in as this user.");
-      return res.redirect('/platform-admin/users');
-    }
-
-    req.session.admin = { id: row.user_id, name: row.name, email: row.email, store_id: row.store_id, role: row.role };
-    req.session.impersonation = { platformAdminId: req.session.platformAdmin.id, platformAdminName: req.session.platformAdmin.name };
-
-    res.redirect(storeUrl(req, row.subdomain, '/admin'));
+    await loginAsRole(req, res, parseId(req.params.roleId), '/platform-admin/users');
   } catch (err) {
     next(err);
   }

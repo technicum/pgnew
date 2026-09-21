@@ -193,6 +193,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     req.session.account = { id: user.id, name: user.name, email: user.email };
+    req.session.impersonation = null; // a real login ends any leftover "logged in as" session
     req.session.admin = null; // any previous store session is stale until re-chosen from the dashboard
     res.redirect(adminPortalUrl(req, '/dashboard'));
   } catch (err) {
@@ -265,7 +266,18 @@ router.post('/dashboard/enter', requireAccount, async (req, res, next) => {
 router.post('/dashboard/logout', requireAccount, (req, res) => {
   req.session.account = null;
   req.session.admin = null;
+  req.session.impersonation = null;
   res.redirect(adminPortalUrl(req, '/login'));
+});
+
+// Ends a platform-admin "log in as" session started from the Users screen
+// (routes/platformAdmin.js) and sends them back to the platform admin.
+router.post('/dashboard/exit-impersonation', (req, res) => {
+  if (!req.isAdminPortal || !req.session.impersonation) return res.redirect(adminPortalUrl(req, '/dashboard'));
+  req.session.account = null;
+  req.session.admin = null;
+  req.session.impersonation = null;
+  res.redirect(rootUrl(req, '/platform-admin'));
 });
 
 // ---------- Create an additional store ----------
