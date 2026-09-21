@@ -44,6 +44,9 @@
               </form>
             </div>
           </details>
+          <% if (googleDriveClientId && googleDriveApiKey) { %>
+            <script src="/js/crm-lead-import.js?v=<%= assetVersion %>" defer></script>
+          <% } %>
         <% } %>
         <a href="/dashboard/crm/contacts/new" class="btn btn-primary">+ New contact</a>
       </div>

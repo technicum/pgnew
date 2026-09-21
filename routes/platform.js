@@ -619,7 +619,10 @@ router.post(
           : `SELECT email FROM ${TABLES.contacts} WHERE store_id IS NULL AND owner_user_id = ?`,
         [storeId || ownerUserId]
       );
-      const existingEmails = new Set(existingRows.map((r) => r.email));
+      // Lowercased: emails saved by other paths (signup, orders) may not be
+      // lowercase, and MySQL's unique key on (store_id, email) is
+      // case-insensitive, so a case-sensitive Set would miss those.
+      const existingEmails = new Set(existingRows.map((r) => String(r.email).toLowerCase()));
       const seenInFile = new Set();
 
       let imported = 0;
@@ -630,16 +633,28 @@ router.post(
           continue;
         }
         seenInFile.add(row.email);
-        await pool.query(
-          `INSERT INTO ${TABLES.contacts} (store_id, owner_user_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, 'import', ?)`,
-          [storeId, storeId ? null : ownerUserId, row.name, row.email, row.phone, JSON.stringify(row.tags)]
-        );
-        imported++;
+        try {
+          await pool.query(
+            `INSERT INTO ${TABLES.contacts} (store_id, owner_user_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, 'import', ?)`,
+            [storeId, storeId ? null : ownerUserId, row.name, row.email, row.phone, JSON.stringify(row.tags)]
+          );
+          imported++;
+        } catch (err) {
+          // Lost a race with another insert for the same email -- skip that
+          // row rather than aborting (and losing the summary for) the rest.
+          if (err.code !== 'ER_DUP_ENTRY') throw err;
+          skipped++;
+        }
       }
 
       const summary = [`Imported ${imported} lead${imported === 1 ? '' : 's'}.`];
       if (skipped) summary.push(`Skipped ${skipped} already in your CRM.`);
-      if (parsed.errors.length) summary.push(`${parsed.errors.length} row${parsed.errors.length === 1 ? '' : 's'} could not be imported.`);
+      if (parsed.truncated) summary.push(`Only the first ${parsed.maxRows} rows of the file were read.`);
+      if (parsed.errors.length) {
+        const shown = parsed.errors.slice(0, 5).join(' ');
+        const more = parsed.errors.length > 5 ? ` …and ${parsed.errors.length - 5} more.` : '';
+        summary.push(`${parsed.errors.length} row${parsed.errors.length === 1 ? '' : 's'} could not be imported: ${shown}${more}`);
+      }
       req.flash(imported ? 'success' : 'error', summary.join(' '));
       res.redirect(adminPortalUrl(req, '/dashboard/crm/leads'));
     } catch (err) {
