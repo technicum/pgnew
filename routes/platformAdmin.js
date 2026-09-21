@@ -7,6 +7,8 @@ const { pool, TABLES, PLANS, THEMES, isReservedSubdomain } = require('../db/data
 const { requirePlatformAdmin } = require('../middleware/auth');
 const { rootUrl, storeUrl, adminPortalUrl } = require('../middleware/tenant');
 const { VALID_SOURCES } = require('../lib/contacts');
+const settingsLib = require('../lib/settings');
+const { sendMail } = require('../lib/mailer');
 
 const SUBDOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -367,6 +369,63 @@ router.get('/leads', async (req, res, next) => {
       clearUrl: kind ? urlFor({ q: '', site: '', source: '' }) : '/platform-admin/leads',
       pageSize: LEADS_PAGE_SIZE,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Settings (SMTP, Google Drive keys, ...) ----------
+// Each section on the page is its own form posting to /settings/:group, so
+// saving one never requires re-entering another's values (secrets in
+// particular are never sent back to the page). See lib/settings.js.
+router.get('/settings', async (req, res, next) => {
+  try {
+    res.render('platform-admin/settings', {
+      title: 'Settings',
+      groups: await settingsLib.describeGroups(),
+      testEmailDefault: req.session.platformAdmin.email,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Declared before /settings/:group so "smtp-test" isn't taken for a group id.
+router.post('/settings/smtp-test', async (req, res, next) => {
+  try {
+    const to = String(req.body.to || '').trim();
+    if (!EMAIL_RE.test(to)) {
+      req.flash('error', 'Enter a valid email address to send the test to.');
+      return res.redirect('/platform-admin/settings#smtp');
+    }
+    try {
+      await sendMail({
+        to,
+        subject: 'PageZaper SMTP test',
+        text: 'This is a test email from your PageZaper platform settings. If you can read this, SMTP is working.',
+      });
+    } catch (err) {
+      // The SMTP server's own message (bad login, wrong port, ...) is what the
+      // admin needs to fix it, and this page is platform-admin only.
+      req.flash('error', `Test email failed: ${err.message}`);
+      return res.redirect('/platform-admin/settings#smtp');
+    }
+    req.flash('success', `Test email sent to ${to}.`);
+    res.redirect('/platform-admin/settings#smtp');
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/settings/:group', async (req, res, next) => {
+  try {
+    const { errors } = await settingsLib.saveGroup(req.params.group, req.body);
+    if (errors.length) {
+      req.flash('error', errors[0]);
+    } else {
+      req.flash('success', 'Settings saved.');
+    }
+    res.redirect(`/platform-admin/settings#${encodeURIComponent(req.params.group)}`);
   } catch (err) {
     next(err);
   }

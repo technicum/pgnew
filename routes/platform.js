@@ -9,6 +9,7 @@ const appsLib = require('../lib/apps');
 const crmLib = require('../lib/crm');
 const { sanitizeContact } = require('../lib/contacts');
 const leadImportLib = require('../lib/leadImport');
+const settingsLib = require('../lib/settings');
 
 function slugify(str) {
   return (str || '')
@@ -505,9 +506,11 @@ router.post('/dashboard/crm/activate', requireAccount, async (req, res, next) =>
 async function renderCrmContacts(req, res, next, segment) {
   try {
     const storeId = req.query.store ? parseInt(req.query.store, 10) : null;
-    const [contacts, stores] = await Promise.all([
+    const [contacts, stores, googleDrive] = await Promise.all([
       crmLib.listContacts(req.crm.ownerUserId, segment, storeId),
       crmLib.getOwnerStores(req.crm.ownerUserId),
+      // Saved in Platform Admin > Settings; falls back to the .env values.
+      settingsLib.getGroup('google_drive'),
     ]);
     res.render('platform/crm-contacts', {
       title: segment === 'customers' ? 'CRM Customers' : 'Leads',
@@ -517,8 +520,8 @@ async function renderCrmContacts(req, res, next, segment) {
       selectedStore: storeId,
       crm: req.crm,
       account: req.session.account,
-      googleDriveClientId: process.env.GOOGLE_DRIVE_CLIENT_ID || '',
-      googleDriveApiKey: process.env.GOOGLE_DRIVE_API_KEY || '',
+      googleDriveClientId: googleDrive.client_id,
+      googleDriveApiKey: googleDrive.api_key,
     });
   } catch (err) {
     next(err);

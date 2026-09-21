@@ -15,7 +15,8 @@
         <a href="/platform-admin" class="<%= title === 'All Stores' ? 'active' : '' %>">All stores</a>
         <a href="/platform-admin/users" class="<%= (title === 'Users' || (typeof activeNav !== 'undefined' && activeNav === 'users')) ? 'active' : '' %>">Users</a>
         <a href="/platform-admin/leads" class="<%= title === 'Leads' ? 'active' : '' %>">Leads</a>
-        <a href="/platform-admin/plans"class="<%= title === 'Plans' ? 'active' : '' %>">Plans</a>
+        <a href="/platform-admin/plans" class="<%= title === 'Plans' ? 'active' : '' %>">Plans</a>
+        <a href="/platform-admin/settings" class="<%= title === 'Settings' ? 'active' : '' %>">Settings</a>
       </nav>
       <form action="/platform-admin/logout" method="POST" class="admin-logout-form">
         <button type="submit" class="link-btn">Log out</button>

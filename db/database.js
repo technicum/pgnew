@@ -76,6 +76,10 @@ const TABLES = {
   pageSectionRevisions: `${PREFIX}page_section_revisions`,
   newsletterSubscribers: `${PREFIX}newsletter_subscribers`,
   platformAdmins: `${PREFIX}platform_admins`,
+  // Platform-wide key/value settings edited from Platform Admin > Settings
+  // (SMTP, Google Drive keys, ...) — see lib/settings.js for the field
+  // list and how secret values are encrypted.
+  settings: `${PREFIX}settings`,
   discounts: `${PREFIX}discounts`,
   // Structural theme marketplace (see lib/themes.js) — distinct from the
   // `theme` column on `stores` above, which only ever swaps two CSS color
@@ -397,6 +401,16 @@ CREATE TABLE IF NOT EXISTS ${TABLES.platformAdmins} (
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One row per setting, keyed like 'smtp.host'. A missing row means "not set
+-- in the admin" — lib/settings.js then falls back to the matching env var.
+-- Secret values (e.g. the SMTP password) are stored encrypted, prefixed
+-- 'enc:v1:', never as plain text.
+CREATE TABLE IF NOT EXISTS ${TABLES.settings} (
+  setting_key VARCHAR(100) PRIMARY KEY,
+  setting_value TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS ${TABLES.discounts} (
