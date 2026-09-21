@@ -505,6 +505,31 @@
 }
 .crm-tag-suggestion:hover { background: #eef2ff; }
 
+/* New contact form (views/platform/crm-contact-form.ejs): the same
+   .admin-form card, split into titled sections with a footer action bar. */
+.crm-form-head { max-width: 720px; margin-bottom: 16px; }
+.crm-back-link { font-size: 0.85rem; color: #6b7280; text-decoration: none; }
+.crm-back-link:hover { color: var(--color-primary); }
+.crm-form-lead { margin: 8px 0 0; font-size: 0.9rem; color: #6b7280; }
+.admin-form.crm-form { max-width: 720px; padding: 0; overflow: hidden; }
+.crm-form-section { padding: 22px 24px 6px; border-bottom: 1px solid #f0f1f3; }
+.crm-form-section h2 { margin: 0 0 2px; font-size: 0.95rem; color: #111827; }
+.crm-form-help { margin: 0 0 16px; font-size: 0.82rem; color: #9ca3af; }
+.crm-req { color: #dc2626; }
+.crm-field-hint { display: block; margin-top: 6px; font-size: 0.76rem; font-weight: 400; color: #9ca3af; }
+.crm-form input:focus, .crm-form select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+.crm-form input::placeholder { color: #c0c4cc; }
+.crm-form .crm-tag-field { margin-bottom: 16px; }
+.crm-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; background: #f9fafb; }
+@media (max-width: 600px) {
+  .crm-form .form-row { grid-template-columns: 1fr; gap: 0; }
+  .crm-form-actions .btn { flex: 1; text-align: center; }
+}
+
 /* Follow-ups (views/platform/crm-followups.ejs + partials/followup-row.ejs). */
 .admin-nav-badge { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 0.72rem; font-weight: 700; line-height: 18px; text-align: center; }
 .crm-contact-side { display: flex; flex-direction: column; gap: 24px; min-width: 0; }

@@ -1,52 +1,78 @@
 <%- include('partials/header') %>
 
     <div class="dashboard-main crm-main">
-      <form action="/dashboard/crm/contacts/new" method="POST" class="admin-form">
-        <label>Site <span style="font-weight:400; color:#6b7280;">(optional — leave blank for a general inquiry not tied to one site)</span>
-          <select name="store_id">
-            <option value="">No specific site</option>
-            <% stores.forEach(function(s) { %>
-              <option value="<%= s.id %>"><%= s.name %></option>
-            <% }); %>
-          </select>
-        </label>
+      <div class="crm-form-head">
+        <a href="/dashboard/crm/leads" class="crm-back-link">&larr; Back to leads</a>
+        <p class="crm-form-lead">Add someone you've spoken to or want to keep track of. You can schedule follow-ups and tasks for them once they're saved.</p>
+      </div>
 
-        <label>Name *
-          <input type="text" name="name" required placeholder="Jane Doe" />
-        </label>
+      <form action="/dashboard/crm/contacts/new" method="POST" class="admin-form crm-form">
+        <section class="crm-form-section">
+          <h2>Contact details</h2>
+          <p class="crm-form-help">Who are they and how do you reach them?</p>
 
-        <div class="form-row">
-          <label>Email *
-            <input type="email" name="email" required placeholder="jane@example.com" />
+          <label>Name <span class="crm-req" title="Required">*</span>
+            <input type="text" name="name" required autofocus autocomplete="off" maxlength="255" placeholder="Jane Doe" />
           </label>
-          <label>Phone
-            <input type="text" name="phone" placeholder="+91 98765 43210" />
-          </label>
+
+          <div class="form-row">
+            <label>Email <span class="crm-req" title="Required">*</span>
+              <input type="email" name="email" required autocomplete="off" maxlength="255" placeholder="jane@example.com" />
+            </label>
+            <label>Phone
+              <input type="tel" name="phone" autocomplete="off" maxlength="50" placeholder="+91 98765 43210" />
+            </label>
+          </div>
+        </section>
+
+        <section class="crm-form-section">
+          <h2>Where they belong</h2>
+          <p class="crm-form-help">Link them to one of your sites, and note how they found you.</p>
+
+          <div class="form-row">
+            <label>Site
+              <select name="store_id">
+                <option value="">No specific site</option>
+                <% stores.forEach(function(s) { %>
+                  <option value="<%= s.id %>"><%= s.name %></option>
+                <% }); %>
+              </select>
+              <span class="crm-field-hint">Leave blank for a general inquiry that isn't tied to one site.</span>
+            </label>
+            <label>Source
+              <select name="source">
+                <option value="manual" selected>Added manually</option>
+                <option value="contact_form">Contact form</option>
+                <option value="signup">Account signup</option>
+                <option value="order">Order / checkout</option>
+                <option value="newsletter">Newsletter</option>
+              </select>
+              <span class="crm-field-hint">Helps you see which channels bring leads in.</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="crm-form-section">
+          <h2>Tags</h2>
+          <p class="crm-form-help">Labels like "hot" or "wholesale" make leads easy to group later.</p>
+
+          <div class="crm-tag-field">
+            <label>Add tags <span class="crm-tag-hint" style="font-weight:400; color:#6b7280;">(comma-separated)</span>
+              <input type="text" name="tags" data-tag-input placeholder="hot, wholesale" />
+            </label>
+            <% if (typeof popularTags !== 'undefined' && popularTags.length) { %>
+              <div class="crm-tag-suggestions">
+                <span class="crm-tag-suggestions-label">Choose from the most used tags:</span>
+                <% popularTags.forEach(function(t) { %><button type="button" class="crm-tag-suggestion" data-tag="<%= t %>"><%= t %></button><% }); %>
+              </div>
+            <% } %>
+          </div>
+        </section>
+
+        <div class="crm-form-actions">
+          <a href="/dashboard/crm/leads" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Add contact</button>
         </div>
-
-        <label>Source
-          <select name="source">
-            <option value="manual" selected>Added manually</option>
-            <option value="contact_form">Contact form</option>
-            <option value="signup">Account signup</option>
-            <option value="order">Order / checkout</option>
-            <option value="newsletter">Newsletter</option>
-          </select>
-        </label>
-
-        <div class="crm-tag-field">
-          <label>Tags <span class="crm-tag-hint" style="font-weight:400; color:#6b7280;">(comma-separated)</span>
-            <input type="text" name="tags" data-tag-input placeholder="hot, wholesale" />
-          </label>
-          <% if (typeof popularTags !== 'undefined' && popularTags.length) { %>
-            <div class="crm-tag-suggestions">
-              <span class="crm-tag-suggestions-label">Choose from the most used tags:</span>
-              <% popularTags.forEach(function(t) { %><button type="button" class="crm-tag-suggestion" data-tag="<%= t %>"><%= t %></button><% }); %>
-            </div>
-          <% } %>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Add contact</button>
       </form>
     </div>
 
