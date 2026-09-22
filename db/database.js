@@ -145,6 +145,14 @@ const TABLES = {
   // A scheduled "reach out to this contact on this day" -- separate from
   // crm_tasks, and can optionally link to one task.
   crmFollowups: `${PREFIX}crm_followups`,
+  // CRM team attendance -- one row per clock-in/break/clock-out event (see
+  // the CREATE TABLE comment below for why this is an event log rather than
+  // a mutable per-day summary row).
+  crmAttendanceEvents: `${PREFIX}crm_attendance_events`,
+  // Per-task timer entries -- one row per "start timer" press, closed by
+  // "stop" (or by the next start, or by clocking out). See the CREATE TABLE
+  // comment below.
+  crmTaskTimeEntries: `${PREFIX}crm_task_time_entries`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -790,6 +798,47 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmFollowups} (
   FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_followup_owner_due (owner_user_id, done, due_date),
   INDEX idx_followup_contact (contact_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- CRM team attendance. Deliberately an append-only event log (clock_in /
+-- break_start / break_end / clock_out), not a mutable "today's summary"
+-- row -- lib/attendance.js derives worked/break totals and current state by
+-- walking a day's events in order, which keeps every clock action a plain
+-- INSERT (no read-modify-write race between two tabs/devices) and leaves a
+-- full audit trail for free. Scoped like crm_tasks: owner_user_id is whose
+-- CRM this belongs to, user_id is who clocked in (the owner themself or one
+-- of their crm_members).
+CREATE TABLE IF NOT EXISTS ${TABLES.crmAttendanceEvents} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  owner_user_id INT NOT NULL,
+  user_id INT NOT NULL,
+  event_type ENUM('clock_in', 'break_start', 'break_end', 'clock_out') NOT NULL,
+  event_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  INDEX idx_attendance_owner_user_at (owner_user_id, user_id, event_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Per-task timer entries -- one row per "start timer" press on a crm_tasks
+-- row, with ended_at NULL while it's still running. lib/attendance.js
+-- enforces one running row per user_id at a time (starting a new timer
+-- stops whatever was already running), so a person's total logged hours
+-- never double-counts overlapping entries. owner_user_id is denormalized
+-- from the task the same way crm_tasks/crm_followups already do it, so
+-- "my total hours today" stays a single-table scan.
+CREATE TABLE IF NOT EXISTS ${TABLES.crmTaskTimeEntries} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  owner_user_id INT NOT NULL,
+  task_id INT NOT NULL,
+  user_id INT NOT NULL,
+  started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ended_at TIMESTAMP NULL,
+  FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
+  INDEX idx_time_entry_task (task_id),
+  INDEX idx_time_entry_user_running (user_id, ended_at),
+  INDEX idx_time_entry_user_started (owner_user_id, user_id, started_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `;
 

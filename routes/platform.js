@@ -7,6 +7,7 @@ const { storeUrl, rootUrl, adminPortalUrl } = require('../middleware/tenant');
 const { defaultFields } = require('../lib/sections');
 const appsLib = require('../lib/apps');
 const crmLib = require('../lib/crm');
+const attendanceLib = require('../lib/attendance');
 const { sanitizeContact, sanitizeTags, mergeTags } = require('../lib/contacts');
 const leadImportLib = require('../lib/leadImport');
 const settingsLib = require('../lib/settings');
@@ -461,6 +462,11 @@ async function requireCrm(req, res, next) {
     // Badge on the sidebar's Follow-ups link: this person's open follow-ups
     // due today or already overdue.
     res.locals.crmFollowupsDue = await crmLib.countFollowupsDue(access.ownerUserId, req.session.account.id);
+    // The task timer currently running for this person (if any) -- shown as
+    // a small persistent banner across every CRM screen (see partials/
+    // header.ejs) so an open timer never gets lost while browsing elsewhere.
+    res.locals.activeTimer = await attendanceLib.getRunningTimer(access.ownerUserId, req.session.account.id);
+    res.locals.formatDuration = attendanceLib.formatDuration;
     next();
   } catch (err) {
     next(err);
@@ -883,7 +889,7 @@ router.post('/dashboard/crm/tasks/:id/reassign', requireAccount, requireCrm, asy
 // the loaded task (edit mode) -- so the list and the panel are always one
 // consistent server render, matching the rest of this app's no-AJAX,
 // full-page-navigation pattern.
-async function renderCrmTasks(req, res, next, { openTask, subtasks, mode }) {
+async function renderCrmTasks(req, res, next, { openTask, subtasks, mode, taskTotalSeconds, taskTimeEntries }) {
   try {
     const filters = { search: req.query.q, due: req.query.due, assignee: req.query.assignee };
     const [tasks, assignableUsers] = await Promise.all([
@@ -904,6 +910,10 @@ async function renderCrmTasks(req, res, next, { openTask, subtasks, mode }) {
       storeLink: openTask && openTask.store_subdomain ? storeUrl(req, openTask.store_subdomain) : null,
       subtasks: subtasks || [],
       mode: mode || 'view', // 'new' | 'edit' | 'view' (drawer closed)
+      // Time tracked on the open task -- see lib/attendance.js. Only
+      // meaningful (and only fetched by the caller) in 'edit' mode.
+      taskTotalSeconds: taskTotalSeconds || 0,
+      taskTimeEntries: taskTimeEntries || [],
     });
   } catch (err) {
     next(err);
@@ -951,8 +961,12 @@ router.get('/dashboard/crm/tasks/:id', requireAccount, requireCrm, async (req, r
       req.flash('error', 'Task not found.');
       return res.redirect(adminPortalUrl(req, '/dashboard/crm/tasks'));
     }
-    const subtasks = await crmLib.listSubtasks(task.id);
-    renderCrmTasks(req, res, next, { openTask: task, subtasks, mode: 'edit' });
+    const [subtasks, taskTotalSeconds, taskTimeEntries] = await Promise.all([
+      crmLib.listSubtasks(task.id),
+      attendanceLib.getTaskTotalSeconds(task.id),
+      attendanceLib.listTaskTimeEntries(task.id),
+    ]);
+    renderCrmTasks(req, res, next, { openTask: task, subtasks, mode: 'edit', taskTotalSeconds, taskTimeEntries });
   } catch (err) {
     next(err);
   }
@@ -1269,6 +1283,76 @@ router.post('/dashboard/crm/team/:userId/remove', requireAccount, requireCrm, re
   } catch (err) {
     next(err);
   }
+});
+
+// ---------- CRM: Attendance (clock in/out, with breaks) ----------
+// Everyone with CRM access clocks themself in/out here. Only the owner and
+// managers also see the whole team's status today -- a plain member sees
+// just their own card and history (same visibility split requireCrmOwner
+// already draws elsewhere for billing/roster, applied one notch looser
+// since this is about the member's own time, not the account).
+router.get('/dashboard/crm/attendance', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    const [myStatus, myRecentDays, team] = await Promise.all([
+      attendanceLib.getStatus(req.crm.ownerUserId, req.session.account.id),
+      attendanceLib.listRecentDays(req.crm.ownerUserId, req.session.account.id, 7),
+      req.crm.role !== 'member' ? attendanceLib.listTeamStatusToday(req.crm.ownerUserId) : null,
+    ]);
+    res.render('platform/crm-attendance', {
+      title: 'Attendance',
+      account: req.session.account,
+      crm: req.crm,
+      myStatus,
+      myRecentDays,
+      team,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Wraps the four clock actions: same shape (no body, redirect back to the
+// Attendance screen, a bad-state error surfaces as a flash rather than a
+// 500) so each route below is a one-liner.
+function attendanceAction(fn) {
+  return async (req, res, next) => {
+    try {
+      await fn(req.crm.ownerUserId, req.session.account.id);
+    } catch (err) {
+      if (!err || !err.message) return next(err);
+      req.flash('error', err.message);
+    }
+    res.redirect(adminPortalUrl(req, '/dashboard/crm/attendance'));
+  };
+}
+
+router.post('/dashboard/crm/attendance/clock-in', requireAccount, requireCrm, attendanceAction(attendanceLib.clockIn));
+router.post('/dashboard/crm/attendance/clock-out', requireAccount, requireCrm, attendanceAction(attendanceLib.clockOut));
+router.post('/dashboard/crm/attendance/break-start', requireAccount, requireCrm, attendanceAction(attendanceLib.startBreak));
+router.post('/dashboard/crm/attendance/break-end', requireAccount, requireCrm, attendanceAction(attendanceLib.endBreak));
+
+// ---------- CRM: per-task timer ----------
+// redirect (a hidden field) sends the user back to wherever they started
+// the timer from (My Tasks, the Tasks drawer, or the Attendance screen)
+// instead of guessing from Referer -- same convention as the task
+// toggle/reassign routes above.
+router.post('/dashboard/crm/tasks/:id/timer/start', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    await attendanceLib.startTimer(req.crm.ownerUserId, req.session.account.id, req.params.id);
+  } catch (err) {
+    if (!err || !err.message) return next(err);
+    req.flash('error', err.message);
+  }
+  res.redirect(req.body.redirect || req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/my-tasks'));
+});
+
+router.post('/dashboard/crm/tasks/:id/timer/stop', requireAccount, requireCrm, async (req, res, next) => {
+  try {
+    await attendanceLib.stopTimer(req.crm.ownerUserId, req.session.account.id);
+  } catch (err) {
+    return next(err);
+  }
+  res.redirect(req.body.redirect || req.get('Referer') || adminPortalUrl(req, '/dashboard/crm/my-tasks'));
 });
 
 module.exports = router;

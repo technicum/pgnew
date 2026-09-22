@@ -17,7 +17,7 @@
         // naturally false on the "activate CRM" screen (nothing to
         // sub-navigate there yet) even though that screen shares the top-
         // level "CRM" nav item below.
-        var crmScreens = ['Leads', 'CRM Customers', 'New Contact', 'Contact', 'Tasks', 'Task', 'My Tasks', 'Follow-ups', 'Follow-up', 'Follow-up History', 'CRM Team'];
+        var crmScreens = ['Leads', 'CRM Customers', 'New Contact', 'Contact', 'Tasks', 'Task', 'My Tasks', 'Follow-ups', 'Follow-up', 'Follow-up History', 'Attendance', 'CRM Team'];
         var crmOpen = typeof crm !== 'undefined' && crm && crmScreens.indexOf(title) !== -1;
       %>
       <nav class="admin-nav">
@@ -29,6 +29,7 @@
           <a href="/dashboard/crm/followups" class="admin-nav-sub <%= (title === 'Follow-ups' || title === 'Follow-up' || title === 'Follow-up History') ? 'active' : '' %>">Follow-ups<% if (typeof crmFollowupsDue !== 'undefined' && crmFollowupsDue > 0) { %> <span class="admin-nav-badge"><%= crmFollowupsDue %></span><% } %></a>
           <a href="/dashboard/crm/tasks" class="admin-nav-sub <%= (title === 'Tasks' || title === 'Task') ? 'active' : '' %>">Tasks</a>
           <a href="/dashboard/crm/my-tasks" class="admin-nav-sub <%= title === 'My Tasks' ? 'active' : '' %>">My Tasks</a>
+          <a href="/dashboard/crm/attendance" class="admin-nav-sub <%= title === 'Attendance' ? 'active' : '' %>">Attendance</a>
           <% if (crm.role === 'owner') { %>
             <a href="/dashboard/crm/team" class="admin-nav-sub <%= title === 'CRM Team' ? 'active' : '' %>">Team</a>
           <% } %>
@@ -50,6 +51,28 @@
           </form>
         </div>
       <% } %>
+      <%
+        // activeTimer only ever lands in res.locals via requireCrm (see
+        // routes/platform.js) -- undefined, not just falsy, on every
+        // non-CRM-gated page (dashboard, profile, signup, ...) this same
+        // header is shared with, hence the typeof guard.
+        var activeTimer_ = typeof activeTimer !== 'undefined' ? activeTimer : null;
+        // Hidden only on the two spots that already show this exact timer
+        // inline with their own stop control: the Attendance card, and the
+        // Tasks drawer when it's open on the very task being timed (openTask
+        // is only ever in scope when crm-tasks.ejs includes this partial).
+        var onAttendance = title === 'Attendance';
+        var onTimedTaskDrawer = typeof openTask !== 'undefined' && openTask && activeTimer_ && openTask.id === activeTimer_.task_id;
+      %>
+      <% if (activeTimer_ && !onAttendance && !onTimedTaskDrawer) { %>
+        <div class="active-timer-banner">
+          <span>Timer running: <strong><%= activeTimer_.task_title %></strong> <span class="live-duration" data-since="<%= new Date(activeTimer_.started_at).toISOString() %>">0m</span></span>
+          <form action="/dashboard/crm/tasks/<%= activeTimer_.task_id %>/timer/stop" method="POST">
+            <button type="submit" class="link-btn">Stop</button>
+          </form>
+        </div>
+      <% } %>
+
       <header class="admin-topbar">
         <h1><%= title %></h1>
         <% if (typeof account !== 'undefined' && account) { %><span class="admin-user">Hi, <%= account.name %></span><% } %>

@@ -752,6 +752,40 @@
 
 .tp-drawer-footer { margin-top: 28px; padding-top: 16px; border-top: 1px solid #e5e7eb; background: none; border-left: none; border-right: none; border-bottom: none; }
 
+/* Task drawer -- time tracking (see crm-tasks.ejs's tp-side-col) */
+.tp-time-total { margin: 4px 0 10px; font-size: 1.1rem; font-weight: 700; color: #111827; }
+
+/* Attendance screen + the active-timer banner shown on every CRM page */
+.att-my-card { margin-bottom: 0; }
+.att-status-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.att-status-line { margin: 0 0 8px; font-size: 0.92rem; }
+.att-status-out { background: #f3f4f6; color: #4b5563; }
+.att-hours-today { margin: 0; font-size: 0.88rem; color: #4b5563; }
+.att-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.att-timer-row {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.88rem;
+}
+.active-timer-banner {
+  background: #eef2ff;
+  color: #3730a3;
+  padding: 10px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #e0e7ff;
+}
+.active-timer-banner .link-btn { color: #4338ca; font-weight: 600; }
+.active-timer-banner .link-btn:hover { color: #1e1b4b; }
+
 /* Profile page */
 .profile-password-hint { font-size: 0.78rem; color: #9ca3af; margin: 0 0 12px; }
 

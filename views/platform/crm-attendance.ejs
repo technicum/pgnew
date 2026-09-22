@@ -1,0 +1,94 @@
+<%- include('partials/header') %>
+
+    <div class="dashboard-main crm-main">
+    <div class="panel att-my-card">
+      <div class="att-status-row">
+        <div>
+          <span class="tp-label">Your status</span>
+          <p class="att-status-line">
+            <% if (myStatus.state === 'in') { %>
+              <span class="status-pill status-paid">Clocked in</span> since <%= new Date(myStatus.since).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+            <% } else if (myStatus.state === 'break') { %>
+              <span class="status-pill status-pending">On break</span> since <%= new Date(myStatus.since).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+            <% } else { %>
+              <span class="status-pill att-status-out">Clocked out</span>
+            <% } %>
+          </p>
+          <p class="att-hours-today">
+            Worked today:
+            <% if (myStatus.state === 'in') { %>
+              <!-- Ticks forward client-side from the value/moment this page
+                   was rendered, rather than replaying the whole day's
+                   worked/break history in the browser -- see
+                   public/js/live-duration.js. -->
+              <strong class="live-duration" data-since="<%= new Date().toISOString() %>" data-base-seconds="<%= myStatus.workedSeconds %>"><%= formatDuration(myStatus.workedSeconds) %></strong>
+            <% } else { %>
+              <strong><%= formatDuration(myStatus.workedSeconds) %></strong>
+            <% } %>
+            <% if (myStatus.breakSeconds > 0) { %> · on break <%= formatDuration(myStatus.breakSeconds) %><% } %>
+          </p>
+        </div>
+        <div class="att-actions">
+          <% if (myStatus.state === 'out') { %>
+            <form action="/dashboard/crm/attendance/clock-in" method="POST"><button type="submit" class="btn tp-btn-primary">Clock in</button></form>
+          <% } else { %>
+            <% if (myStatus.state === 'in') { %>
+              <form action="/dashboard/crm/attendance/break-start" method="POST"><button type="submit" class="btn btn-secondary">Start break</button></form>
+            <% } else { %>
+              <form action="/dashboard/crm/attendance/break-end" method="POST"><button type="submit" class="btn btn-secondary">End break</button></form>
+            <% } %>
+            <form action="/dashboard/crm/attendance/clock-out" method="POST"><button type="submit" class="btn tp-btn-primary">Clock out</button></form>
+          <% } %>
+        </div>
+      </div>
+
+      <% if (activeTimer) { %>
+        <div class="att-timer-row">
+          <span>Task timer running: <strong><%= activeTimer.task_title %></strong> — <span class="live-duration" data-since="<%= new Date(activeTimer.started_at).toISOString() %>">0m</span></span>
+          <form action="/dashboard/crm/tasks/<%= activeTimer.task_id %>/timer/stop" method="POST">
+            <input type="hidden" name="redirect" value="/dashboard/crm/attendance" />
+            <button type="submit" class="link-btn danger">Stop timer</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+
+    <h2 style="margin-top:32px;">Your last 7 days</h2>
+    <table class="admin-table">
+      <thead><tr><th>Date</th><th>Worked</th><th>Break</th></tr></thead>
+      <tbody>
+        <% myRecentDays.forEach(function(d) { %>
+          <tr>
+            <td><%= new Date(d.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) %></td>
+            <td><%= formatDuration(d.workedSeconds) %></td>
+            <td><%= d.breakSeconds > 0 ? formatDuration(d.breakSeconds) : '—' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <% if (team) { %>
+      <h2 style="margin-top:32px;">Team today</h2>
+      <table class="admin-table">
+        <thead><tr><th>Name</th><th>Status</th><th>Worked today</th></tr></thead>
+        <tbody>
+          <% team.forEach(function(m) { %>
+            <tr>
+              <td><%= m.name %><%= m.id === account.id ? ' (you)' : '' %></td>
+              <td>
+                <% if (m.state === 'in') { %><span class="status-pill status-paid">Clocked in</span>
+                <% } else if (m.state === 'break') { %><span class="status-pill status-pending">On break</span>
+                <% } else { %><span class="status-pill att-status-out">Clocked out</span><% } %>
+              </td>
+              <td><%= formatDuration(m.workedSeconds) %></td>
+            </tr>
+          <% }); %>
+          <% if (team.length === 0) { %>
+            <tr><td colspan="3" class="empty-state">No team members yet.</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+    </div>
+
+<%- include('partials/footer') %>
