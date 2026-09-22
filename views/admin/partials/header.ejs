@@ -49,7 +49,16 @@
           // own "Edit menu: X" title.
           var isPageBuilderScreen = title && title.startsWith('Edit ') && title !== 'Edit Product' && !isMenusScreen;
           var isBlogScreen = title && (title === 'Blog Posts' || title === 'New Blog Post' || title === 'Edit Blog Post');
-          var contentOpen = title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen || title === 'Media' || isBlogScreen);
+          // "Metaobjects" -- see lib/metaobjects.js. Every screen for it
+          // (list, one type's fields+entries, an entry's own form) shares
+          // the title 'Metaobjects'. Folded into the Content submenu rather
+          // than its own top-level item -- it's custom content, same family
+          // as Pages/Media/Blog posts. Shown regardless of store category:
+          // it's generic content modeling, not an ecommerce concept, and is
+          // exactly what fills the nav gap the 4 non-online-store categories
+          // otherwise have here.
+          var isMetaobjectsScreen = title === 'Metaobjects';
+          var contentOpen = title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen || title === 'Media' || isBlogScreen || isMetaobjectsScreen);
           var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Header' || title === 'Footer' || title.indexOf(' override — ') !== -1 || isMenusScreen);
         %>
         <a href="/admin/pages" class="<%= contentOpen ? 'active' : '' %>">Content</a>
@@ -57,18 +66,8 @@
           <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen) ? 'active' : '' %>">Pages</a>
           <a href="/admin/media" class="admin-nav-sub <%= title === 'Media' ? 'active' : '' %>">Media</a>
           <a href="/admin/blog" class="admin-nav-sub <%= isBlogScreen ? 'active' : '' %>">Blog posts</a>
+          <a href="/admin/metaobjects" class="admin-nav-sub <%= isMetaobjectsScreen ? 'active' : '' %>">Metaobjects</a>
         <% } %>
-
-        <%
-          // "Metaobjects" -- see lib/metaobjects.js. Every screen for it
-          // (list, one type's fields+entries, an entry's own form) shares
-          // the title 'Metaobjects', so unlike the guards above this one's
-          // just a plain string compare. Shown regardless of store category
-          // -- it's generic content modeling, not an ecommerce concept, and
-          // is exactly what fills the nav gap the 4 non-online-store
-          // categories otherwise have here.
-        %>
-        <a href="/admin/metaobjects" class="<%= title === 'Metaobjects' ? 'active' : '' %>">Metaobjects</a>
 
         <a href="/admin/store/themes" class="<%= editStoreOpen ? 'active' : '' %>">Edit Site</a>
         <% if (editStoreOpen) { %>
