@@ -8,6 +8,7 @@ const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('../lib/themes');
 const { resolveTokens, tokensToInlineStyle, themeDefaultTokens } = require('../lib/themeTokens');
 const { readManifest } = require('../lib/themeManifest');
 const menusLib = require('../lib/menus');
+const metaobjectsLib = require('../lib/metaobjects');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -283,6 +284,34 @@ async function renderStorePage(req, res, next, page) {
       rows.forEach((p) => { spotlightProducts[p.id] = toNumber(p); });
     }
 
+    // "Metaobject list" sections each point at one of this store's own
+    // metaobject types (definition_id, chosen in the builder — see
+    // lib/metaobjects.js) — fetched fresh here, grouped by definition so a
+    // page with more than one metaobject section (e.g. Properties AND
+    // Agents) only queries each type once.
+    const listingDefinitionIds = [...new Set(
+      rawSections.filter((s) => s.type === 'listings')
+        .map((s) => (typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields).definition_id)
+        .filter((id) => Number.isFinite(id) && id > 0)
+    )];
+    let listingEntriesByDefinition = {};
+    let listingDefinitionsById = {};
+    if (listingDefinitionIds.length) {
+      const [entryRows] = await pool.query(
+        `SELECT * FROM ${TABLES.listings} WHERE store_id = ? AND status = 'active' AND definition_id IN (?) ORDER BY created_at DESC`,
+        [storeId, listingDefinitionIds]
+      );
+      entryRows.forEach((entry) => {
+        if (!listingEntriesByDefinition[entry.definition_id]) listingEntriesByDefinition[entry.definition_id] = [];
+        listingEntriesByDefinition[entry.definition_id].push(entry);
+      });
+      const [defRows] = await pool.query(
+        `SELECT * FROM ${TABLES.metaobjectDefinitions} WHERE store_id = ? AND id IN (?)`,
+        [storeId, listingDefinitionIds]
+      );
+      defRows.forEach((d) => { listingDefinitionsById[d.id] = d; });
+    }
+
     const sections = rawSections.map((s) => {
       const fields = typeof s.fields === 'string' ? JSON.parse(s.fields) : s.fields;
       const section = {
@@ -302,6 +331,11 @@ async function renderStorePage(req, res, next, page) {
       }
       if (s.type === 'spotlight') {
         section.product = fields.product_id ? (spotlightProducts[fields.product_id] || null) : null;
+      }
+      if (s.type === 'listings') {
+        const def = fields.definition_id ? listingDefinitionsById[fields.definition_id] : null;
+        section.definition = def || null;
+        section.entries = def ? (listingEntriesByDefinition[def.id] || []).slice(0, fields.limit || 12) : [];
       }
       return section;
     });
@@ -694,6 +728,38 @@ router.post('/checkout', async (req, res, next) => {
     next(err);
   } finally {
     conn.release();
+  }
+});
+
+// ---------- Metaobject entry detail (e.g. "/property/123-main-st") ----------
+// A true catch-all on the URL shape (any /<segment>/<segment>), registered
+// last so every literal-prefix route above (/products/:slug, /blog/:slug,
+// /account/*, ...) always matches first — Express tries routes in
+// registration order, and none of those can ever reach here for their own
+// prefixes. <handle> is looked up as a metaobject definition's handle at
+// request time rather than needing its own route per store; a handle that
+// doesn't resolve to one just falls through to next() (there is no other
+// content beyond this route, so that lands on the 404 handler in
+// server.js), same as any other unmatched path.
+router.get('/:handle/:slug', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const definition = await metaobjectsLib.getDefinitionByHandle(storeId, req.params.handle);
+    if (!definition) return next();
+    const entry = await metaobjectsLib.getEntryBySlug(storeId, definition.id, req.params.slug);
+    if (!entry || entry.status !== 'active') {
+      return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Not found' });
+    }
+    const fields = await metaobjectsLib.listFields(definition.id);
+    res.render(`${req.themeViewPrefix}/listing`, {
+      title: `${entry.title} · ${req.store.name}`,
+      definition,
+      entry,
+      fields,
+      values: entry.details || {},
+    });
+  } catch (err) {
+    next(err);
   }
 });
 

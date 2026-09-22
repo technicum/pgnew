@@ -59,6 +59,17 @@
           <a href="/admin/blog" class="admin-nav-sub <%= isBlogScreen ? 'active' : '' %>">Blog posts</a>
         <% } %>
 
+        <%
+          // "Metaobjects" -- see lib/metaobjects.js. Every screen for it
+          // (list, one type's fields+entries, an entry's own form) shares
+          // the title 'Metaobjects', so unlike the guards above this one's
+          // just a plain string compare. Shown regardless of store category
+          // -- it's generic content modeling, not an ecommerce concept, and
+          // is exactly what fills the nav gap the 4 non-online-store
+          // categories otherwise have here.
+        %>
+        <a href="/admin/metaobjects" class="<%= title === 'Metaobjects' ? 'active' : '' %>">Metaobjects</a>
+
         <a href="/admin/store/themes" class="<%= editStoreOpen ? 'active' : '' %>">Edit Site</a>
         <% if (editStoreOpen) { %>
           <a href="/admin/store/themes" class="admin-nav-sub <%= title && (title === 'Themes' || title.startsWith('Customize ')) ? 'active' : '' %>">Themes</a>

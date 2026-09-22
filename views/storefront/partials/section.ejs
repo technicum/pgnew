@@ -258,6 +258,27 @@
     <% if (section.fields.link_url) { %><a href="<%= section.fields.link_url %>" class="pz-heading-link"><% } %><%- pzHOpen %><%= section.fields.heading %><%- pzHClose %><% if (section.fields.link_url) { %></a><% } %>
   </section>
 
+<% } else if (section.type === 'listings') { %>
+  <section id="<%= pzId %>" class="product-grid-section listing-grid-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
+    <h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+    <div class="product-grid listing-grid">
+      <% if (!section.definition) { %>
+        <p class="empty-state">No metaobject type chosen for this section yet — pick one in the builder.</p>
+      <% } else if (section.entries.length === 0) { %>
+        <p class="empty-state">No <%= section.definition.name.toLowerCase() %> entries yet.</p>
+      <% } %>
+      <% section.entries.forEach(function(e) { %>
+        <a class="product-card listing-card" href="/<%= section.definition.handle %>/<%= e.slug %>">
+          <div class="product-card-img" style="background-image: url('<%= e.image_url %>')"></div>
+          <div class="product-card-body">
+            <h3><%= e.title %></h3>
+          </div>
+        </a>
+      <% }); %>
+    </div>
+  </section>
+
 <% } else if (section.type === 'products') { %>
   <section id="<%= pzId %>" class="product-grid-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
     <%- pzUniBgExtras(section) %>

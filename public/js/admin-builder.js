@@ -61,6 +61,7 @@
     hero: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="13" rx="1.3"/><path d="M6 12.5h8M7.5 9.5h5"/></svg>',
     heading: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 4v12M13 4v12M4 10h9"/><path d="M15.5 8.5V13"/></svg>',
     products: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="2.5" width="6" height="6" rx="1"/><rect x="11.5" y="2.5" width="6" height="6" rx="1"/><rect x="2.5" y="11.5" width="6" height="6" rx="1"/><rect x="11.5" y="11.5" width="6" height="6" rx="1"/></svg>',
+    listings: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M10 2.8 17 6.5 10 10.2 3 6.5 10 2.8Z"/><path d="M3 10.2l7 3.7 7-3.7"/><path d="M3 13.8l7 3.7 7-3.7"/></svg>',
     text_image: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="7" height="13" rx="1.1"/><path d="M13 6h4.5M13 9h4.5M13 12h3"/></svg>',
     testimonials: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M6.5 6.5c-2 0-3 1.4-3 3.4S4.5 13 6.5 13"/><path d="M13.5 6.5c-2 0-3 1.4-3 3.4S11.5 13 13.5 13"/></svg>',
     newsletter: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.4"/><path d="m3 5.5 7 5.3 7-5.3"/></svg>',
@@ -509,6 +510,26 @@
           '<div class="b-sec-img-block b-ph"' + imgStyle + '>' + (d.image_url ? "" : icon("image")) + '</div>' +
           '<div><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
           '<p data-field="body" contenteditable="true">' + esc(d.body) + '</p></div></div>';
+
+      case "listings": {
+        var moDef = d.definition_id ? DATA.metaobjectDefinitions.filter(function (m) { return String(m.id) === String(d.definition_id); })[0] : null;
+        if (!moDef) return '<div class="b-sec-pad b-sec-products"><div class="b-prod-empty">No metaobject type selected — choose one from the panel on the right.</div></div>';
+        var moCount = Math.max(1, Math.min(48, parseInt(d.limit, 10) || 12));
+        var moItems = (moDef.entries || []).slice(0, moCount);
+        var moCards;
+        if (!moItems.length) {
+          moCards = '<div class="b-prod-empty">' + esc(moDef.name) + ' has no entries yet — <a href="/admin/metaobjects/' + moDef.id + '" target="_blank">add one</a> to preview it here.</div>';
+        } else {
+          moCards = moItems.map(function (e) {
+            var imgStyle = e.image_url ? ' style="background-image:url(\'' + esc(e.image_url).replace(/'/g, "%27") + '\');"' : "";
+            return '<div><div class="b-prod-card-img b-ph"' + imgStyle + '>' + (e.image_url ? "" : icon("image")) + '</div>' +
+              '<div class="b-prod-card-name">' + esc(e.title) + '</div></div>';
+          }).join("");
+        }
+        return '<div class="b-sec-pad b-sec-products"><div class="b-sec-heading-row"><h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
+          '<span>' + ((moDef.entries || []).length ? "showing " + Math.min(moCount, moDef.entries.length) + " of " + moDef.entries.length : "") + '</span></div>' +
+          '<div class="b-prod-grid">' + moCards + '</div></div>';
+      }
 
       case "products":
         var count = Math.max(1, Math.min(48, parseInt(d.limit, 10) || 12));
@@ -1528,6 +1549,15 @@
       case "text_image":
         return field("Image URL", imageFieldHtml("image_url", d.image_url, "https://…")) +
           field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Image position lives on the Style tab.</div>');
+      case "listings": {
+        var moOptions = DATA.metaobjectDefinitions.map(function (m) { return { val: String(m.id), label: m.name }; });
+        var moPicker = moOptions.length
+          ? selectHtml("definition_id", [{ val: "", label: "Choose a type…" }].concat(moOptions), String(d.definition_id || ""))
+          : '<div class="b-inspector-hint">Create a metaobject type first (Metaobjects in the sidebar), then come back here to show its entries.</div>';
+        return field("Metaobject type", moPicker) +
+          field("Entries to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
+          field("", '<div class="b-inspector-hint">Click the heading to edit it.</div>');
+      }
       case "products":
         return field("Products to show", selectHtml("limit", [{ val: "4", label: "4" }, { val: "8", label: "8" }, { val: "12", label: "12" }, { val: "24", label: "24" }, { val: "48", label: "48" }], String(d.limit))) +
           field("", '<div class="b-inspector-hint">Shows your ' + DATA.products.length + ' most recent products. Click the heading to edit it.</div>');

@@ -237,6 +237,10 @@
       })).split('/').join(String.fromCharCode(92) + '/') %>,
       products: <%- JSON.stringify(products).split('/').join(String.fromCharCode(92) + '/') %>,
       categories: <%- JSON.stringify(categories).split('/').join(String.fromCharCode(92) + '/') %>,
+      // This store's own metaobject types (see lib/metaobjects.js), for the
+      // "Metaobject list" section's inspector picker -- same idea as
+      // products/categories above.
+      metaobjectDefinitions: <%- JSON.stringify(metaobjectDefinitions).split('/').join(String.fromCharCode(92) + '/') %>,
       components: <%- JSON.stringify(components).split('/').join(String.fromCharCode(92) + '/') %>,
       // The store's saved menus (id/name, for the nav_menu inspector's
       // picker) and each one's items already resolved to real labels/urls

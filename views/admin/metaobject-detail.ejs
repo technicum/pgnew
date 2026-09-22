@@ -1,0 +1,152 @@
+<%- include('partials/header') %>
+
+<p class="crm-back-link" style="display:block; margin-bottom:12px;"><a href="/admin/metaobjects">&larr; All metaobject types</a></p>
+
+<div class="panel" style="max-width:560px; margin-bottom:20px;">
+  <h2>Type settings</h2>
+  <form action="/admin/metaobjects/<%= definition.id %>/edit" method="POST" class="admin-form" style="border:none; padding:0; box-shadow:none; max-width:none;">
+    <div class="form-row">
+      <label>Name *
+        <input type="text" name="name" value="<%= definition.name %>" maxlength="100" required />
+      </label>
+      <label>Handle *
+        <input type="text" name="handle" value="<%= definition.handle %>" maxlength="50" required />
+        <span class="form-hint">Entries live at /<%= definition.handle %>/&lt;entry&gt; on your site.</span>
+      </label>
+    </div>
+    <button type="submit" class="btn btn-secondary">Save</button>
+  </form>
+</div>
+
+<div class="panel" style="margin-bottom:20px;">
+  <h2>Fields</h2>
+  <p class="form-hint" style="margin-top:0;">What every <%= definition.name %> entry has — e.g. Bedrooms, Price, Has Parking.</p>
+
+  <% if (fields.length > 0) { %>
+    <table class="admin-table" style="margin-bottom:20px;">
+      <thead><tr><th>Label</th><th>Key</th><th>Type</th><th>Required</th><th></th></tr></thead>
+      <tbody>
+        <% fields.forEach(function(f) { %>
+          <tr data-field-row="<%= f.id %>">
+            <td>
+              <span class="mo-field-display"><%= f.label %></span>
+              <form class="mo-field-edit-form" action="/admin/metaobjects/<%= definition.id %>/fields/<%= f.id %>/edit" method="POST" hidden>
+                <input type="text" name="label" value="<%= f.label %>" maxlength="100" required placeholder="Label" />
+                <select name="type" class="mo-field-type-select">
+                  <% fieldTypes.forEach(function(t) { %>
+                    <option value="<%= t %>" <%= f.type === t ? 'selected' : '' %>><%= fieldTypeLabels[t] %></option>
+                  <% }); %>
+                </select>
+                <label class="category-checkbox" style="display:inline-flex !important;"><input type="checkbox" name="required" value="1" <%= f.required ? 'checked' : '' %> /> Required</label>
+                <textarea name="options" class="mo-field-options" rows="2" placeholder="One option per line" <%= f.type === 'select' ? '' : 'hidden' %>><%= (f.options || []).join('\n') %></textarea>
+                <button type="submit" class="link-btn">Save</button>
+                <button type="button" class="link-btn mo-field-cancel">Cancel</button>
+              </form>
+            </td>
+            <td><code><%= f.field_key %></code></td>
+            <td class="mo-field-type-display"><%= fieldTypeLabels[f.type] %></td>
+            <td><%= f.required ? 'Yes' : 'No' %></td>
+            <td class="admin-row-actions">
+              <button type="button" class="link-btn mo-field-edit-btn">Edit</button>
+              <form action="/admin/metaobjects/<%= definition.id %>/fields/<%= f.id %>/delete" method="POST" onsubmit="return confirm('Delete the ' + <%- JSON.stringify(f.label) %> + ' field? Existing entries keep whatever value it held, just no longer editable.');">
+                <button type="submit" class="link-btn danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+
+  <h3 style="font-size:0.92rem; margin-bottom:10px;">Add a field</h3>
+  <form action="/admin/metaobjects/<%= definition.id %>/fields" method="POST" class="crm-task-form" id="moAddFieldForm">
+    <input type="text" name="label" placeholder="e.g. Bedrooms" maxlength="100" required />
+    <select name="type" id="moNewFieldType">
+      <% fieldTypes.forEach(function(t) { %>
+        <option value="<%= t %>"><%= fieldTypeLabels[t] %></option>
+      <% }); %>
+    </select>
+    <label class="category-checkbox" style="display:inline-flex !important;"><input type="checkbox" name="required" value="1" /> Required</label>
+    <button type="submit" class="btn btn-primary">Add field</button>
+    <textarea name="options" id="moNewFieldOptions" rows="2" placeholder="Dropdown options, one per line" hidden style="flex:1 1 100%;"></textarea>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="panel-toolbar" style="justify-content:space-between;">
+    <h2 style="margin:0;">Entries</h2>
+    <a href="/admin/metaobjects/<%= definition.id %>/entries/new" class="btn btn-primary">+ New <%= definition.name %></a>
+  </div>
+
+  <% if (fields.length === 0) { %>
+    <p class="form-hint">Add at least one field above before creating entries — otherwise there's nothing to fill in.</p>
+  <% } %>
+
+  <table class="admin-table">
+    <thead><tr><th>Image</th><th>Title</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <% entries.forEach(function(e) { %>
+        <tr>
+          <td><% if (e.image_url) { %><img class="admin-thumb" src="<%= e.image_url %>" alt="" /><% } %></td>
+          <td><a href="/admin/metaobjects/<%= definition.id %>/entries/<%= e.id %>/edit"><%= e.title %></a></td>
+          <td><span class="status-pill status-<%= e.status %>"><%= e.status %></span></td>
+          <td class="admin-row-actions">
+            <a href="/admin/metaobjects/<%= definition.id %>/entries/<%= e.id %>/edit">Edit</a>
+            <form action="/admin/metaobjects/<%= definition.id %>/entries/<%= e.id %>/delete" method="POST" onsubmit="return confirm('Delete this entry?');">
+              <button type="submit" class="link-btn danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% }); %>
+      <% if (entries.length === 0) { %>
+        <tr><td colspan="4" class="empty-state">No <%= definition.name.toLowerCase() %> entries yet.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<script>
+(function () {
+  // Existing-field inline edit -- same toggle pattern as categories.ejs's
+  // own inline rename, generalized to several sub-fields (label/type/
+  // required/options) instead of just one.
+  document.querySelectorAll('[data-field-row]').forEach(function (row) {
+    var display = row.querySelector('.mo-field-display');
+    var typeDisplay = row.querySelector('.mo-field-type-display');
+    var editForm = row.querySelector('.mo-field-edit-form');
+    var editBtn = row.querySelector('.mo-field-edit-btn');
+    var cancelBtn = row.querySelector('.mo-field-cancel');
+
+    editBtn.addEventListener('click', function () {
+      display.hidden = true;
+      typeDisplay.hidden = true;
+      editBtn.hidden = true;
+      editForm.hidden = false;
+    });
+    cancelBtn.addEventListener('click', function () {
+      editForm.hidden = true;
+      display.hidden = false;
+      typeDisplay.hidden = false;
+      editBtn.hidden = false;
+    });
+    // Only a Dropdown field needs its options list -- hide/show as the type
+    // select changes, same as the "Add a field" form below.
+    var typeSelect = editForm.querySelector('.mo-field-type-select');
+    var optionsField = editForm.querySelector('.mo-field-options');
+    typeSelect.addEventListener('change', function () {
+      optionsField.hidden = typeSelect.value !== 'select';
+    });
+  });
+
+  // New-field form: same options-field show/hide.
+  var newType = document.getElementById('moNewFieldType');
+  var newOptions = document.getElementById('moNewFieldOptions');
+  if (newType && newOptions) {
+    newType.addEventListener('change', function () {
+      newOptions.hidden = newType.value !== 'select';
+    });
+  }
+})();
+</script>
+
+<%- include('partials/footer') %>

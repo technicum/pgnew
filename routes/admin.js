@@ -1337,6 +1337,24 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       `SELECT id, name FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`,
       [req.store.id]
     );
+    // So the "Metaobject list" section's inspector can offer a picker of
+    // this store's own custom types, the same way spotlight's product
+    // picker works off `products` above -- and so its canvas preview can
+    // show real entry cards, each definition also carries its own active
+    // entries (mirrors `products` being the full catalog, rather than a
+    // placeholder the canvas can't actually render from).
+    const metaobjectDefinitions = await metaobjectsLib.listDefinitions(req.store.id);
+    if (metaobjectDefinitions.length) {
+      const [entryRows] = await pool.query(
+        `SELECT * FROM ${TABLES.listings} WHERE store_id = ? AND status = 'active' AND definition_id IN (?)`,
+        [req.store.id, metaobjectDefinitions.map((d) => d.id)]
+      );
+      const entriesByDefinition = {};
+      entryRows.forEach((e) => {
+        (entriesByDefinition[e.definition_id] = entriesByDefinition[e.definition_id] || []).push(e);
+      });
+      metaobjectDefinitions.forEach((d) => { d.entries = entriesByDefinition[d.id] || []; });
+    }
     // Saved components (see the /components routes below) — loaded here so
     // the builder's Components panel has them from the start rather than a
     // separate fetch on every page load.
@@ -1367,6 +1385,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       textElementFields: TEXT_ELEMENT_FIELDS,
       products,
       categories,
+      metaobjectDefinitions,
       components,
       menus,
       resolvedMenus,
@@ -1447,6 +1466,7 @@ router.get('/layout/:region', async (req, res, next) => {
       textElementFields: TEXT_ELEMENT_FIELDS,
       products: [],
       categories: [],
+      metaobjectDefinitions: [],
       components,
       menus,
       resolvedMenus,
@@ -1502,6 +1522,7 @@ router.get('/pages/:id/layout/:region/edit', async (req, res, next) => {
       textElementFields: TEXT_ELEMENT_FIELDS,
       products: [],
       categories: [],
+      metaobjectDefinitions: [],
       components,
       menus,
       resolvedMenus,

@@ -284,6 +284,14 @@ main.container {
 .product-description { color: var(--color-muted); margin: 16px 0; }
 .stock-note { color: var(--color-primary-dark); font-size: 0.9rem; }
 
+/* Metaobject entry detail page (views/storefront/themes/*/listing.ejs) --
+   one <dt>/<dd> pair per field the entry has a value for. */
+.listing-fields { margin: 20px 0 0; }
+.listing-fields dt { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-muted); margin-top: 16px; }
+.listing-fields dt:first-child { margin-top: 0; }
+.listing-fields dd { margin: 4px 0 0; font-size: 1rem; }
+.listing-field-img { max-width: 100%; border-radius: var(--radius); margin-top: 4px; }
+
 .add-to-cart-form {
   display: flex;
   align-items: center;
