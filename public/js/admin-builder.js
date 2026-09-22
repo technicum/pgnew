@@ -74,6 +74,7 @@
     richtext: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 5h14M3 9h14M3 13h9"/></svg>',
     gallery: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="11" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="2.5" y="10" width="6.5" height="6.5" rx="1"/><rect x="11" y="10" width="6.5" height="6.5" rx="1"/></svg>',
     video: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="15" height="12" rx="1.3"/><path d="M8.2 7.5v5l4.3-2.5-4.3-2.5Z" fill="currentColor" stroke="none"/></svg>',
+    stats: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 16.5V11M9 16.5V6M14 16.5v-8M4 16.5h12"/></svg>',
     spotlight: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10.5 2.5H16a1 1 0 0 1 1 1v5.5a1 1 0 0 1-.3.7l-7 7a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 .2-.1Z"/><circle cx="13" cy="6" r="1"/></svg>',
     collections: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="4" rx="1"/><rect x="2.5" y="10.5" width="15" height="4" rx="1"/></svg>',
     logos: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.2"/><path d="M7 10h6M10 7v6"/></svg>',
@@ -593,6 +594,15 @@
           ? '<div class="b-video-frame"><iframe src="' + attrUrl(d.embed_url) + '" loading="lazy" allowfullscreen></iframe></div>'
           : '<div class="b-video-frame b-ph"><div>' + icon("video") + '<div class="b-video-hint">Paste a video URL in the panel</div></div></div>';
         return '<div class="b-sec-pad b-sec-video"><h3 style="margin-bottom:16px;" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' + frame + '</div>';
+      }
+
+      case "stats": {
+        var statItems = d.items && d.items.length ? d.items : [{ value: "0", label: "Add a stat" }];
+        var statCards = statItems.map(function (it, idx) {
+          return '<div class="b-stat-item"><div class="b-stat-value" data-field="items.' + idx + '.value" contenteditable="true">' + esc(it.value) + '</div>' +
+            '<div class="b-stat-label" data-field="items.' + idx + '.label" contenteditable="true">' + esc(it.label) + '</div></div>';
+        }).join("");
+        return '<div class="b-sec-pad b-sec-stats"><div class="b-stats-grid" data-cols="' + (d.cols || "4") + '">' + statCards + '</div></div>';
       }
 
       case "spotlight": {
@@ -1472,6 +1482,33 @@
     return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No questions yet — add one below.</div>') + '</div>' + addBtn;
   }
 
+  // Stat counter items — same Elementor-style repeater as faqItemsEditorHtml
+  // above (data-stat-value/data-stat-label, wired in wireInspector's
+  // focusout handler); clicking a number or label directly on the canvas
+  // still works too. Capped at 6 to match lib/sections.js's sanitizeFields,
+  // which silently drops anything past that server-side. Reuses the same
+  // .b-faq-row/.b-faq-editor/.b-btn-outline CSS as the FAQ editor above —
+  // a two-field repeater row looks the same regardless of what the two
+  // fields are.
+  function statsItemsEditorHtml(items) {
+    var list = items || [];
+    var rows = list.map(function (it, i) {
+      return '<div class="b-faq-row" data-stat-row>' +
+        '<div class="b-faq-row-head">' +
+          '<span class="b-faq-row-num">Stat ' + (i + 1) + '</span>' +
+          '<button type="button" class="b-faq-row-dup" data-stat-duplicate data-index="' + i + '" aria-label="Duplicate stat" title="Duplicate">' + icon("dup") + '</button>' +
+          '<button type="button" class="b-faq-row-remove" data-stat-remove data-index="' + i + '" aria-label="Remove stat" title="Remove">' + icon("trash") + '</button>' +
+        '</div>' +
+        '<input class="b-text-native" type="text" data-stat-value data-index="' + i + '" value="' + esc(it.value || "") + '" placeholder="e.g. 500+" />' +
+        '<input class="b-text-native" type="text" data-stat-label data-index="' + i + '" value="' + esc(it.label || "") + '" placeholder="e.g. Happy customers" />' +
+      '</div>';
+    }).join("");
+    var addBtn = list.length < 6
+      ? '<button type="button" class="b-btn-outline b-faq-add" data-stat-add>' + icon("plus") + ' Add Item</button>'
+      : '<div class="b-field-hint">Up to 6 stats.</div>';
+    return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No stats yet — add one below.</div>') + '</div>' + addBtn;
+  }
+
   // Testimonials — same Elementor-style repeater as faqItemsEditorHtml
   // above (data-testi-quote/data-testi-author, wired in wireInspector's
   // focusout handler); clicking a quote/name directly on the canvas still
@@ -1575,6 +1612,9 @@
       case "video":
         return field("Video URL", textHtml("embed_url", d.embed_url, "https://www.youtube.com/embed/…")) +
           field("", '<div class="b-inspector-hint">Paste an embeddable video link — a YouTube/Vimeo “embed” URL works best. Click the heading to edit it.</div>');
+      case "stats":
+        return field("Stats", statsItemsEditorHtml(d.items)) +
+          field("", '<div class="b-inspector-hint">Click a number or label directly on the canvas to edit it — use Add, Duplicate, or Remove here to manage the list. Columns live on the Style tab.</div>');
       case "spotlight": {
         var prodOptions = DATA.products.map(function (p) { return { val: String(p.id), label: p.title }; });
         var picker = prodOptions.length
@@ -1689,6 +1729,9 @@
         break;
       case "gallery":
         typeStyle = field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }], d.cols));
+        break;
+      case "stats":
+        typeStyle = field("Columns", segHtml("cols", [{ val: "2", label: "2" }, { val: "3", label: "3" }, { val: "4", label: "4" }], d.cols || "4"));
         break;
       case "spotlight":
         typeStyle = field("Image position", segHtml("side", [{ val: "right", label: "Right" }, { val: "left", label: "Left" }], d.side));
@@ -2697,6 +2740,40 @@
         renderInspector();
         return;
       }
+      var statAddBtn = e.target.closest("[data-stat-add]");
+      if (statAddBtn) {
+        var statAddTarget = inspectorFieldTarget();
+        if (!statAddTarget) return;
+        var statAddItems = (statAddTarget.fields.items || []).slice();
+        if (statAddItems.length >= 6) return;
+        statAddItems.push({ value: "0", label: "New stat" });
+        statAddTarget.save({ items: statAddItems });
+        renderInspector();
+        return;
+      }
+      var statDupBtn = e.target.closest("[data-stat-duplicate]");
+      if (statDupBtn) {
+        var statDupTarget = inspectorFieldTarget();
+        if (!statDupTarget) return;
+        var statDupIdx = parseInt(statDupBtn.dataset.index, 10);
+        var statDupItems = (statDupTarget.fields.items || []).slice();
+        var statDupItem = statDupItems[statDupIdx];
+        if (statDupItem && statDupItems.length < 6) statDupItems.splice(statDupIdx + 1, 0, Object.assign({}, statDupItem));
+        statDupTarget.save({ items: statDupItems });
+        renderInspector();
+        return;
+      }
+      var statRemoveBtn = e.target.closest("[data-stat-remove]");
+      if (statRemoveBtn) {
+        var statRemTarget = inspectorFieldTarget();
+        if (!statRemTarget) return;
+        var statRemIdx = parseInt(statRemoveBtn.dataset.index, 10);
+        var statRemItems = (statRemTarget.fields.items || []).slice();
+        statRemItems.splice(statRemIdx, 1);
+        statRemTarget.save({ items: statRemItems });
+        renderInspector();
+        return;
+      }
       var testiAddBtn = e.target.closest("[data-testi-add]");
       if (testiAddBtn) {
         var testiAddTarget = inspectorFieldTarget();
@@ -2977,6 +3054,28 @@
         if (!faqAItems[faqAIdx]) return;
         faqAItems[faqAIdx] = Object.assign({}, faqAItems[faqAIdx], { a: faqAIn.value.trim() });
         faqATarget.save({ items: faqAItems });
+        return;
+      }
+      var statValueIn = e.target.closest("input[data-stat-value]");
+      if (statValueIn) {
+        var statValueTarget = inspectorFieldTarget();
+        if (!statValueTarget) return;
+        var statValueIdx = parseInt(statValueIn.dataset.index, 10);
+        var statValueItems = (statValueTarget.fields.items || []).slice();
+        if (!statValueItems[statValueIdx]) return;
+        statValueItems[statValueIdx] = Object.assign({}, statValueItems[statValueIdx], { value: statValueIn.value.trim() });
+        statValueTarget.save({ items: statValueItems });
+        return;
+      }
+      var statLabelIn = e.target.closest("input[data-stat-label]");
+      if (statLabelIn) {
+        var statLabelTarget = inspectorFieldTarget();
+        if (!statLabelTarget) return;
+        var statLabelIdx = parseInt(statLabelIn.dataset.index, 10);
+        var statLabelItems = (statLabelTarget.fields.items || []).slice();
+        if (!statLabelItems[statLabelIdx]) return;
+        statLabelItems[statLabelIdx] = Object.assign({}, statLabelItems[statLabelIdx], { label: statLabelIn.value.trim() });
+        statLabelTarget.save({ items: statLabelItems });
         return;
       }
       var testiQuoteIn = e.target.closest("textarea[data-testi-quote]");

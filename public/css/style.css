@@ -25,6 +25,20 @@ body.theme-red {
   --color-primary-dark: #b91c1c;
 }
 
+/* ---------- Structural theme: Recruit (themes/recruit) ----------
+   Everything else this theme needs (navy accent, warm cream background,
+   card/button radius) is already covered by its theme.json's own token
+   values, resolved the same way as any other structural theme (see
+   lib/themeTokens.js) -- no extra CSS needed for those. The one thing
+   tokens don't cover is typography, so this is the whole of the theme's
+   own CSS: large headings and stat-counter numbers (not card-level h3s,
+   which stay the shared sans-serif -- matches the reference site's own
+   hierarchy) get the serif display font loaded in this theme's partials/
+   header.ejs. */
+.rec-theme h1, .rec-theme h2, .rec-theme .section-title, .rec-theme .stat-value {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -757,6 +771,22 @@ main.container {
 .video-section { padding: 24px 0 40px; }
 .video-frame { position: relative; aspect-ratio: 16/9; border-radius: var(--radius); overflow: hidden; background: #111; }
 .video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* Stat counter -- deliberately doesn't set its own text color: the section
+   already gets one via the universal Style-tab color/background controls
+   (applied as an inline `color` on the <section> itself -- see partials/
+   section.ejs's pzHeightStyle), so stat-value/stat-label just inherit it
+   rather than fighting it with their own class-level color rule. */
+.stats-section { padding: 40px 24px; }
+.stats-grid { max-width: 1140px; margin: 0 auto; display: grid; gap: 32px 24px; text-align: center; }
+.stats-grid[data-cols="2"] { grid-template-columns: repeat(2, 1fr); }
+.stats-grid[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
+.stats-grid[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
+.stat-value { font-size: 2.4rem; font-weight: 700; line-height: 1.15; }
+.stat-label { margin-top: 6px; font-size: 0.92rem; opacity: 0.7; }
+@media (max-width: 640px) {
+  .stats-grid[data-cols="3"], .stats-grid[data-cols="4"] { grid-template-columns: repeat(2, 1fr); }
+}
 
 /* Product spotlight */
 .spotlight { display: flex; align-items: center; gap: 44px; padding: 48px 0; }

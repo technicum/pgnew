@@ -364,6 +364,19 @@
     </div>
   </section>
 
+<% } else if (section.type === 'stats') { %>
+  <section id="<%= pzId %>" class="stats-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
+    <div class="stats-grid" data-cols="<%= section.fields.cols %>">
+      <% section.fields.items.forEach(function(it) { %>
+        <div class="stat-item">
+          <div class="stat-value"><%= it.value %></div>
+          <div class="stat-label"><%= it.label %></div>
+        </div>
+      <% }); %>
+    </div>
+  </section>
+
 <% } else if (section.type === 'spotlight' && section.product) { %>
   <section id="<%= pzId %>" class="spotlight spotlight-<%= section.fields.side === 'left' ? 'left' : 'right' %><%= pzExtra %>" style="<%= pzHeightStyle %>">
     <%- pzUniBgExtras(section) %>

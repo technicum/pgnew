@@ -433,6 +433,15 @@ body.builder-body button { font-family: inherit; }
 .b-prod-empty { grid-column: 1 / -1; padding: 30px; text-align: center; border: 1px dashed var(--b-line); border-radius: 10px; color: var(--b-muted); font-size: 13px; }
 .b-prod-empty a { color: var(--b-ink); font-weight: 600; }
 
+.b-sec-stats { padding-top: 32px; padding-bottom: 32px; }
+.b-stats-grid { display: grid; gap: 24px; text-align: center; }
+.b-stats-grid[data-cols="2"] { grid-template-columns: repeat(2,1fr); }
+.b-stats-grid[data-cols="3"] { grid-template-columns: repeat(3,1fr); }
+.b-stats-grid[data-cols="4"] { grid-template-columns: repeat(4,1fr); }
+.b-canvas-frame[data-vp="mobile"] .b-stats-grid { grid-template-columns: repeat(2,1fr) !important; }
+.b-stat-value { font-size: 26px; font-weight: 700; line-height: 1.15; }
+.b-stat-label { margin-top: 4px; font-size: 12.5px; color: var(--b-muted); }
+
 .b-sec-testimonials { padding-top: 40px; padding-bottom: 40px; }
 .b-testi-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 900px; margin: 0 auto; }
 .b-testi-card { background: var(--b-surface-2); border-radius: 10px; padding: 22px; width: 280px; max-width: 100%; text-align: center; }
