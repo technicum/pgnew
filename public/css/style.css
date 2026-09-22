@@ -312,8 +312,11 @@ main.container {
   border: none;
   cursor: pointer;
   text-align: center;
+  transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease, transform .05s ease;
 }
-.btn-primary { background: var(--color-primary); color: #fff; }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.btn-primary { background: var(--color-primary); color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 .btn-primary:hover { background: var(--color-primary-dark); }
 .btn-block { display: block; width: 100%; }
 

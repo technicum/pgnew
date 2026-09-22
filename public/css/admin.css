@@ -1,49 +1,73 @@
 .admin-body { background: #f4f5f7; }
 
+/* Account-level pages (views/platform/*.ejs -- the dashboard, CRM, profile,
+   ...) have no store theme of their own, unlike the store-admin panel,
+   whose <body> picks up the merchant's own theme-<slug> class (see views/
+   admin/partials/header.ejs) so its buttons/focus rings match that store's
+   brand. Without this they'd silently fall through to style.css's default
+   green instead -- this gives them one consistent accent (the same indigo
+   the CRM's task/timer/attendance screens already used in a few hardcoded
+   spots) without touching the merchant-themed store-admin panel at all. */
+.platform-body { --color-primary: #4f46e5; --color-primary-dark: #4338ca; }
+
 .admin-layout {
   display: flex;
   min-height: 100vh;
 }
 
 .admin-sidebar {
-  width: 250px;
+  width: 252px;
   background: #fff;
   border-right: 1px solid #e5e7eb;
   color: #374151;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
+  padding: 22px 14px;
   flex-shrink: 0;
 }
 .admin-sidebar .admin-logo {
+  display: block;
   color: #111827;
   font-weight: 800;
   font-size: 1.2rem;
-  margin-bottom: 28px;
+  margin: 4px 6px 26px;
 }
 .admin-sidebar .admin-logo span { color: var(--color-primary); }
 .admin-sidebar .admin-logo small { display: block; color: #9ca3af; font-weight: 500; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
-.admin-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.admin-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .admin-nav a {
   display: flex;
   align-items: center;
-  min-height: 36px;
-  padding: 8px 14px;
+  gap: 11px;
+  min-height: 38px;
+  padding: 8px 12px;
   border-radius: 8px;
   font-size: 0.92rem;
   font-weight: 500;
-  color: #374151;
+  color: #4b5563;
+  text-decoration: none;
+  transition: background-color .12s ease, color .12s ease;
 }
+/* Every nav link's icon (see the NAV_ICONS map in partials/header.ejs) --
+   sized as its own fixed box so labels of different lengths still line up
+   on a common left edge, and colored a step lighter than the label text so
+   the icon reads as secondary until a link is hovered/active. */
+.admin-nav-icon { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex-shrink: 0; color: #9ca3af; transition: color .12s ease; }
+.admin-nav-icon svg { width: 100%; height: 100%; }
 .admin-nav a:hover { background: #f3f4f6; color: #111827; }
+.admin-nav a:hover .admin-nav-icon { color: #6b7280; }
 .admin-nav a.active {
-  background: color-mix(in srgb, var(--color-primary) 12%, #fff);
-  color: #111827;
+  background: color-mix(in srgb, var(--color-primary) 10%, #fff);
+  color: var(--color-primary-dark);
   font-weight: 600;
 }
-.admin-nav a.admin-nav-sub { padding-left: 28px; font-size: 0.86rem; }
+.admin-nav a.active .admin-nav-icon { color: var(--color-primary); }
+.admin-nav a.admin-nav-sub { padding-left: 16px; margin-left: 15px; border-left: 1px solid #eceef1; border-radius: 0 8px 8px 0; font-size: 0.86rem; }
+.admin-nav a.admin-nav-sub.active { border-left-color: var(--color-primary); }
+.admin-nav a.admin-nav-sub .admin-nav-icon { width: 16px; height: 16px; }
 
-.admin-nav-divider { height: 1px; background: #e5e7eb; margin: 10px 4px; }
+.admin-nav-divider { height: 1px; background: #e5e7eb; margin: 12px 6px; }
 .admin-nav-group-label {
   padding: 10px 12px 2px;
   font-size: 0.72rem;
@@ -53,9 +77,22 @@
   color: #9ca3af;
 }
 
-.admin-logout-form { margin-top: auto; }
-.admin-logout-form .link-btn { color: #6b7280; }
-.admin-logout-form .link-btn:hover { color: #111827; }
+.admin-logout-form { margin-top: auto; padding-top: 8px; }
+.admin-logout-form .link-btn {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color .12s ease, color .12s ease;
+}
+.admin-logout-form .link-btn .admin-nav-icon { color: inherit; }
+.admin-logout-form .link-btn:hover { background: #f3f4f6; color: #111827; text-decoration: none; }
 
 .admin-main { flex: 1; min-width: 0; }
 
@@ -185,6 +222,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-shadow: var(--shadow);
 }
 .stat-label { color: #6b7280; font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .stat-value { font-size: 1.6rem; font-weight: 700; }
@@ -200,6 +238,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 20px;
+  box-shadow: var(--shadow);
 }
 .panel h2 { margin-top: 0; font-size: 1rem; }
 
@@ -209,21 +248,32 @@
   width: 100%;
   border-collapse: collapse;
   background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden; /* clips the header row's background to the rounded corners */
+  box-shadow: var(--shadow);
 }
 .admin-table th {
   text-align: left;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: #6b7280;
-  padding: 10px 12px;
+  padding: 11px 14px;
+  background: #fafafb;
   border-bottom: 1px solid #e5e7eb;
 }
 .admin-table td {
-  padding: 12px;
+  padding: 13px 14px;
   border-bottom: 1px solid #f0f1f3;
   font-size: 0.92rem;
 }
+.admin-table tbody tr:last-child td { border-bottom: none; }
+.admin-table tbody tr:hover { background: #fafbfc; }
+/* A table nested inside a .panel (e.g. views/admin/order-detail.ejs's "Items"
+   card) would otherwise double up: its own border/radius/shadow drawn again
+   inside the panel's -- here it just sits flush as plain rows instead. */
+.panel .admin-table { border: none; border-radius: 0; box-shadow: none; }
 .admin-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; }
 .admin-row-actions { display: flex; gap: 12px; }
 
@@ -245,30 +295,71 @@
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
-  padding: 24px;
+  padding: 26px 28px;
   max-width: 560px;
+  box-shadow: var(--shadow);
 }
 .admin-form label {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
   color: #374151;
-  margin-bottom: 16px;
+  line-height: 1.3;
+  margin-bottom: 18px;
 }
 .admin-form input, .admin-form select, .admin-form textarea {
   display: block;
   width: 100%;
-  margin-top: 6px;
-  padding: 10px 12px;
+  margin-top: 7px;
+  padding: 10px 13px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 0.92rem;
   font-family: inherit;
+  color: #111827;
+  background: #fff;
 }
 .admin-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .admin-form .form-row { grid-template-columns: 1fr; } }
+
+/* Focus/hover states for every text-like field across the admin area
+   (product/page/order forms, CRM contact/task/follow-up/attendance forms,
+   the task drawer, ...) -- scoped to .admin-content, the wrapper every
+   admin/platform page's content renders inside (see partials/header.ejs),
+   rather than duplicated per form class. Previously only .crm-form (the New
+   Contact form) had a focus ring at all; everything else relied on the
+   browser's own default outline, which is inconsistent across browsers and
+   easy to lose track of against a white background.
+   Excludes rather than lists types, so an <input> with NO type attribute at
+   all (defaults to text -- e.g. the task drawer's .tp-title-input) is still
+   covered, along with every text-like type this list didn't think to name. */
+.admin-content input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="image"]),
+.admin-content select,
+.admin-content textarea {
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.admin-content input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="image"]):hover,
+.admin-content select:hover,
+.admin-content textarea:hover {
+  border-color: #b0b6c0;
+}
+.admin-content input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="range"]):not([type="color"]):not([type="image"]):focus,
+.admin-content select:focus,
+.admin-content textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+.admin-content input::placeholder, .admin-content textarea::placeholder { color: #9ca3af; }
+.admin-content input:disabled, .admin-content select:disabled, .admin-content textarea:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+.admin-content input[type="checkbox"], .admin-content input[type="radio"] { accent-color: var(--color-primary); width: 15px; height: 15px; cursor: pointer; }
 
 .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-.app-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.app-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
 .app-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .app-card-top h3 { margin: 0; font-size: 1rem; }
 .app-card-desc { margin: 0; color: #6b7280; font-size: 0.88rem; flex: 1; }
@@ -1003,7 +1094,7 @@
   color: #374151;
   border: 1px solid #d1d5db;
 }
-.btn-secondary:hover { background: #f9fafb; }
+.btn-secondary:hover { background: #f9fafb; border-color: #b0b6c0; }
 
 .menu-create-form { display: flex; gap: 10px; }
 .menu-create-form input {
