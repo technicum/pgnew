@@ -791,13 +791,19 @@ CREATE TABLE IF NOT EXISTS ${TABLES.crmFollowups} (
   assigned_to INT NULL,
   done TINYINT(1) NOT NULL DEFAULT 0,
   done_at TIMESTAMP NULL,
+  -- Set once the daily reminder email (see lib/reminders.js) has gone out
+  -- for this follow-up, so it's only ever emailed once even if it's left
+  -- undone -- its in-CRM Overdue tab keeps showing it regardless. NULL
+  -- means "not sent yet".
+  reminder_sent_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (owner_user_id) REFERENCES ${TABLES.users}(id) ON DELETE CASCADE,
   FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE CASCADE,
   FOREIGN KEY (task_id) REFERENCES ${TABLES.crmTasks}(id) ON DELETE SET NULL,
   FOREIGN KEY (assigned_to) REFERENCES ${TABLES.users}(id) ON DELETE SET NULL,
   INDEX idx_followup_owner_due (owner_user_id, done, due_date),
-  INDEX idx_followup_contact (contact_id)
+  INDEX idx_followup_contact (contact_id),
+  INDEX idx_followup_reminder_due (done, reminder_sent_at, due_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- CRM team attendance. Deliberately an append-only event log (clock_in /
@@ -1662,6 +1668,16 @@ async function migrateCrmTasksEnhancements(conn) {
   }
 }
 
+// Adds the "has this follow-up's due-date reminder been emailed yet" column
+// (see lib/reminders.js) to an existing install. Fresh installs already get
+// this shape from the CREATE TABLE above.
+async function migrateFollowupReminderColumn(conn) {
+  if (!(await tableExists(conn, TABLES.crmFollowups))) return;
+  if (!(await columnExists(conn, TABLES.crmFollowups, 'reminder_sent_at'))) {
+    await conn.query(`ALTER TABLE ${TABLES.crmFollowups} ADD COLUMN reminder_sent_at TIMESTAMP NULL AFTER done_at`);
+  }
+}
+
 async function migrateSeedPlansAndApps(conn) {
   const planSeed = [
     { slug: 'free', name: 'Free', price_cents: 0 },
@@ -1961,6 +1977,7 @@ async function init() {
     await migrateContactsTagsColumn(conn);
     await migrateContactsOptionalStore(conn);
     await migrateCrmTasksEnhancements(conn);
+    await migrateFollowupReminderColumn(conn);
     await migrateContactsIsCustomer(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);

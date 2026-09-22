@@ -7,7 +7,15 @@
 <form action="/dashboard/crm/contacts/<%= contactId %>/followups" method="POST" class="crm-task-form crm-fu-form">
   <% if (redirect) { %><input type="hidden" name="redirect" value="<%= redirect %>" /><% } %>
   <input type="text" name="title" placeholder="e.g. Call to check on the quote" maxlength="255" required />
-  <input type="date" name="due_date" value="<%= today %>" required aria-label="Follow-up date" />
+  <div class="crm-fu-date-row">
+    <input type="date" name="due_date" value="<%= today %>" required aria-label="Follow-up date" />
+    <div class="crm-fu-date-presets">
+      <button type="button" class="crm-fu-date-preset" data-months="1">+1m</button>
+      <button type="button" class="crm-fu-date-preset" data-months="3">+3m</button>
+      <button type="button" class="crm-fu-date-preset" data-months="6">+6m</button>
+      <button type="button" class="crm-fu-date-preset" data-months="12">+1y</button>
+    </div>
+  </div>
   <input type="time" name="due_time" aria-label="Follow-up time (optional)" />
   <select name="assigned_to" aria-label="Assign to">
     <option value="">Unassigned</option>

@@ -18,7 +18,15 @@
 
         <div class="form-row">
           <label>Date *
-            <input type="date" name="due_date" required value="<%= fYmd %>" />
+            <div class="crm-fu-date-row">
+              <input type="date" name="due_date" required value="<%= fYmd %>" />
+              <div class="crm-fu-date-presets">
+                <button type="button" class="crm-fu-date-preset" data-months="1">+1m</button>
+                <button type="button" class="crm-fu-date-preset" data-months="3">+3m</button>
+                <button type="button" class="crm-fu-date-preset" data-months="6">+6m</button>
+                <button type="button" class="crm-fu-date-preset" data-months="12">+1y</button>
+              </div>
+            </div>
           </label>
           <label>Time <span style="font-weight:400; color:#6b7280;">(optional)</span>
             <input type="time" name="due_time" value="<%= fTime %>" />

@@ -26,6 +26,7 @@
       <% } %>
       <span class="<%= fOverdue ? 'crm-fu-due-overdue' : '' %>"><%= fOverdue ? 'Overdue · ' : '' %><%= fLabel %><%= fTime ? ' · ' + fTime : '' %></span>
       · <%= f.assignee_name || 'Unassigned' %>
+      <% if (f.reminder_sent_at) { %><span class="crm-fu-emailed" title="Reminder emailed">&#9993; Emailed</span><% } %>
     </span>
     <% if (f.note) { %><span class="crm-fu-note"><%= f.note %></span><% } %>
     <% if (f.task_id) { %>

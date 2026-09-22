@@ -14,6 +14,7 @@ const platformAdminRoutes = require('./routes/platformAdmin');
 const storefrontRoutes = require('./routes/storefront');
 const adminRoutes = require('./routes/admin');
 const { attachCartInfo } = require('./middleware/cart');
+const remindersLib = require('./lib/reminders');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev).
@@ -163,6 +164,22 @@ init()
     app.listen(PORT, () => {
       console.log(`PageZaper running at http://localhost:${PORT} (base domain: ${BASE_DOMAIN})`);
     });
+
+    // Daily CRM follow-up reminder emails (see lib/reminders.js). The
+    // function itself is a no-op except once per IST calendar day, so this
+    // interval just controls how promptly after 8am IST today's batch goes
+    // out -- not a real per-tick cost. Runs once immediately too, in case
+    // the server started after 8am and today's batch hasn't gone out yet.
+    const runReminders = () => {
+      remindersLib
+        .maybeRunDailyReminders()
+        .then((result) => {
+          if (result) console.log(`CRM reminders: emailed ${result.emailsSent} recipient(s), ${result.remindersSent} follow-up(s).`);
+        })
+        .catch((err) => console.error('CRM reminders check failed:', err));
+    };
+    runReminders();
+    setInterval(runReminders, 30 * 60 * 1000);
   })
   .catch((err) => {
     console.error('Failed to initialize database:', err);
