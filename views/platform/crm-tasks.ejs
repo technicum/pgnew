@@ -171,7 +171,7 @@
                 <% if (activeTimer && activeTimer.task_id === openTask.id) { %>
                   <form action="/dashboard/crm/tasks/<%= openTask.id %>/timer/stop" method="POST">
                     <input type="hidden" name="redirect" value="/dashboard/crm/tasks/<%= openTask.id %>" />
-                    <button type="submit" class="btn btn-secondary tp-mark-done-btn">&#9632; Stop timer <span class="live-duration" data-since="<%= new Date(activeTimer.started_at).toISOString() %>">0m</span></button>
+                    <button type="submit" class="btn btn-secondary tp-mark-done-btn">&#9632; Stop timer <span class="live-duration" data-since="<%= new Date(activeTimer.started_at).toISOString() %>"><%= formatClock((Date.now() - new Date(activeTimer.started_at).getTime()) / 1000) %></span></button>
                   </form>
                 <% } else { %>
                   <form action="/dashboard/crm/tasks/<%= openTask.id %>/timer/start" method="POST">
@@ -239,7 +239,7 @@
                   <div class="tp-subtask-body">
                     <div class="tp-subtask-title"><%= e.user_name %> — <%= formatDuration(e.duration_seconds) %><%= e.ended_at ? '' : ' (running)' %></div>
                     <div class="tp-subtask-meta">
-                      <%= new Date(e.started_at).toLocaleString() %><%= e.ended_at ? ' – ' + new Date(e.ended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '' %>
+                      <%= formatDateTime(e.started_at) %><%= e.ended_at ? ' – ' + formatTime(e.ended_at) : '' %>
                     </div>
                   </div>
                 </li>

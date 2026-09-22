@@ -17,7 +17,7 @@
           <% if (activeTimer && activeTimer.task_id === t.id) { %>
             <form action="/dashboard/crm/tasks/<%= t.id %>/timer/stop" method="POST">
               <input type="hidden" name="redirect" value="/dashboard/crm/my-tasks" />
-              <button type="submit" class="link-btn danger">&#9632; Stop timer</button>
+              <button type="submit" class="link-btn danger">&#9632; Stop timer <span class="live-duration" data-since="<%= new Date(activeTimer.started_at).toISOString() %>"><%= formatClock((Date.now() - new Date(activeTimer.started_at).getTime()) / 1000) %></span></button>
             </form>
           <% } else { %>
             <form action="/dashboard/crm/tasks/<%= t.id %>/timer/start" method="POST">

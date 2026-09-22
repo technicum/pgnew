@@ -466,7 +466,15 @@ async function requireCrm(req, res, next) {
     // a small persistent banner across every CRM screen (see partials/
     // header.ejs) so an open timer never gets lost while browsing elsewhere.
     res.locals.activeTimer = await attendanceLib.getRunningTimer(access.ownerUserId, req.session.account.id);
+    // Duration/wall-clock formatters (see lib/attendance.js) -- every CRM
+    // view uses these instead of calling toLocaleString family methods
+    // directly, so times are always shown in IST rather than whatever
+    // timezone the server process happens to be running in.
     res.locals.formatDuration = attendanceLib.formatDuration;
+    res.locals.formatClock = attendanceLib.formatClock;
+    res.locals.formatTime = attendanceLib.formatTime;
+    res.locals.formatDateTime = attendanceLib.formatDateTime;
+    res.locals.formatDay = attendanceLib.formatDay;
     next();
   } catch (err) {
     next(err);

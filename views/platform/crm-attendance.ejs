@@ -7,9 +7,9 @@
           <span class="tp-label">Your status</span>
           <p class="att-status-line">
             <% if (myStatus.state === 'in') { %>
-              <span class="status-pill status-paid">Clocked in</span> since <%= new Date(myStatus.since).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+              <span class="status-pill status-paid">Clocked in</span> since <%= formatTime(myStatus.since) %>
             <% } else if (myStatus.state === 'break') { %>
-              <span class="status-pill status-pending">On break</span> since <%= new Date(myStatus.since).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+              <span class="status-pill status-pending">On break</span> since <%= formatTime(myStatus.since) %>
             <% } else { %>
               <span class="status-pill att-status-out">Clocked out</span>
             <% } %>
@@ -17,11 +17,11 @@
           <p class="att-hours-today">
             Worked today:
             <% if (myStatus.state === 'in') { %>
-              <!-- Ticks forward client-side from the value/moment this page
-                   was rendered, rather than replaying the whole day's
-                   worked/break history in the browser -- see
+              <!-- Ticks forward client-side (with seconds) from the value/
+                   moment this page was rendered, rather than replaying the
+                   whole day's worked/break history in the browser -- see
                    public/js/live-duration.js. -->
-              <strong class="live-duration" data-since="<%= new Date().toISOString() %>" data-base-seconds="<%= myStatus.workedSeconds %>"><%= formatDuration(myStatus.workedSeconds) %></strong>
+              <strong class="live-duration" data-since="<%= new Date().toISOString() %>" data-base-seconds="<%= myStatus.workedSeconds %>"><%= formatClock(myStatus.workedSeconds) %></strong>
             <% } else { %>
               <strong><%= formatDuration(myStatus.workedSeconds) %></strong>
             <% } %>
@@ -44,7 +44,7 @@
 
       <% if (activeTimer) { %>
         <div class="att-timer-row">
-          <span>Task timer running: <strong><%= activeTimer.task_title %></strong> — <span class="live-duration" data-since="<%= new Date(activeTimer.started_at).toISOString() %>">0m</span></span>
+          <span>Task timer running: <strong><%= activeTimer.task_title %></strong> — <span class="live-duration" data-since="<%= new Date(activeTimer.started_at).toISOString() %>"><%= formatClock((Date.now() - new Date(activeTimer.started_at).getTime()) / 1000) %></span></span>
           <form action="/dashboard/crm/tasks/<%= activeTimer.task_id %>/timer/stop" method="POST">
             <input type="hidden" name="redirect" value="/dashboard/crm/attendance" />
             <button type="submit" class="link-btn danger">Stop timer</button>
@@ -59,7 +59,7 @@
       <tbody>
         <% myRecentDays.forEach(function(d) { %>
           <tr>
-            <td><%= new Date(d.date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) %></td>
+            <td><%= formatDay(d.date) %></td>
             <td><%= formatDuration(d.workedSeconds) %></td>
             <td><%= d.breakSeconds > 0 ? formatDuration(d.breakSeconds) : '—' %></td>
           </tr>

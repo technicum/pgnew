@@ -66,7 +66,7 @@
       %>
       <% if (activeTimer_ && !onAttendance && !onTimedTaskDrawer) { %>
         <div class="active-timer-banner">
-          <span>Timer running: <strong><%= activeTimer_.task_title %></strong> <span class="live-duration" data-since="<%= new Date(activeTimer_.started_at).toISOString() %>">0m</span></span>
+          <span>Timer running: <strong><%= activeTimer_.task_title %></strong> <span class="live-duration" data-since="<%= new Date(activeTimer_.started_at).toISOString() %>"><%= formatClock((Date.now() - new Date(activeTimer_.started_at).getTime()) / 1000) %></span></span>
           <form action="/dashboard/crm/tasks/<%= activeTimer_.task_id %>/timer/stop" method="POST">
             <button type="submit" class="link-btn">Stop</button>
           </form>
