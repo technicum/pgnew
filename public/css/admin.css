@@ -478,9 +478,50 @@
    admin sidebar (partials/header.ejs), not here. */
 .dashboard-main.crm-main { max-width: 1000px; }
 
-.crm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.crm-filter-bar select { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #fff; }
+.crm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* The Tasks screen's search+date+assignee filter row (views/platform/
+   crm-tasks.ejs) -- previously had no layout rule at all, so its text and
+   date fields fell back to bare, tiny, unaligned browser defaults next to
+   the one styled <select>. */
+.crm-filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.crm-filter-bar input[type="text"],
+.crm-filter-bar input[type="date"],
+.crm-filter-bar select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  background: #fff;
+  height: 36px;
+  box-sizing: border-box;
+}
+.crm-filter-bar input[type="text"] { flex: 1 1 220px; min-width: 160px; }
+.crm-filter-bar input[type="date"] { flex: 0 1 165px; color: #374151; }
 .crm-toolbar-actions { display: flex; align-items: center; gap: 10px; }
+
+/* Native date/time picker icon -- WebKit/Blink only (::-webkit-* has no
+   cross-browser equivalent yet; Firefox/Safari fall back to their own
+   default icon, which is fine on its own, just not recolorable this way).
+   Dimmed until hovered so it doesn't compete with the field's own value,
+   and given a hit target big enough to click comfortably rather than the
+   browser's default sliver. */
+.admin-content input[type="date"]::-webkit-calendar-picker-indicator,
+.admin-content input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 3px;
+  margin-right: -2px;
+  border-radius: 4px;
+  opacity: 0.55;
+  transition: opacity .12s ease, background-color .12s ease;
+}
+.admin-content input[type="date"]:hover::-webkit-calendar-picker-indicator,
+.admin-content input[type="time"]:hover::-webkit-calendar-picker-indicator,
+.admin-content input[type="date"]:focus::-webkit-calendar-picker-indicator,
+.admin-content input[type="time"]:focus::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  background: #eef2ff;
+}
 
 .crm-import-panel { position: relative; }
 .crm-import-panel summary { list-style: none; }
