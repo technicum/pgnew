@@ -115,6 +115,17 @@ const TABLES = {
   // products (a property, a vehicle, a rental unit, a bookable service).
   contacts: `${PREFIX}contacts`,
   listings: `${PREFIX}listings`,
+  // Custom content types a merchant defines for themselves (Shopify calls
+  // these "metaobjects") -- e.g. a real-estate store defining a "Property"
+  // type with its own Bedrooms/Bathrooms/Price fields. A definition is the
+  // schema (this table + metaobjectFields below); each actual property is a
+  // row in `listings` above, scoped to the definition via listings.
+  // definition_id (see migrateListingsMetaobjects). Deliberately its own
+  // pair of tables rather than folding the field schema into `listings`
+  // itself, since a definition's fields are edited far less often than
+  // entries are, and every entry of the same definition shares one schema.
+  metaobjectDefinitions: `${PREFIX}metaobject_definitions`,
+  metaobjectFields: `${PREFIX}metaobject_fields`,
   // Paid apps (CRM is the first one) — mirrors the existing themes/
   // store_themes structural marketplace pattern: `apps` is the catalog,
   // `store_apps` is which store has which app switched on, and `plans` /
@@ -597,6 +608,50 @@ CREATE TABLE IF NOT EXISTS ${TABLES.contacts} (
   INDEX idx_contact_source (source)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Metaobjects (Shopify's term for this) -- a custom content type a merchant
+-- defines for themselves, e.g. a real-estate store defining "Property" with
+-- its own Bedrooms/Bathrooms/Price fields, or a car dealer defining
+-- "Vehicle" with Make/Model/Year. This table is the definition (the schema
+-- itself, and the display name/handle); ${TABLES.metaobjectFields} below is
+-- its field list; ${TABLES.listings} further below holds the actual entries
+-- (one property, one vehicle, ...), each tagged with which definition it
+-- belongs to. handle is the URL segment its entries render under on the
+-- storefront (e.g. handle 'property' -> /property/123-main-st — see
+-- routes/storefront.js's reserved-handle guard, same idea as db/database.js's
+-- own RESERVED_SUBDOMAINS for store subdomains).
+CREATE TABLE IF NOT EXISTS ${TABLES.metaobjectDefinitions} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  handle VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_definition_handle (store_id, handle)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One field in a metaobject definition's schema (e.g. Property's
+-- "Bedrooms", a 'number' field). field_key is the machine name an entry's
+-- ${TABLES.listings}.details JSON is keyed by; label is what the admin form
+-- and (unless overridden) the storefront show. options is only meaningful
+-- for type='select' (a JSON array of strings); NULL for every other type.
+-- position controls display/form order, same convention as
+-- ${TABLES.pageSections}.position.
+CREATE TABLE IF NOT EXISTS ${TABLES.metaobjectFields} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  definition_id INT NOT NULL,
+  field_key VARCHAR(50) NOT NULL,
+  label VARCHAR(100) NOT NULL,
+  type ENUM('text', 'textarea', 'number', 'boolean', 'date', 'url', 'image', 'select') NOT NULL DEFAULT 'text',
+  required TINYINT(1) NOT NULL DEFAULT 0,
+  options JSON NULL,
+  position INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (definition_id) REFERENCES ${TABLES.metaobjectDefinitions}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_definition_field_key (definition_id, field_key),
+  INDEX idx_field_definition_position (definition_id, position)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Vertical-agnostic "thing a store showcases that isn't an ecommerce
 -- product" — a property (real estate), a vehicle (car dealer), a rental
 -- unit, or a bookable service (a lawyer's consultation type, a salon
@@ -608,9 +663,18 @@ CREATE TABLE IF NOT EXISTS ${TABLES.contacts} (
 -- make/model/year for a vehicle, deposit/daily_rate for a rental) lives in
 -- the details column, mirroring how ${TABLES.pageSections}.fields already stores
 -- type-specific data as JSON rather than needing a column per section type.
+-- definition_id ties an entry to its metaobject schema (see
+-- ${TABLES.metaobjectDefinitions} above) -- NULL is kept possible (rather
+-- than NOT NULL) so this table still has a sane shape if it's ever used
+-- without the metaobject system layered on top; every entry the metaobject
+-- admin screens create always sets it, and listing_type is kept in sync
+-- with the definition's handle purely as a denormalized filter (see
+-- lib/metaobjects.js) so a storefront query never needs to join back to the
+-- definition just to filter by type.
 CREATE TABLE IF NOT EXISTS ${TABLES.listings} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   store_id INT NOT NULL,
+  definition_id INT NULL,
   listing_type VARCHAR(30) NOT NULL DEFAULT 'general',
   title VARCHAR(255) NOT NULL,
   slug VARCHAR(255) NOT NULL,
@@ -622,8 +686,10 @@ CREATE TABLE IF NOT EXISTS ${TABLES.listings} (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (definition_id) REFERENCES ${TABLES.metaobjectDefinitions}(id) ON DELETE CASCADE,
   UNIQUE KEY uniq_store_listing_slug (store_id, slug),
-  INDEX idx_listing_type_status (listing_type, status)
+  INDEX idx_listing_type_status (listing_type, status),
+  INDEX idx_listing_definition (definition_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Plan pricing — mirrors ${TABLES.themes}'s own catalog shape (a price on
@@ -1678,6 +1744,27 @@ async function migrateFollowupReminderColumn(conn) {
   }
 }
 
+// Adds the definition_id column/FK (see lib/metaobjects.js) tying a
+// pz_listings row to its metaobject schema, for an existing install whose
+// pz_listings predates the metaobject system. Fresh installs already get
+// this shape from the CREATE TABLE above; pz_metaobject_definitions itself
+// needs no migration (a brand-new table -- CREATE TABLE IF NOT EXISTS
+// already covers every install, new or old).
+async function migrateListingsMetaobjects(conn) {
+  if (!(await tableExists(conn, TABLES.listings))) return;
+  if (!(await columnExists(conn, TABLES.listings, 'definition_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.listings} ADD COLUMN definition_id INT NULL AFTER store_id`);
+  }
+  if (!(await foreignKeyExists(conn, TABLES.listings, 'definition_id'))) {
+    await conn.query(
+      `ALTER TABLE ${TABLES.listings} ADD FOREIGN KEY (definition_id) REFERENCES ${TABLES.metaobjectDefinitions}(id) ON DELETE CASCADE`
+    );
+  }
+  if (!(await indexExists(conn, TABLES.listings, 'idx_listing_definition'))) {
+    await conn.query(`ALTER TABLE ${TABLES.listings} ADD INDEX idx_listing_definition (definition_id)`);
+  }
+}
+
 async function migrateSeedPlansAndApps(conn) {
   const planSeed = [
     { slug: 'free', name: 'Free', price_cents: 0 },
@@ -1978,6 +2065,7 @@ async function init() {
     await migrateContactsOptionalStore(conn);
     await migrateCrmTasksEnhancements(conn);
     await migrateFollowupReminderColumn(conn);
+    await migrateListingsMetaobjects(conn);
     await migrateContactsIsCustomer(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);

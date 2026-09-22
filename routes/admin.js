@@ -23,6 +23,7 @@ const menusLib = require('../lib/menus');
 const { importDemoContent } = require('../lib/demoImport');
 const mediaLib = require('../lib/media');
 const { getActiveAppSlugs, listAppsForStore, activateApp } = require('../lib/apps');
+const metaobjectsLib = require('../lib/metaobjects');
 
 function slugify(str) {
   return str
@@ -426,6 +427,236 @@ router.post('/products/:id/delete', async (req, res, next) => {
     await pool.query(`DELETE FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [req.store.id, req.params.id]);
     req.flash('success', 'Product deleted.');
     res.redirect('/admin/products');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Metaobjects (custom content types, e.g. a real-estate store's
+// "Property") -- see lib/metaobjects.js for the definition/field/entry
+// model. Every route below is store-scoped through req.store.id the same
+// way products/categories are; all three screens (list, one definition's
+// schema+entries, one entry's form) share the title 'Metaobjects' so the
+// sidebar's nav-active check (views/admin/partials/header.ejs) is a single
+// plain string compare, same trick the CRM task drawer uses for its own
+// title.
+async function loadOwnedDefinition(storeId, id) {
+  return metaobjectsLib.getDefinition(storeId, id);
+}
+
+router.get('/metaobjects', async (req, res, next) => {
+  try {
+    const definitions = await metaobjectsLib.listDefinitions(req.store.id);
+    res.render('admin/metaobjects', { title: 'Metaobjects', definitions });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/metaobjects', async (req, res, next) => {
+  try {
+    const id = await metaobjectsLib.createDefinition(req.store.id, { name: req.body.name, handle: req.body.handle });
+    req.flash('success', 'Metaobject type created — add its fields below.');
+    res.redirect(`/admin/metaobjects/${id}`);
+  } catch (err) {
+    if (err && err.message) {
+      req.flash('error', err.message);
+      return res.redirect('/admin/metaobjects');
+    }
+    next(err);
+  }
+});
+
+router.get('/metaobjects/:id', async (req, res, next) => {
+  try {
+    const definition = await loadOwnedDefinition(req.store.id, req.params.id);
+    if (!definition) {
+      req.flash('error', 'Metaobject type not found.');
+      return res.redirect('/admin/metaobjects');
+    }
+    const [fields, entries] = await Promise.all([
+      metaobjectsLib.listFields(definition.id),
+      metaobjectsLib.listEntries(req.store.id, definition.id),
+    ]);
+    res.render('admin/metaobject-detail', {
+      title: 'Metaobjects',
+      definition,
+      fields,
+      entries,
+      fieldTypes: metaobjectsLib.FIELD_TYPES,
+      fieldTypeLabels: metaobjectsLib.FIELD_TYPE_LABELS,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/metaobjects/:id/edit', async (req, res, next) => {
+  try {
+    const definition = await loadOwnedDefinition(req.store.id, req.params.id);
+    if (!definition) {
+      req.flash('error', 'Metaobject type not found.');
+      return res.redirect('/admin/metaobjects');
+    }
+    await metaobjectsLib.updateDefinition(req.store.id, definition.id, { name: req.body.name, handle: req.body.handle });
+    req.flash('success', 'Saved.');
+  } catch (err) {
+    if (!err || !err.message) return next(err);
+    req.flash('error', err.message);
+  }
+  res.redirect(`/admin/metaobjects/${req.params.id}`);
+});
+
+router.post('/metaobjects/:id/delete', async (req, res, next) => {
+  try {
+    await metaobjectsLib.deleteDefinition(req.store.id, req.params.id);
+    req.flash('success', 'Metaobject type deleted, along with every entry of it.');
+    res.redirect('/admin/metaobjects');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Fields (one definition's schema) ----
+router.post('/metaobjects/:id/fields', async (req, res, next) => {
+  try {
+    const definition = await loadOwnedDefinition(req.store.id, req.params.id);
+    if (!definition) {
+      req.flash('error', 'Metaobject type not found.');
+      return res.redirect('/admin/metaobjects');
+    }
+    await metaobjectsLib.addField(definition.id, {
+      label: req.body.label,
+      type: req.body.type,
+      required: req.body.required === '1',
+      options: req.body.options,
+    });
+    req.flash('success', 'Field added.');
+  } catch (err) {
+    if (!err || !err.message) return next(err);
+    req.flash('error', err.message);
+  }
+  res.redirect(`/admin/metaobjects/${req.params.id}`);
+});
+
+router.post('/metaobjects/:id/fields/:fieldId/edit', async (req, res, next) => {
+  try {
+    await metaobjectsLib.updateField(req.params.id, req.params.fieldId, {
+      label: req.body.label,
+      type: req.body.type,
+      required: req.body.required === '1',
+      options: req.body.options,
+    });
+    req.flash('success', 'Field saved.');
+  } catch (err) {
+    if (!err || !err.message) return next(err);
+    req.flash('error', err.message);
+  }
+  res.redirect(`/admin/metaobjects/${req.params.id}`);
+});
+
+router.post('/metaobjects/:id/fields/:fieldId/delete', async (req, res, next) => {
+  try {
+    await metaobjectsLib.deleteField(req.params.id, req.params.fieldId);
+    req.flash('success', 'Field deleted. Existing entries keep whatever value it held, just no longer editable.');
+    res.redirect(`/admin/metaobjects/${req.params.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Entries (one row per actual item, e.g. one property) ----
+router.get('/metaobjects/:id/entries/new', async (req, res, next) => {
+  try {
+    const definition = await loadOwnedDefinition(req.store.id, req.params.id);
+    if (!definition) {
+      req.flash('error', 'Metaobject type not found.');
+      return res.redirect('/admin/metaobjects');
+    }
+    const fields = await metaobjectsLib.listFields(definition.id);
+    res.render('admin/metaobject-entry-form', { title: 'Metaobjects', definition, fields, entry: null, values: {} });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/metaobjects/:id/entries/new', async (req, res, next) => {
+  try {
+    const definition = await loadOwnedDefinition(req.store.id, req.params.id);
+    if (!definition) {
+      req.flash('error', 'Metaobject type not found.');
+      return res.redirect('/admin/metaobjects');
+    }
+    const fields = await metaobjectsLib.listFields(definition.id);
+    const fieldValues = metaobjectsLib.sanitizeFieldValues(fields, req.body);
+    const entryId = await metaobjectsLib.createEntry(
+      req.store.id,
+      definition,
+      { title: req.body.title, image_url: req.body.image_url, status: req.body.status },
+      fieldValues
+    );
+    req.flash('success', `${definition.name} entry created.`);
+    res.redirect(`/admin/metaobjects/${definition.id}/entries/${entryId}/edit`);
+  } catch (err) {
+    if (err && err.message) {
+      req.flash('error', err.message);
+      return res.redirect(`/admin/metaobjects/${req.params.id}/entries/new`);
+    }
+    next(err);
+  }
+});
+
+router.get('/metaobjects/:id/entries/:entryId/edit', async (req, res, next) => {
+  try {
+    const definition = await loadOwnedDefinition(req.store.id, req.params.id);
+    if (!definition) {
+      req.flash('error', 'Metaobject type not found.');
+      return res.redirect('/admin/metaobjects');
+    }
+    const entry = await metaobjectsLib.getEntry(req.store.id, definition.id, req.params.entryId);
+    if (!entry) {
+      req.flash('error', 'Entry not found.');
+      return res.redirect(`/admin/metaobjects/${definition.id}`);
+    }
+    const fields = await metaobjectsLib.listFields(definition.id);
+    res.render('admin/metaobject-entry-form', { title: 'Metaobjects', definition, fields, entry, values: entry.details || {} });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/metaobjects/:id/entries/:entryId/edit', async (req, res, next) => {
+  try {
+    const definition = await loadOwnedDefinition(req.store.id, req.params.id);
+    if (!definition) {
+      req.flash('error', 'Metaobject type not found.');
+      return res.redirect('/admin/metaobjects');
+    }
+    const fields = await metaobjectsLib.listFields(definition.id);
+    const fieldValues = metaobjectsLib.sanitizeFieldValues(fields, req.body);
+    await metaobjectsLib.updateEntry(
+      req.store.id,
+      definition.id,
+      req.params.entryId,
+      { title: req.body.title, image_url: req.body.image_url, status: req.body.status },
+      fieldValues
+    );
+    req.flash('success', 'Saved.');
+    res.redirect(`/admin/metaobjects/${definition.id}/entries/${req.params.entryId}/edit`);
+  } catch (err) {
+    if (err && err.message) {
+      req.flash('error', err.message);
+      return res.redirect(`/admin/metaobjects/${req.params.id}/entries/${req.params.entryId}/edit`);
+    }
+    next(err);
+  }
+});
+
+router.post('/metaobjects/:id/entries/:entryId/delete', async (req, res, next) => {
+  try {
+    await metaobjectsLib.deleteEntry(req.store.id, req.params.id, req.params.entryId);
+    req.flash('success', 'Entry deleted.');
+    res.redirect(`/admin/metaobjects/${req.params.id}`);
   } catch (err) {
     next(err);
   }
