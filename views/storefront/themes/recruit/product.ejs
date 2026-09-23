@@ -24,6 +24,15 @@
     <% } else { %>
       <p class="tag tag-out">Out of stock</p>
     <% } %>
+
+    <% if (store.whatsapp_number) { %>
+      <a
+        class="btn btn-whatsapp"
+        href="https://wa.me/<%= store.whatsapp_number %>?text=<%= encodeURIComponent(`Hi, I'm interested in ${product.title} - ${productUrl}`) %>"
+        target="_blank"
+        rel="noopener"
+      >Chat to order on WhatsApp</a>
+    <% } %>
   </div>
 </section>
 

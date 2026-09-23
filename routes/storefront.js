@@ -4,18 +4,15 @@ const bcrypt = require('bcryptjs');
 const { pool, TABLES } = require('../db/database');
 const { getCartItems, getCartTotals, getStoreCart } = require('../middleware/cart');
 const { requireCustomer } = require('../middleware/auth');
+const { storeUrl } = require('../middleware/tenant');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('../lib/themes');
 const { resolveTokens, tokensToInlineStyle, themeDefaultTokens } = require('../lib/themeTokens');
 const { readManifest } = require('../lib/themeManifest');
 const menusLib = require('../lib/menus');
 const metaobjectsLib = require('../lib/metaobjects');
+const { createOrder, genOrderNumber } = require('../lib/orders');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function genOrderNumber() {
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `PZ-${Date.now().toString().slice(-6)}${rand}`;
-}
 
 function toNumber(product) {
   return { ...product, price: Number(product.price), compare_at_price: product.compare_at_price !== null ? Number(product.compare_at_price) : null };
@@ -421,6 +418,10 @@ router.get('/products/:slug', async (req, res, next) => {
       title: product.title,
       product: toNumber(product),
       related: related.map(toNumber),
+      // Absolute URL (not a relative /products/<slug>) since this is meant
+      // to be dropped straight into a WhatsApp message -- see the "Chat to
+      // order on WhatsApp" button in each theme's product.ejs.
+      productUrl: storeUrl(req, req.store.subdomain, `/products/${product.slug}`),
     });
   } catch (err) {
     next(err);
@@ -694,20 +695,25 @@ router.post('/checkout', async (req, res, next) => {
     // checkout (no account) still works fine and just leaves this null.
     const customerId = (req.session.customer && req.session.customer.store_id === storeId) ? req.session.customer.id : null;
 
-    const [orderResult] = await conn.query(
-      `INSERT INTO ${TABLES.orders} (store_id, customer_id, order_number, customer_name, customer_email, customer_phone, shipping_address, shipping_city, shipping_zip, subtotal, discount_code, discount_amount, total, status, payment_method)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'cod')`,
-      [storeId, customerId, orderNumber, name, email, phone || null, address, city || null, zip || null, subtotal, discount ? discount.code : null, discountAmount, total]
-    );
-    const orderId = orderResult.insertId;
-
-    for (const item of items) {
-      await conn.query(
-        `INSERT INTO ${TABLES.orderItems} (order_id, product_id, title, price, quantity) VALUES (?, ?, ?, ?, ?)`,
-        [orderId, item.id, item.title, item.price, item.quantity]
-      );
-      await conn.query(`UPDATE ${TABLES.products} SET stock = GREATEST(stock - ?, 0) WHERE store_id = ? AND id = ?`, [item.quantity, storeId, item.id]);
-    }
+    await createOrder(conn, {
+      storeId,
+      customerId,
+      orderNumber,
+      customerName: name,
+      customerEmail: email,
+      customerPhone: phone || null,
+      shippingAddress: address,
+      shippingCity: city || null,
+      shippingZip: zip || null,
+      subtotal,
+      discountCode: discount ? discount.code : null,
+      discountAmount,
+      total,
+      status: 'pending',
+      paymentMethod: 'cod',
+      source: 'storefront',
+      items,
+    });
 
     await conn.commit();
     req.session.carts[storeId] = {};

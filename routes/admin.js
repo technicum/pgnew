@@ -24,6 +24,7 @@ const { importDemoContent } = require('../lib/demoImport');
 const mediaLib = require('../lib/media');
 const { getActiveAppSlugs, listAppsForStore, activateApp } = require('../lib/apps');
 const metaobjectsLib = require('../lib/metaobjects');
+const { createOrder, genOrderNumber } = require('../lib/orders');
 
 function slugify(str) {
   return str
@@ -2050,10 +2051,113 @@ router.post('/store/themes/:storeThemeId/customize', async (req, res, next) => {
 });
 
 // ---------- Orders ----------
+const ORDER_SOURCES = ['storefront', 'whatsapp'];
+
 router.get('/orders', async (req, res, next) => {
   try {
-    const [orders] = await pool.query(`SELECT * FROM ${TABLES.orders} WHERE store_id = ? ORDER BY created_at DESC`, [req.store.id]);
-    res.render('admin/orders', { title: 'Orders', orders: orders.map(orderToNumber) });
+    const sourceFilter = ORDER_SOURCES.includes(req.query.source) ? req.query.source : null;
+    const params = [req.store.id];
+    let where = 'WHERE store_id = ?';
+    if (sourceFilter) {
+      where += ' AND source = ?';
+      params.push(sourceFilter);
+    }
+    const [orders] = await pool.query(`SELECT * FROM ${TABLES.orders} ${where} ORDER BY created_at DESC`, params);
+    res.render('admin/orders', { title: 'Orders', orders: orders.map(orderToNumber), sourceFilter });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Quick-create form for logging a sale made over a WhatsApp chat -- no
+// WhatsApp Business API involved, just a fast way to get a real order (with
+// the same stock-decrement behavior as a normal checkout, via
+// lib/orders.js's createOrder) into the system without the customer ever
+// touching the storefront. Registered before GET /orders/:id so
+// "new-whatsapp" is never swallowed by that route's :id param.
+router.get('/orders/new-whatsapp', async (req, res, next) => {
+  try {
+    const [products] = await pool.query(
+      `SELECT id, title, price, stock FROM ${TABLES.products} WHERE store_id = ? AND status = 'active' ORDER BY title`,
+      [req.store.id]
+    );
+    res.render('admin/order-whatsapp-form', {
+      title: 'New order (WhatsApp)',
+      products: products.map((p) => ({ ...p, price: Number(p.price) })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/orders/new-whatsapp', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const { quantity, customer_name, customer_phone, address, paid } = req.body;
+    const productId = parseInt(req.body.product_id, 10);
+    const customerName = (customer_name || '').trim();
+    const customerPhone = (customer_phone || '').trim();
+    const qty = parseInt(quantity, 10);
+
+    if (!customerName || !customerPhone) {
+      req.flash('error', 'Customer name and phone are required.');
+      return res.redirect('/admin/orders/new-whatsapp');
+    }
+    if (!Number.isFinite(qty) || qty <= 0) {
+      req.flash('error', 'Quantity must be at least 1.');
+      return res.redirect('/admin/orders/new-whatsapp');
+    }
+
+    // Never trust a client-submitted product id -- only a product this
+    // store actually owns can be ordered, same rule as everywhere else in
+    // this file (see e.g. ownedCategoryIds above).
+    const [[product]] = await pool.query(`SELECT * FROM ${TABLES.products} WHERE store_id = ? AND id = ?`, [storeId, productId]);
+    if (!product) {
+      req.flash('error', 'Product not found.');
+      return res.redirect('/admin/orders/new-whatsapp');
+    }
+
+    // Same clamp the storefront cart applies when a shopper adds/updates a
+    // line (see middleware/cart.js) -- this can never oversell past what's
+    // actually in stock, whatever quantity was typed in.
+    const finalQty = Math.min(qty, Math.max(product.stock, 0));
+    if (finalQty <= 0) {
+      req.flash('error', `${product.title} is out of stock.`);
+      return res.redirect('/admin/orders/new-whatsapp');
+    }
+
+    const price = Number(product.price);
+    const subtotal = Math.round(price * finalQty * 100) / 100;
+    const isPaid = paid === 'paid';
+
+    const conn = await pool.getConnection();
+    let orderId;
+    try {
+      await conn.beginTransaction();
+      orderId = await createOrder(conn, {
+        storeId,
+        orderNumber: genOrderNumber(),
+        customerName,
+        customerEmail: '',
+        customerPhone,
+        shippingAddress: (address || '').trim(),
+        subtotal,
+        total: subtotal,
+        status: isPaid ? 'paid' : 'pending',
+        paymentMethod: isPaid ? 'manual' : 'cod',
+        source: 'whatsapp',
+        items: [{ id: product.id, title: product.title, price, quantity: finalQty }],
+      });
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+
+    req.flash('success', 'Order created from WhatsApp.');
+    res.redirect(`/admin/orders/${orderId}`);
   } catch (err) {
     next(err);
   }
@@ -2312,7 +2416,18 @@ router.get('/settings', async (req, res, next) => {
        ORDER BY (ur.role = 'admin') DESC, u.name ASC`,
       [req.store.id]
     );
-    res.render('admin/settings', { title: 'Settings', themes: THEMES, team });
+    res.render('admin/settings', {
+      title: 'Settings',
+      themes: THEMES,
+      team,
+      // Pre-existing "site type" picker (see views/admin/partials/header.ejs's
+      // isOnlineStore check) -- stores.category doesn't exist as a real
+      // column yet, so this always renders as "Not set" today; kept here
+      // (rather than removed) purely so this view's own <select> has a
+      // locals object to iterate instead of throwing on an undefined one.
+      storeCategories: ['lawyer', 'recruitment', 'car_dealer', 'real_estate'],
+      categoryLabels: { online_store: 'Online Store', lawyer: 'Lawyer', recruitment: 'Recruitment', car_dealer: 'Car Dealer', real_estate: 'Real Estate' },
+    });
   } catch (err) {
     next(err);
   }
@@ -2403,13 +2518,18 @@ router.post('/settings/store', async (req, res, next) => {
   try {
     const name = (req.body.name || '').trim();
     const theme = THEMES.includes(req.body.theme) ? req.body.theme : req.store.theme;
+    // Digits only (e.g. "+91 98765-43210" -> "919876543210") so this can be
+    // dropped straight into a wa.me/<number> link -- see the storefront's
+    // "Chat to order on WhatsApp" button and the admin's WhatsApp quick-order
+    // form. Empty input clears the number (button/feature just stays hidden).
+    const whatsappNumber = (req.body.whatsapp_number || '').replace(/\D/g, '') || null;
 
     if (!name) {
       req.flash('error', 'Store name is required.');
       return res.redirect('/admin/settings');
     }
 
-    await pool.query(`UPDATE ${TABLES.stores} SET name = ?, theme = ? WHERE id = ?`, [name, theme, req.store.id]);
+    await pool.query(`UPDATE ${TABLES.stores} SET name = ?, theme = ?, whatsapp_number = ? WHERE id = ?`, [name, theme, whatsappNumber, req.store.id]);
     req.flash('success', 'Store settings updated.');
     res.redirect('/admin/settings');
   } catch (err) {

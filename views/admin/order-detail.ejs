@@ -33,9 +33,12 @@
   </section>
 
   <aside class="panel">
+    <h2>Source</h2>
+    <p><span class="status-pill status-source-<%= order.source %>"><%= order.source === 'whatsapp' ? 'WhatsApp' : 'Website' %></span></p>
+
     <h2>Customer</h2>
     <p><strong><%= order.customer_name %></strong></p>
-    <p><%= order.customer_email %></p>
+    <% if (order.customer_email) { %><p><%= order.customer_email %></p><% } %>
     <% if (order.customer_phone) { %><p><%= order.customer_phone %></p><% } %>
     <p><%= order.shipping_address %><br />
       <%= order.shipping_city || '' %> <%= order.shipping_zip || '' %>

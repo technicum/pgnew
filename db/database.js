@@ -1511,6 +1511,34 @@ async function migrateOrderCustomerColumn(conn) {
   }
 }
 
+// WhatsApp order tracking, Phase 1 (no WhatsApp Business API — just a way to
+// log a sale made over a WhatsApp chat and tell it apart from a real
+// storefront checkout). Plain VARCHAR rather than an ENUM, same convention
+// as pz_contacts.source above, so a future source ('instagram', 'phone', ...)
+// never needs its own migration to exist. Existing rows all predate this
+// column and are real storefront checkouts, so DEFAULT 'storefront' backfills
+// them correctly with no separate UPDATE needed.
+async function migrateOrderSourceColumn(conn) {
+  if (!(await columnExists(conn, TABLES.orders, 'source'))) {
+    await conn.query(`ALTER TABLE ${TABLES.orders} ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'storefront'`);
+  }
+  if (!(await indexExists(conn, TABLES.orders, 'idx_order_source'))) {
+    await conn.query(`ALTER TABLE ${TABLES.orders} ADD INDEX idx_order_source (source)`);
+  }
+}
+
+// A store's own WhatsApp contact number (for the storefront's "Chat to order
+// on WhatsApp" product-page link and the admin's "New order from WhatsApp"
+// quick-create form) -- digits only, no '+' or spaces, e.g. '919876543210',
+// so it can be dropped straight into a wa.me/<number> link. NULL means the
+// store hasn't set one yet, in which case the storefront button and this
+// order-source feature are both effectively off for that store.
+async function migrateStoreWhatsappColumn(conn) {
+  if (!(await columnExists(conn, TABLES.stores, 'whatsapp_number'))) {
+    await conn.query(`ALTER TABLE ${TABLES.stores} ADD COLUMN whatsapp_number VARCHAR(20) NULL`);
+  }
+}
+
 // ONE-TIME EXCEPTION to this file's "never drop data" rule: pz_admins is
 // being fully replaced by pz_users + pz_user_roles. Every existing pz_admins
 // row is copied forward first, then the (now-empty-of-value) table is
@@ -2058,6 +2086,8 @@ async function init() {
     await migrateNavMenuSections(conn);
     await migrateOrderDiscountColumns(conn);
     await migrateOrderCustomerColumn(conn);
+    await migrateOrderSourceColumn(conn);
+    await migrateStoreWhatsappColumn(conn);
     await migrateAdminsToUsers(conn);
     await migrateThemesFromManifests(conn);
     await migrateStoreThemes(conn);
