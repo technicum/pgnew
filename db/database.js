@@ -2300,6 +2300,55 @@ async function migrateRecruitDemoStore(conn) {
   }
 }
 
+// migrateRecruitDemoStore above only WRITES its hero/row/stats/etc content
+// the very first time it runs (its `if (!recruitStoreId)` block) -- correct
+// for a brand-new demo store, but it means a later content-only revision to
+// that function (e.g. this theme's redesign: dropping the hero's photo
+// background, painting the stats band and closing CTA in the theme's own
+// navy) never reaches a demo store that was already created on an earlier
+// boot. This is the fix-up for exactly that: re-applies the current hero/
+// stats/newsletter field values (and their bg_color/text_color) to the
+// EXISTING demo store's Home page sections by type, every boot. Cheap and
+// fully idempotent (plain UPDATEs, no inserts), so it's harmless to leave
+// running indefinitely rather than deleting it once every server has
+// picked it up. If a merchant ever customizes this specific demo store by
+// hand those edits would be overwritten -- acceptable here since this is
+// the platform's own showcase store, not a real merchant's.
+async function migrateRecruitDemoRedesign(conn) {
+  const { defaultFields } = require('../lib/sections');
+
+  const [[recruitStore]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = 'demo-recruit'`);
+  if (!recruitStore) return; // demo store doesn't exist yet -- migrateRecruitDemoStore will create it with current content directly
+  const recruitStoreId = recruitStore.id;
+
+  const [[homePage]] = await conn.query(`SELECT id FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 1`, [recruitStoreId]);
+  if (!homePage) return;
+  const homeId = homePage.id;
+
+  const RECRUIT_NAVY = '#10305a';
+
+  await conn.query(
+    `UPDATE ${TABLES.pageSections} SET fields = ?, bg_color = NULL, text_color = NULL WHERE page_id = ? AND type = 'hero'`,
+    [
+      JSON.stringify({ ...defaultFields('hero'), heading: 'Recruiting the People Who Move Your Business Forward', subheading: 'Executive search, permanent staffing and contract talent — matched by consultants who work your industry.' }),
+      homeId,
+    ]
+  );
+  await conn.query(
+    `UPDATE ${TABLES.pageSections} SET bg_color = ?, text_color = ? WHERE page_id = ? AND type = 'stats'`,
+    [RECRUIT_NAVY, '#ffffff', homeId]
+  );
+  await conn.query(
+    `UPDATE ${TABLES.pageSections} SET fields = ?, bg_color = ?, text_color = ? WHERE page_id = ? AND type = 'newsletter'`,
+    [
+      JSON.stringify({ ...defaultFields('newsletter'), heading: 'Ready to build your team or your career?', subtext: 'Tell us what you’re hiring for — or what you’re looking for — and we’ll get back to you within one business day.', button: 'Submit a Brief' }),
+      RECRUIT_NAVY,
+      '#ffffff',
+      homeId,
+    ]
+  );
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
@@ -2335,6 +2384,7 @@ async function init() {
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);
     await migrateRecruitDemoStore(conn);
+    await migrateRecruitDemoRedesign(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 
