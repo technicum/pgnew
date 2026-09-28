@@ -58,12 +58,19 @@
           // exactly what fills the nav gap the 4 non-online-store categories
           // otherwise have here.
           var isMetaobjectsScreen = title === 'Metaobjects';
-          var contentOpen = title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen || title === 'Media' || isBlogScreen || isMetaobjectsScreen);
+          // "Forms" -- see lib/forms.js and routes/admin.js's /admin/forms
+          // routes. A form is a page under the hood (is_form=1), so editing
+          // one's design lands back on the normal page-builder "Edit ..."
+          // screen and lights up "Pages" too -- close enough for now; it's
+          // still filed under Content either way.
+          var isFormsScreen = title === 'Forms';
+          var contentOpen = title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen || title === 'Media' || isBlogScreen || isMetaobjectsScreen || isFormsScreen);
           var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Header' || title === 'Footer' || title.indexOf(' override — ') !== -1 || isMenusScreen);
         %>
         <a href="/admin/pages" class="<%= contentOpen ? 'active' : '' %>">Content</a>
         <% if (contentOpen) { %>
           <a href="/admin/pages" class="admin-nav-sub <%= title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen) ? 'active' : '' %>">Pages</a>
+          <a href="/admin/forms" class="admin-nav-sub <%= isFormsScreen ? 'active' : '' %>">Forms</a>
           <a href="/admin/media" class="admin-nav-sub <%= title === 'Media' ? 'active' : '' %>">Media</a>
           <a href="/admin/blog" class="admin-nav-sub <%= isBlogScreen ? 'active' : '' %>">Blog posts</a>
           <a href="/admin/metaobjects" class="admin-nav-sub <%= isMetaobjectsScreen ? 'active' : '' %>">Metaobjects</a>

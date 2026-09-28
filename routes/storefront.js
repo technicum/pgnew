@@ -104,7 +104,7 @@ router.use(async (req, res, next) => {
 router.use(async (req, res, next) => {
   try {
     const [pages] = await pool.query(
-      `SELECT id, name, path FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 0 AND status = 'published' ORDER BY name`,
+      `SELECT id, name, path FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 0 AND is_form = 0 AND status = 'published' ORDER BY name`,
       [req.store.id]
     );
     res.locals.storePages = pages;
@@ -370,6 +370,24 @@ router.get('/pages/:slug', async (req, res, next) => {
     const path = `/${req.params.slug}`;
     const [[page]] = await pool.query(
       `SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND path = ? AND status = 'published' LIMIT 1`,
+      [req.store.id, path]
+    );
+    if (!page) return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Page not found' });
+    return renderStorePage(req, res, next, page);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Standalone forms built via the Forms module (see routes/admin.js's
+// /admin/forms routes) — a page like any other, just addressed as
+// "/forms/<slug>" instead of "/pages/<slug>" so it reads as its own shareable
+// link (e.g. for WhatsApp or a QR code) rather than a regular site page.
+router.get('/forms/:slug', async (req, res, next) => {
+  try {
+    const path = `/forms/${req.params.slug}`;
+    const [[page]] = await pool.query(
+      `SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND path = ? AND is_form = 1 AND status = 'published' LIMIT 1`,
       [req.store.id, path]
     );
     if (!page) return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Page not found' });

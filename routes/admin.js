@@ -25,6 +25,7 @@ const mediaLib = require('../lib/media');
 const { getActiveAppSlugs, listAppsForStore, activateApp } = require('../lib/apps');
 const metaobjectsLib = require('../lib/metaobjects');
 const { createOrder, genOrderNumber } = require('../lib/orders');
+const { FORM_PRESETS, VALID_PRESETS: VALID_FORM_PRESETS } = require('../lib/forms');
 
 function slugify(str) {
   return str
@@ -1268,7 +1269,7 @@ function mountSectionRoutes(routePrefix, resolveScope) {
 router.get('/pages', async (req, res, next) => {
   try {
     const [pages] = await pool.query(
-      `SELECT * FROM ${TABLES.pages} WHERE store_id = ? ORDER BY is_home DESC, name ASC`,
+      `SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND is_form = 0 ORDER BY is_home DESC, name ASC`,
       [req.store.id]
     );
     res.render('admin/pages', { title: 'Pages', pages });
@@ -1424,6 +1425,91 @@ router.post('/pages/:id/delete', requireAdminRole, async (req, res, next) => {
     await pool.query(`DELETE FROM ${TABLES.pages} WHERE id = ?`, [page.id]);
     req.flash('success', 'Page deleted.');
     res.redirect('/admin/pages');
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---- Forms module ----
+// A "form" is a normal pz_pages row (is_form = 1) auto-provisioned with one
+// 'form' section, so it gets its own real, themed URL and reuses the exact
+// same builder/rendering pipeline as any other page (see lib/forms.js and
+// the 'form' section type in lib/sections.js) — just addressed at
+// /forms/<slug> instead of /pages/<slug> (routes/storefront.js), and kept
+// out of the regular Pages list and the auto nav-link list so the two don't
+// mix. Deleting a form only removes the page; past submissions
+// (pz_form_submissions) and the CRM leads they created are untouched.
+router.get('/forms', async (req, res, next) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT p.*,
+         (SELECT ps.fields FROM ${TABLES.pageSections} ps
+            WHERE ps.page_id = p.id AND ps.type = 'form'
+            ORDER BY ps.position ASC LIMIT 1) AS form_fields,
+         (SELECT COUNT(*) FROM ${TABLES.formSubmissions} fs
+            JOIN ${TABLES.pageSections} ps2 ON ps2.id = fs.section_id
+            WHERE ps2.page_id = p.id) AS submission_count
+       FROM ${TABLES.pages} p
+       WHERE p.store_id = ? AND p.is_form = 1
+       ORDER BY p.name ASC`,
+      [req.store.id]
+    );
+    const forms = rows.map((f) => {
+      const fields = f.form_fields ? (typeof f.form_fields === 'string' ? JSON.parse(f.form_fields) : f.form_fields) : {};
+      const preset = FORM_PRESETS[fields.preset] || FORM_PRESETS.contact;
+      return { ...f, presetLabel: preset.label, publicUrl: storeUrl(req, req.store.subdomain, f.path) };
+    });
+    res.render('admin/forms', { title: 'Forms', forms, formPresets: FORM_PRESETS });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/forms/new', async (req, res, next) => {
+  try {
+    const storeId = req.store.id;
+    const name = (req.body.name || '').trim();
+    const preset = VALID_FORM_PRESETS.includes(req.body.preset) ? req.body.preset : 'contact';
+    if (!name) {
+      req.flash('error', 'Form name is required.');
+      return res.redirect('/admin/forms');
+    }
+
+    let slug = slugify(name) || 'form';
+    let path = `/forms/${slug}`;
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.pages} WHERE store_id = ? AND path = ?`, [storeId, path]);
+    if (existing) path = `/forms/${slug}-${Date.now().toString().slice(-4)}`;
+
+    const [result] = await pool.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status, is_form) VALUES (?, ?, ?, 0, 'published', 1)`,
+      [storeId, name, path]
+    );
+    const pageId = result.insertId;
+
+    await pool.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'form', 0, ?)`,
+      [pageId, JSON.stringify(Object.assign(defaultFields('form'), { heading: name, preset }))]
+    );
+
+    req.flash('success', 'Form created — customize it below, then share its link from the Forms list.');
+    res.redirect(`/admin/pages/${pageId}/edit`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Admin only — a Manager can create/edit forms but not delete them (mirrors
+// the same rule on /pages/:id/delete above).
+router.post('/forms/:id/delete', requireAdminRole, async (req, res, next) => {
+  try {
+    const page = await loadOwnedPage(req.store.id, req.params.id);
+    if (!page || !page.is_form) {
+      req.flash('error', 'Form not found.');
+      return res.redirect('/admin/forms');
+    }
+    await pool.query(`DELETE FROM ${TABLES.pages} WHERE id = ?`, [page.id]);
+    req.flash('success', 'Form deleted. Past submissions and any CRM leads they created are kept.');
+    res.redirect('/admin/forms');
   } catch (err) {
     next(err);
   }

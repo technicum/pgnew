@@ -70,8 +70,13 @@
         var crumbRight = context === 'page'
           ? page.name
           : (page ? (page.name + ' — ' + regionLabel + ' override') : regionLabel);
-        var exitHref = context !== 'page' && page ? ('/admin/pages/' + page.id + '/edit') : '/admin/pages';
-        var previewHref = page ? (page.is_home ? '/' : '/pages' + page.path) : '/';
+        var exitHref = context !== 'page' && page
+          ? ('/admin/pages/' + page.id + '/edit')
+          : (page && page.is_form ? '/admin/forms' : '/admin/pages');
+        // A form page's own path already includes its "/forms/" prefix
+        // (see routes/admin.js's /forms/new); a regular page's path is just
+        // its slug and lives under "/pages/" on the live storefront.
+        var previewHref = page ? (page.is_home ? '/' : (page.is_form ? page.path : '/pages' + page.path)) : '/';
       %>
       <header class="b-topbar">
         <div class="b-topbar-left">

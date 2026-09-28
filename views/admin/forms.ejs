@@ -1,0 +1,52 @@
+<%- include('partials/header') %>
+
+<div class="panel" style="max-width:560px; margin-bottom:20px;">
+  <h2>Create a form</h2>
+  <p class="form-hint" style="margin-top:0;">Gets its own page and its own shareable link — post it on WhatsApp, put it in a QR code, or link to it from your nav. Every submission becomes a lead in your CRM automatically.</p>
+  <form action="/admin/forms/new" method="POST" class="menu-create-form">
+    <input type="text" name="name" placeholder="e.g. Free Consultation" maxlength="100" required autofocus />
+    <select name="preset">
+      <% Object.keys(formPresets).forEach(function (slug) { %>
+        <option value="<%= slug %>"><%= formPresets[slug].label %></option>
+      <% }); %>
+    </select>
+    <button type="submit" class="btn btn-primary">Create form</button>
+  </form>
+</div>
+
+<table class="admin-table">
+  <thead>
+    <tr><th>Name</th><th>Type</th><th>Link</th><th>Submissions</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% forms.forEach(function(f) { %>
+      <tr>
+        <td><a href="/admin/pages/<%= f.id %>/edit"><%= f.name %></a></td>
+        <td><%= f.presetLabel %></td>
+        <td>
+          <a href="<%= f.publicUrl %>" target="_blank" rel="noopener"><code><%= f.path %></code></a>
+        </td>
+        <td>
+          <% if (f.submission_count > 0) { %>
+            <a href="<%= accountDashboardUrl %>/crm/leads">
+              <%= f.submission_count %> lead<%= f.submission_count === 1 ? '' : 's' %>
+            </a>
+          <% } else { %>
+            <span class="empty-state" style="padding:0;">None yet</span>
+          <% } %>
+        </td>
+        <td class="admin-row-actions">
+          <a href="/admin/pages/<%= f.id %>/edit">Edit</a>
+          <form action="/admin/forms/<%= f.id %>/delete" method="POST" onsubmit="return confirm('Delete ' + <%- JSON.stringify(f.name) %> + '? Its link will stop working. Past submissions and any leads they created are kept.');">
+            <button type="submit" class="link-btn danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    <% }); %>
+    <% if (forms.length === 0) { %>
+      <tr><td colspan="5" class="empty-state">No forms yet — create one above.</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/footer') %>

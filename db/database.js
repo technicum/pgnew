@@ -1185,6 +1185,21 @@ async function migratePagesForExistingStores(conn) {
   }
 }
 
+// Marks a page as a standalone "Form" (see the /admin/forms routes) rather
+// than a regular content page. A form is a normal pz_pages row underneath —
+// it reuses the exact same builder, theming, and rendering pipeline as any
+// other page, just auto-provisioned with a single 'form' section, served at
+// /forms/<slug> instead of /pages/<slug> (see routes/storefront.js), and
+// kept out of the regular Pages list / auto nav-link list (res.locals.
+// storePages) so it doesn't clutter either one. 0/unset for every existing
+// page, which is exactly right — nothing already published should suddenly
+// start behaving like a form.
+async function migratePagesFormColumn(conn) {
+  if (!(await columnExists(conn, TABLES.pages, 'is_form'))) {
+    await conn.query(`ALTER TABLE ${TABLES.pages} ADD COLUMN is_form TINYINT(1) NOT NULL DEFAULT 0`);
+  }
+}
+
 // Backfills pz_product_categories for products that only ever had the old
 // single products.category_id set — runs every startup but is a no-op once
 // caught up (INSERT IGNORE against the junction table's own PRIMARY KEY
@@ -2388,6 +2403,7 @@ async function init() {
 
     const demoStoreId = await migrateMultiTenancy(conn);
     await migratePagesForExistingStores(conn);
+    await migratePagesFormColumn(conn);
     await migrateProductCategoryLinks(conn);
     await migratePageSectionSettings(conn);
     await migrateSectionStyleColumns(conn);
