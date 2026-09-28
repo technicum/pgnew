@@ -13,6 +13,7 @@ const metaobjectsLib = require('../lib/metaobjects');
 const { createOrder, genOrderNumber } = require('../lib/orders');
 const { sanitizeSubmission } = require('../lib/forms');
 const { sanitizeContact } = require('../lib/contacts');
+const mailerLib = require('../lib/mailer');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -465,6 +466,68 @@ router.post('/newsletter', async (req, res) => {
 // create a lead. Deliberately tolerant of a missing/deleted section_id (SET
 // NULL on the FK) and of a contact-creation failure not blocking the raw
 // submission from being kept.
+// Emails every admin on the store when a form comes in, using whatever SMTP
+// server is configured in Platform Admin > Settings (lib/settings.js /
+// lib/mailer.js) -- if nothing is configured there (or in the SMTP_* env
+// vars) sendMail() throws, which the caller below catches and logs. A form
+// submission is never lost or blocked by this: it's already saved to
+// pz_form_submissions before this runs, and this call is fire-and-forget so
+// a slow or unreachable mail server can't hang the visitor's redirect.
+async function notifyFormSubmission(store, form, fields, data) {
+  const [admins] = await pool.query(
+    `SELECT u.email FROM ${TABLES.userRoles} ur
+     JOIN ${TABLES.users} u ON u.id = ur.user_id
+     WHERE ur.store_id = ? AND ur.role = 'admin'`,
+    [store.id]
+  );
+  const to = admins.map((a) => a.email).filter(Boolean);
+  if (!to.length) return;
+
+  const rows = fields.map((f) => {
+    const raw = data[f.key];
+    const value = Array.isArray(raw) ? raw.join(', ') : raw;
+    return { label: f.label, value: value || '—' };
+  });
+
+  const text = [
+    `New submission on "${form.name}" (${store.name})`,
+    '',
+    ...rows.map((r) => `${r.label}: ${r.value}`),
+  ].join('\n');
+
+  const html = `
+    <p>New submission on <strong>${escapeHtml(form.name)}</strong> (${escapeHtml(store.name)})</p>
+    <table cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+      ${rows.map((r) => `
+        <tr>
+          <td style="border:1px solid #e5e7eb;font-weight:600;">${escapeHtml(r.label)}</td>
+          <td style="border:1px solid #e5e7eb;">${escapeHtml(r.value)}</td>
+        </tr>`).join('')}
+    </table>
+  `;
+
+  // A visitor's own email (if the form collected one) goes on Reply-To, so
+  // hitting "Reply" on the notification answers the lead directly -- the
+  // From address stays the platform's authenticated sender either way.
+  const emailField = fields.find((f) => f.type === 'email');
+  const replyTo = emailField && data[emailField.key] ? data[emailField.key] : undefined;
+
+  await mailerLib.sendMail({
+    to: to.join(', '),
+    subject: `New submission: ${form.name} — ${store.name}`,
+    text,
+    html,
+    fromName: `${store.name} via PageZaper`,
+    replyTo,
+  });
+}
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
 router.post('/forms/submit', async (req, res) => {
   const formId = Number(req.body.form_id) || null;
   const sectionId = Number(req.body.section_id) || null;
@@ -516,6 +579,12 @@ router.post('/forms/submit', async (req, res) => {
       `INSERT INTO ${TABLES.formSubmissions} (store_id, form_id, section_id, data, contact_id) VALUES (?, ?, ?, ?, ?)`,
       [req.store.id, formId, sectionId, JSON.stringify(data), contactId]
     );
+
+    notifyFormSubmission(req.store, form, fields, data).catch((mailErr) => {
+      // Not configured yet, or the mail server rejected/timed out -- either
+      // way the submission itself is already saved above, so just log it.
+      console.error('Form submission notification email failed:', mailErr.message);
+    });
 
     req.flash('success', form.success_message || "Thanks — we'll be in touch shortly.");
   } catch (err) {
