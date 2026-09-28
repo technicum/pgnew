@@ -575,6 +575,22 @@
           '<div class="b-newsletter-form"><input placeholder="you@example.com" disabled/>' +
           '<button style="background:var(--b-accent);color:var(--b-accent-ink);" data-field="button" contenteditable="true">' + esc(d.button) + '</button></div></div>';
 
+      case "form": {
+        var formPreset = (DATA.formPresets && DATA.formPresets[d.preset]) || (DATA.formPresets && DATA.formPresets.contact) || { fields: [] };
+        var formInputs = (formPreset.fields || []).map(function (f) {
+          var ph = f.label + (f.required ? "" : " (optional)");
+          return f.type === "textarea"
+            ? '<textarea placeholder="' + esc(ph) + '" disabled></textarea>'
+            : '<input type="text" placeholder="' + esc(ph) + '" disabled/>';
+        }).join("");
+        return '<div class="b-sec-pad b-newsletter">' +
+          '<h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
+          '<p data-field="subtext" contenteditable="true">' + esc(d.subtext) + '</p>' +
+          '<div class="b-newsletter-form" style="flex-direction:column;align-items:stretch;gap:8px;max-width:360px;margin:0 auto;">' + formInputs +
+          '<button style="background:var(--b-accent);color:var(--b-accent-ink);" data-field="button" contenteditable="true">' + esc(d.button) + '</button></div>' +
+          '<p style="margin-top:10px;font-size:13px;opacity:.7;text-align:center;" data-field="success_message" contenteditable="true">' + esc(d.success_message) + '</p></div>';
+      }
+
       case "richtext":
         return '<div class="b-sec-pad b-richtext-' + (d.width === "wide" ? "wide" : "narrow") + '" style="text-align:' + (d.align === "left" ? "left" : "center") + ';">' +
           '<h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
@@ -1604,6 +1620,15 @@
           field("", '<div class="b-inspector-hint">Click a quote or name directly on the canvas to edit its text — use Add, Duplicate, or Remove here to manage the list.</div>');
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
+      case "form": {
+        var fp = DATA.formPresets || {};
+        var fpOptions = Object.keys(fp).map(function (k) { return { val: k, label: fp[k].label || k }; });
+        var chosenPreset = fp[d.preset] || fp.contact || { fields: [] };
+        var chosenFieldsText = (chosenPreset.fields || []).map(function (f) { return f.label + (f.required ? "" : " (optional)"); }).join(", ");
+        return field("Form type", selectHtml("preset", fpOptions, d.preset || "contact")) +
+          field("", '<div class="b-inspector-hint">Asks for: ' + esc(chosenFieldsText) + '. Every form always collects name and phone so you can follow up.</div>') +
+          field("", '<div class="b-inspector-hint">Click the heading, text, button label or success message on the canvas to edit it. Submissions are saved as leads in your CRM automatically.</div>');
+      }
       case "richtext":
         return field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Width and alignment live on the Style tab.</div>');
       case "gallery":

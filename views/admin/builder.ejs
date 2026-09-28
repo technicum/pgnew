@@ -249,7 +249,11 @@
       // product-grid/collection-list previews above don't need a round
       // trip either. See routes/admin.js's loadMenuContext.
       menus: <%- JSON.stringify(menus || []).split('/').join(String.fromCharCode(92) + '/') %>,
-      resolvedMenus: <%- JSON.stringify(resolvedMenus || {}).split('/').join(String.fromCharCode(92) + '/') %>
+      resolvedMenus: <%- JSON.stringify(resolvedMenus || {}).split('/').join(String.fromCharCode(92) + '/') %>,
+      // The page-builder's 'form' section reads its preset's field list here
+      // (see lib/forms.js / server.js's res.locals.formPresets) to draw the
+      // "Form type" picker and preview the right inputs on the canvas.
+      formPresets: <%- JSON.stringify(formPresets || {}).split('/').join(String.fromCharCode(92) + '/') %>
     };
   </script>
   <script src="/js/media-picker.js?v=<%= assetVersion %>"></script>
