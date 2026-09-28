@@ -22,6 +22,7 @@
   };
   var CHOICE_TYPES = DATA.choiceTypes || [];
   var FULL_WIDTH_TYPES = DATA.fullWidthTypes || [];
+  var NO_PLACEHOLDER_TYPES = DATA.noPlaceholderTypes || ["radio", "checkbox"];
   var MAX_FIELDS = DATA.maxFields || 12;
   var MAX_OPTIONS = DATA.maxOptions || 30;
   var DEFAULT_OPTIONS = ["Option 1", "Option 2", "Option 3"];
@@ -106,6 +107,7 @@
       if (isChoice && !optionsList.children.length) {
         DEFAULT_OPTIONS.forEach(function (o) { addOptionRow(o, false); });
       }
+      placeholderRow.hidden = NO_PLACEHOLDER_TYPES.indexOf(typeSelect.value) !== -1;
     });
     head.appendChild(typeSelect);
 
@@ -152,6 +154,39 @@
     meta.appendChild(switchWrap);
 
     li.appendChild(meta);
+
+    // ---- placeholder row: optional placeholder text, and whether this
+    // field shows its label normally or swaps the label for placeholder
+    // text inside the field instead. Doesn't apply to radio/checkbox (no
+    // single input to put a placeholder in) -- see NO_PLACEHOLDER_TYPES. ----
+    var placeholderRow = document.createElement("div");
+    placeholderRow.className = "form-field-placeholder-row";
+
+    var placeholderInput = document.createElement("input");
+    placeholderInput.type = "text";
+    placeholderInput.className = "form-field-placeholder-input";
+    placeholderInput.maxLength = 100;
+    placeholderInput.placeholder = "Placeholder text (optional)";
+    placeholderInput.value = f.placeholder || "";
+    placeholderRow.appendChild(placeholderInput);
+
+    var displayWrap = document.createElement("label");
+    displayWrap.className = "form-field-display-wrap";
+    displayWrap.appendChild(document.createTextNode("Show as"));
+    var displaySelect = document.createElement("select");
+    displaySelect.className = "form-field-display-select";
+    [["label", "Label"], ["placeholder", "Placeholder"]].forEach(function (pair) {
+      var opt = document.createElement("option");
+      opt.value = pair[0];
+      opt.textContent = pair[1];
+      if (pair[0] === (f.labelDisplay || "label")) opt.selected = true;
+      displaySelect.appendChild(opt);
+    });
+    displayWrap.appendChild(displaySelect);
+    placeholderRow.appendChild(displayWrap);
+
+    placeholderRow.hidden = NO_PLACEHOLDER_TYPES.indexOf(f.type) !== -1;
+    li.appendChild(placeholderRow);
 
     // ---- options row: only shown for dropdown/radio/checkbox -- a real
     // add/remove list of choices, not a comma-separated line ----
@@ -313,6 +348,8 @@
         options: Array.prototype.map.call(optionsList.querySelectorAll(".form-field-option-input"), function (inp) {
           return inp.value.trim();
         }).filter(Boolean),
+        placeholder: placeholderInput.value.trim(),
+        labelDisplay: displaySelect.value,
       };
     };
     return li;

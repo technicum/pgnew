@@ -1527,6 +1527,7 @@ router.get('/forms/:id/edit', async (req, res, next) => {
       fieldTypeLabels: formsLib.FIELD_TYPE_LABELS,
       choiceTypes: formsLib.CHOICE_TYPES,
       fullWidthTypes: formsLib.FULL_WIDTH_TYPES,
+      noPlaceholderTypes: formsLib.NO_PLACEHOLDER_TYPES,
       maxFields: formsLib.MAX_FIELDS,
       maxOptions: formsLib.MAX_OPTIONS_PER_FIELD,
     });
