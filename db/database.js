@@ -2205,8 +2205,21 @@ async function migrateRecruitDemoStore(conn) {
       [contactId, JSON.stringify({ ...defaultFields('richtext'), heading: 'Get in Touch', body: 'Hiring for a role, or looking for your next one? Write to us at hello@sterlingcole.example or call +91 98765 43210 — a consultant replies within one business day. Offices in Mumbai, Bengaluru and Delhi NCR.', width: 'narrow', align: 'center' })]
     );
 
+    // Recruit's own navy accent (themes/recruit/theme.json's color_primary)
+    // repeated here as a literal, not read from the token system -- these
+    // two sections intentionally paint themselves in the theme's brand
+    // color via the universal Style-tab bg_color/text_color columns (same
+    // mechanism any merchant uses from the builder), the same navy-band-
+    // on-cream rhythm the theme's reference design uses for its stat strip
+    // and closing CTA. Kept in sync with theme.json's color_primary/
+    // color_primary_dark by hand since this raw INSERT can't read a JS
+    // import of the manifest.
+    const RECRUIT_NAVY = '#10305a';
     const homeSections = [
-      { type: 'hero', fields: { ...defaultFields('hero'), heading: 'Recruiting the People Who Move Your Business Forward', subheading: 'Executive search, permanent staffing and contract talent — matched by consultants who work your industry.', bg_type: 'image', bg_image_url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600', bg_overlay: true, text_theme: 'light' } },
+      // bg_type left at its 'none' default (see defaultFields('hero')) --
+      // a plain, uncluttered ground behind serif type, not a photo, is the
+      // whole point of this theme's redesigned hero.
+      { type: 'hero', fields: { ...defaultFields('hero'), heading: 'Recruiting the People Who Move Your Business Forward', subheading: 'Executive search, permanent staffing and contract talent — matched by consultants who work your industry.' } },
       { type: 'row', fields: { columns: [
         { width: 1, blocks: [{ id: 'blk_rec_svc1', type: 'richtext', fields: { heading: 'Executive Search', body: 'C-suite and leadership hires, retained.', width: 'narrow', align: 'center' }, element_styles: {} }] },
         { width: 1, blocks: [{ id: 'blk_rec_svc2', type: 'richtext', fields: { heading: 'Permanent Staffing', body: 'Full-time roles, end to end.', width: 'narrow', align: 'center' }, element_styles: {} }] },
@@ -2214,7 +2227,7 @@ async function migrateRecruitDemoStore(conn) {
         { width: 1, blocks: [{ id: 'blk_rec_svc4', type: 'richtext', fields: { heading: 'RPO', body: 'Your recruiting team, outsourced.', width: 'narrow', align: 'center' }, element_styles: {} }] },
       ] } },
       { type: 'listings', fields: { ...defaultFields('listings'), heading: 'Current Openings', definition_id: jobDefId, limit: 8 } },
-      { type: 'stats', fields: { items: [
+      { type: 'stats', bg_color: RECRUIT_NAVY, text_color: '#ffffff', fields: { items: [
         { value: '2,400+', label: 'Candidates placed' },
         { value: '180+', label: 'Client companies' },
         { value: '15 yrs', label: 'In business' },
@@ -2226,13 +2239,13 @@ async function migrateRecruitDemoStore(conn) {
         { quote: 'Filled a COO search we’d struggled with for six months, in five weeks.', author: 'Founder, D2C brand' },
         { quote: 'Straightforward, fast, and they actually called us back. Rare in this industry.', author: 'Head of HR, logistics company' },
       ] } },
-      { type: 'newsletter', fields: { ...defaultFields('newsletter'), heading: 'Have a role to fill?', subtext: 'Send us the brief and a consultant will reach out within one business day.', button: 'Submit a Brief' } },
+      { type: 'newsletter', bg_color: RECRUIT_NAVY, text_color: '#ffffff', fields: { ...defaultFields('newsletter'), heading: 'Ready to build your team or your career?', subtext: 'Tell us what you’re hiring for — or what you’re looking for — and we’ll get back to you within one business day.', button: 'Submit a Brief' } },
     ];
     let pos = 0;
     for (const s of homeSections) {
       await conn.query(
-        `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, ?, ?, ?)`,
-        [homeId, s.type, pos++, JSON.stringify(s.fields)]
+        `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields, bg_color, text_color) VALUES (?, ?, ?, ?, ?, ?)`,
+        [homeId, s.type, pos++, JSON.stringify(s.fields), s.bg_color || null, s.text_color || null]
       );
     }
 

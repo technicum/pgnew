@@ -1,18 +1,18 @@
 {
   "slug": "recruit",
   "name": "Recruit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "PageZaper",
-  "description": "A corporate recruitment-agency look — navy accent, warm cream sections, and serif headings for a trustworthy, established feel. Suited to staffing, placement and recruiting sites.",
+  "description": "A modern recruitment-agency look — deep navy accent on a warm off-white ground, serif display headings, and rounded buttons/cards for an approachable, staffing-firm feel. Suited to staffing, placement and recruiting sites.",
   "price_cents": 0,
   "tokens": {
-    "color_primary": "#1e3a5f",
-    "color_primary_dark": "#14263f",
-    "color_bg": "#faf6ec",
+    "color_primary": "#10305a",
+    "color_primary_dark": "#0a2142",
+    "color_bg": "#fbfaf7",
     "color_surface": "#ffffff",
-    "color_text": "#1f2937",
-    "color_muted": "#6b6459",
-    "color_border": "#e6dfd0",
-    "radius_style": "sharp"
+    "color_text": "#1f2430",
+    "color_muted": "#6b7280",
+    "color_border": "#dedad2",
+    "radius_style": "soft"
   }
 }

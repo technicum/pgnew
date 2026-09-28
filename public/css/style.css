@@ -26,17 +26,41 @@ body.theme-red {
 }
 
 /* ---------- Structural theme: Recruit (themes/recruit) ----------
-   Everything else this theme needs (navy accent, warm cream background,
-   card/button radius) is already covered by its theme.json's own token
-   values, resolved the same way as any other structural theme (see
-   lib/themeTokens.js) -- no extra CSS needed for those. The one thing
-   tokens don't cover is typography, so this is the whole of the theme's
-   own CSS: large headings and stat-counter numbers (not card-level h3s,
-   which stay the shared sans-serif -- matches the reference site's own
-   hierarchy) get the serif display font loaded in this theme's partials/
-   header.ejs. */
+   The navy accent, warm off-white background and rounded card/button
+   radius are already covered by this theme's own theme.json token values,
+   resolved the same way as any other structural theme (see
+   lib/themeTokens.js) -- no extra CSS needed for those; a store's own
+   content (see db/database.js's migrateRecruitDemoStore for this theme's
+   demo) paints the odd section in the same navy via the universal
+   Style-tab bg_color/text_color columns every theme already exposes,
+   rather than anything theme-specific here. What tokens/content can't
+   reach is typography and the hero's own display-headline sizing, so
+   that's the whole of this theme's CSS: the serif display font (loaded in
+   this theme's partials/header.ejs) on headings and stat-counter numbers
+   (not card-level h3s, which stay the shared sans-serif, matching the
+   reference site's own hierarchy), and a bigger, tighter-set hero heading
+   than the shared default's -- this theme's one deliberate departure from
+   the shared .hero h1 rule in this file, since a recruiting agency's
+   headline is the page's whole opening statement. */
 .rec-theme h1, .rec-theme h2, .rec-theme .section-title, .rec-theme .stat-value {
   font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+}
+.rec-theme .hero {
+  text-align: left;
+  padding: 64px 0 56px;
+}
+.rec-theme .hero h1 {
+  font-size: 3rem;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  max-width: 820px;
+}
+.rec-theme .hero p {
+  max-width: 560px;
+  font-size: 1.05rem;
+}
+@media (max-width: 640px) {
+  .rec-theme .hero h1 { font-size: 2.1rem; }
 }
 
 * { box-sizing: border-box; }
