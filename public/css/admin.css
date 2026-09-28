@@ -1287,6 +1287,98 @@
 .menu-item-row.is-drop-nest { outline: 2px dashed var(--color-primary); outline-offset: 2px; }
 .menu-structure-list.is-drop-nest-root { outline: 2px dashed var(--color-primary); outline-offset: -4px; }
 
+/* ---------- Forms: visual field builder (views/admin/form-edit.ejs,
+   public/js/form-builder.js) -- same row/handle/badge/remove language as
+   the menu editor above, just a flat draggable list (no nesting). ---------- */
+
+.form-fields-list { list-style: none; margin: 0 0 10px; padding: 0; }
+.form-fields-empty { color: #9ca3af; font-size: 0.85rem; margin: 0 0 14px; }
+
+.form-field-row {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 9px 10px;
+}
+.form-field-row-head { display: flex; align-items: center; gap: 8px; }
+
+.form-field-drag-handle { cursor: grab; color: #9ca3af; font-size: 1rem; line-height: 1; padding: 0 2px; user-select: none; }
+.form-field-drag-handle:active { cursor: grabbing; }
+
+.form-field-lock { flex-shrink: 0; font-size: 0.85rem; line-height: 1; opacity: 0.6; }
+
+.form-field-label-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+.form-field-label-input:hover, .form-field-label-input:focus { border-color: #b0b6c0; }
+
+.form-field-type-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+  background: #eef0f3;
+  border-radius: 5px;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.form-field-type-select {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #fff;
+  color: #374151;
+}
+
+.form-field-required-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #6b7280;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.form-field-required-toggle input { margin: 0; }
+
+.form-field-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.form-field-remove:hover { color: #991b1b; background: #fee2e2; }
+
+.form-field-row.is-dragging { opacity: 0.4; }
+.form-field-row.is-drop-before { box-shadow: 0 -2px 0 var(--color-primary); }
+.form-field-row.is-drop-after { box-shadow: 0 2px 0 var(--color-primary); }
+
+.form-field-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+.form-field-palette-label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-right: 2px; }
+.form-field-palette .btn-secondary { padding: 6px 12px; font-size: 0.82rem; border-radius: 999px; }
+.form-field-palette .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 560px) {
+  .form-field-row-head { flex-wrap: wrap; }
+  .form-field-label-input { flex-basis: 100%; order: -1; margin-bottom: 4px; }
+}
+
 /* ---------- Media picker: image-field wiring (product form, etc.) ---------- */
 .media-field-row { display: flex; gap: 8px; align-items: center; }
 .media-field-row input[type="text"] { flex: 1; }

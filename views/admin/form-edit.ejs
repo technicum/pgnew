@@ -4,7 +4,7 @@
   <a href="/admin/forms" class="link-btn">← All forms</a>
 </div>
 
-<div class="panel" style="max-width:640px; margin-bottom:20px;">
+<div class="panel" style="max-width:720px; margin-bottom:20px;">
   <h2>Link</h2>
   <p class="form-hint" style="margin-top:0;">
     <a href="<%= publicUrl %>" target="_blank" rel="noopener"><%= publicUrl %></a>
@@ -12,7 +12,7 @@
   </p>
 </div>
 
-<form action="/admin/forms/<%= form.id %>/edit" method="POST" class="admin-form" style="max-width:640px;">
+<form action="/admin/forms/<%= form.id %>/edit" method="POST" class="admin-form" id="formEditForm" style="max-width:720px;">
   <label>Form name (internal — not shown to visitors) *
     <input type="text" name="name" value="<%= form.name %>" maxlength="200" required />
   </label>
@@ -36,29 +36,51 @@
   </label>
 
   <h2 style="margin-top:28px;">Fields</h2>
-  <p class="form-hint" style="margin-top:0;">Every form always asks for a name and a phone number, so you can follow up — you can rename those two, but not remove them.</p>
+  <p class="form-hint" style="margin-top:0;">Every form always asks for a name and a phone number, so you can follow up on a submission — rename those two if you like, but they can't be removed or changed to another field type. Add, reorder, and remove any other fields below.</p>
 
-  <div class="form-row">
-    <label>Name field label
-      <input type="text" name="name_label" value="<%= nameLabel %>" maxlength="60" />
-    </label>
-    <label>Phone field label
-      <input type="text" name="phone_label" value="<%= phoneLabel %>" maxlength="60" />
-    </label>
+  <ul class="form-fields-list">
+    <li class="form-field-row form-field-locked">
+      <div class="form-field-row-head">
+        <span class="form-field-lock" title="Always included">🔒</span>
+        <input type="text" name="name_label" class="form-field-label-input" value="<%= nameLabel %>" maxlength="60" placeholder="Field label" />
+        <span class="form-field-type-badge">Short text</span>
+      </div>
+    </li>
+    <li class="form-field-row form-field-locked">
+      <div class="form-field-row-head">
+        <span class="form-field-lock" title="Always included">🔒</span>
+        <input type="text" name="phone_label" class="form-field-label-input" value="<%= phoneLabel %>" maxlength="60" placeholder="Field label" />
+        <span class="form-field-type-badge">Phone</span>
+      </div>
+    </li>
+  </ul>
+
+  <ul id="customFieldsList" class="form-fields-list"></ul>
+  <p id="customFieldsEmpty" class="form-fields-empty">No extra fields yet — add one below.</p>
+
+  <div class="form-field-palette">
+    <span class="form-field-palette-label">Add a field:</span>
+    <button type="button" class="btn btn-secondary form-field-add" data-type="text">+ Short text</button>
+    <button type="button" class="btn btn-secondary form-field-add" data-type="textarea">+ Paragraph</button>
+    <button type="button" class="btn btn-secondary form-field-add" data-type="email">+ Email</button>
+    <button type="button" class="btn btn-secondary form-field-add" data-type="tel">+ Phone</button>
+    <button type="button" class="btn btn-secondary form-field-add" data-type="number">+ Number</button>
   </div>
+  <p id="formFieldsLimitMsg" class="form-hint" hidden>You've reached the limit of <%= maxCustomFields %> extra fields.</p>
 
-  <label>More fields (optional, up to <%= maxCustomFields %>)
-    <textarea name="extra_fields" rows="6" placeholder="Email | email
-Message | textarea
-Preferred date | text | required"><%= extraFieldsText %></textarea>
-  </label>
-  <p class="form-hint" style="margin-top:-8px;">
-    One field per line, as <code>Label | type | required</code>. Type is one of
-    <% Object.keys(fieldTypeLabels).forEach(function(t, i) { %><code><%= t %></code><%= i < Object.keys(fieldTypeLabels).length - 1 ? ', ' : '' %><% }); %>
-    — leave it out for a plain text field. Add <code>| required</code> at the end to make it mandatory. Example: <code>Preferred date | text | required</code>.
-  </p>
+  <input type="hidden" name="fields_json" id="fieldsJsonInput" value="" />
 
-  <button type="submit" class="btn btn-primary">Save form</button>
+  <button type="submit" class="btn btn-primary" style="margin-top:20px;">Save form</button>
 </form>
+
+<script>
+  window.__FORM_BUILDER__ = {
+    fields: <%- JSON.stringify(form.fields).split('/').join(String.fromCharCode(92) + '/') %>,
+    fieldTypes: <%- JSON.stringify(fieldTypes) %>,
+    fieldTypeLabels: <%- JSON.stringify(fieldTypeLabels) %>,
+    maxCustom: <%= maxCustomFields %>
+  };
+</script>
+<script src="/js/form-builder.js"></script>
 
 <%- include('partials/footer') %>

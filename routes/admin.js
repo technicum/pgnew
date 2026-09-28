@@ -1523,8 +1523,11 @@ router.get('/forms/:id/edit', async (req, res, next) => {
       form,
       nameLabel: nameField.label || 'Full name',
       phoneLabel: phoneField.label || 'Phone number',
-      extraFieldsText: formsLib.fieldsToText(form.fields),
+      // The visual field builder (public/js/form-builder.js) bootstraps its
+      // draggable list from this -- it filters out the locked name/phone
+      // entries itself, since those two render as static rows in the view.
       publicUrl: storeUrl(req, req.store.subdomain, `/forms/${form.slug}`),
+      fieldTypes: formsLib.FIELD_TYPES,
       fieldTypeLabels: formsLib.FIELD_TYPE_LABELS,
       maxCustomFields: formsLib.MAX_CUSTOM_FIELDS,
     });
@@ -1545,7 +1548,19 @@ router.post('/forms/:id/edit', async (req, res, next) => {
     const subtext = (req.body.subtext || '').trim().slice(0, 300);
     const buttonLabel = (req.body.button_label || '').trim().slice(0, 40) || 'Send';
     const successMessage = (req.body.success_message || '').trim().slice(0, 300);
-    const extraRows = formsLib.parseFieldsText(req.body.extra_fields || '');
+    // The field builder UI (public/js/form-builder.js) serializes its
+    // draggable list into this hidden JSON field right before submit, in
+    // whatever order the merchant arranged them in -- sanitizeFieldList
+    // re-validates every entry server-side regardless (type must be one of
+    // FIELD_TYPES, label gets trimmed/capped), so a hand-crafted payload
+    // can't smuggle in anything unexpected.
+    let extraRows = [];
+    try {
+      const parsed = JSON.parse(req.body.fields_json || '[]');
+      if (Array.isArray(parsed)) extraRows = parsed;
+    } catch (err) {
+      extraRows = [];
+    }
     const fields = formsLib.sanitizeFieldList(req.body.name_label, req.body.phone_label, extraRows);
 
     await pool.query(
