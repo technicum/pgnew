@@ -2066,6 +2066,227 @@ async function migrateThemeDemoStores(conn, demoStoreId) {
   }
 }
 
+// The Recruit theme's demo store — same idea as migrateThemeDemoStores'
+// "Leaf & Bloom" above, but Recruit's own content model isn't products: its
+// listing.ejs view (views/storefront/themes/recruit/) is the generic
+// Metaobjects entry-detail template (see lib/metaobjects.js), so this demo's
+// "products" are Job Openings, a Metaobject definition seeded with real
+// field types (select/text/boolean/url) and entries, shown on the storefront
+// through a 'listings' page-builder section (routes/storefront.js /
+// lib/sections.js) exactly the way a 'products' section shows a category.
+// Fully idempotent, same "does this already exist" gating as
+// migrateThemeDemoStores. Depends on migrateListingsMetaobjects (the
+// pz_listings/pz_metaobject_* tables) having already run this boot.
+async function migrateRecruitDemoStore(conn) {
+  const { defaultFields } = require('../lib/sections');
+
+  const [[recruitTheme]] = await conn.query(`SELECT id, demo_store_id FROM ${TABLES.themes} WHERE slug = 'recruit'`);
+  if (!recruitTheme) return; // theme not registered yet (no themes/recruit/theme.json) — nothing to link up
+
+  // Same 'demo-' prefix convention as Leaf & Bloom's LEAFBLOOM_SUBDOMAIN
+  // above (see isReservedSubdomain) — named after the theme slug so it's
+  // obvious at a glance which theme a demo subdomain belongs to.
+  const RECRUIT_SUBDOMAIN = 'demo-recruit';
+
+  const [[existingRecruitDemo]] = await conn.query(`SELECT id FROM ${TABLES.stores} WHERE subdomain = ?`, [RECRUIT_SUBDOMAIN]);
+  let recruitStoreId = existingRecruitDemo && existingRecruitDemo.id;
+
+  if (!recruitStoreId) {
+    console.log('Building "Sterling & Cole Recruiting" — the Recruit theme\'s dedicated demo store...');
+
+    const [storeResult] = await conn.query(
+      `INSERT INTO ${TABLES.stores} (name, subdomain, theme, plan, status) VALUES ('Sterling & Cole Recruiting', ?, 'default', 'free', 'active')`,
+      [RECRUIT_SUBDOMAIN]
+    );
+    recruitStoreId = storeResult.insertId;
+
+    // A real, logged-in-able owner account, same convention as Leaf & Bloom's.
+    const demoOwnerEmail = 'demo+recruit@pagezaper.local';
+    const [[existingUser]] = await conn.query(`SELECT id FROM ${TABLES.users} WHERE email = ?`, [demoOwnerEmail]);
+    let ownerId;
+    if (existingUser) {
+      ownerId = existingUser.id;
+    } else {
+      const passwordHash = bcrypt.hashSync('recruit-demo', 10);
+      const [userResult] = await conn.query(
+        `INSERT INTO ${TABLES.users} (name, email, password_hash) VALUES ('Sterling & Cole Recruiting', ?, ?)`,
+        [demoOwnerEmail, passwordHash]
+      );
+      ownerId = userResult.insertId;
+    }
+    await conn.query(
+      `INSERT INTO ${TABLES.userRoles} (user_id, store_id, role) VALUES (?, ?, 'admin')
+       ON DUPLICATE KEY UPDATE role = role`,
+      [ownerId, recruitStoreId]
+    );
+
+    // ---- Metaobject type: "Job Opening" (handle 'jobs' -> /jobs/<slug>) ----
+    const [defResult] = await conn.query(
+      `INSERT INTO ${TABLES.metaobjectDefinitions} (store_id, name, handle) VALUES (?, 'Job Opening', 'jobs')`,
+      [recruitStoreId]
+    );
+    const jobDefId = defResult.insertId;
+
+    const JOB_FIELDS = [
+      { key: 'department', label: 'Department', type: 'select', required: 1, options: ['Finance', 'Technology', 'Sales & Marketing', 'Operations', 'Executive'] },
+      { key: 'location', label: 'Location', type: 'text', required: 1, options: null },
+      { key: 'employment_type', label: 'Employment Type', type: 'select', required: 1, options: ['Full-time', 'Part-time', 'Contract'] },
+      { key: 'salary_range', label: 'Salary Range', type: 'text', required: 0, options: null },
+      { key: 'remote_friendly', label: 'Remote-Friendly', type: 'boolean', required: 0, options: null },
+      { key: 'apply_url', label: 'Apply Link', type: 'url', required: 0, options: null },
+    ];
+    let fieldPos = 0;
+    for (const f of JOB_FIELDS) {
+      await conn.query(
+        `INSERT INTO ${TABLES.metaobjectFields} (definition_id, field_key, label, type, required, options, position) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [jobDefId, f.key, f.label, f.type, f.required, f.options ? JSON.stringify(f.options) : null, fieldPos++]
+      );
+    }
+
+    // ---- Entries: real-looking Job Opening listings ----
+    const JOB_OPENINGS = [
+      { title: 'Senior Financial Analyst', slug: 'senior-financial-analyst', description: 'Lead monthly close, forecasting and board reporting for a fast-growing FMCG client. Chartered Accountant or equivalent, 5+ years in FP&A.', image_url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600', department: 'Finance', location: 'Mumbai, Maharashtra', employment_type: 'Full-time', salary_range: '₹14L – ₹18L per year', remote_friendly: false, apply_url: '#' },
+      { title: 'Backend Engineer (Node.js)', slug: 'backend-engineer-nodejs', description: 'Own core services for a Series B fintech platform. Strong Node.js, MySQL and system-design fundamentals expected.', image_url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600', department: 'Technology', location: 'Bengaluru, Karnataka', employment_type: 'Full-time', salary_range: '₹18L – ₹26L per year', remote_friendly: true, apply_url: '#' },
+      { title: 'Regional Sales Manager', slug: 'regional-sales-manager', description: 'Build and run a 6-person field sales team across Western India for an industrial-equipment manufacturer.', image_url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=600', department: 'Sales & Marketing', location: 'Pune, Maharashtra', employment_type: 'Full-time', salary_range: '₹12L – ₹16L + incentives', remote_friendly: false, apply_url: '#' },
+      { title: 'HR Business Partner', slug: 'hr-business-partner', description: 'Partner with department heads at a 400-person BPO on hiring, performance cycles and retention.', image_url: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=600', department: 'Operations', location: 'Gurugram, Haryana', employment_type: 'Full-time', salary_range: '₹10L – ₹14L per year', remote_friendly: false, apply_url: '#' },
+      { title: 'Contract Data Analyst', slug: 'contract-data-analyst', description: 'Six-month engagement building dashboards and pipeline reporting for a logistics client. SQL and Power BI required.', image_url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600', department: 'Technology', location: 'Hyderabad, Telangana', employment_type: 'Contract', salary_range: '₹60,000 – ₹90,000 per month', remote_friendly: true, apply_url: '#' },
+      { title: 'Chief Operating Officer', slug: 'chief-operating-officer', description: 'Retained search for a COO to scale operations at a Series C D2C brand ahead of its next funding round.', image_url: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600', department: 'Executive', location: 'Delhi NCR', employment_type: 'Full-time', salary_range: 'Confidential', remote_friendly: false, apply_url: '#' },
+      { title: 'Digital Marketing Executive', slug: 'digital-marketing-executive', description: 'Run paid social and performance campaigns for a D2C skincare brand launching in three new cities this year.', image_url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600', department: 'Sales & Marketing', location: 'Chennai, Tamil Nadu', employment_type: 'Full-time', salary_range: '₹6L – ₹9L per year', remote_friendly: true, apply_url: '#' },
+      { title: 'Supply Chain Coordinator', slug: 'supply-chain-coordinator', description: 'Coordinate inbound logistics and vendor schedules for a textiles exporter, roughly 20 hours a week.', image_url: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600', department: 'Operations', location: 'Ahmedabad, Gujarat', employment_type: 'Part-time', salary_range: '₹4L – ₹6L per year (pro-rated)', remote_friendly: false, apply_url: '#' },
+    ];
+    for (const j of JOB_OPENINGS) {
+      const details = {
+        department: j.department,
+        location: j.location,
+        employment_type: j.employment_type,
+        salary_range: j.salary_range,
+        remote_friendly: j.remote_friendly,
+        apply_url: j.apply_url,
+      };
+      await conn.query(
+        `INSERT INTO ${TABLES.listings} (store_id, definition_id, listing_type, title, slug, description, image_url, status, details)
+         VALUES (?, ?, 'jobs', ?, ?, ?, ?, 'active', ?)`,
+        [recruitStoreId, jobDefId, j.title, j.slug, j.description, j.image_url, JSON.stringify(details)]
+      );
+    }
+
+    // ---- Pages: Home (with body sections), About, Services, Contact ----
+    const [homeResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'Home', '/', 1, 'published')`,
+      [recruitStoreId]
+    );
+    const homeId = homeResult.insertId;
+    const [aboutResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'About', '/about-us', 0, 'published')`,
+      [recruitStoreId]
+    );
+    const aboutId = aboutResult.insertId;
+    const [servicesResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'Services', '/services', 0, 'published')`,
+      [recruitStoreId]
+    );
+    const servicesId = servicesResult.insertId;
+    const [contactResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'Contact', '/contact', 0, 'published')`,
+      [recruitStoreId]
+    );
+    const contactId = contactResult.insertId;
+
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'richtext', 0, ?)`,
+      [aboutId, JSON.stringify({ ...defaultFields('richtext'), heading: 'About Sterling & Cole', body: 'Sterling & Cole has placed candidates across finance, technology, sales and operations roles for fifteen years. We run every search the same way: a real conversation with the hiring manager first, a shortlist built on fit rather than keyword-matching second, and a process fast enough that good candidates don’t take another offer while we deliberate.', width: 'narrow', align: 'center' })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'richtext', 0, ?)`,
+      [servicesId, JSON.stringify({ ...defaultFields('richtext'), heading: 'What We Do', body: 'Executive Search for leadership and board-level hires, retained end to end. Permanent Staffing for full-time roles across finance, tech, sales and operations. Contract Staffing when you need experienced talent fast, without a long-term commitment. RPO for companies that want their whole recruiting function run by a dedicated outside team.', width: 'wide', align: 'center' })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'richtext', 0, ?)`,
+      [contactId, JSON.stringify({ ...defaultFields('richtext'), heading: 'Get in Touch', body: 'Hiring for a role, or looking for your next one? Write to us at hello@sterlingcole.example or call +91 98765 43210 — a consultant replies within one business day. Offices in Mumbai, Bengaluru and Delhi NCR.', width: 'narrow', align: 'center' })]
+    );
+
+    const homeSections = [
+      { type: 'hero', fields: { ...defaultFields('hero'), heading: 'Recruiting the People Who Move Your Business Forward', subheading: 'Executive search, permanent staffing and contract talent — matched by consultants who work your industry.', bg_type: 'image', bg_image_url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600', bg_overlay: true, text_theme: 'light' } },
+      { type: 'row', fields: { columns: [
+        { width: 1, blocks: [{ id: 'blk_rec_svc1', type: 'richtext', fields: { heading: 'Executive Search', body: 'C-suite and leadership hires, retained.', width: 'narrow', align: 'center' }, element_styles: {} }] },
+        { width: 1, blocks: [{ id: 'blk_rec_svc2', type: 'richtext', fields: { heading: 'Permanent Staffing', body: 'Full-time roles, end to end.', width: 'narrow', align: 'center' }, element_styles: {} }] },
+        { width: 1, blocks: [{ id: 'blk_rec_svc3', type: 'richtext', fields: { heading: 'Contract Staffing', body: 'Flexible talent, fast turnaround.', width: 'narrow', align: 'center' }, element_styles: {} }] },
+        { width: 1, blocks: [{ id: 'blk_rec_svc4', type: 'richtext', fields: { heading: 'RPO', body: 'Your recruiting team, outsourced.', width: 'narrow', align: 'center' }, element_styles: {} }] },
+      ] } },
+      { type: 'listings', fields: { ...defaultFields('listings'), heading: 'Current Openings', definition_id: jobDefId, limit: 8 } },
+      { type: 'stats', fields: { items: [
+        { value: '2,400+', label: 'Candidates placed' },
+        { value: '180+', label: 'Client companies' },
+        { value: '15 yrs', label: 'In business' },
+        { value: '92%', label: 'Roles filled within 30 days' },
+      ] } },
+      { type: 'text_image', fields: { ...defaultFields('text_image'), heading: 'A Recruiting Partner, Not Just a Vendor', body: 'Every search starts with a real conversation about the role, the team and what “good” looks like for you — not a job description forwarded to a database. That’s why most of our clients call us back for the next role, too.', side: 'right', image_url: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=900' } },
+      { type: 'testimonials', fields: { ...defaultFields('testimonials'), heading: 'What clients say', quotes: [
+        { quote: 'They understood our engineering culture better than recruiters we’d worked with for years. Every shortlist was hireable.', author: 'VP Engineering, Series B fintech' },
+        { quote: 'Filled a COO search we’d struggled with for six months, in five weeks.', author: 'Founder, D2C brand' },
+        { quote: 'Straightforward, fast, and they actually called us back. Rare in this industry.', author: 'Head of HR, logistics company' },
+      ] } },
+      { type: 'newsletter', fields: { ...defaultFields('newsletter'), heading: 'Have a role to fill?', subtext: 'Send us the brief and a consultant will reach out within one business day.', button: 'Submit a Brief' } },
+    ];
+    let pos = 0;
+    for (const s of homeSections) {
+      await conn.query(
+        `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, ?, ?, ?)`,
+        [homeId, s.type, pos++, JSON.stringify(s.fields)]
+      );
+    }
+
+    // ---- Header / footer (page_id NULL = store-wide default) ----
+    const menuId = await seedStarterMenu(conn, recruitStoreId);
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'promo_bar', 0, ?)`,
+      [recruitStoreId, JSON.stringify({ ...defaultFields('promo_bar'), text: 'Now hiring for 40+ roles across India' })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'logo', 1, ?)`,
+      [recruitStoreId, JSON.stringify(defaultFields('logo'))]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'header', 'nav_menu', 2, ?)`,
+      [recruitStoreId, JSON.stringify({ ...defaultFields('nav_menu'), menu_id: menuId, show_search: false, show_account: false, show_cart: false })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'footer', 'link_columns', 0, ?)`,
+      [recruitStoreId, JSON.stringify({ columns: [
+        { heading: 'Company', links: [{ label: 'About us', url: '/pages/about-us' }, { label: 'Services', url: '/pages/services' }, { label: 'Contact', url: '/pages/contact' }] },
+        { heading: 'Candidates', links: [{ label: 'Browse openings', url: '/' }, { label: 'Submit your resume', url: '/pages/contact' }] },
+      ] })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'footer', 'social_icons', 1, ?)`,
+      [recruitStoreId, JSON.stringify({ links: [{ platform: 'linkedin', url: '#' }, { platform: 'instagram', url: '#' }] })]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (store_id, page_id, region, type, position, fields) VALUES (?, NULL, 'footer', 'copyright', 2, ?)`,
+      [recruitStoreId, JSON.stringify({ ...defaultFields('copyright'), text: '', show_powered_by: true, show_admin_link: true })]
+    );
+
+    console.log(`"Sterling & Cole Recruiting" demo store created (store_id=${recruitStoreId}, subdomain=${RECRUIT_SUBDOMAIN}, owner ${demoOwnerEmail} / recruit-demo).`);
+  }
+
+  await conn.query(`UPDATE ${TABLES.themes} SET demo_store_id = ? WHERE id = ? AND demo_store_id IS NULL`, [recruitStoreId, recruitTheme.id]);
+
+  // Make sure Recruit is actually the ACTIVE theme on its own demo store —
+  // installed but inactive is not enough, a fresh install defaults to
+  // 'default'. Same pattern as migrateThemeDemoStores' pzStarterInstall.
+  const [[recruitInstall]] = await conn.query(
+    `SELECT id, is_active FROM ${TABLES.storeThemes} WHERE store_id = ? AND theme_id = ?`,
+    [recruitStoreId, recruitTheme.id]
+  );
+  if (!recruitInstall) {
+    await conn.query(`INSERT INTO ${TABLES.storeThemes} (store_id, theme_id, is_active) VALUES (?, ?, 1)`, [recruitStoreId, recruitTheme.id]);
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 0 WHERE store_id = ? AND theme_id != ?`, [recruitStoreId, recruitTheme.id]);
+  } else if (!recruitInstall.is_active) {
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 0 WHERE store_id = ?`, [recruitStoreId]);
+    await conn.query(`UPDATE ${TABLES.storeThemes} SET is_active = 1 WHERE id = ?`, [recruitInstall.id]);
+  }
+}
+
 async function init() {
   const conn = await pool.getConnection();
   try {
@@ -2100,6 +2321,7 @@ async function init() {
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);
     await migrateThemeDemoStores(conn, demoStoreId);
+    await migrateRecruitDemoStore(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 

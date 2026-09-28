@@ -6,13 +6,13 @@
   "description": "A corporate recruitment-agency look — navy accent, warm cream sections, and serif headings for a trustworthy, established feel. Suited to staffing, placement and recruiting sites.",
   "price_cents": 0,
   "tokens": {
-    "color_primary": "#1e3a5c",
-    "color_primary_dark": "#15293f",
-    "color_bg": "#faf9f5",
+    "color_primary": "#1e3a5f",
+    "color_primary_dark": "#14263f",
+    "color_bg": "#faf6ec",
     "color_surface": "#ffffff",
-    "color_text": "#2a2825",
-    "color_muted": "#66625b",
-    "color_border": "#e6e2d8",
-    "radius_style": "soft"
+    "color_text": "#1f2937",
+    "color_muted": "#6b6459",
+    "color_border": "#e6dfd0",
+    "radius_style": "sharp"
   }
 }
