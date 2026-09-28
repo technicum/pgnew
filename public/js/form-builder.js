@@ -41,6 +41,27 @@
     Array.prototype.forEach.call(addButtons, function (btn) { btn.disabled = atMax; });
   }
 
+  // A choice list uploaded as JSON (public/js/form-builder.js's file
+  // control below) can be a plain array of strings/numbers, or an array of
+  // objects each holding the choice under label/name/value/title -- this
+  // covers both "[\"Mumbai\",\"Delhi\"]" and something exported from a
+  // spreadsheet as "[{\"label\":\"Mumbai\"}, ...]" without asking the
+  // merchant to reshape their file first.
+  function extractOptionsFromJSON(parsed) {
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map(function (item) {
+        if (typeof item === "string") return item.trim();
+        if (typeof item === "number") return String(item);
+        if (item && typeof item === "object") {
+          var v = item.label || item.name || item.value || item.title;
+          return v ? String(v).trim() : "";
+        }
+        return "";
+      })
+      .filter(Boolean);
+  }
+
   function fieldRow(f) {
     var li = document.createElement("li");
     li.className = "form-field-row";
@@ -221,6 +242,64 @@
     pasteWrap.appendChild(pasteInput);
     pasteWrap.appendChild(pasteBtn);
     optionsRow.appendChild(pasteWrap);
+
+    // ---- or upload a .json file -- same REPLACE behavior as the paste
+    // box above. Read entirely client-side (FileReader), nothing is sent
+    // anywhere until "Save form" is pressed like any other edit. ----
+    var fileWrap = document.createElement("div");
+    fileWrap.className = "form-field-options-file";
+
+    var fileLabel = document.createElement("span");
+    fileLabel.className = "form-field-options-file-label";
+    fileLabel.textContent = "Or upload a .json file:";
+    fileWrap.appendChild(fileLabel);
+
+    var fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".json,application/json";
+    fileInput.className = "form-field-options-file-input";
+    fileWrap.appendChild(fileInput);
+
+    var fileError = document.createElement("p");
+    fileError.className = "form-field-options-file-error";
+    fileError.hidden = true;
+    fileWrap.appendChild(fileError);
+
+    fileInput.addEventListener("change", function () {
+      var file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      fileError.hidden = true;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var parsed;
+        try {
+          parsed = JSON.parse(String(reader.result));
+        } catch (err) {
+          fileError.textContent = "That file isn't valid JSON.";
+          fileError.hidden = false;
+          fileInput.value = "";
+          return;
+        }
+        var values = extractOptionsFromJSON(parsed);
+        if (!values.length) {
+          fileError.textContent = "Couldn't find a list of values in that file — expected an array of strings (or objects with a label/name/value).";
+          fileError.hidden = false;
+          fileInput.value = "";
+          return;
+        }
+        optionsList.innerHTML = "";
+        values.slice(0, MAX_OPTIONS).forEach(function (o) { addOptionRow(o, false); });
+        fileInput.value = "";
+      };
+      reader.onerror = function () {
+        fileError.textContent = "Couldn't read that file.";
+        fileError.hidden = false;
+        fileInput.value = "";
+      };
+      reader.readAsText(file);
+    });
+
+    optionsRow.appendChild(fileWrap);
 
     optionsRow.hidden = CHOICE_TYPES.indexOf(f.type) === -1;
     li.appendChild(optionsRow);

@@ -1403,6 +1403,11 @@
 }
 .form-field-options-paste-btn:hover { background: #f9fafb; border-color: #b0b6c0; }
 
+.form-field-options-file { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.form-field-options-file-label { font-size: 0.78rem; color: #6b7280; flex-shrink: 0; }
+.form-field-options-file-input { font-size: 0.78rem; max-width: 100%; }
+.form-field-options-file-error { flex-basis: 100%; margin: 2px 0 0; font-size: 0.76rem; color: #991b1b; }
+
 .form-field-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
 .form-field-palette-label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-right: 2px; }
 .form-field-palette .btn-secondary { padding: 6px 12px; font-size: 0.82rem; border-radius: 999px; }
