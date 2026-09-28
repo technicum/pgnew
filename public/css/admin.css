@@ -1391,6 +1391,18 @@
 }
 .form-field-option-add:hover { border-color: var(--color-primary); color: var(--color-primary-dark); background: #f0fdf4; }
 
+.form-field-options-paste { display: flex; gap: 6px; margin-top: 8px; }
+.form-field-options-paste-input {
+  flex: 1; min-width: 0; padding: 6px 9px; border: 1px solid #e5e7eb; border-radius: 6px;
+  font-size: 0.8rem; background: #fbfbfc; color: #374151;
+}
+.form-field-options-paste-input:focus { outline: none; border-color: var(--color-primary); background: #fff; }
+.form-field-options-paste-btn {
+  flex-shrink: 0; background: #fff; color: #374151; border: 1px solid #d1d5db;
+  border-radius: 6px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+}
+.form-field-options-paste-btn:hover { background: #f9fafb; border-color: #b0b6c0; }
+
 .form-field-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
 .form-field-palette-label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-right: 2px; }
 .form-field-palette .btn-secondary { padding: 6px 12px; font-size: 0.82rem; border-radius: 999px; }

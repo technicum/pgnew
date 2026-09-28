@@ -1528,6 +1528,7 @@ router.get('/forms/:id/edit', async (req, res, next) => {
       choiceTypes: formsLib.CHOICE_TYPES,
       fullWidthTypes: formsLib.FULL_WIDTH_TYPES,
       maxFields: formsLib.MAX_FIELDS,
+      maxOptions: formsLib.MAX_OPTIONS_PER_FIELD,
     });
   } catch (err) {
     next(err);

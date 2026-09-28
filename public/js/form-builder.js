@@ -23,6 +23,7 @@
   var CHOICE_TYPES = DATA.choiceTypes || [];
   var FULL_WIDTH_TYPES = DATA.fullWidthTypes || [];
   var MAX_FIELDS = DATA.maxFields || 12;
+  var MAX_OPTIONS = DATA.maxOptions || 30;
   var DEFAULT_OPTIONS = ["Option 1", "Option 2", "Option 3"];
 
   var list = document.getElementById("customFieldsList");
@@ -183,6 +184,43 @@
     addOptionBtn.textContent = "+ Add option";
     addOptionBtn.addEventListener("click", function () { addOptionRow("", true); });
     optionsRow.appendChild(addOptionBtn);
+
+    // ---- paste a comma-separated list (e.g. a list of cities) to fill
+    // the whole choice list in one go, instead of adding rows one by one --
+    // this REPLACES whatever's currently in the list, since it's meant for
+    // "here's my full list, use this" rather than appending to it. ----
+    var pasteWrap = document.createElement("div");
+    pasteWrap.className = "form-field-options-paste";
+
+    var pasteInput = document.createElement("input");
+    pasteInput.type = "text";
+    pasteInput.className = "form-field-options-paste-input";
+    pasteInput.placeholder = "Or paste a comma-separated list, e.g. Mumbai, Delhi, Bangalore";
+
+    var pasteBtn = document.createElement("button");
+    pasteBtn.type = "button";
+    pasteBtn.className = "form-field-options-paste-btn";
+    pasteBtn.textContent = "Use list";
+
+    function applyPastedList() {
+      var parts = pasteInput.value
+        .split(",")
+        .map(function (s) { return s.trim(); })
+        .filter(Boolean)
+        .slice(0, MAX_OPTIONS);
+      if (!parts.length) return;
+      optionsList.innerHTML = "";
+      parts.forEach(function (o) { addOptionRow(o, false); });
+      pasteInput.value = "";
+    }
+    pasteBtn.addEventListener("click", applyPastedList);
+    pasteInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); applyPastedList(); }
+    });
+
+    pasteWrap.appendChild(pasteInput);
+    pasteWrap.appendChild(pasteBtn);
+    optionsRow.appendChild(pasteWrap);
 
     optionsRow.hidden = CHOICE_TYPES.indexOf(f.type) === -1;
     li.appendChild(optionsRow);
