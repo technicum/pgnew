@@ -786,6 +786,48 @@ main.container {
 .richtext h2 { margin-top: 0; }
 .richtext p { color: var(--color-muted); line-height: 1.7; }
 
+/* Forms (the 'form' section type -- see views/storefront/partials/
+   section.ejs and lib/forms.js/pz_forms). A field's size (small/medium/
+   large, set per-field in the admin field builder) controls how much of
+   the row it takes; textarea/radio/checkbox always render 'large' (see
+   lib/forms.js's FULL_WIDTH_TYPES) since those read best as their own row. */
+.pz-form-section { padding: 48px 0; max-width: 640px; margin: 0 auto; }
+.pz-form-section h2 { margin-top: 0; }
+.pz-form-section > p { color: var(--color-muted); line-height: 1.6; margin-bottom: 24px; }
+.pz-form-fields { display: flex; flex-wrap: wrap; gap: 18px 14px; margin-bottom: 20px; }
+.pz-form-field { box-sizing: border-box; flex: 0 0 100%; }
+.pz-form-field-small { flex-basis: calc(33.333% - 10px); }
+.pz-form-field-medium { flex-basis: calc(50% - 7px); }
+.pz-form-field-large { flex-basis: 100%; }
+@media (max-width: 480px) {
+  .pz-form-field-small, .pz-form-field-medium { flex-basis: 100%; }
+}
+.pz-form-field label { display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; }
+.pz-form-req { color: var(--color-danger); margin-left: 2px; }
+.pz-form-field input,
+.pz-form-field select,
+.pz-form-field textarea {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+  font-family: inherit;
+  background: #fff;
+  color: inherit;
+}
+.pz-form-field input:focus,
+.pz-form-field select:focus,
+.pz-form-field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+.pz-form-field textarea { resize: vertical; min-height: 72px; }
+.pz-form-choice-list { display: flex; flex-direction: column; gap: 8px; }
+.pz-form-choice { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; font-weight: 400; }
+.pz-form-choice input { width: auto; accent-color: var(--color-primary); }
+
 /* Image gallery */
 .gallery { padding: 24px 0 40px; }
 .gallery-grid { display: grid; gap: 12px; }

@@ -1288,8 +1288,14 @@
 .menu-structure-list.is-drop-nest-root { outline: 2px dashed var(--color-primary); outline-offset: -4px; }
 
 /* ---------- Forms: visual field builder (views/admin/form-edit.ejs,
-   public/js/form-builder.js) -- same row/handle/badge/remove language as
-   the menu editor above, just a flat draggable list (no nesting). ---------- */
+   public/js/form-builder.js) -- same row/handle/remove language as the menu
+   editor above, just a flat draggable list (no nesting). Every field is
+   fully custom (nothing locked), so every row looks and behaves the same
+   whatever type it is -- see lib/forms.js for the field shape (label, type,
+   required, size, options). ---------- */
+
+.form-editor-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; margin-bottom: 20px; }
+@media (max-width: 860px) { .form-editor-layout { grid-template-columns: 1fr; } }
 
 .form-fields-list { list-style: none; margin: 0 0 10px; padding: 0; }
 .form-fields-empty { color: #9ca3af; font-size: 0.85rem; margin: 0 0 14px; }
@@ -1299,14 +1305,17 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 8px;
-  padding: 9px 10px;
 }
-.form-field-row-head { display: flex; align-items: center; gap: 8px; }
+.form-field-row-head { display: flex; align-items: center; gap: 8px; padding: 9px 10px; }
 
 .form-field-drag-handle { cursor: grab; color: #9ca3af; font-size: 1rem; line-height: 1; padding: 0 2px; user-select: none; }
 .form-field-drag-handle:active { cursor: grabbing; }
 
-.form-field-lock { flex-shrink: 0; font-size: 0.85rem; line-height: 1; opacity: 0.6; }
+.form-field-type-ico {
+  width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #eef0f3; color: #374151; font-size: 0.68rem; font-weight: 700;
+}
 
 .form-field-label-input {
   flex: 1;
@@ -1319,18 +1328,6 @@
 }
 .form-field-label-input:hover, .form-field-label-input:focus { border-color: #b0b6c0; }
 
-.form-field-type-badge {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: #6b7280;
-  background: #eef0f3;
-  border-radius: 5px;
-  padding: 4px 8px;
-  flex-shrink: 0;
-}
-
 .form-field-type-select {
   flex-shrink: 0;
   padding: 6px 8px;
@@ -1340,18 +1337,6 @@
   background: #fff;
   color: #374151;
 }
-
-.form-field-required-toggle {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.78rem;
-  color: #6b7280;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.form-field-required-toggle input { margin: 0; }
 
 .form-field-remove {
   flex-shrink: 0;
@@ -1368,6 +1353,43 @@
 .form-field-row.is-dragging { opacity: 0.4; }
 .form-field-row.is-drop-before { box-shadow: 0 -2px 0 var(--color-primary); }
 .form-field-row.is-drop-after { box-shadow: 0 2px 0 var(--color-primary); }
+
+/* meta row: size + required, indented under the label/type-icon above */
+.form-field-row-meta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 0 10px 9px 42px; }
+.form-field-size-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 0.74rem; color: #6b7280; font-weight: 600; }
+.form-field-size-select { padding: 5px 7px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.78rem; background: #fff; color: #374151; }
+.form-field-size-select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.form-field-required-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #6b7280;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.form-field-required-toggle input { margin: 0; }
+
+/* options row: only shown for dropdown/radio/checkbox -- a real add/remove
+   list of choices (public/js/form-builder.js's addOptionRow), not a
+   comma-separated line */
+.form-field-options-row { padding: 0 10px 10px 42px; }
+.form-field-options-label { font-size: 0.72rem; font-weight: 600; color: #6b7280; margin: 0 0 6px; }
+.form-field-options-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.form-field-option-row { display: flex; align-items: center; gap: 6px; }
+.form-field-option-bullet { color: #c3c8d0; font-size: 0.9rem; flex-shrink: 0; width: 12px; text-align: center; }
+.form-field-option-input { flex: 1; min-width: 0; padding: 6px 9px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.82rem; background: #fff; }
+.form-field-option-input:focus { outline: none; border-color: var(--color-primary); }
+.form-field-option-remove { flex-shrink: 0; background: none; border: none; color: #c3c8d0; cursor: pointer; font-size: 0.9rem; padding: 3px 5px; border-radius: 6px; }
+.form-field-option-remove:hover { color: #991b1b; background: #fee2e2; }
+.form-field-option-add {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: none; border: 1px dashed #c3c8d0; color: #374151;
+  border-radius: 7px; padding: 5px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+}
+.form-field-option-add:hover { border-color: var(--color-primary); color: var(--color-primary-dark); background: #f0fdf4; }
 
 .form-field-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
 .form-field-palette-label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-right: 2px; }

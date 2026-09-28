@@ -1512,8 +1512,6 @@ router.get('/forms/:id/edit', async (req, res, next) => {
       req.flash('error', 'Form not found.');
       return res.redirect('/admin/forms');
     }
-    const nameField = form.fields.find((f) => f.key === 'name') || {};
-    const phoneField = form.fields.find((f) => f.key === 'phone') || {};
     res.render('admin/form-edit', {
       // "Edit form: X" rather than "Edit X" -- so the sidebar (see
       // views/admin/partials/header.ejs's isFormsScreen) can tell this
@@ -1521,15 +1519,15 @@ router.get('/forms/:id/edit', async (req, res, next) => {
       // highlight "Forms" instead of "Pages".
       title: `Edit form: ${form.name}`,
       form,
-      nameLabel: nameField.label || 'Full name',
-      phoneLabel: phoneField.label || 'Phone number',
       // The visual field builder (public/js/form-builder.js) bootstraps its
-      // draggable list from this -- it filters out the locked name/phone
-      // entries itself, since those two render as static rows in the view.
+      // draggable list from form.fields directly -- nothing is locked, so
+      // there's no separate name/phone label to pass in.
       publicUrl: storeUrl(req, req.store.subdomain, `/forms/${form.slug}`),
       fieldTypes: formsLib.FIELD_TYPES,
       fieldTypeLabels: formsLib.FIELD_TYPE_LABELS,
-      maxCustomFields: formsLib.MAX_CUSTOM_FIELDS,
+      choiceTypes: formsLib.CHOICE_TYPES,
+      fullWidthTypes: formsLib.FULL_WIDTH_TYPES,
+      maxFields: formsLib.MAX_FIELDS,
     });
   } catch (err) {
     next(err);
@@ -1548,20 +1546,22 @@ router.post('/forms/:id/edit', async (req, res, next) => {
     const subtext = (req.body.subtext || '').trim().slice(0, 300);
     const buttonLabel = (req.body.button_label || '').trim().slice(0, 40) || 'Send';
     const successMessage = (req.body.success_message || '').trim().slice(0, 300);
-    // The field builder UI (public/js/form-builder.js) serializes its
-    // draggable list into this hidden JSON field right before submit, in
-    // whatever order the merchant arranged them in -- sanitizeFieldList
-    // re-validates every entry server-side regardless (type must be one of
-    // FIELD_TYPES, label gets trimmed/capped), so a hand-crafted payload
-    // can't smuggle in anything unexpected.
-    let extraRows = [];
+    // The field builder UI (public/js/form-builder.js) serializes its whole
+    // draggable field list -- label/type/required/size/options for each,
+    // including choices for dropdown/radio/checkbox fields -- into this
+    // hidden JSON field right before submit, in whatever order the merchant
+    // arranged them in. sanitizeFieldList re-validates every entry server
+    // side regardless (type must be one of FIELD_TYPES, size one of
+    // FIELD_SIZES, options only kept for choice types), so a hand-crafted
+    // payload can't smuggle in anything unexpected.
+    let rawFields = [];
     try {
       const parsed = JSON.parse(req.body.fields_json || '[]');
-      if (Array.isArray(parsed)) extraRows = parsed;
+      if (Array.isArray(parsed)) rawFields = parsed;
     } catch (err) {
-      extraRows = [];
+      rawFields = [];
     }
-    const fields = formsLib.sanitizeFieldList(req.body.name_label, req.body.phone_label, extraRows);
+    const fields = formsLib.sanitizeFieldList(rawFields);
 
     await pool.query(
       `UPDATE ${TABLES.forms} SET name = ?, heading = ?, subtext = ?, button_label = ?, success_message = ?, fields = ? WHERE id = ?`,

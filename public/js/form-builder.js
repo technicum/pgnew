@@ -1,16 +1,29 @@
 // Visual field builder for the Forms module (views/admin/form-edit.ejs).
-// The two locked fields (name/phone) render as static rows straight from
-// EJS -- this script only manages the draggable list of extra fields, then
-// serializes the whole list to JSON into #fieldsJsonInput right before the
+// Every field -- including what used to be the locked name/phone pair --
+// is a normal row here: add, rename, retype, resize, reorder, or remove
+// any of them. This script builds the whole draggable list client-side,
+// then serializes it to JSON into #fieldsJsonInput right before the
 // surrounding <form> submits, for routes/admin.js's POST /forms/:id/edit
-// to parse. Drag-to-reorder mirrors admin-menus.js's handle-initiated
-// pattern (mousedown on the handle arms dragging for just that row, so
-// clicking into a label input or a button never starts a drag) but flat --
-// no nesting, since a form's fields are just an ordered list.
+// to re-validate and save (see lib/forms.js's sanitizeFieldList -- it
+// re-keys every field by its final position, so the client never needs to
+// track or send a field's key). Drag-to-reorder mirrors admin-menus.js's
+// handle-initiated pattern (mousedown on the handle arms dragging for just
+// that row, so clicking into a label/option input or a button never starts
+// a drag) but flat -- no nesting, since a form's fields are just an
+// ordered list.
 (function () {
   "use strict";
   var DATA = window.__FORM_BUILDER__;
   if (!DATA) return;
+
+  var TYPE_ICO = {
+    text: "Aa", textarea: "¶", email: "@", tel: "☎", number: "#",
+    select: "▾", radio: "◉", checkbox: "☑",
+  };
+  var CHOICE_TYPES = DATA.choiceTypes || [];
+  var FULL_WIDTH_TYPES = DATA.fullWidthTypes || [];
+  var MAX_FIELDS = DATA.maxFields || 12;
+  var DEFAULT_OPTIONS = ["Option 1", "Option 2", "Option 3"];
 
   var list = document.getElementById("customFieldsList");
   var emptyMsg = document.getElementById("customFieldsEmpty");
@@ -18,20 +31,20 @@
   var addButtons = document.querySelectorAll(".form-field-add");
   var form = document.getElementById("formEditForm");
   var fieldsJsonInput = document.getElementById("fieldsJsonInput");
-  var maxCustom = DATA.maxCustom || 10;
 
   function refreshEmptyState() {
     var count = list.querySelectorAll(".form-field-row").length;
     emptyMsg.hidden = count > 0;
-    var atMax = count >= maxCustom;
+    var atMax = count >= MAX_FIELDS;
     limitMsg.hidden = !atMax;
     Array.prototype.forEach.call(addButtons, function (btn) { btn.disabled = atMax; });
   }
 
-  function fieldRow(field) {
+  function fieldRow(f) {
     var li = document.createElement("li");
     li.className = "form-field-row";
 
+    // ---- head: drag handle, type icon, label, type select, remove ----
     var head = document.createElement("div");
     head.className = "form-field-row-head";
 
@@ -41,12 +54,17 @@
     handle.textContent = "⠿";
     head.appendChild(handle);
 
+    var ico = document.createElement("span");
+    ico.className = "form-field-type-ico";
+    ico.textContent = TYPE_ICO[f.type] || "Aa";
+    head.appendChild(ico);
+
     var labelInput = document.createElement("input");
     labelInput.type = "text";
     labelInput.className = "form-field-label-input";
-    labelInput.maxLength = 60;
+    labelInput.maxLength = 80;
     labelInput.placeholder = "Field label";
-    labelInput.value = field.label || "";
+    labelInput.value = f.label || "";
     head.appendChild(labelInput);
 
     var typeSelect = document.createElement("select");
@@ -55,19 +73,19 @@
       var opt = document.createElement("option");
       opt.value = t;
       opt.textContent = (DATA.fieldTypeLabels && DATA.fieldTypeLabels[t]) || t;
-      if (t === field.type) opt.selected = true;
+      if (t === f.type) opt.selected = true;
       typeSelect.appendChild(opt);
     });
+    typeSelect.addEventListener("change", function () {
+      ico.textContent = TYPE_ICO[typeSelect.value] || "Aa";
+      sizeSelect.disabled = FULL_WIDTH_TYPES.indexOf(typeSelect.value) !== -1;
+      var isChoice = CHOICE_TYPES.indexOf(typeSelect.value) !== -1;
+      optionsRow.hidden = !isChoice;
+      if (isChoice && !optionsList.children.length) {
+        DEFAULT_OPTIONS.forEach(function (o) { addOptionRow(o, false); });
+      }
+    });
     head.appendChild(typeSelect);
-
-    var reqLabel = document.createElement("label");
-    reqLabel.className = "form-field-required-toggle";
-    var reqCheckbox = document.createElement("input");
-    reqCheckbox.type = "checkbox";
-    reqCheckbox.checked = !!field.required;
-    reqLabel.appendChild(reqCheckbox);
-    reqLabel.appendChild(document.createTextNode("Required"));
-    head.appendChild(reqLabel);
 
     var removeBtn = document.createElement("button");
     removeBtn.type = "button";
@@ -81,18 +99,115 @@
     head.appendChild(removeBtn);
 
     li.appendChild(head);
+
+    // ---- meta row: size + required, indented under the label ----
+    var meta = document.createElement("div");
+    meta.className = "form-field-row-meta";
+
+    var sizeWrap = document.createElement("label");
+    sizeWrap.className = "form-field-size-wrap";
+    sizeWrap.appendChild(document.createTextNode("Size"));
+    var sizeSelect = document.createElement("select");
+    sizeSelect.className = "form-field-size-select";
+    [["small", "Small"], ["medium", "Medium"], ["large", "Large"]].forEach(function (pair) {
+      var opt = document.createElement("option");
+      opt.value = pair[0];
+      opt.textContent = pair[1];
+      if (pair[0] === (f.size || "medium")) opt.selected = true;
+      sizeSelect.appendChild(opt);
+    });
+    sizeSelect.disabled = FULL_WIDTH_TYPES.indexOf(f.type) !== -1;
+    sizeWrap.appendChild(sizeSelect);
+    meta.appendChild(sizeWrap);
+
+    var switchWrap = document.createElement("label");
+    switchWrap.className = "form-field-required-toggle";
+    var cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!f.required;
+    switchWrap.appendChild(cb);
+    switchWrap.appendChild(document.createTextNode("Required"));
+    meta.appendChild(switchWrap);
+
+    li.appendChild(meta);
+
+    // ---- options row: only shown for dropdown/radio/checkbox -- a real
+    // add/remove list of choices, not a comma-separated line ----
+    var optionsRow = document.createElement("div");
+    optionsRow.className = "form-field-options-row";
+
+    var optionsLabel = document.createElement("p");
+    optionsLabel.className = "form-field-options-label";
+    optionsLabel.textContent = "Choices";
+    optionsRow.appendChild(optionsLabel);
+
+    var optionsList = document.createElement("ul");
+    optionsList.className = "form-field-options-list";
+    optionsRow.appendChild(optionsList);
+
+    function addOptionRow(text, focus) {
+      var oli = document.createElement("li");
+      oli.className = "form-field-option-row";
+
+      var bullet = document.createElement("span");
+      bullet.className = "form-field-option-bullet";
+      bullet.textContent = "•";
+      oli.appendChild(bullet);
+
+      var oInput = document.createElement("input");
+      oInput.type = "text";
+      oInput.className = "form-field-option-input";
+      oInput.maxLength = 80;
+      oInput.placeholder = "Option label";
+      oInput.value = text || "";
+      oli.appendChild(oInput);
+
+      var oRemove = document.createElement("button");
+      oRemove.type = "button";
+      oRemove.className = "form-field-option-remove";
+      oRemove.title = "Remove option";
+      oRemove.textContent = "✕";
+      oRemove.addEventListener("click", function () { oli.remove(); });
+      oli.appendChild(oRemove);
+
+      optionsList.appendChild(oli);
+      if (focus) oInput.focus();
+    }
+
+    (f.options && f.options.length ? f.options : (CHOICE_TYPES.indexOf(f.type) !== -1 ? DEFAULT_OPTIONS : []))
+      .forEach(function (o) { addOptionRow(o, false); });
+
+    var addOptionBtn = document.createElement("button");
+    addOptionBtn.type = "button";
+    addOptionBtn.className = "form-field-option-add";
+    addOptionBtn.textContent = "+ Add option";
+    addOptionBtn.addEventListener("click", function () { addOptionRow("", true); });
+    optionsRow.appendChild(addOptionBtn);
+
+    optionsRow.hidden = CHOICE_TYPES.indexOf(f.type) === -1;
+    li.appendChild(optionsRow);
+
+    li._get = function () {
+      return {
+        label: labelInput.value.trim(),
+        type: typeSelect.value,
+        required: cb.checked,
+        size: sizeSelect.value,
+        options: Array.prototype.map.call(optionsList.querySelectorAll(".form-field-option-input"), function (inp) {
+          return inp.value.trim();
+        }).filter(Boolean),
+      };
+    };
     return li;
   }
 
-  (DATA.fields || [])
-    .filter(function (f) { return f.key !== "name" && f.key !== "phone"; })
-    .forEach(function (f) { list.appendChild(fieldRow(f)); });
+  (DATA.fields || []).forEach(function (f) { list.appendChild(fieldRow(f)); });
   refreshEmptyState();
 
   Array.prototype.forEach.call(addButtons, function (btn) {
     btn.addEventListener("click", function () {
-      if (list.querySelectorAll(".form-field-row").length >= maxCustom) return;
-      var row = fieldRow({ label: "", type: btn.dataset.type, required: false });
+      if (list.querySelectorAll(".form-field-row").length >= MAX_FIELDS) return;
+      var row = fieldRow({ label: btn.dataset.label || "", type: btn.dataset.type, required: false });
       list.appendChild(row);
       refreshEmptyState();
       row.querySelector(".form-field-label-input").focus();
@@ -161,13 +276,9 @@
   form.addEventListener("submit", function () {
     var fields = [];
     list.querySelectorAll(".form-field-row").forEach(function (row) {
-      var label = row.querySelector(".form-field-label-input").value.trim();
-      if (!label) return; // a blank label is dropped silently rather than blocking save
-      fields.push({
-        label: label,
-        type: row.querySelector(".form-field-type-select").value,
-        required: row.querySelector(".form-field-required-toggle input").checked,
-      });
+      var f = row._get();
+      if (!f.label) return; // a blank label is dropped silently rather than blocking save
+      fields.push(f);
     });
     fieldsJsonInput.value = JSON.stringify(fields);
   });

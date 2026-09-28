@@ -453,14 +453,18 @@ router.post('/newsletter', async (req, res) => {
 // Every form's (pz_forms) submit target, whether it came from its own
 // standalone page (/forms/<slug>) or an embedded page-builder 'form'
 // section (see views/storefront/partials/section.ejs's 'form' case).
-// Every submission does two things: it's kept in full in
-// pz_form_submissions (the only place a form's non-name/phone/email
-// answers — message, topic, preferred date, whatever custom fields it has —
-// get preserved), and it creates or updates a pz_contacts row with source
-// 'contact_form' so the lead shows up in the CRM's existing Leads screen
-// exactly like any manually-added or imported one. Deliberately tolerant of
-// a missing/deleted section_id (SET NULL on the FK) and of a
-// contact-creation failure not blocking the raw submission from being kept.
+//
+// Every submission is kept in full in pz_form_submissions regardless of
+// what fields the form has. On top of that, since nothing about a form's
+// fields is locked anymore, a submission only creates/updates a pz_contacts
+// row (source 'contact_form', so it shows up in the CRM's Leads screen like
+// any other) when the form actually has a phone-type field with a value --
+// sanitizeSubmission (lib/forms.js) finds that by field TYPE, not a fixed
+// key. A form built without a phone field (a feedback form, an RSVP with no
+// callback needed, etc.) still saves every submission, it just doesn't
+// create a lead. Deliberately tolerant of a missing/deleted section_id (SET
+// NULL on the FK) and of a contact-creation failure not blocking the raw
+// submission from being kept.
 router.post('/forms/submit', async (req, res) => {
   const formId = Number(req.body.form_id) || null;
   const sectionId = Number(req.body.section_id) || null;
@@ -478,31 +482,34 @@ router.post('/forms/submit', async (req, res) => {
     const fields = typeof form.fields === 'string' ? JSON.parse(form.fields) : form.fields;
     const { name, phone, email, data } = sanitizeSubmission(fields, req.body);
 
-    if (!name || !phone) {
-      req.flash('error', 'Please fill in your name and phone number.');
+    const missingRequired = fields.some((f) => f.required && (Array.isArray(data[f.key]) ? data[f.key].length === 0 : !data[f.key]));
+    if (missingRequired) {
+      req.flash('error', 'Please fill in the required fields.');
       return res.redirect(req.get('Referer') || '/');
     }
 
-    const contact = sanitizeContact({ name, phone, email, source: 'contact_form', tags: form.name });
     let contactId = null;
-    try {
-      const [[existing]] = await pool.query(
-        `SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND phone = ? LIMIT 1`,
-        [req.store.id, contact.phone]
-      );
-      if (existing) {
-        contactId = existing.id;
-      } else {
-        const [result] = await pool.query(
-          `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, ?)`,
-          [req.store.id, contact.name, contact.email || '', contact.phone, contact.source, JSON.stringify(contact.tags)]
+    if (phone) {
+      const contact = sanitizeContact({ name, phone, email, source: 'contact_form', tags: form.name });
+      try {
+        const [[existing]] = await pool.query(
+          `SELECT id FROM ${TABLES.contacts} WHERE store_id = ? AND phone = ? LIMIT 1`,
+          [req.store.id, contact.phone]
         );
-        contactId = result.insertId;
+        if (existing) {
+          contactId = existing.id;
+        } else {
+          const [result] = await pool.query(
+            `INSERT INTO ${TABLES.contacts} (store_id, name, email, phone, source, tags) VALUES (?, ?, ?, ?, ?, ?)`,
+            [req.store.id, contact.name, contact.email || '', contact.phone, contact.source, JSON.stringify(contact.tags)]
+          );
+          contactId = result.insertId;
+        }
+      } catch (contactErr) {
+        // Keep the raw submission even if contact creation fails for some
+        // reason -- a lead's answer shouldn't vanish over a CRM-side error.
+        console.error('Form submission: contact creation failed:', contactErr);
       }
-    } catch (contactErr) {
-      // Keep the raw submission even if contact creation fails for some
-      // reason -- a lead's answer shouldn't vanish over a CRM-side error.
-      console.error('Form submission: contact creation failed:', contactErr);
     }
 
     await pool.query(

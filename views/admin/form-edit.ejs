@@ -4,7 +4,7 @@
   <a href="/admin/forms" class="link-btn">← All forms</a>
 </div>
 
-<div class="panel" style="max-width:720px; margin-bottom:20px;">
+<div class="panel" style="max-width:1100px; margin-bottom:20px;">
   <h2>Link</h2>
   <p class="form-hint" style="margin-top:0;">
     <a href="<%= publicUrl %>" target="_blank" rel="noopener"><%= publicUrl %></a>
@@ -12,65 +12,55 @@
   </p>
 </div>
 
-<form action="/admin/forms/<%= form.id %>/edit" method="POST" class="admin-form" id="formEditForm" style="max-width:720px;">
-  <label>Form name (internal — not shown to visitors) *
-    <input type="text" name="name" value="<%= form.name %>" maxlength="200" required />
-  </label>
+<form action="/admin/forms/<%= form.id %>/edit" method="POST" id="formEditForm" style="max-width:1100px;">
+  <div class="form-editor-layout">
+    <div class="panel">
+      <h2>Fields</h2>
+      <p class="form-hint" style="margin-top:0;">Build this form from scratch — add whatever fields you need, in whatever order. Rename, retype, resize, reorder, or remove any field. A submission only becomes a CRM lead automatically when the form has a phone field — otherwise it's still saved here, just not linked to a contact.</p>
 
-  <label>Heading
-    <input type="text" name="heading" value="<%= form.heading %>" maxlength="200" />
-  </label>
-
-  <label>Intro text
-    <textarea name="subtext" rows="2" maxlength="300"><%= form.subtext %></textarea>
-  </label>
-
-  <div class="form-row">
-    <label>Button label
-      <input type="text" name="button_label" value="<%= form.button_label %>" maxlength="40" />
-    </label>
-  </div>
-
-  <label>Success message (shown after someone submits)
-    <textarea name="success_message" rows="2" maxlength="300"><%= form.success_message %></textarea>
-  </label>
-
-  <h2 style="margin-top:28px;">Fields</h2>
-  <p class="form-hint" style="margin-top:0;">Every form always asks for a name and a phone number, so you can follow up on a submission — rename those two if you like, but they can't be removed or changed to another field type. Add, reorder, and remove any other fields below.</p>
-
-  <ul class="form-fields-list">
-    <li class="form-field-row form-field-locked">
-      <div class="form-field-row-head">
-        <span class="form-field-lock" title="Always included">🔒</span>
-        <input type="text" name="name_label" class="form-field-label-input" value="<%= nameLabel %>" maxlength="60" placeholder="Field label" />
-        <span class="form-field-type-badge">Short text</span>
+      <div class="form-field-palette">
+        <span class="form-field-palette-label">Add a field:</span>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="text" data-label="Full name">Name</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="tel" data-label="Phone number">Phone</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="text" data-label="">Short text</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="textarea" data-label="">Paragraph</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="email" data-label="">Email</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="number" data-label="">Number</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="select" data-label="">Dropdown</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="radio" data-label="">Radio buttons</button>
+        <button type="button" class="btn btn-secondary form-field-add" data-type="checkbox" data-label="">Checkboxes</button>
       </div>
-    </li>
-    <li class="form-field-row form-field-locked">
-      <div class="form-field-row-head">
-        <span class="form-field-lock" title="Always included">🔒</span>
-        <input type="text" name="phone_label" class="form-field-label-input" value="<%= phoneLabel %>" maxlength="60" placeholder="Field label" />
-        <span class="form-field-type-badge">Phone</span>
+      <p id="formFieldsLimitMsg" class="form-hint" hidden>You've reached the limit of <%= maxFields %> fields.</p>
+
+      <ul id="customFieldsList" class="form-fields-list"></ul>
+      <p id="customFieldsEmpty" class="form-fields-empty">No fields yet — add one above to get started.</p>
+    </div>
+
+    <div>
+      <div class="panel admin-form" style="max-width:none;">
+        <h2>Form copy</h2>
+        <p class="form-hint" style="margin-top:0;">Shown at the top of the form, and after someone submits it.</p>
+        <label>Form name (internal — not shown to visitors) *
+          <input type="text" name="name" value="<%= form.name %>" maxlength="200" required />
+        </label>
+        <label>Heading
+          <input type="text" name="heading" value="<%= form.heading %>" maxlength="200" />
+        </label>
+        <label>Intro text
+          <textarea name="subtext" rows="2" maxlength="300"><%= form.subtext %></textarea>
+        </label>
+        <label>Button label
+          <input type="text" name="button_label" value="<%= form.button_label %>" maxlength="40" />
+        </label>
+        <label style="margin-bottom:0;">Success message
+          <textarea name="success_message" rows="2" maxlength="300"><%= form.success_message %></textarea>
+        </label>
       </div>
-    </li>
-  </ul>
-
-  <ul id="customFieldsList" class="form-fields-list"></ul>
-  <p id="customFieldsEmpty" class="form-fields-empty">No extra fields yet — add one below.</p>
-
-  <div class="form-field-palette">
-    <span class="form-field-palette-label">Add a field:</span>
-    <button type="button" class="btn btn-secondary form-field-add" data-type="text">+ Short text</button>
-    <button type="button" class="btn btn-secondary form-field-add" data-type="textarea">+ Paragraph</button>
-    <button type="button" class="btn btn-secondary form-field-add" data-type="email">+ Email</button>
-    <button type="button" class="btn btn-secondary form-field-add" data-type="tel">+ Phone</button>
-    <button type="button" class="btn btn-secondary form-field-add" data-type="number">+ Number</button>
+    </div>
   </div>
-  <p id="formFieldsLimitMsg" class="form-hint" hidden>You've reached the limit of <%= maxCustomFields %> extra fields.</p>
 
   <input type="hidden" name="fields_json" id="fieldsJsonInput" value="" />
-
-  <button type="submit" class="btn btn-primary" style="margin-top:20px;">Save form</button>
+  <button type="submit" class="btn btn-primary">Save form</button>
 </form>
 
 <script>
@@ -78,7 +68,9 @@
     fields: <%- JSON.stringify(form.fields).split('/').join(String.fromCharCode(92) + '/') %>,
     fieldTypes: <%- JSON.stringify(fieldTypes) %>,
     fieldTypeLabels: <%- JSON.stringify(fieldTypeLabels) %>,
-    maxCustom: <%= maxCustomFields %>
+    choiceTypes: <%- JSON.stringify(choiceTypes) %>,
+    fullWidthTypes: <%- JSON.stringify(fullWidthTypes) %>,
+    maxFields: <%= maxFields %>
   };
 </script>
 <script src="/js/form-builder.js"></script>
