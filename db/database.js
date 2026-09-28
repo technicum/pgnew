@@ -164,6 +164,12 @@ const TABLES = {
   // "stop" (or by the next start, or by clocking out). See the CREATE TABLE
   // comment below.
   crmTaskTimeEntries: `${PREFIX}crm_task_time_entries`,
+  // Raw responses from a page-builder 'form' section (see lib/forms.js) --
+  // every submission also creates/updates a pz_contacts row (source:
+  // 'contact_form'), so it shows up in the CRM Leads screen like any other
+  // lead; this table keeps the full field-by-field answer (message, topic,
+  // preferred date, ...) that a contact row alone has no place to hold.
+  formSubmissions: `${PREFIX}form_submissions`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
 // to detect and safely rename an older install's tables (see
@@ -690,6 +696,27 @@ CREATE TABLE IF NOT EXISTS ${TABLES.listings} (
   UNIQUE KEY uniq_store_listing_slug (store_id, slug),
   INDEX idx_listing_type_status (listing_type, status),
   INDEX idx_listing_definition (definition_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One row per submission of a page-builder 'form' section (see
+-- lib/forms.js's FORM_PRESETS). section_id is nullable/ON DELETE SET NULL
+-- because a lead's own record should outlive the page section that
+-- captured it -- a merchant redesigning the page shouldn't lose history of
+-- who already enquired. contact_id likewise SET NULL rather than CASCADE,
+-- so deleting a duplicate/merged contact never silently deletes the raw
+-- submission it came from.
+CREATE TABLE IF NOT EXISTS ${TABLES.formSubmissions} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  section_id INT NULL,
+  preset VARCHAR(30) NOT NULL DEFAULT 'contact',
+  data JSON NOT NULL,
+  contact_id INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (section_id) REFERENCES ${TABLES.pageSections}(id) ON DELETE SET NULL,
+  FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE SET NULL,
+  INDEX idx_form_submissions_store (store_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Plan pricing — mirrors ${TABLES.themes}'s own catalog shape (a price on

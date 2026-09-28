@@ -10,6 +10,7 @@ const { resolveStore, getBaseDomain, adminPortalUrl, rootUrl, storeUrl } = requi
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('./lib/themes');
 const { themeDefaultTokens } = require('./lib/themeTokens');
 const { SOCIAL_ICON_SVGS } = require('./lib/socialIcons');
+const { FORM_PRESETS } = require('./lib/forms');
 const platformRoutes = require('./routes/platform');
 const platformAdminRoutes = require('./routes/platformAdmin');
 const storefrontRoutes = require('./routes/storefront');
@@ -112,6 +113,15 @@ app.use((req, res, next) => {
 // up (every storefront page, not just ones with dedicated route handling).
 app.use((req, res, next) => {
   res.locals.socialIcons = SOCIAL_ICON_SVGS;
+  next();
+});
+
+// The page-builder's 'form' section (see lib/forms.js) looks up its preset's
+// field list by name at render time — same global-local pattern as
+// socialIcons above, for the same reason (section.ejs renders it wherever a
+// page happens to place one, not from one dedicated route).
+app.use((req, res, next) => {
+  res.locals.formPresets = FORM_PRESETS;
   next();
 });
 

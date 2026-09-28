@@ -337,6 +337,29 @@
     </form>
   </section>
 
+<% } else if (section.type === 'form') { %>
+  <% var pzFormPreset = (typeof formPresets !== 'undefined' && formPresets[section.fields.preset]) || (typeof formPresets !== 'undefined' && formPresets.contact) || { fields: [] }; %>
+  <section id="<%= pzId %>" class="pz-form-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
+    <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
+    <% if (section.fields.subtext) { %><p style="<%= pzElStyle('subtext') %>"><%= section.fields.subtext %></p><% } %>
+    <form class="pz-form" action="/forms/submit" method="POST">
+      <input type="hidden" name="section_id" value="<%= section.id %>" />
+      <input type="hidden" name="preset" value="<%= section.fields.preset || 'contact' %>" />
+      <% pzFormPreset.fields.forEach(function(f) { %>
+        <div class="pz-form-field">
+          <label for="pzf-<%= section.id %>-<%= f.key %>"><%= f.label %></label>
+          <% if (f.type === 'textarea') { %>
+            <textarea id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>" rows="3"<%= f.required ? ' required' : '' %>></textarea>
+          <% } else { %>
+            <input id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>" type="<%= f.type %>"<%= f.required ? ' required' : '' %> />
+          <% } %>
+        </div>
+      <% }); %>
+      <button type="submit" class="btn btn-primary" style="<%= pzElStyle('button') %>"><%= section.fields.button %></button>
+    </form>
+  </section>
+
 <% } else if (section.type === 'richtext') { %>
   <section id="<%= pzId %>" class="richtext richtext-<%= section.fields.width === 'wide' ? 'wide' : 'narrow' %><%= pzExtra %>" style="<%= pzHeightStyle %>text-align:<%= section.fields.align === 'left' ? 'left' : 'center' %>;">
     <%- pzUniBgExtras(section) %>
