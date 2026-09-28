@@ -5,9 +5,10 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const path = require('path');
 
-const { pool, init } = require('./db/database');
-const { resolveStore, getBaseDomain, adminPortalUrl, rootUrl } = require('./middleware/tenant');
+const { pool, init, TABLES } = require('./db/database');
+const { resolveStore, getBaseDomain, adminPortalUrl, rootUrl, storeUrl } = require('./middleware/tenant');
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('./lib/themes');
+const { themeDefaultTokens } = require('./lib/themeTokens');
 const { SOCIAL_ICON_SVGS } = require('./lib/socialIcons');
 const platformRoutes = require('./routes/platform');
 const platformAdminRoutes = require('./routes/platformAdmin');
@@ -114,19 +115,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// themes.pagezaper.com and apps.pagezaper.com — the future public theme
-// and app marketplaces (see middleware/tenant.js's isThemeMarketplace /
-// isAppMarketplace handling). Neither is built yet, so every path on
-// either subdomain gets a simple coming-soon placeholder instead of
-// falling through to the storefront's generic "store not found" 404.
-app.use((req, res, next) => {
+// themes.pagezaper.com — the public theme marketplace (see middleware/
+// tenant.js's isThemeMarketplace handling). Lists every published catalog
+// theme (pz_themes.status = 'published' — the same set routes/admin.js's
+// own /store/themes gallery treats as installable) for a visitor who isn't
+// logged into any store yet, so there's no per-store "install"/"activate"
+// here — just a look, a live demo link where one exists, and a way into
+// signup. Every path on this subdomain hits this same listing (there's
+// nothing else here yet).
+app.use(async (req, res, next) => {
   if (req.isThemeMarketplace) {
-    return res.status(200).render('marketplace-coming-soon', {
-      title: 'Theme Marketplace',
-      eyebrow: 'Theme Marketplace',
-      description: "Browse and install ready-made storefront themes for your PageZaper store. We're still building this out — check back shortly.",
-      rootUrl: rootUrl(req),
-    });
+    try {
+      const [rows] = await pool.query(
+        `SELECT t.slug, t.name, t.description, t.price_cents, s.subdomain AS demo_subdomain
+         FROM ${TABLES.themes} t
+         LEFT JOIN ${TABLES.stores} s ON s.id = t.demo_store_id
+         WHERE t.status = 'published'
+         ORDER BY t.price_cents ASC, t.name ASC`
+      );
+      const themes = rows.map((t) => {
+        const tokens = themeDefaultTokens(t.slug);
+        return {
+          ...t,
+          swatchFrom: tokens.color_primary,
+          swatchTo: tokens.color_primary_dark,
+          demoUrl: t.demo_subdomain ? storeUrl(req, t.demo_subdomain, '/') : null,
+        };
+      });
+      return res.status(200).render('theme-marketplace', {
+        title: 'Theme Marketplace',
+        themes,
+        rootUrl: rootUrl(req),
+        signupUrl: rootUrl(req, '/signup'),
+      });
+    } catch (err) {
+      return next(err);
+    }
   }
   if (req.isAppMarketplace) {
     return res.status(200).render('marketplace-coming-soon', {
