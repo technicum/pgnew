@@ -11,7 +11,7 @@ const { readManifest } = require('../lib/themeManifest');
 const menusLib = require('../lib/menus');
 const metaobjectsLib = require('../lib/metaobjects');
 const { createOrder, genOrderNumber } = require('../lib/orders');
-const { sanitizeSubmission, VALID_PRESETS } = require('../lib/forms');
+const { sanitizeSubmission } = require('../lib/forms');
 const { sanitizeContact } = require('../lib/contacts');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -110,6 +110,28 @@ router.use(async (req, res, next) => {
     res.locals.storePages = pages;
   } catch (err) {
     res.locals.storePages = [];
+  }
+  next();
+});
+
+// This store's own forms (pz_forms), keyed by id, so a 'form' section (see
+// lib/sections.js — it just stores a form_id) can render whichever form it
+// points at without its own query per section. Same idea as storePages
+// above, just keyed rather than listed since section.ejs looks one up by id
+// instead of iterating all of them.
+router.use(async (req, res, next) => {
+  res.locals.storeForms = {};
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, name, slug, heading, subtext, button_label, success_message, fields FROM ${TABLES.forms} WHERE store_id = ?`,
+      [req.store.id]
+    );
+    rows.forEach((f) => {
+      res.locals.storeForms[f.id] = { ...f, fields: typeof f.fields === 'string' ? JSON.parse(f.fields) : f.fields };
+    });
+  } catch (err) {
+    // leave storeForms empty -- a 'form' section with no match just renders
+    // its "pick a form" placeholder instead of breaking the page
   }
   next();
 });
@@ -379,19 +401,36 @@ router.get('/pages/:slug', async (req, res, next) => {
   }
 });
 
-// Standalone forms built via the Forms module (see routes/admin.js's
-// /admin/forms routes) — a page like any other, just addressed as
-// "/forms/<slug>" instead of "/pages/<slug>" so it reads as its own shareable
-// link (e.g. for WhatsApp or a QR code) rather than a regular site page.
+// Standalone forms built on the Forms screen (see routes/admin.js's
+// /admin/forms routes and pz_forms) — not a pz_pages row at all, so this
+// renders the theme's own page wrapper (header/footer/tokens — all already
+// set by this router's earlier middleware) around one synthetic 'form'
+// section, the exact same way views/storefront/partials/section.ejs renders
+// a 'form' section anywhere else. Gives every form a real, themed URL at
+// /forms/<slug> without needing a page to exist behind it.
 router.get('/forms/:slug', async (req, res, next) => {
   try {
-    const path = `/forms/${req.params.slug}`;
-    const [[page]] = await pool.query(
-      `SELECT * FROM ${TABLES.pages} WHERE store_id = ? AND path = ? AND is_form = 1 AND status = 'published' LIMIT 1`,
-      [req.store.id, path]
+    const [[form]] = await pool.query(
+      `SELECT * FROM ${TABLES.forms} WHERE store_id = ? AND slug = ? LIMIT 1`,
+      [req.store.id, req.params.slug]
     );
-    if (!page) return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Page not found' });
-    return renderStorePage(req, res, next, page);
+    if (!form) return res.status(404).render(`${req.themeViewPrefix}/404`, { title: 'Page not found' });
+    const [categories] = await pool.query(`SELECT * FROM ${TABLES.categories} WHERE store_id = ? ORDER BY name`, [req.store.id]);
+    const section = {
+      id: 0, type: 'form', fields: { form_id: form.id },
+      custom_class: '', custom_css: '', min_height: 0,
+      hide_desktop: false, hide_tablet: false, hide_mobile: false,
+      margin_top: 0, margin_bottom: 0, margin_left: 0, margin_right: 0,
+      padding_top: 0, padding_bottom: 0, padding_left: 0, padding_right: 0,
+      element_styles: {}, text_color: '', bg_color: '', text_align: '',
+      bg_type: '', bg_image_url: '', bg_video_url: '', bg_overlay: false,
+    };
+    res.render(`${req.themeViewPrefix}/page`, {
+      title: `${form.name} · ${req.store.name}`,
+      sections: [section],
+      categories,
+      activeCategory: null,
+    });
   } catch (err) {
     next(err);
   }
@@ -411,27 +450,40 @@ router.post('/newsletter', async (req, res) => {
   res.redirect(req.get('Referer') || '/');
 });
 
-// A page-builder 'form' section's submit target (see lib/forms.js and
-// views/storefront/partials/section.ejs's 'form' case). Every submission
-// does two things: it's kept in full in pz_form_submissions (the only place
-// the preset's non-name/phone/email answers — message, topic, preferred
-// date — get preserved), and it creates or updates a pz_contacts row with
-// source 'contact_form' so the lead shows up in the CRM's existing Leads
-// screen exactly like any manually-added or imported one. Deliberately
-// tolerant of a missing/deleted section_id (SET NULL on the FK) and of a
+// Every form's (pz_forms) submit target, whether it came from its own
+// standalone page (/forms/<slug>) or an embedded page-builder 'form'
+// section (see views/storefront/partials/section.ejs's 'form' case).
+// Every submission does two things: it's kept in full in
+// pz_form_submissions (the only place a form's non-name/phone/email
+// answers — message, topic, preferred date, whatever custom fields it has —
+// get preserved), and it creates or updates a pz_contacts row with source
+// 'contact_form' so the lead shows up in the CRM's existing Leads screen
+// exactly like any manually-added or imported one. Deliberately tolerant of
+// a missing/deleted section_id (SET NULL on the FK) and of a
 // contact-creation failure not blocking the raw submission from being kept.
 router.post('/forms/submit', async (req, res) => {
-  const preset = VALID_PRESETS.includes(req.body.preset) ? req.body.preset : 'contact';
+  const formId = Number(req.body.form_id) || null;
   const sectionId = Number(req.body.section_id) || null;
-  const { name, phone, email, data } = sanitizeSubmission(preset, req.body);
-
-  if (!name || !phone) {
-    req.flash('error', 'Please fill in your name and phone number.');
+  if (!formId) {
+    req.flash('error', 'Something went wrong — please try again.');
     return res.redirect(req.get('Referer') || '/');
   }
 
   try {
-    const contact = sanitizeContact({ name, phone, email, source: 'contact_form', tags: preset });
+    const [[form]] = await pool.query(`SELECT * FROM ${TABLES.forms} WHERE store_id = ? AND id = ? LIMIT 1`, [req.store.id, formId]);
+    if (!form) {
+      req.flash('error', 'Something went wrong — please try again.');
+      return res.redirect(req.get('Referer') || '/');
+    }
+    const fields = typeof form.fields === 'string' ? JSON.parse(form.fields) : form.fields;
+    const { name, phone, email, data } = sanitizeSubmission(fields, req.body);
+
+    if (!name || !phone) {
+      req.flash('error', 'Please fill in your name and phone number.');
+      return res.redirect(req.get('Referer') || '/');
+    }
+
+    const contact = sanitizeContact({ name, phone, email, source: 'contact_form', tags: form.name });
     let contactId = null;
     try {
       const [[existing]] = await pool.query(
@@ -454,11 +506,11 @@ router.post('/forms/submit', async (req, res) => {
     }
 
     await pool.query(
-      `INSERT INTO ${TABLES.formSubmissions} (store_id, section_id, preset, data, contact_id) VALUES (?, ?, ?, ?, ?)`,
-      [req.store.id, sectionId, preset, JSON.stringify(data), contactId]
+      `INSERT INTO ${TABLES.formSubmissions} (store_id, form_id, section_id, data, contact_id) VALUES (?, ?, ?, ?, ?)`,
+      [req.store.id, formId, sectionId, JSON.stringify(data), contactId]
     );
 
-    req.flash('success', "Thanks — we'll be in touch shortly.");
+    req.flash('success', form.success_message || "Thanks — we'll be in touch shortly.");
   } catch (err) {
     console.error('Form submission failed:', err);
     req.flash('error', 'Something went wrong — please try again.');

@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+
+<div class="panel-toolbar">
+  <a href="/admin/forms" class="link-btn">← All forms</a>
+</div>
+
+<div class="panel" style="max-width:640px; margin-bottom:20px;">
+  <h2>Link</h2>
+  <p class="form-hint" style="margin-top:0;">
+    <a href="<%= publicUrl %>" target="_blank" rel="noopener"><%= publicUrl %></a>
+    — share this anywhere (WhatsApp, a QR code, your bio), or embed this form on any page from the page builder's "Add a section" panel.
+  </p>
+</div>
+
+<form action="/admin/forms/<%= form.id %>/edit" method="POST" class="admin-form" style="max-width:640px;">
+  <label>Form name (internal — not shown to visitors) *
+    <input type="text" name="name" value="<%= form.name %>" maxlength="200" required />
+  </label>
+
+  <label>Heading
+    <input type="text" name="heading" value="<%= form.heading %>" maxlength="200" />
+  </label>
+
+  <label>Intro text
+    <textarea name="subtext" rows="2" maxlength="300"><%= form.subtext %></textarea>
+  </label>
+
+  <div class="form-row">
+    <label>Button label
+      <input type="text" name="button_label" value="<%= form.button_label %>" maxlength="40" />
+    </label>
+  </div>
+
+  <label>Success message (shown after someone submits)
+    <textarea name="success_message" rows="2" maxlength="300"><%= form.success_message %></textarea>
+  </label>
+
+  <h2 style="margin-top:28px;">Fields</h2>
+  <p class="form-hint" style="margin-top:0;">Every form always asks for a name and a phone number, so you can follow up — you can rename those two, but not remove them.</p>
+
+  <div class="form-row">
+    <label>Name field label
+      <input type="text" name="name_label" value="<%= nameLabel %>" maxlength="60" />
+    </label>
+    <label>Phone field label
+      <input type="text" name="phone_label" value="<%= phoneLabel %>" maxlength="60" />
+    </label>
+  </div>
+
+  <label>More fields (optional, up to <%= maxCustomFields %>)
+    <textarea name="extra_fields" rows="6" placeholder="Email | email
+Message | textarea
+Preferred date | text | required"><%= extraFieldsText %></textarea>
+  </label>
+  <p class="form-hint" style="margin-top:-8px;">
+    One field per line, as <code>Label | type | required</code>. Type is one of
+    <% Object.keys(fieldTypeLabels).forEach(function(t, i) { %><code><%= t %></code><%= i < Object.keys(fieldTypeLabels).length - 1 ? ', ' : '' %><% }); %>
+    — leave it out for a plain text field. Add <code>| required</code> at the end to make it mandatory. Example: <code>Preferred date | text | required</code>.
+  </p>
+
+  <button type="submit" class="btn btn-primary">Save form</button>
+</form>
+
+<%- include('partials/footer') %>

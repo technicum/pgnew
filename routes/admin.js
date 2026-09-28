@@ -25,7 +25,7 @@ const mediaLib = require('../lib/media');
 const { getActiveAppSlugs, listAppsForStore, activateApp } = require('../lib/apps');
 const metaobjectsLib = require('../lib/metaobjects');
 const { createOrder, genOrderNumber } = require('../lib/orders');
-const { FORM_PRESETS, VALID_PRESETS: VALID_FORM_PRESETS } = require('../lib/forms');
+const formsLib = require('../lib/forms');
 
 function slugify(str) {
   return str
@@ -1375,6 +1375,10 @@ router.get('/pages/:id/edit', async (req, res, next) => {
     );
     const overrideRegions = overrideRows.map((r) => r.region);
     const { menus, resolvedMenus } = await loadMenuContext(req.store.id);
+    // So the "Form" section's inspector can offer a picker of this store's
+    // own forms (built on the Forms screen — see the /forms routes above),
+    // the same way nav_menu's picker works off `menus` above.
+    const [forms] = await pool.query(`SELECT id, name FROM ${TABLES.forms} WHERE store_id = ? ORDER BY name`, [req.store.id]);
     res.render('admin/builder', {
       title: `Edit ${page.name}`,
       page,
@@ -1391,6 +1395,7 @@ router.get('/pages/:id/edit', async (req, res, next) => {
       components,
       menus,
       resolvedMenus,
+      forms,
       layoutOverrides: { header: overrideRegions.includes('header'), footer: overrideRegions.includes('footer') },
     });
   } catch (err) {
@@ -1431,35 +1436,35 @@ router.post('/pages/:id/delete', requireAdminRole, async (req, res, next) => {
 });
 
 // ---- Forms module ----
-// A "form" is a normal pz_pages row (is_form = 1) auto-provisioned with one
-// 'form' section, so it gets its own real, themed URL and reuses the exact
-// same builder/rendering pipeline as any other page (see lib/forms.js and
-// the 'form' section type in lib/sections.js) — just addressed at
-// /forms/<slug> instead of /pages/<slug> (routes/storefront.js), and kept
-// out of the regular Pages list and the auto nav-link list so the two don't
-// mix. Deleting a form only removes the page; past submissions
-// (pz_form_submissions) and the CRM leads they created are untouched.
+// A form (pz_forms) is its own real thing — name, heading/subtext/button/
+// success copy, and its own field list — built on a dedicated screen here,
+// not the generic page builder. It gets a real, themed URL at /forms/<slug>
+// (routes/storefront.js) with no page behind it, and can also be dropped
+// into any page via the page-builder's 'form' section, which just stores a
+// form_id and renders whichever form that points at (lib/sections.js,
+// views/storefront/partials/section.ejs). Deleting a form only removes the
+// pz_forms row; past submissions (pz_form_submissions) and the CRM leads
+// they created are untouched (form_id there is SET NULL there), and any
+// page-builder 'form' section still pointing at the deleted form simply
+// stops rendering anything, same as nav_menu with a deleted menu.
+async function loadOwnedForm(storeId, formId) {
+  const [[form]] = await pool.query(`SELECT * FROM ${TABLES.forms} WHERE store_id = ? AND id = ?`, [storeId, formId]);
+  if (form) form.fields = typeof form.fields === 'string' ? JSON.parse(form.fields) : form.fields;
+  return form;
+}
+
 router.get('/forms', async (req, res, next) => {
   try {
     const [rows] = await pool.query(
-      `SELECT p.*,
-         (SELECT ps.fields FROM ${TABLES.pageSections} ps
-            WHERE ps.page_id = p.id AND ps.type = 'form'
-            ORDER BY ps.position ASC LIMIT 1) AS form_fields,
-         (SELECT COUNT(*) FROM ${TABLES.formSubmissions} fs
-            JOIN ${TABLES.pageSections} ps2 ON ps2.id = fs.section_id
-            WHERE ps2.page_id = p.id) AS submission_count
-       FROM ${TABLES.pages} p
-       WHERE p.store_id = ? AND p.is_form = 1
-       ORDER BY p.name ASC`,
+      `SELECT f.*,
+         (SELECT COUNT(*) FROM ${TABLES.formSubmissions} fs WHERE fs.form_id = f.id) AS submission_count
+       FROM ${TABLES.forms} f
+       WHERE f.store_id = ?
+       ORDER BY f.name ASC`,
       [req.store.id]
     );
-    const forms = rows.map((f) => {
-      const fields = f.form_fields ? (typeof f.form_fields === 'string' ? JSON.parse(f.form_fields) : f.form_fields) : {};
-      const preset = FORM_PRESETS[fields.preset] || FORM_PRESETS.contact;
-      return { ...f, presetLabel: preset.label, publicUrl: storeUrl(req, req.store.subdomain, f.path) };
-    });
-    res.render('admin/forms', { title: 'Forms', forms, formPresets: FORM_PRESETS });
+    const forms = rows.map((f) => ({ ...f, publicUrl: storeUrl(req, req.store.subdomain, `/forms/${f.slug}`) }));
+    res.render('admin/forms', { title: 'Forms', forms });
   } catch (err) {
     next(err);
   }
@@ -1469,30 +1474,87 @@ router.post('/forms/new', async (req, res, next) => {
   try {
     const storeId = req.store.id;
     const name = (req.body.name || '').trim();
-    const preset = VALID_FORM_PRESETS.includes(req.body.preset) ? req.body.preset : 'contact';
     if (!name) {
       req.flash('error', 'Form name is required.');
       return res.redirect('/admin/forms');
     }
 
     let slug = slugify(name) || 'form';
-    let path = `/forms/${slug}`;
-    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.pages} WHERE store_id = ? AND path = ?`, [storeId, path]);
-    if (existing) path = `/forms/${slug}-${Date.now().toString().slice(-4)}`;
+    const [[existing]] = await pool.query(`SELECT id FROM ${TABLES.forms} WHERE store_id = ? AND slug = ?`, [storeId, slug]);
+    if (existing) slug = `${slug}-${Date.now().toString().slice(-4)}`;
 
     const [result] = await pool.query(
-      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status, is_form) VALUES (?, ?, ?, 0, 'published', 1)`,
-      [storeId, name, path]
+      `INSERT INTO ${TABLES.forms} (store_id, name, slug, heading, subtext, button_label, success_message, fields)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        storeId,
+        name,
+        slug,
+        name,
+        "We'll get back to you within one business day.",
+        'Send',
+        "Thanks — we'll be in touch shortly.",
+        JSON.stringify(formsLib.defaultFieldList()),
+      ]
     );
-    const pageId = result.insertId;
+
+    req.flash('success', 'Form created — add your own fields below, then share its link.');
+    res.redirect(`/admin/forms/${result.insertId}/edit`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/forms/:id/edit', async (req, res, next) => {
+  try {
+    const form = await loadOwnedForm(req.store.id, req.params.id);
+    if (!form) {
+      req.flash('error', 'Form not found.');
+      return res.redirect('/admin/forms');
+    }
+    const nameField = form.fields.find((f) => f.key === 'name') || {};
+    const phoneField = form.fields.find((f) => f.key === 'phone') || {};
+    res.render('admin/form-edit', {
+      // "Edit form: X" rather than "Edit X" -- so the sidebar (see
+      // views/admin/partials/header.ejs's isFormsScreen) can tell this
+      // apart from the page builder's own "Edit <page name>" title and
+      // highlight "Forms" instead of "Pages".
+      title: `Edit form: ${form.name}`,
+      form,
+      nameLabel: nameField.label || 'Full name',
+      phoneLabel: phoneField.label || 'Phone number',
+      extraFieldsText: formsLib.fieldsToText(form.fields),
+      publicUrl: storeUrl(req, req.store.subdomain, `/forms/${form.slug}`),
+      fieldTypeLabels: formsLib.FIELD_TYPE_LABELS,
+      maxCustomFields: formsLib.MAX_CUSTOM_FIELDS,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/forms/:id/edit', async (req, res, next) => {
+  try {
+    const form = await loadOwnedForm(req.store.id, req.params.id);
+    if (!form) {
+      req.flash('error', 'Form not found.');
+      return res.redirect('/admin/forms');
+    }
+    const name = (req.body.name || '').trim().slice(0, 200) || form.name;
+    const heading = (req.body.heading || '').trim().slice(0, 200) || form.heading;
+    const subtext = (req.body.subtext || '').trim().slice(0, 300);
+    const buttonLabel = (req.body.button_label || '').trim().slice(0, 40) || 'Send';
+    const successMessage = (req.body.success_message || '').trim().slice(0, 300);
+    const extraRows = formsLib.parseFieldsText(req.body.extra_fields || '');
+    const fields = formsLib.sanitizeFieldList(req.body.name_label, req.body.phone_label, extraRows);
 
     await pool.query(
-      `INSERT INTO ${TABLES.pageSections} (page_id, type, position, fields) VALUES (?, 'form', 0, ?)`,
-      [pageId, JSON.stringify(Object.assign(defaultFields('form'), { heading: name, preset }))]
+      `UPDATE ${TABLES.forms} SET name = ?, heading = ?, subtext = ?, button_label = ?, success_message = ?, fields = ? WHERE id = ?`,
+      [name, heading, subtext, buttonLabel, successMessage, JSON.stringify(fields), form.id]
     );
 
-    req.flash('success', 'Form created — customize it below, then share its link from the Forms list.');
-    res.redirect(`/admin/pages/${pageId}/edit`);
+    req.flash('success', 'Form saved.');
+    res.redirect(`/admin/forms/${form.id}/edit`);
   } catch (err) {
     next(err);
   }
@@ -1502,12 +1564,12 @@ router.post('/forms/new', async (req, res, next) => {
 // the same rule on /pages/:id/delete above).
 router.post('/forms/:id/delete', requireAdminRole, async (req, res, next) => {
   try {
-    const page = await loadOwnedPage(req.store.id, req.params.id);
-    if (!page || !page.is_form) {
+    const form = await loadOwnedForm(req.store.id, req.params.id);
+    if (!form) {
       req.flash('error', 'Form not found.');
       return res.redirect('/admin/forms');
     }
-    await pool.query(`DELETE FROM ${TABLES.pages} WHERE id = ?`, [page.id]);
+    await pool.query(`DELETE FROM ${TABLES.forms} WHERE id = ?`, [form.id]);
     req.flash('success', 'Form deleted. Past submissions and any CRM leads they created are kept.');
     res.redirect('/admin/forms');
   } catch (err) {

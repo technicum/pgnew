@@ -10,7 +10,6 @@ const { resolveStore, getBaseDomain, adminPortalUrl, rootUrl, storeUrl } = requi
 const { DEFAULT_THEME_SLUG, themeViewPrefix } = require('./lib/themes');
 const { themeDefaultTokens } = require('./lib/themeTokens');
 const { SOCIAL_ICON_SVGS } = require('./lib/socialIcons');
-const { FORM_PRESETS } = require('./lib/forms');
 const platformRoutes = require('./routes/platform');
 const platformAdminRoutes = require('./routes/platformAdmin');
 const storefrontRoutes = require('./routes/storefront');
@@ -116,14 +115,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// The page-builder's 'form' section (see lib/forms.js) looks up its preset's
-// field list by name at render time — same global-local pattern as
-// socialIcons above, for the same reason (section.ejs renders it wherever a
-// page happens to place one, not from one dedicated route).
-app.use((req, res, next) => {
-  res.locals.formPresets = FORM_PRESETS;
-  next();
-});
+// The page-builder's 'form' section embeds one of the store's own forms by
+// id (pz_forms — see lib/forms.js) — that lookup needs a per-store DB query,
+// unlike the two static constants above, so it lives in routes/storefront.js
+// (res.locals.storeForms, right next to storePages) rather than here: it
+// only actually matters for storefront page renders, not every request this
+// app serves (admin, platform, the theme marketplace, ...).
 
 // themes.pagezaper.com — the public theme marketplace (see middleware/
 // tenant.js's isThemeMarketplace handling). Lists every published catalog

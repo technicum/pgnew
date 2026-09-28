@@ -164,11 +164,19 @@ const TABLES = {
   // "stop" (or by the next start, or by clocking out). See the CREATE TABLE
   // comment below.
   crmTaskTimeEntries: `${PREFIX}crm_task_time_entries`,
-  // Raw responses from a page-builder 'form' section (see lib/forms.js) --
-  // every submission also creates/updates a pz_contacts row (source:
-  // 'contact_form'), so it shows up in the CRM Leads screen like any other
-  // lead; this table keeps the full field-by-field answer (message, topic,
-  // preferred date, ...) that a contact row alone has no place to hold.
+  // A merchant-built form (see lib/forms.js and the /admin/forms routes) --
+  // its own name, heading/subtext/button copy, and its field list (JSON --
+  // same lightweight convention as pz_page_sections.fields). Gets its own
+  // live URL (/forms/<slug>) and can also be dropped into any page via the
+  // page-builder's 'form' section, which just stores a form_id and renders
+  // whichever form that points at -- so the same form can be its own
+  // standalone page AND embedded wherever it's picked from a dropdown.
+  forms: `${PREFIX}forms`,
+  // Raw responses from a form (see ${PREFIX}forms above) -- every submission
+  // also creates/updates a pz_contacts row (source: 'contact_form'), so it
+  // shows up in the CRM Leads screen like any other lead; this table keeps
+  // the full field-by-field answer (message, topic, preferred date, ...)
+  // that a contact row alone has no place to hold.
   formSubmissions: `${PREFIX}form_submissions`,
 };
 // The un-prefixed names this app used before DB_PREFIX existed — used only
@@ -698,22 +706,51 @@ CREATE TABLE IF NOT EXISTS ${TABLES.listings} (
   INDEX idx_listing_definition (definition_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- One row per submission of a page-builder 'form' section (see
--- lib/forms.js's FORM_PRESETS). section_id is nullable/ON DELETE SET NULL
--- because a lead's own record should outlive the page section that
--- captured it -- a merchant redesigning the page shouldn't lose history of
--- who already enquired. contact_id likewise SET NULL rather than CASCADE,
--- so deleting a duplicate/merged contact never silently deletes the raw
--- submission it came from.
+-- A merchant-built form -- its own name/heading/subtext/button/success
+-- copy, and its field list (JSON array of { key, label, type, required },
+-- same lightweight convention as pz_page_sections.fields). Every form's
+-- first two fields are always a 'name' and a 'phone' field (label
+-- editable, key/type fixed) since that's what the CRM contact this
+-- creates is matched on -- see routes/storefront.js's POST /forms/submit.
+-- Gets a real storefront URL at /forms/<slug>; the page-builder's 'form'
+-- section (lib/sections.js) just stores a form_id pointing here, so the
+-- same form can also be embedded inline on any page.
+CREATE TABLE IF NOT EXISTS ${TABLES.forms} (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  store_id INT NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  slug VARCHAR(220) NOT NULL,
+  heading VARCHAR(200) NOT NULL DEFAULT 'Get in touch',
+  subtext VARCHAR(300) NOT NULL DEFAULT '',
+  button_label VARCHAR(40) NOT NULL DEFAULT 'Send',
+  success_message VARCHAR(300) NOT NULL DEFAULT '',
+  fields JSON NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_store_form_slug (store_id, slug),
+  INDEX idx_store_created (store_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- One row per submission of a form (see ${TABLES.forms} above). section_id
+-- is nullable/ON DELETE SET NULL because a lead's own record should outlive
+-- the page section that embedded it -- a merchant redesigning the page
+-- shouldn't lose history of who already enquired; form_id is likewise SET
+-- NULL so deleting the form itself never deletes the submissions it already
+-- collected. contact_id also SET NULL rather than CASCADE, so deleting a
+-- duplicate/merged contact never silently deletes the raw submission it
+-- came from.
 CREATE TABLE IF NOT EXISTS ${TABLES.formSubmissions} (
   id INT AUTO_INCREMENT PRIMARY KEY,
   store_id INT NOT NULL,
+  form_id INT NULL,
   section_id INT NULL,
   preset VARCHAR(30) NOT NULL DEFAULT 'contact',
   data JSON NOT NULL,
   contact_id INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (store_id) REFERENCES ${TABLES.stores}(id) ON DELETE CASCADE,
+  FOREIGN KEY (form_id) REFERENCES ${TABLES.forms}(id) ON DELETE SET NULL,
   FOREIGN KEY (section_id) REFERENCES ${TABLES.pageSections}(id) ON DELETE SET NULL,
   FOREIGN KEY (contact_id) REFERENCES ${TABLES.contacts}(id) ON DELETE SET NULL,
   INDEX idx_form_submissions_store (store_id, created_at)
@@ -1835,6 +1872,26 @@ async function migrateListingsMetaobjects(conn) {
   }
 }
 
+// Adds the form_id column/FK to an existing install's pz_form_submissions,
+// for the switch from "a form is just a page-builder section" to "a form is
+// its own ${TABLES.forms} row, which a page section can embed by id" --
+// fresh installs already get this shape from the CREATE TABLE above.
+// Existing rows (from before this migration) simply keep form_id NULL —
+// they still have their section_id and full raw `data`, so no history is
+// lost, they just can't be traced back to a ${TABLES.forms} row that didn't
+// exist yet when they were submitted.
+async function migrateFormSubmissionsFormIdColumn(conn) {
+  if (!(await tableExists(conn, TABLES.formSubmissions))) return;
+  if (!(await columnExists(conn, TABLES.formSubmissions, 'form_id'))) {
+    await conn.query(`ALTER TABLE ${TABLES.formSubmissions} ADD COLUMN form_id INT NULL AFTER store_id`);
+  }
+  if (!(await foreignKeyExists(conn, TABLES.formSubmissions, 'form_id'))) {
+    await conn.query(
+      `ALTER TABLE ${TABLES.formSubmissions} ADD FOREIGN KEY (form_id) REFERENCES ${TABLES.forms}(id) ON DELETE SET NULL`
+    );
+  }
+}
+
 async function migrateSeedPlansAndApps(conn) {
   const planSeed = [
     { slug: 'free', name: 'Free', price_cents: 0 },
@@ -2422,6 +2479,7 @@ async function init() {
     await migrateCrmTasksEnhancements(conn);
     await migrateFollowupReminderColumn(conn);
     await migrateListingsMetaobjects(conn);
+    await migrateFormSubmissionsFormIdColumn(conn);
     await migrateContactsIsCustomer(conn);
     await migrateAppsScopeColumn(conn);
     await migrateSeedPlansAndApps(conn);

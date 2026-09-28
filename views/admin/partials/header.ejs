@@ -42,12 +42,17 @@
 
         <% var isMenusScreen = title && (title === 'Menus' || title.startsWith('Edit menu: ')); %>
         <%
+          // "Forms" -- see lib/forms.js and routes/admin.js's /admin/forms
+          // routes. Its own edit screen is titled "Edit form: X" (not just
+          // "Edit X") specifically so it doesn't collide with the two
+          // guards below.
+          var isFormsScreen = title && (title === 'Forms' || title.startsWith('Edit form: '));
           // "Edit <page name>" (the page builder's own body-editing screen)
           // is the one title here that isn't a fixed string -- guard it
           // against 'Edit Product' (a totally separate screen that also
-          // happens to start with "Edit ") and against the menu editor's
-          // own "Edit menu: X" title.
-          var isPageBuilderScreen = title && title.startsWith('Edit ') && title !== 'Edit Product' && !isMenusScreen;
+          // happens to start with "Edit "), the menu editor's own
+          // "Edit menu: X" title, and the Forms screen's "Edit form: X".
+          var isPageBuilderScreen = title && title.startsWith('Edit ') && title !== 'Edit Product' && !isMenusScreen && !isFormsScreen;
           var isBlogScreen = title && (title === 'Blog Posts' || title === 'New Blog Post' || title === 'Edit Blog Post');
           // "Metaobjects" -- see lib/metaobjects.js. Every screen for it
           // (list, one type's fields+entries, an entry's own form) shares
@@ -58,12 +63,6 @@
           // exactly what fills the nav gap the 4 non-online-store categories
           // otherwise have here.
           var isMetaobjectsScreen = title === 'Metaobjects';
-          // "Forms" -- see lib/forms.js and routes/admin.js's /admin/forms
-          // routes. A form is a page under the hood (is_form=1), so editing
-          // one's design lands back on the normal page-builder "Edit ..."
-          // screen and lights up "Pages" too -- close enough for now; it's
-          // still filed under Content either way.
-          var isFormsScreen = title === 'Forms';
           var contentOpen = title && (title === 'Pages' || title === 'New Page' || isPageBuilderScreen || title === 'Media' || isBlogScreen || isMetaobjectsScreen || isFormsScreen);
           var editStoreOpen = title && (title === 'Themes' || title.startsWith('Customize ') || title === 'Header' || title === 'Footer' || title.indexOf(' override — ') !== -1 || isMenusScreen);
         %>

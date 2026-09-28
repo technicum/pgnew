@@ -576,19 +576,18 @@
           '<button style="background:var(--b-accent);color:var(--b-accent-ink);" data-field="button" contenteditable="true">' + esc(d.button) + '</button></div></div>';
 
       case "form": {
-        var formPreset = (DATA.formPresets && DATA.formPresets[d.preset]) || (DATA.formPresets && DATA.formPresets.contact) || { fields: [] };
-        var formInputs = (formPreset.fields || []).map(function (f) {
-          var ph = f.label + (f.required ? "" : " (optional)");
-          return f.type === "textarea"
-            ? '<textarea placeholder="' + esc(ph) + '" disabled></textarea>'
-            : '<input type="text" placeholder="' + esc(ph) + '" disabled/>';
-        }).join("");
-        return '<div class="b-sec-pad b-newsletter">' +
-          '<h3 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' +
-          '<p data-field="subtext" contenteditable="true">' + esc(d.subtext) + '</p>' +
-          '<div class="b-newsletter-form" style="flex-direction:column;align-items:stretch;gap:8px;max-width:360px;margin:0 auto;">' + formInputs +
-          '<button style="background:var(--b-accent);color:var(--b-accent-ink);" data-field="button" contenteditable="true">' + esc(d.button) + '</button></div>' +
-          '<p style="margin-top:10px;font-size:13px;opacity:.7;text-align:center;" data-field="success_message" contenteditable="true">' + esc(d.success_message) + '</p></div>';
+        // Just names which form this embeds -- its actual heading/fields/
+        // button/success copy live on the Forms screen (pz_forms), not on
+        // this section, so there's nothing more to preview here than that;
+        // see the live /forms/<slug> URL (or Preview) for the real thing.
+        var pickedForm = d.form_id
+          ? (DATA.forms || []).filter(function (f) { return String(f.id) === String(d.form_id); })[0]
+          : null;
+        return '<div class="b-sec-pad b-nav-block">' +
+          (pickedForm
+            ? '<span class="b-nav-link">Form: ' + esc(pickedForm.name) + '</span>'
+            : '<span class="b-prod-empty" style="padding:0;">No form picked yet — choose one from the panel on the right, or <a href="/admin/forms" target="_blank">create one</a>.</span>') +
+          '</div>';
       }
 
       case "richtext":
@@ -1621,13 +1620,14 @@
       case "newsletter":
         return field("", '<div class="b-inspector-hint">Click the heading, text or button label on the canvas to edit it. The sign-up form is disabled here so you don’t submit it by accident.</div>');
       case "form": {
-        var fp = DATA.formPresets || {};
-        var fpOptions = Object.keys(fp).map(function (k) { return { val: k, label: fp[k].label || k }; });
-        var chosenPreset = fp[d.preset] || fp.contact || { fields: [] };
-        var chosenFieldsText = (chosenPreset.fields || []).map(function (f) { return f.label + (f.required ? "" : " (optional)"); }).join(", ");
-        return field("Form type", selectHtml("preset", fpOptions, d.preset || "contact")) +
-          field("", '<div class="b-inspector-hint">Asks for: ' + esc(chosenFieldsText) + '. Every form always collects name and phone so you can follow up.</div>') +
-          field("", '<div class="b-inspector-hint">Click the heading, text, button label or success message on the canvas to edit it. Submissions are saved as leads in your CRM automatically.</div>');
+        var formOptions = [{ val: "", label: "— No form picked —" }].concat(
+          (DATA.forms || []).map(function (f) { return { val: String(f.id), label: esc(f.name) }; })
+        );
+        var formHint = (DATA.forms || []).length
+          ? 'Pick which form this embeds. <a href="/admin/forms" target="_blank" rel="noopener">Manage forms</a> to edit its heading, fields, or success message — changes there show up here and on your storefront automatically.'
+          : 'You don’t have any forms yet. <a href="/admin/forms" target="_blank" rel="noopener">Create one</a>, then come back and pick it here.';
+        return field("Form", selectHtml("form_id", formOptions, String(d.form_id || ""))) +
+          field("", '<div class="b-inspector-hint">' + formHint + '</div>');
       }
       case "richtext":
         return field("", '<div class="b-inspector-hint">Click the heading or body text on the canvas to edit it. Width and alignment live on the Style tab.</div>');

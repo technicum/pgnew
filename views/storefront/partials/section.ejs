@@ -338,15 +338,16 @@
   </section>
 
 <% } else if (section.type === 'form') { %>
-  <% var pzFormPreset = (typeof formPresets !== 'undefined' && formPresets[section.fields.preset]) || (typeof formPresets !== 'undefined' && formPresets.contact) || { fields: [] }; %>
+  <% var pzForm = (typeof storeForms !== 'undefined' && section.fields.form_id) ? storeForms[section.fields.form_id] : null; %>
+  <% if (pzForm) { %>
   <section id="<%= pzId %>" class="pz-form-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
     <%- pzUniBgExtras(section) %>
-    <h2 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2>
-    <% if (section.fields.subtext) { %><p style="<%= pzElStyle('subtext') %>"><%= section.fields.subtext %></p><% } %>
+    <h2 style="<%= pzElStyle('heading') %>"><%= pzForm.heading %></h2>
+    <% if (pzForm.subtext) { %><p style="<%= pzElStyle('subtext') %>"><%= pzForm.subtext %></p><% } %>
     <form class="pz-form" action="/forms/submit" method="POST">
+      <input type="hidden" name="form_id" value="<%= pzForm.id %>" />
       <input type="hidden" name="section_id" value="<%= section.id %>" />
-      <input type="hidden" name="preset" value="<%= section.fields.preset || 'contact' %>" />
-      <% pzFormPreset.fields.forEach(function(f) { %>
+      <% pzForm.fields.forEach(function(f) { %>
         <div class="pz-form-field">
           <label for="pzf-<%= section.id %>-<%= f.key %>"><%= f.label %></label>
           <% if (f.type === 'textarea') { %>
@@ -356,9 +357,10 @@
           <% } %>
         </div>
       <% }); %>
-      <button type="submit" class="btn btn-primary" style="<%= pzElStyle('button') %>"><%= section.fields.button %></button>
+      <button type="submit" class="btn btn-primary" style="<%= pzElStyle('button') %>"><%= pzForm.button_label %></button>
     </form>
   </section>
+  <% } %>
 
 <% } else if (section.type === 'richtext') { %>
   <section id="<%= pzId %>" class="richtext richtext-<%= section.fields.width === 'wide' ? 'wide' : 'narrow' %><%= pzExtra %>" style="<%= pzHeightStyle %>text-align:<%= section.fields.align === 'left' ? 'left' : 'center' %>;">

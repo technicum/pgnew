@@ -255,10 +255,12 @@
       // trip either. See routes/admin.js's loadMenuContext.
       menus: <%- JSON.stringify(menus || []).split('/').join(String.fromCharCode(92) + '/') %>,
       resolvedMenus: <%- JSON.stringify(resolvedMenus || {}).split('/').join(String.fromCharCode(92) + '/') %>,
-      // The page-builder's 'form' section reads its preset's field list here
-      // (see lib/forms.js / server.js's res.locals.formPresets) to draw the
-      // "Form type" picker and preview the right inputs on the canvas.
-      formPresets: <%- JSON.stringify(formPresets || {}).split('/').join(String.fromCharCode(92) + '/') %>
+      // This store's own forms (id/name — built on the "Forms" screen, see
+      // routes/admin.js's /admin/forms routes and pz_forms), for the 'form'
+      // section's picker -- same idea as menus above, just a plain id/name
+      // picker since a form's own content is edited on its own screen, not
+      // inline here.
+      forms: <%- JSON.stringify(forms || []).split('/').join(String.fromCharCode(92) + '/') %>
     };
   </script>
   <script src="/js/media-picker.js?v=<%= assetVersion %>"></script>
