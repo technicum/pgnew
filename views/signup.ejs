@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/auth.css" />
+</head>
+<body class="auth-page">
+
+<div class="auth-top">
+  <a href="/" class="logo">
+    <span class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+    <%= siteName %>
+  </a>
+</div>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <h1>Create your page</h1>
+    <p class="auth-sub">Free to start — courses, downloads, bookings and memberships, all on one link.</p>
+
+    <% if (error) { %>
+      <div class="auth-error"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/signup" novalidate>
+      <div class="field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" value="<%= values.name %>" placeholder="Meera Kapoor" autocomplete="name" required />
+      </div>
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="<%= values.email %>" placeholder="you@example.com" autocomplete="email" required />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8" required />
+      </div>
+      <div class="field">
+        <label for="confirm">Confirm password</label>
+        <input type="password" id="confirm" name="confirm" placeholder="Type it again" autocomplete="new-password" minlength="8" required />
+      </div>
+      <button type="submit" class="btn btn-primary">Create your page — free</button>
+    </form>
+
+    <div class="auth-switch">Already have a page? <a href="/login">Log in</a></div>
+  </div>
+</div>
+
+</body>
+</html>

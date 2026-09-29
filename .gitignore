@@ -7,3 +7,12 @@ node_modules/
 # and the VPS. The pz_media DB table is the source of truth for what
 # exists; these files are just where it physically lives on THIS machine.
 public/uploads/
+
+# Signed-up users (lib/users.js) — same reasoning as public/uploads/ above:
+# this is runtime data written by whichever machine is actually running the
+# app (your laptop in dev, the VPS in prod). Tracking it in git would mean
+# every `git pull` on the VPS either overwrites real signups with your local
+# test accounts or hits the same "diverged, won't fast-forward" conflict we
+# hit earlier with package-lock.json. lib/users.js creates this file itself
+# on first run, so there's nothing to set up.
+data/users.json
