@@ -2429,7 +2429,17 @@ async function migrateRecruitDemoRedesign(conn) {
   await conn.query(
     `UPDATE ${TABLES.pageSections} SET fields = ?, bg_color = NULL, text_color = NULL WHERE page_id = ? AND type = 'hero'`,
     [
-      JSON.stringify({ ...defaultFields('hero'), heading: 'Recruiting the People Who Move Your Business Forward', subheading: 'Executive search, permanent staffing and contract talent — matched by consultants who work your industry.' }),
+      JSON.stringify({
+        ...defaultFields('hero'),
+        heading: 'Recruiting the People Who Move Your Business Forward',
+        subheading: 'Executive search, permanent staffing and contract talent — matched by consultants who work your industry.',
+        // Hero CTA buttons (lib/sections.js's defaultFields('hero') gained
+        // button_text/button_url/button2_text/button2_url this round) —
+        // a single primary CTA into the same lead form the closing
+        // newsletter section below already points at.
+        button_text: 'Submit a Brief',
+        button_url: '/pages/contact',
+      }),
       homeId,
     ]
   );
@@ -2446,6 +2456,101 @@ async function migrateRecruitDemoRedesign(conn) {
       homeId,
     ]
   );
+}
+
+// Second fix-up in the same "showcase store, safe to keep resyncing" family
+// as migrateRecruitDemoRedesign above, added when the Feature cards and
+// Process steps section types (lib/sections.js) and the site-wide WhatsApp
+// float (store.whatsapp_number) were built — none of that existed yet when
+// migrateRecruitDemoStore first created this store, and that function only
+// ever writes its content once, so the live demo needed its own catch-up
+// the same way the hero/stats/newsletter redesign above did. Every boot:
+// inserts the two new sections into the Home page if they aren't there yet
+// (checked by type, so this is safe to run indefinitely once they exist),
+// and sets whatsapp_number only if the store doesn't already have one, so
+// it never clobbers a number someone set by hand from the admin.
+async function migrateRecruitDemoFeatureSections(conn) {
+  const { defaultFields } = require('../lib/sections');
+
+  const [[recruitStore]] = await conn.query(`SELECT id, whatsapp_number FROM ${TABLES.stores} WHERE subdomain = 'demo-recruit'`);
+  if (!recruitStore) return; // demo store doesn't exist yet
+  const recruitStoreId = recruitStore.id;
+
+  if (!recruitStore.whatsapp_number) {
+    // Same +91 area code already used in this demo's Contact page copy
+    // (migrateRecruitDemoStore above), just in wa.me's digits-only form.
+    await conn.query(`UPDATE ${TABLES.stores} SET whatsapp_number = '919876543210' WHERE id = ?`, [recruitStoreId]);
+  }
+
+  const [[homePage]] = await conn.query(`SELECT id FROM ${TABLES.pages} WHERE store_id = ? AND is_home = 1`, [recruitStoreId]);
+  if (!homePage) return;
+  const homeId = homePage.id;
+
+  const [sections] = await conn.query(
+    `SELECT id, type, position FROM ${TABLES.pageSections} WHERE page_id = ? AND region = 'body' ORDER BY position`,
+    [homeId]
+  );
+  if (!sections.length) return;
+
+  const has = (type) => sections.some((s) => s.type === type);
+  // Insert-after-type helper: finds the given anchor type's current position
+  // and shifts every section from there onward down by one to make room,
+  // rather than assuming fixed position numbers (this function has to keep
+  // working even after a merchant... well, this store... reorders sections
+  // by hand from the builder).
+  async function insertAfterType(anchorType, fallbackPosition, type, fields) {
+    if (has(type)) return; // already inserted on an earlier boot
+    const anchor = sections.find((s) => s.type === anchorType);
+    const afterPosition = anchor ? anchor.position : fallbackPosition;
+    await conn.query(
+      `UPDATE ${TABLES.pageSections} SET position = position + 1 WHERE page_id = ? AND region = 'body' AND position > ?`,
+      [homeId, afterPosition]
+    );
+    await conn.query(
+      `INSERT INTO ${TABLES.pageSections} (page_id, region, type, position, fields) VALUES (?, 'body', ?, ?, ?)`,
+      [homeId, type, afterPosition + 1, JSON.stringify(fields)]
+    );
+    // Keep `sections` consistent for any later insertAfterType call in this
+    // same run (e.g. process_steps' anchor lookup after feature_cards has
+    // already shifted everything below it down by one).
+    sections.forEach((s) => { if (s.position > afterPosition) s.position += 1; });
+    sections.push({ id: null, type, position: afterPosition + 1 });
+  }
+
+  // "For Employers" / "For Job Seekers" — complements the plain 4-service
+  // strip (the 'row' section) with the two-path value-prop cards this
+  // section type was built for, right after that strip.
+  await insertAfterType('row', 0, 'feature_cards', {
+    ...defaultFields('feature_cards'),
+    heading: 'Built for both sides of the table',
+    items: [
+      {
+        icon: '🏢', heading: 'For Employers',
+        body: 'Tell us who you need — we run the search.',
+        bullets: ['A dedicated consultant on every search', 'Shortlist back in 5–10 business days', 'One fixed placement fee, no surprises'],
+        button_text: 'Submit a Brief', button_url: '/pages/contact',
+      },
+      {
+        icon: '🎯', heading: 'For Job Seekers',
+        body: 'One relationship, every relevant opening.',
+        bullets: ['Openings across finance, tech, sales & ops', 'We only pitch roles that actually fit', 'Interview prep before every client call'],
+        button_text: 'Browse Openings', button_url: '/',
+      },
+    ],
+  });
+
+  // "How a search works" — right after the stats band, before the
+  // relationship pitch (text_image) and testimonials.
+  await insertAfterType('stats', sections.length - 1, 'process_steps', {
+    ...defaultFields('process_steps'),
+    heading: 'How a search works',
+    items: [
+      { heading: 'Share your brief', body: 'A 20-minute call on the role, the team and what "good" looks like.' },
+      { heading: 'We shortlist', body: 'Candidates screened against your actual bar, not keyword-matching.' },
+      { heading: 'You interview', body: 'We coordinate scheduling and brief every candidate beforehand.' },
+      { heading: 'Offer & onboard', body: 'We help close the offer and check in through the first 90 days.' },
+    ],
+  });
 }
 
 async function init() {
@@ -2486,6 +2591,7 @@ async function init() {
     await migrateThemeDemoStores(conn, demoStoreId);
     await migrateRecruitDemoStore(conn);
     await migrateRecruitDemoRedesign(conn);
+    await migrateRecruitDemoFeatureSections(conn);
 
     const [[{ c: productCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.products} WHERE store_id = ?`, [demoStoreId]);
 
