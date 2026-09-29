@@ -122,7 +122,7 @@ app.post('/login', redirectIfLoggedIn, async (req, res) => {
 
   if (!email || !password) return rerender('Enter your email and password.');
 
-  const user = findUserByEmail(email);
+  const user = await findUserByEmail(email);
   const ok = user && await verifyPassword(user, password);
   if (!ok) return rerender('That email and password don’t match an account.');
 
