@@ -91,9 +91,13 @@ app.post('/signup', redirectIfLoggedIn, async (req, res) => {
   if (password !== confirm) return rerender('Those passwords don’t match.');
 
   try {
-    const user = await createUser({ name, email, password });
-    req.session.user = toPublicUser(user);
-    res.redirect('/dashboard');
+    await createUser({ name, email, password });
+    // Deliberately not logging them in here — signup just confirms the
+    // account was created and sends them to log in with it, rather than
+    // starting a session automatically.
+    res.render('signup-success', {
+      title: `Account created — ${SITE_NAME}`,
+    });
   } catch (err) {
     if (err.code === 'EMAIL_TAKEN') return rerender('An account with that email already exists — try logging in instead.');
     console.error('Signup failed:', err);
