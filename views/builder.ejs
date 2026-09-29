@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/dashboard.css" />
+<link rel="stylesheet" href="/css/builder.css" />
+</head>
+<body class="bg-background">
+
+<div class="pz-promo" id="promoBar">
+  Your page is on the free plan — <strong>upgrade for custom domains and more themes</strong>
+  <button type="button" class="pz-promo-close" id="promoClose" aria-label="Dismiss">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<div class="pz-shell">
+
+  <aside class="pz-rail">
+    <a href="/dashboard" class="pz-rail-logo" aria-label="Back to dashboard">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    <nav class="pz-rail-nav" aria-label="Page editor sections">
+      <button type="button" class="pz-rail-btn active" data-tab="content">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="11" height="4" rx="1"/></svg>
+        Content
+      </button>
+      <button type="button" class="pz-rail-btn" data-tab="profile">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+        Profile
+      </button>
+      <button type="button" class="pz-rail-btn" data-tab="design">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Design
+      </button>
+    </nav>
+    <div class="pz-rail-bottom">
+      <a href="/dashboard" class="pz-rail-btn" style="text-decoration:none;" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+      </a>
+    </div>
+  </aside>
+
+  <div class="pz-main">
+    <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <div class="pz-topbar-switcher">
+        <span class="pz-topbar-avatar" id="switcherInitials"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></span>
+        <span class="text-sm font-semibold" id="switcherHandle">@<%= user.handle %></span>
+      </div>
+      <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
+      <div class="ml-auto flex items-center gap-2">
+        <a href="https://<%= user.handle %>.<%= siteDomain %>" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;" title="Not live yet — subdomains are still being set up" target="_blank">View live</a>
+        <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:translate-y-px h-10 px-4">Publish</button>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1500px] px-4 py-7 md:px-8 md:py-9">
+      <div class="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(300px,0.75fr)]">
+
+        <div>
+
+          <!-- CONTENT TAB -->
+          <div class="pz-tabpanel active" id="tab-content">
+            <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-lg font-bold">Content</h2>
+                  <p class="mt-1 text-sm text-muted-foreground">What you're selling, in the order visitors see it</p>
+                </div>
+                <div class="pz-add-wrap">
+                  <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4" id="addMenuBtn">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                    Add
+                  </button>
+                  <div class="pz-add-menu" id="addMenu">
+                    <button type="button" data-type="link"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg> Link</button>
+                    <button type="button" data-type="course"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 19.5V6a2 2 0 0 1 2-2h13v14"/><path d="M6 22a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2h13v4H6z"/></svg> Course</button>
+                    <button type="button" data-type="booking"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/></svg> Booking</button>
+                    <button type="button" data-type="download"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Download</button>
+                    <button type="button" data-type="membership"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M17 20h5v-1a4 4 0 0 0-4-4M9 20H4v-1a4 4 0 0 1 4-4m5-3a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-1a3 3 0 1 0 0-6"/></svg> Membership</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-5" id="blocksList" style="display:flex; flex-direction:column; gap:10px;"><!-- injected --></div>
+
+              <div id="emptyBlocks" class="text-sm text-muted-foreground" style="display:none; text-align:center; padding:32px 18px; border:1px dashed var(--border); border-radius:calc(var(--radius) - 2px); margin-top:10px;">
+                Nothing on your page yet — tap "Add" to add a course, booking, download, membership or link.
+              </div>
+
+              <div class="pz-footer-toggle-row">
+                <div>
+                  <strong class="text-sm" style="display:block;">Show "Made with PageZaper" badge</strong>
+                  <span class="text-xs text-muted-foreground">Free plan pages carry a small badge at the bottom</span>
+                </div>
+                <button type="button" class="pz-switch<%= user.show_badge ? ' on' : '' %>" id="badgeToggle" aria-label="Toggle badge"></button>
+              </div>
+            </article>
+          </div>
+
+          <!-- PROFILE TAB -->
+          <div class="pz-tabpanel" id="tab-profile">
+            <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+              <h2 class="text-lg font-bold">Profile</h2>
+              <p class="mt-1 text-sm text-muted-foreground">How you're introduced at the top of your page</p>
+
+              <div class="mt-5" style="display:flex; gap:18px; align-items:flex-start;">
+                <div style="position:relative; flex:none;">
+                  <div class="font-display font-bold" id="avatarInitials" style="width:64px; height:64px; border-radius:50%; font-size:22px; background:var(--accent); color:var(--accent-foreground); display:flex; align-items:center; justify-content:center;"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></div>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:12px;">
+                  <div>
+                    <label class="text-xs font-semibold text-muted-foreground" style="display:block; margin-bottom:6px;" for="displayName">Display name</label>
+                    <input type="text" id="displayName" class="pz-field-input" value="<%= user.name %>" />
+                  </div>
+                  <div>
+                    <label class="text-xs font-semibold text-muted-foreground" style="display:block; margin-bottom:6px;" for="handle">Your link</label>
+                    <div style="display:flex; align-items:center; border:1px solid var(--border); border-radius:calc(var(--radius) - 4px); background:var(--background); overflow:hidden;">
+                      <input type="text" id="handle" value="<%= user.handle %>" style="border:none; background:transparent; height:36px; padding:0 0 0 11px; font-size:13.5px; width:100%;" />
+                      <span class="text-sm text-muted-foreground" style="padding:0 11px 0 2px; white-space:nowrap;">.<%= siteDomain %></span>
+                    </div>
+                    <p class="pz-field-error" id="handleError"></p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <label class="text-xs font-semibold text-muted-foreground" style="display:block; margin-bottom:6px;" for="bio">Bio</label>
+                <textarea id="bio" rows="2" class="pz-field-input" style="height:auto; padding:9px 11px; resize:vertical;"><%= user.bio || '' %></textarea>
+              </div>
+            </article>
+          </div>
+
+          <!-- DESIGN TAB -->
+          <div class="pz-tabpanel" id="tab-design">
+            <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+              <h2 class="text-lg font-bold">Design</h2>
+              <p class="mt-1 text-sm text-muted-foreground">Pick an accent color for your page</p>
+              <div class="pz-swatch-row mt-5" id="swatchRow">
+                <button type="button" class="pz-swatch" data-color="#ff6b4a" data-name="Coral">
+                  <span class="pz-swatch-dot" style="background:#ff6b4a;"></span> Coral
+                </button>
+                <button type="button" class="pz-swatch" data-color="#0f8b6c" data-name="Teal">
+                  <span class="pz-swatch-dot" style="background:#0f8b6c;"></span> Teal
+                </button>
+                <button type="button" class="pz-swatch" data-color="#2451c9" data-name="Ocean">
+                  <span class="pz-swatch-dot" style="background:#2451c9;"></span> Ocean
+                </button>
+                <button type="button" class="pz-swatch" data-color="#8b3fd6" data-name="Plum">
+                  <span class="pz-swatch-dot" style="background:#8b3fd6;"></span> Plum
+                </button>
+                <button type="button" class="pz-swatch" data-color="#12181f" data-name="Ink">
+                  <span class="pz-swatch-dot" style="background:#12181f;"></span> Ink
+                </button>
+              </div>
+            </article>
+          </div>
+
+        </div>
+
+        <div>
+          <div style="position:sticky; top:104px;">
+            <div class="flex items-center justify-between" style="margin-bottom:14px;">
+              <h2 class="text-sm font-bold">Live preview</h2>
+              <span class="text-xs text-muted-foreground" id="previewUrl" style="font-variant-numeric:tabular-nums;"><%= user.handle %>.<%= siteDomain %></span>
+            </div>
+            <div class="pz-phone">
+              <div class="pz-phone-topicons">
+                <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+                <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" x2="15.4" y1="10.5" y2="6.5"/><line x1="8.6" x2="15.4" y1="13.5" y2="17.5"/></svg></span>
+              </div>
+              <div class="pz-phone-screen">
+                <div class="pz-phone-header">
+                  <div class="pz-phone-avatar" id="previewInitials"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></div>
+                  <div class="pz-phone-name" id="previewName"><%= user.name %></div>
+                  <div class="pz-phone-bio" id="previewBio"><%= user.bio || '' %></div>
+                </div>
+                <div class="pz-phone-blocks" id="previewBlocks"><!-- injected --></div>
+                <div class="pz-phone-badge" id="previewBadge" style="<%= user.show_badge ? '' : 'display:none;' %>">Made with <span><%= siteName %></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.__PZ_INITIAL_BLOCKS__ = <%- JSON.stringify(blocks).replace(/</g, '<') %>;
+  window.__PZ_ACCENT__ = <%- JSON.stringify(user.accent_color || '#ff6b4a') %>;
+  window.__PZ_SITE_DOMAIN__ = <%- JSON.stringify(siteDomain) %>;
+</script>
+<script src="/js/builder.js"></script>
+</body>
+</html>

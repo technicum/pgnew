@@ -10,7 +10,24 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const session = require('express-session');
-const { findUserByEmail, createUser, verifyPassword, toPublicUser } = require('./lib/users');
+const {
+  findUserByEmail,
+  findUserById,
+  createUser,
+  verifyPassword,
+  toPublicUser,
+  updateProfile,
+  updateDesign,
+} = require('./lib/users');
+const {
+  listBlocks,
+  createBlock,
+  updateBlock,
+  reorderBlocks,
+  deleteBlock,
+  duplicateBlock,
+  TYPES: BLOCK_TYPES,
+} = require('./lib/blocks');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -22,6 +39,9 @@ app.set('views', path.join(__dirname, 'views'));
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
+// Only the builder's fetch()-based endpoints send JSON bodies — everything
+// else (signup/login) still posts as a normal HTML form.
+app.use(express.json());
 
 app.use(session({
   // Falls back to a fixed dev secret so `node server.js` works with no
@@ -150,6 +170,124 @@ app.get('/dashboard', requireAuth, (req, res) => {
     user,
     todayLabel: today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
   });
+});
+
+// --- Store builder ----------------------------------------------------
+// The builder page itself is a normal render (needs the user's full
+// profile row, not just what's in the session). Every action inside it
+// (add/edit/delete/duplicate/reorder a block, save profile, save design)
+// is a fetch() call against the JSON endpoints below — nothing here does
+// a full page reload. Every endpoint re-checks requireAuth and scopes its
+// query to req.session.user.id, so one merchant can never touch another
+// merchant's blocks or profile even by guessing an id.
+
+app.get('/dashboard/builder', requireAuth, async (req, res, next) => {
+  try {
+    const [user, blocks] = await Promise.all([
+      findUserById(req.session.user.id),
+      listBlocks(req.session.user.id),
+    ]);
+    if (!user) return res.redirect('/login');
+    res.render('builder', {
+      title: `Build your page — ${SITE_NAME}`,
+      user,
+      blocks,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/dashboard/builder/blocks', requireAuth, async (req, res) => {
+  try {
+    const type = req.body && req.body.type;
+    if (!BLOCK_TYPES.has(type)) return res.status(400).json({ error: 'Unknown block type.' });
+    const block = await createBlock(req.session.user.id, { type });
+    res.status(201).json(block);
+  } catch (err) {
+    console.error('Create block failed:', err);
+    res.status(500).json({ error: 'Could not add that block. Please try again.' });
+  }
+});
+
+app.patch('/dashboard/builder/blocks/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid block id.' });
+    const { title, sub, price, visible } = req.body || {};
+    const fields = {};
+    if (title !== undefined) fields.title = title;
+    if (sub !== undefined) fields.sub = sub;
+    if (price !== undefined) fields.price = price;
+    if (visible !== undefined) fields.visible = visible;
+    await updateBlock(req.session.user.id, id, fields);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Update block failed:', err);
+    res.status(500).json({ error: 'Could not save that change. Please try again.' });
+  }
+});
+
+app.post('/dashboard/builder/blocks/reorder', requireAuth, async (req, res) => {
+  try {
+    const order = Array.isArray(req.body && req.body.order) ? req.body.order.map(Number).filter(Number.isInteger) : null;
+    if (!order) return res.status(400).json({ error: 'Invalid order.' });
+    await reorderBlocks(req.session.user.id, order);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Reorder blocks failed:', err);
+    res.status(500).json({ error: 'Could not save the new order. Please try again.' });
+  }
+});
+
+app.post('/dashboard/builder/blocks/:id/duplicate', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid block id.' });
+    const block = await duplicateBlock(req.session.user.id, id);
+    if (!block) return res.status(404).json({ error: 'Block not found.' });
+    res.status(201).json(block);
+  } catch (err) {
+    console.error('Duplicate block failed:', err);
+    res.status(500).json({ error: 'Could not duplicate that block. Please try again.' });
+  }
+});
+
+app.delete('/dashboard/builder/blocks/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid block id.' });
+    await deleteBlock(req.session.user.id, id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete block failed:', err);
+    res.status(500).json({ error: 'Could not delete that block. Please try again.' });
+  }
+});
+
+app.post('/dashboard/builder/profile', requireAuth, async (req, res) => {
+  try {
+    const { name, handle, bio } = req.body || {};
+    const updated = await updateProfile(req.session.user.id, { name, handle, bio });
+    req.session.user = toPublicUser(updated);
+    res.json({ ok: true, user: { name: updated.name, handle: updated.handle, bio: updated.bio, initials: req.session.user.initials } });
+  } catch (err) {
+    if (err.code === 'HANDLE_TAKEN') return res.status(409).json({ error: 'That handle is already taken.' });
+    if (err.code === 'NAME_REQUIRED' || err.code === 'HANDLE_REQUIRED') return res.status(400).json({ error: err.message });
+    console.error('Update profile failed:', err);
+    res.status(500).json({ error: 'Could not save your profile. Please try again.' });
+  }
+});
+
+app.post('/dashboard/builder/design', requireAuth, async (req, res) => {
+  try {
+    const { accentColor, showBadge } = req.body || {};
+    const updated = await updateDesign(req.session.user.id, { accentColor, showBadge });
+    res.json({ ok: true, accentColor: updated.accent_color, showBadge: !!updated.show_badge });
+  } catch (err) {
+    console.error('Update design failed:', err);
+    res.status(500).json({ error: 'Could not save your design. Please try again.' });
+  }
 });
 
 // Anything that isn't one of the routes above — catches typos in a URL,
