@@ -28,16 +28,24 @@ const {
   deleteBlock,
   duplicateBlock,
   TYPES: BLOCK_TYPES,
-  TYPE_LABELS: BLOCK_LABELS,
-  URL_TYPES: BLOCK_URL_TYPES,
 } = require('./lib/blocks');
 const {
   listContacts,
   countContacts,
   createContact,
+  createContactFromSource,
+  findExistingContact,
   updateContact,
   deleteContact,
 } = require('./lib/contacts');
+const {
+  listLeadMagnets,
+  createLeadMagnet,
+  updateLeadMagnet,
+  deleteLeadMagnet,
+  getPublicLeadMagnet,
+  incrementSignupCount,
+} = require('./lib/leadMagnets');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -46,9 +54,6 @@ const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-// Behind nginx in production — lets req.hostname/req.protocol reflect what
-// the visitor actually requested (the store subdomain, https).
-app.set('trust proxy', 1);
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
@@ -73,121 +78,13 @@ app.use(session({
 const SITE_NAME = 'PageZaper';
 const SITE_DOMAIN = 'pagezaper.com';
 
-// Appended to /css and /js URLs in the views (?v=...) so every restart —
-// i.e. every deploy — gives browsers a new URL. Without it a browser can
-// pair a freshly rendered page with a cached, older builder.js and break.
-const ASSET_VERSION = Date.now().toString(36);
-
-// Makes siteName/siteDomain/assetVersion available in every view without
-// passing them explicitly on every res.render call.
+// Makes siteName/siteDomain available in every view without passing them
+// explicitly on every res.render call.
 app.use((req, res, next) => {
   res.locals.siteName = SITE_NAME;
   res.locals.siteDomain = SITE_DOMAIN;
-  res.locals.assetVersion = ASSET_VERSION;
   res.locals.currentUser = req.session.user || null;
-  res.locals.storeUrlFor = (handle) => storeUrlFor(req, handle);
   next();
-});
-
-// --- Public stores on subdomains ---------------------------------------
-// meera.pagezaper.com renders Meera's store. In local dev the same works
-// on meera.localhost:3000 (browsers resolve *.localhost to this machine
-// with no hosts-file edits). Anything else — pagezaper.com, www., the
-// VPS's IP — falls through to the normal site routes below.
-const STORE_BASE_DOMAINS = [SITE_DOMAIN, 'localhost'];
-
-function storeHandleFromHost(hostname) {
-  const host = String(hostname || '').toLowerCase();
-  for (const base of STORE_BASE_DOMAINS) {
-    if (!host.endsWith(`.${base}`)) continue;
-    const sub = host.slice(0, -(base.length + 1));
-    // Only one level deep (a.b.pagezaper.com isn't a store), and www is
-    // the main site.
-    if (!sub || sub.includes('.') || sub === 'www') return null;
-    return sub;
-  }
-  return null;
-}
-
-function isLocalRequest(req) {
-  return req.hostname === 'localhost' || req.hostname.endsWith('.localhost');
-}
-
-// Where a handle's store lives, as seen from this request — so "View live"
-// opens the local store while developing and the real one in production.
-function storeUrlFor(req, handle) {
-  if (isLocalRequest(req)) return `http://${handle}.localhost:${PORT}`;
-  return `https://${handle}.${SITE_DOMAIN}`;
-}
-
-// Link/Video/Social blocks store a URL the merchant typed. Only http(s)
-// links are rendered — never javascript: or data: — and a bare
-// "instagram.com/x" gets https:// added.
-function safeHref(raw) {
-  const value = String(raw || '').trim();
-  if (!value) return null;
-  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
-  try {
-    const url = new URL(withScheme);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-app.use(async (req, res, next) => {
-  const handle = storeHandleFromHost(req.hostname);
-  if (!handle) return next();
-
-  const notFound = (message) => res.status(404).render('error', {
-    title: `Store not found — ${SITE_NAME}`,
-    heading: 'Store not found',
-    message,
-  });
-
-  // A store is a single page for now; login/dashboard live on the main
-  // domain, not on every merchant's subdomain.
-  if (req.path !== '/' || (req.method !== 'GET' && req.method !== 'HEAD')) {
-    return notFound('The page you’re looking for doesn’t exist.');
-  }
-
-  try {
-    const owner = await findUserByHandle(handle);
-    if (!owner) return notFound(`There’s no store at ${handle}.${SITE_DOMAIN} yet.`);
-
-    const blocks = (await listBlocks(owner.id))
-      .filter((b) => b.visible && BLOCK_LABELS[b.type])
-      .map((b) => {
-        const href = BLOCK_URL_TYPES.has(b.type) ? safeHref(b.sub) : null;
-        return {
-          type: b.type,
-          label: BLOCK_LABELS[b.type],
-          title: b.title || BLOCK_LABELS[b.type],
-          // For URL blocks the raw URL isn't useful text — show the host.
-          sub: href ? new URL(href).host.replace(/^www\./, '') : b.sub,
-          price: b.price,
-          href,
-        };
-      });
-
-    const initials = owner.name.split(/\s+/).filter(Boolean).slice(0, 2)
-      .map((p) => p[0].toUpperCase()).join('') || 'U';
-
-    res.render('store', {
-      title: `${owner.name} — ${SITE_NAME}`,
-      owner: {
-        name: owner.name,
-        bio: owner.bio || '',
-        initials,
-        accent: /^#[0-9a-f]{6}$/i.test(owner.accent_color) ? owner.accent_color : '#ff6b4a',
-        showBadge: !!owner.show_badge,
-      },
-      blocks,
-      mainSiteUrl: isLocalRequest(req) ? `http://localhost:${PORT}` : `https://${SITE_DOMAIN}`,
-    });
-  } catch (err) {
-    next(err);
-  }
 });
 
 function redirectIfLoggedIn(req, res, next) {
@@ -421,7 +318,7 @@ app.get('/dashboard/audience', requireAuth, async (req, res, next) => {
   try {
     const contacts = await listContacts(req.session.user.id);
     res.render('audience', {
-      title: `People — ${SITE_NAME}`,
+      title: `Audience — ${SITE_NAME}`,
       user: req.session.user,
       contacts,
     });
@@ -471,6 +368,146 @@ app.delete('/dashboard/audience/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Delete contact failed:', err);
     res.status(500).json({ error: 'Could not delete that person. Please try again.' });
+  }
+});
+
+// --- Lead magnets ---------------------------------------------------------
+// Dashboard side: manage magnets, same shape as blocks/contacts — normal
+// render for the list page, fetch() against JSON endpoints for every
+// action, everything scoped to req.session.user.id.
+
+app.get('/dashboard/lead-magnets', requireAuth, async (req, res, next) => {
+  try {
+    const magnets = await listLeadMagnets(req.session.user.id);
+    res.render('lead-magnets', {
+      title: `Lead magnets — ${SITE_NAME}`,
+      user: req.session.user,
+      magnets,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/dashboard/lead-magnets', requireAuth, async (req, res) => {
+  try {
+    const { title, description, ctaText, fileUrl } = req.body || {};
+    const magnet = await createLeadMagnet(req.session.user.id, { title, description, ctaText, fileUrl });
+    res.status(201).json({ ...magnet, publicPath: `/l/${req.session.user.handle}/${magnet.slug}` });
+  } catch (err) {
+    if (err.code === 'TITLE_REQUIRED' || err.code === 'FILE_URL_REQUIRED' || err.code === 'INVALID_FILE_URL') {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error('Create lead magnet failed:', err);
+    res.status(500).json({ error: 'Could not create that lead magnet. Please try again.' });
+  }
+});
+
+app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid lead magnet id.' });
+    const { title, description, ctaText, fileUrl, visible } = req.body || {};
+    const fields = {};
+    if (title !== undefined) fields.title = title;
+    if (description !== undefined) fields.description = description;
+    if (ctaText !== undefined) fields.ctaText = ctaText;
+    if (fileUrl !== undefined) fields.fileUrl = fileUrl;
+    if (visible !== undefined) fields.visible = visible;
+    await updateLeadMagnet(req.session.user.id, id, fields);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === 'TITLE_REQUIRED' || err.code === 'INVALID_FILE_URL') {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error('Update lead magnet failed:', err);
+    res.status(500).json({ error: 'Could not save that change. Please try again.' });
+  }
+});
+
+app.delete('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid lead magnet id.' });
+    await deleteLeadMagnet(req.session.user.id, id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete lead magnet failed:', err);
+    res.status(500).json({ error: 'Could not delete that lead magnet. Please try again.' });
+  }
+});
+
+// Public side: no auth — this is the link a merchant shares. A plain path
+// route (not a subdomain) so it works today without the storefront's
+// Host-header routing that hasn't been built yet.
+
+app.get('/l/:handle/:slug', async (req, res, next) => {
+  try {
+    const owner = await findUserByHandle(req.params.handle);
+    const magnet = owner ? await getPublicLeadMagnet(owner.id, req.params.slug) : null;
+    if (!owner || !magnet) {
+      return res.status(404).render('error', {
+        title: `Not found — ${SITE_NAME}`,
+        heading: 'This link isn’t live',
+        message: 'This lead magnet doesn’t exist, or the creator has taken it down.',
+      });
+    }
+    res.render('lead-magnet', {
+      title: `${magnet.title} — ${owner.name}`,
+      owner,
+      magnet,
+      error: null,
+      values: { name: '', email: '' },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/l/:handle/:slug', async (req, res, next) => {
+  try {
+    const owner = await findUserByHandle(req.params.handle);
+    const magnet = owner ? await getPublicLeadMagnet(owner.id, req.params.slug) : null;
+    if (!owner || !magnet) {
+      return res.status(404).render('error', {
+        title: `Not found — ${SITE_NAME}`,
+        heading: 'This link isn’t live',
+        message: 'This lead magnet doesn’t exist, or the creator has taken it down.',
+      });
+    }
+
+    const name = (req.body.name || '').trim();
+    const email = (req.body.email || '').trim();
+
+    const rerender = (error) => res.status(400).render('lead-magnet', {
+      title: `${magnet.title} — ${owner.name}`,
+      owner,
+      magnet,
+      error,
+      values: { name, email },
+    });
+
+    if (!name) return rerender('Add your name to continue.');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return rerender('That email address doesn’t look right.');
+
+    const existing = await findExistingContact(owner.id, { email });
+    if (!existing) {
+      await createContactFromSource(owner.id, {
+        name,
+        email,
+        note: `Lead magnet: ${magnet.title}`,
+        source: 'form',
+      });
+    }
+    await incrementSignupCount(magnet.id);
+
+    res.render('lead-magnet-success', {
+      title: `You're in — ${SITE_NAME}`,
+      owner,
+      magnet,
+    });
+  } catch (err) {
+    next(err);
   }
 });
 
