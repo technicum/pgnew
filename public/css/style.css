@@ -169,6 +169,20 @@ main.container {
   position: relative;
   overflow: hidden;
   z-index: 0;
+  /* Every theme's header.ejs renders sections inside <main class="container">
+     (max-width: 1140px), which is exactly what a normal section wants — but
+     it also caps the hero's own bg_color/bg_image/bg_video (pzHeroBgStyle,
+     set on this very element) to that same 1140px box, so a colored hero
+     shows the page background as margins on either side instead of running
+     edge to edge. This is the standard "full-bleed child of a centered
+     container" breakout: width:100vw with negative auto-margins exactly
+     cancels out the ancestor's max-width *and* its own side padding,
+     whatever they are, so this keeps working even if .container's numbers
+     change. .hero-inner (below) puts the actual content back at the normal
+     1140px measure so nothing here changes visually except the background. */
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
 }
 .hero h1 {
   font-size: 2.2rem;
@@ -829,6 +843,12 @@ main.container {
   position: relative;
   overflow: hidden;
   z-index: 0;
+  /* NOTE: unlike .hero, this section has no .hero-inner-equivalent content
+     wrapper (its heading sits directly in this element — see section.ejs),
+     so it deliberately keeps relying on <main class="container"> for its
+     max-width/padding rather than the viewport-breakout below .hero uses.
+     Full-bleeding this one too would need a content wrapper added first, or
+     text would run edge to edge with no side margin. */
 }
 .pz-heading :is(h1, h2, h3, h4, h5, h6) { margin: 0; position: relative; z-index: 1; }
 .pz-heading-s :is(h1, h2, h3, h4, h5, h6) { font-size: 1.25rem; }
