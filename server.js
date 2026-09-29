@@ -60,11 +60,17 @@ app.use(session({
 const SITE_NAME = 'PageZaper';
 const SITE_DOMAIN = 'pagezaper.com';
 
-// Makes siteName/siteDomain available in every view without passing them
-// explicitly on every res.render call.
+// Appended to /css and /js URLs in the views (?v=...) so every restart —
+// i.e. every deploy — gives browsers a new URL. Without it a browser can
+// pair a freshly rendered page with a cached, older builder.js and break.
+const ASSET_VERSION = Date.now().toString(36);
+
+// Makes siteName/siteDomain/assetVersion available in every view without
+// passing them explicitly on every res.render call.
 app.use((req, res, next) => {
   res.locals.siteName = SITE_NAME;
   res.locals.siteDomain = SITE_DOMAIN;
+  res.locals.assetVersion = ASSET_VERSION;
   res.locals.currentUser = req.session.user || null;
   next();
 });
