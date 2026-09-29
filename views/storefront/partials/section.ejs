@@ -233,32 +233,44 @@
     <% if ((section.fields.bg_type === 'image' || section.fields.bg_type === 'video') && section.fields.bg_overlay) { %>
       <div class="hero-bg-overlay"></div>
     <% } %>
-    <div class="hero-content">
-      <h1 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h1>
-      <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
-      <% if ((section.fields.button_text && section.fields.button_url) || (section.fields.button2_text && section.fields.button2_url)) { %>
-        <div class="hero-actions">
-          <% if (section.fields.button_text && section.fields.button_url) { %>
-            <a class="btn btn-primary" href="<%= section.fields.button_url %>" style="<%= pzElStyle('button_text') %>"><%= section.fields.button_text %></a>
-          <% } %>
-          <% if (section.fields.button2_text && section.fields.button2_url) { %>
-            <a class="btn btn-outline" href="<%= section.fields.button2_url %>" style="<%= pzElStyle('button2_text') %>"><%= section.fields.button2_text %></a>
-          <% } %>
+    <%
+      // Full-bleed background, constrained content: the SECTION stays
+      // full-width (it's what bg_color/bg_image paint onto — see
+      // pzHeightStyle/pzHeroBgStyle above), and only this inner wrapper
+      // gets a max-width, same convention as style.css's .container
+      // elsewhere on the page. The two-column grid (when a form's
+      // attached) lives on this wrapper too, not on the section, for the
+      // same reason -- putting max-width on the section itself would
+      // clip its own background along with the content.
+    %>
+    <div class="hero-inner">
+      <div class="hero-content">
+        <h1 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h1>
+        <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
+        <% if ((section.fields.button_text && section.fields.button_url) || (section.fields.button2_text && section.fields.button2_url)) { %>
+          <div class="hero-actions">
+            <% if (section.fields.button_text && section.fields.button_url) { %>
+              <a class="btn btn-primary" href="<%= section.fields.button_url %>" style="<%= pzElStyle('button_text') %>"><%= section.fields.button_text %></a>
+            <% } %>
+            <% if (section.fields.button2_text && section.fields.button2_url) { %>
+              <a class="btn btn-outline" href="<%= section.fields.button2_url %>" style="<%= pzElStyle('button2_text') %>"><%= section.fields.button2_text %></a>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+      <% if (pzHeroForm) { %>
+        <div class="hero-form-card">
+          <h3><%= pzHeroForm.heading %></h3>
+          <% if (pzHeroForm.subtext) { %><p><%= pzHeroForm.subtext %></p><% } %>
+          <form class="pz-form" action="/forms/submit" method="POST">
+            <input type="hidden" name="form_id" value="<%= pzHeroForm.id %>" />
+            <input type="hidden" name="section_id" value="<%= section.id %>" />
+            <%- include('pz-form-fields', { pzForm: pzHeroForm, section: section }) %>
+            <button type="submit" class="btn btn-primary"><%= pzHeroForm.button_label %></button>
+          </form>
         </div>
       <% } %>
     </div>
-    <% if (pzHeroForm) { %>
-      <div class="hero-form-card">
-        <h3><%= pzHeroForm.heading %></h3>
-        <% if (pzHeroForm.subtext) { %><p><%= pzHeroForm.subtext %></p><% } %>
-        <form class="pz-form" action="/forms/submit" method="POST">
-          <input type="hidden" name="form_id" value="<%= pzHeroForm.id %>" />
-          <input type="hidden" name="section_id" value="<%= section.id %>" />
-          <%- include('pz-form-fields', { pzForm: pzHeroForm, section: section }) %>
-          <button type="submit" class="btn btn-primary"><%= pzHeroForm.button_label %></button>
-        </form>
-      </div>
-    <% } %>
   </section>
 
 <% } else if (section.type === 'heading') { %>

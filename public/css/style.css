@@ -195,21 +195,24 @@ main.container {
 .hero-text-light p { color: rgba(255, 255, 255, .85); }
 .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; position: relative; z-index: 1; }
 
+/* .hero-inner (see section.ejs) is what actually constrains width — the
+   .hero section itself stays full-bleed so its bg_color/bg_image paints
+   edge to edge (same reason style.css's own .container never carries a
+   background). Same 1140px/24px measure as .container so a hero lines up
+   with the rest of the page. */
+.hero-inner { max-width: 1140px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
 /* Hero with an embedded lead form (lib/sections.js's hero.form_id) — the
    text stays a normal centered hero when no form is attached; attaching
    one switches to a two-column layout (text left, form as a card on the
    right) since that's the point of putting a form in the hero at all: to
    put it where it can't be missed, not below the fold. */
-.hero-with-form {
+.hero-with-form .hero-inner {
   display: grid;
   grid-template-columns: 1fr minmax(300px, 420px);
   align-items: center;
   gap: 40px;
   text-align: left;
-  max-width: 1160px;
-  margin: 0 auto;
-  padding-left: 24px;
-  padding-right: 24px;
 }
 .hero-with-form .hero-content { text-align: left; }
 .hero-with-form .hero-actions { justify-content: flex-start; }
@@ -228,7 +231,7 @@ main.container {
 .hero-form-card .pz-form-fields { margin-bottom: 16px; }
 .hero-form-card .btn { width: 100%; }
 @media (max-width: 860px) {
-  .hero-with-form { grid-template-columns: 1fr; text-align: center; }
+  .hero-with-form .hero-inner { grid-template-columns: 1fr; text-align: center; }
   .hero-with-form .hero-content { text-align: center; }
   .hero-with-form .hero-actions { justify-content: center; }
   .hero-form-card { text-align: left; }
