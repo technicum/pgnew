@@ -1,12 +1,19 @@
 // Slotpay server entrypoint — homepage only for now, same stack as
 // PageZaper (Node/Express + EJS views, public/ served statically) so this
 // can grow into a full app the same way PageZaper did.
-// Last touched: 2026-09-29 — forcing GitHub Desktop to notice this file.
+//
+// Loads .env the same way PageZaper's server.js did — the VPS's nginx
+// forwards pagezaper.com to a specific port (PORT=3001 in production's
+// .env), and without this the app falls back to its 3000 default while
+// nginx still points at 3001, which is a silent 503 (nginx can't reach
+// anything on 3001) rather than a crash you'd see in the logs.
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
 const app = express();
-// Falls back to 3000 when PORT isn't set in the environment (e.g. local dev).
+// Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
+// with no .env file at all).
 const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
