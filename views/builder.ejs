@@ -13,7 +13,7 @@
 <body class="bg-background">
 
 <div class="pz-promo" id="promoBar">
-  Your page is on the free plan — <strong>upgrade for custom domains and more themes</strong>
+  Your store is on the free plan — <strong>upgrade for custom domains and more themes</strong>
   <button type="button" class="pz-promo-close" id="promoClose" aria-label="Dismiss">
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
   </button>
@@ -25,7 +25,7 @@
     <a href="/dashboard" class="pz-rail-logo" aria-label="Back to dashboard">
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </a>
-    <nav class="pz-rail-nav" aria-label="Page editor sections">
+    <nav class="pz-rail-nav" aria-label="Store editor sections">
       <button type="button" class="pz-rail-btn active" data-tab="content">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="11" height="4" rx="1"/></svg>
         Content
@@ -49,6 +49,10 @@
 
   <div class="pz-main">
     <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <a href="/dashboard" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;" aria-label="Exit store builder and return to dashboard">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Exit
+      </a>
       <div class="pz-topbar-switcher">
         <span class="pz-topbar-avatar" id="switcherInitials"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></span>
         <span class="text-sm font-semibold" id="switcherHandle">@<%= user.handle %></span>
@@ -91,13 +95,13 @@
               <div class="mt-5" id="blocksList" style="display:flex; flex-direction:column; gap:10px;"><!-- injected --></div>
 
               <div id="emptyBlocks" class="text-sm text-muted-foreground" style="display:none; text-align:center; padding:32px 18px; border:1px dashed var(--border); border-radius:calc(var(--radius) - 2px); margin-top:10px;">
-                Nothing on your page yet — tap "Add" to add a course, booking, download, membership or link.
+                Nothing on your store yet — tap "Add" to add a course, booking, download, membership or link.
               </div>
 
               <div class="pz-footer-toggle-row">
                 <div>
                   <strong class="text-sm" style="display:block;">Show "Made with PageZaper" badge</strong>
-                  <span class="text-xs text-muted-foreground">Free plan pages carry a small badge at the bottom</span>
+                  <span class="text-xs text-muted-foreground">Free plan stores carry a small badge at the bottom</span>
                 </div>
                 <button type="button" class="pz-switch<%= user.show_badge ? ' on' : '' %>" id="badgeToggle" aria-label="Toggle badge"></button>
               </div>
@@ -108,7 +112,7 @@
           <div class="pz-tabpanel" id="tab-profile">
             <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
               <h2 class="text-lg font-bold">Profile</h2>
-              <p class="mt-1 text-sm text-muted-foreground">How you're introduced at the top of your page</p>
+              <p class="mt-1 text-sm text-muted-foreground">How you're introduced at the top of your store</p>
 
               <div class="mt-5" style="display:flex; gap:18px; align-items:flex-start;">
                 <div style="position:relative; flex:none;">
@@ -141,7 +145,7 @@
           <div class="pz-tabpanel" id="tab-design">
             <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
               <h2 class="text-lg font-bold">Design</h2>
-              <p class="mt-1 text-sm text-muted-foreground">Pick an accent color for your page</p>
+              <p class="mt-1 text-sm text-muted-foreground">Pick an accent color for your store</p>
               <div class="pz-swatch-row mt-5" id="swatchRow">
                 <button type="button" class="pz-swatch" data-color="#ff6b4a" data-name="Coral">
                   <span class="pz-swatch-dot" style="background:#ff6b4a;"></span> Coral

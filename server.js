@@ -81,13 +81,13 @@ function requireAuth(req, res, next) {
 
 app.get('/', (req, res) => {
   res.render('index', {
-    title: `${SITE_NAME} — One page. Every way you earn.`,
+    title: `${SITE_NAME} — One store. Every way you earn.`,
   });
 });
 
 app.get('/signup', redirectIfLoggedIn, (req, res) => {
   res.render('signup', {
-    title: `Create your page — ${SITE_NAME}`,
+    title: `Create your store — ${SITE_NAME}`,
     error: null,
     values: { name: '', email: '' },
   });
@@ -100,7 +100,7 @@ app.post('/signup', redirectIfLoggedIn, async (req, res) => {
   const confirm = req.body.confirm || '';
 
   const rerender = (error) => res.status(400).render('signup', {
-    title: `Create your page — ${SITE_NAME}`,
+    title: `Create your store — ${SITE_NAME}`,
     error,
     values: { name, email },
   });
@@ -189,7 +189,7 @@ app.get('/dashboard/builder', requireAuth, async (req, res, next) => {
     ]);
     if (!user) return res.redirect('/login');
     res.render('builder', {
-      title: `Build your page — ${SITE_NAME}`,
+      title: `Build your store — ${SITE_NAME}`,
       user,
       blocks,
     });

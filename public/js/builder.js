@@ -105,7 +105,7 @@
             ${priceField}
           </div>
         </div>
-        <button type="button" class="pz-switch${block.visible ? ' on' : ''} toggle-visible" data-id="${block.id}" title="${block.visible ? 'Visible on your page' : 'Hidden from your page'}"></button>
+        <button type="button" class="pz-switch${block.visible ? ' on' : ''} toggle-visible" data-id="${block.id}" title="${block.visible ? 'Visible on your store' : 'Hidden from your store'}"></button>
         <div class="pz-kebab-wrap">
           <button type="button" class="pz-icon-btn kebab-btn" data-id="${block.id}" aria-label="More options">
             <svg viewBox="0 0 24 24" width="15" height="15"><circle cx="12" cy="5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="19" r="1.3" fill="currentColor"/></svg>

@@ -39,7 +39,7 @@
       </a>
       <a href="/dashboard/builder" class="flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground" style="text-decoration:none;">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.364 13.634a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506l4.013-4.009a1 1 0 0 0-3.004-3.004z"></path><path d="M14.487 7.858A1 1 0 0 1 14 7V2"></path><path d="M20 19.645V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l2.516 2.516"></path><path d="M8 18h1"></path></svg>
-        <span class="flex-1 text-left">My page</span>
+        <span class="flex-1 text-left">My store</span>
       </a>
       <a href="#" class="flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground" style="text-decoration:none;">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg>
@@ -100,12 +100,12 @@
         <div>
           <p class="text-sm font-semibold text-primary"><%= todayLabel %></p>
           <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Welcome, <%= user.name.split(' ')[0] %></h1>
-          <p class="mt-2 text-sm text-muted-foreground">Your page is live at <%= siteDomain %>/<%= user.handle %> — here's how it's doing.</p>
+          <p class="mt-2 text-sm text-muted-foreground">Your store is live at <%= siteDomain %>/<%= user.handle %> — here's how it's doing.</p>
         </div>
         <div class="flex gap-2" style="flex-wrap:wrap;">
           <a href="#" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
-            View my page
+            View my store
           </a>
           <a href="#" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:translate-y-px h-10 px-4" style="text-decoration:none;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
@@ -133,7 +133,7 @@
           <div class="grid size-10 place-items-center rounded-md bg-success-soft text-success">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg>
           </div>
-          <p class="mt-5 text-sm font-medium text-muted-foreground">Page visitors</p>
+          <p class="mt-5 text-sm font-medium text-muted-foreground">Store visitors</p>
           <div class="mt-1"><strong class="font-display text-2xl font-extrabold">0</strong></div>
         </article>
         <article class="animate-rise-in rounded-lg border border-border bg-card p-5 shadow-sm">
@@ -172,7 +172,7 @@
 
         <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
           <h2 class="text-lg font-bold">Quick actions</h2>
-          <p class="mt-1 text-sm text-muted-foreground">Get your page ready to share</p>
+          <p class="mt-1 text-sm text-muted-foreground">Get your store ready to share</p>
           <div class="mt-5 space-y-3">
             <a href="/dashboard/builder" class="group flex w-full items-center gap-3 rounded-md border border-border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5" style="text-decoration:none;color:inherit;">
               <span class="grid size-10 place-items-center rounded-md bg-muted text-foreground group-hover:bg-success-soft group-hover:text-success">
@@ -188,7 +188,7 @@
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.364 13.634a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506l4.013-4.009a1 1 0 0 0-3.004-3.004z"></path><path d="M14.487 7.858A1 1 0 0 1 14 7V2"></path><path d="M20 19.645V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l2.516 2.516"></path></svg>
               </span>
               <span class="flex-1">
-                <strong class="block text-sm">Customize your page</strong>
+                <strong class="block text-sm">Customize your store</strong>
                 <span class="text-xs text-muted-foreground">Update your look, bio and handle</span>
               </span>
             </a>
@@ -197,7 +197,7 @@
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg>
               </span>
               <span class="flex-1">
-                <strong class="block text-sm">Share your page</strong>
+                <strong class="block text-sm">Share your store</strong>
                 <span class="text-xs text-muted-foreground"><%= siteDomain %>/<%= user.handle %></span>
               </span>
             </a>
@@ -207,7 +207,7 @@
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path></svg>
               <span class="text-xs font-bold uppercase">Before you share</span>
             </div>
-            <p class="mt-2 text-sm leading-6 text-foreground">Add at least one product first — a page with something to buy converts far better than an empty one.</p>
+            <p class="mt-2 text-sm leading-6 text-foreground">Add at least one product first — a store with something to buy converts far better than an empty one.</p>
           </div>
         </article>
       </section>
@@ -224,7 +224,7 @@
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"></path><path d="M3.103 6.034h17.794"></path><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"></path></svg>
           </div>
           <p class="text-sm font-semibold">No orders yet</p>
-          <p class="text-sm text-muted-foreground" style="max-width:360px;">Orders will show up here as soon as someone buys, books or joins from your page.</p>
+          <p class="text-sm text-muted-foreground" style="max-width:360px;">Orders will show up here as soon as someone buys, books or joins from your store.</p>
         </div>
       </section>
 
