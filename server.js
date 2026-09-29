@@ -1,6 +1,5 @@
-// Slotpay server entrypoint — homepage + signup/login/dashboard, same stack
-// as PageZaper (Node/Express + EJS views, public/ served statically) so
-// this can grow into a full app the same way PageZaper did.
+// PageZaper server entrypoint — homepage + signup/login/dashboard, on the
+// same stack as before (Node/Express + EJS views, public/ served statically).
 //
 // Loads .env the same way PageZaper's server.js did — the VPS's nginx
 // forwards pagezaper.com to a specific port (PORT=3001 in production's
@@ -27,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({
   // Falls back to a fixed dev secret so `node server.js` works with no
   // .env at all; set SESSION_SECRET in production's .env for real signing.
-  secret: process.env.SESSION_SECRET || 'slotpay-dev-secret-change-in-production',
+  secret: process.env.SESSION_SECRET || 'pagezaper-dev-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -36,10 +35,10 @@ app.use(session({
   },
 }));
 
-// Placeholder brand strings, kept in one place so renaming the product
-// later is a one-line change instead of hunting through views/*.ejs.
-const SITE_NAME = 'Slotpay';
-const SITE_DOMAIN = 'slotpay.page';
+// Brand strings, kept in one place so a future rename is a one-line
+// change instead of hunting through views/*.ejs.
+const SITE_NAME = 'PageZaper';
+const SITE_DOMAIN = 'pagezaper.com';
 
 // Makes siteName/siteDomain available in every view without passing them
 // explicitly on every res.render call.
@@ -122,12 +121,17 @@ app.post('/login', redirectIfLoggedIn, async (req, res) => {
 
   if (!email || !password) return rerender('Enter your email and password.');
 
-  const user = await findUserByEmail(email);
-  const ok = user && await verifyPassword(user, password);
-  if (!ok) return rerender('That email and password don’t match an account.');
+  try {
+    const user = await findUserByEmail(email);
+    const ok = user && await verifyPassword(user, password);
+    if (!ok) return rerender('That email and password don’t match an account.');
 
-  req.session.user = toPublicUser(user);
-  res.redirect('/dashboard');
+    req.session.user = toPublicUser(user);
+    res.redirect('/dashboard');
+  } catch (err) {
+    console.error('Login failed:', err);
+    rerender('Something went wrong logging you in. Please try again.');
+  }
 });
 
 app.post('/logout', (req, res) => {
@@ -144,6 +148,30 @@ app.get('/dashboard', requireAuth, (req, res) => {
   });
 });
 
+// Anything that isn't one of the routes above — catches typos in a URL,
+// not a route that hasn't been built yet.
+app.use((req, res) => {
+  res.status(404).render('error', {
+    title: `Page not found — ${SITE_NAME}`,
+    heading: 'Page not found',
+    message: 'The page you’re looking for doesn’t exist.',
+  });
+});
+
+// Last-resort safety net. Signup and login already catch their own errors
+// with a specific, friendly message (see above) — this only fires for
+// something unexpected slipping through elsewhere, so a real user never
+// sees Express's default stack-trace page. The actual error still goes to
+// the server log (and from there, pm2 logs) for debugging.
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).render('error', {
+    title: `Something went wrong — ${SITE_NAME}`,
+    heading: 'Something went wrong',
+    message: 'An unexpected error occurred. Please try again.',
+  });
+});
+
 app.listen(PORT, () => {
-  console.log(`Slotpay running on port ${PORT}`);
+  console.log(`${SITE_NAME} running on port ${PORT}`);
 });

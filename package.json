@@ -1,8 +1,8 @@
 {
-  "name": "slotpay",
+  "name": "pagezaper",
   "version": "0.1.0",
   "private": true,
-  "description": "Slotpay — one page for bookings, courses, digital products and memberships.",
+  "description": "PageZaper — one page for bookings, courses, digital products and memberships.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

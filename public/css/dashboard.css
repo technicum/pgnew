@@ -404,7 +404,7 @@
 }
 
 /* ---------------------------------------------------------------------
-   Slotpay brand pass — the block above is the compiled utility CSS as
+   PageZaper brand pass — the block above is the compiled utility CSS as
    generated; everything the components reference is a var(--token), so
    redefining the tokens here (after the :root above, so it wins on
    cascade order) re-skins the whole dashboard to match the marketing
