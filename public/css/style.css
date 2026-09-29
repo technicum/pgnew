@@ -194,6 +194,17 @@ main.container {
 .hero-text-light h1 { color: #fff; }
 .hero-text-light p { color: rgba(255, 255, 255, .85); }
 .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; position: relative; z-index: 1; }
+.hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; position: relative; z-index: 1; }
+.hero-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  font-size: 0.82rem;
+}
+.hero-badge strong { color: var(--color-primary); }
 
 /* .hero-inner (see section.ejs) is what actually constrains width — the
    .hero section itself stays full-bleed so its bg_color/bg_image paints

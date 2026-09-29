@@ -504,10 +504,16 @@
         var heroFormCard = heroForm
           ? '<div class="b-sec-hero-form-card"><span class="b-nav-link">Form: ' + esc(heroForm.name) + '</span></div>'
           : "";
+        var heroBadges = (d.badges || []).filter(function (b) { return b.value || b.label; });
+        var heroBadgesHtml = heroBadges.length
+          ? '<div class="b-sec-hero-badges">' + heroBadges.map(function (b) {
+              return '<span class="b-sec-hero-badge">' + (b.value ? '<strong>' + esc(b.value) + '</strong> ' : "") + esc(b.label) + '</span>';
+            }).join("") + '</div>'
+          : "";
         return '<div class="b-sec-pad b-sec-hero' + (heroBgType !== "none" ? " has-custom-bg" : "") + (heroLight ? " has-light-text" : "") + (heroForm ? " has-form" : "") + '"' + heroBgStyle + '>' +
           heroMedia +
           '<div class="b-sec-hero-content"><h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
-          '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p>' + heroBtns + '</div>' + heroFormCard + '</div>';
+          '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p>' + heroBtns + heroBadgesHtml + '</div>' + heroFormCard + '</div>';
 
       case "heading":
         // Real tag (h1-h6, see the Content tab's "HTML Tag" select), but
@@ -1578,6 +1584,30 @@
     return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No stats yet — add one below.</div>') + '</div>' + addBtn;
   }
 
+  // Hero badges — same two-field repeater as statsItemsEditorHtml above,
+  // just against hero.badges instead of a stats section's items, and
+  // capped at 4 to match lib/sections.js's sanitizeFields for 'hero'.
+  // data-hb-* wired in wireInspector's click/focusout handlers, right
+  // alongside the data-stat-* ones this mirrors.
+  function heroBadgesEditorHtml(items) {
+    var list = items || [];
+    var rows = list.map(function (it, i) {
+      return '<div class="b-faq-row" data-hb-row>' +
+        '<div class="b-faq-row-head">' +
+          '<span class="b-faq-row-num">Badge ' + (i + 1) + '</span>' +
+          '<button type="button" class="b-faq-row-dup" data-hb-duplicate data-index="' + i + '" aria-label="Duplicate badge" title="Duplicate">' + icon("dup") + '</button>' +
+          '<button type="button" class="b-faq-row-remove" data-hb-remove data-index="' + i + '" aria-label="Remove badge" title="Remove">' + icon("trash") + '</button>' +
+        '</div>' +
+        '<input class="b-text-native" type="text" data-hb-value data-index="' + i + '" value="' + esc(it.value || "") + '" placeholder="e.g. 15 yrs" />' +
+        '<input class="b-text-native" type="text" data-hb-label data-index="' + i + '" value="' + esc(it.label || "") + '" placeholder="e.g. in business" />' +
+      '</div>';
+    }).join("");
+    var addBtn = list.length < 4
+      ? '<button type="button" class="b-btn-outline b-faq-add" data-hb-add>' + icon("plus") + ' Add Badge</button>'
+      : '<div class="b-field-hint">Up to 4 badges.</div>';
+    return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No badges yet — add one below.</div>') + '</div>' + addBtn;
+  }
+
   // Feature cards — same Elementor-style repeater as statsItemsEditorHtml
   // above, just with more fields per card (icon/heading/body edit both here
   // AND as contenteditable text directly on the canvas — see the
@@ -1707,7 +1737,8 @@
           field("Button link (optional)", textHtml("button_url", d.button_url, "https://…")) +
           field("Second button link (optional)", textHtml("button2_url", d.button2_url, "https://…")) +
           field("Attached form (optional)", selectHtml("form_id", heroFormOptions, String(d.form_id || ""))) +
-          field("", '<div class="b-inspector-hint">Click the heading, subheading or either button directly on the canvas to edit its text. A button only shows once it has both text and a link. ' + heroFormHint + ' Background and text color live on the Style tab.</div>');
+          field("Badges (optional)", heroBadgesEditorHtml(d.badges)) +
+          field("", '<div class="b-inspector-hint">Click the heading, subheading or either button directly on the canvas to edit its text. A button only shows once it has both text and a link. ' + heroFormHint + ' Up to 4 small badges show under the buttons — good for a quick proof point (years in business, clients served). Background and text color live on the Style tab.</div>');
       }
       case "heading":
         return field("Title", textareaHtml("heading", d.heading, "Add Your Heading Text Here")) +
@@ -2928,6 +2959,40 @@
         renderInspector();
         return;
       }
+      var hbAddBtn = e.target.closest("[data-hb-add]");
+      if (hbAddBtn) {
+        var hbAddTarget = inspectorFieldTarget();
+        if (!hbAddTarget) return;
+        var hbAddItems = (hbAddTarget.fields.badges || []).slice();
+        if (hbAddItems.length >= 4) return;
+        hbAddItems.push({ value: "0", label: "New badge" });
+        hbAddTarget.save({ badges: hbAddItems });
+        renderInspector();
+        return;
+      }
+      var hbDupBtn = e.target.closest("[data-hb-duplicate]");
+      if (hbDupBtn) {
+        var hbDupTarget = inspectorFieldTarget();
+        if (!hbDupTarget) return;
+        var hbDupIdx = parseInt(hbDupBtn.dataset.index, 10);
+        var hbDupItems = (hbDupTarget.fields.badges || []).slice();
+        var hbDupItem = hbDupItems[hbDupIdx];
+        if (hbDupItem && hbDupItems.length < 4) hbDupItems.splice(hbDupIdx + 1, 0, Object.assign({}, hbDupItem));
+        hbDupTarget.save({ badges: hbDupItems });
+        renderInspector();
+        return;
+      }
+      var hbRemoveBtn = e.target.closest("[data-hb-remove]");
+      if (hbRemoveBtn) {
+        var hbRemTarget = inspectorFieldTarget();
+        if (!hbRemTarget) return;
+        var hbRemIdx = parseInt(hbRemoveBtn.dataset.index, 10);
+        var hbRemItems = (hbRemTarget.fields.badges || []).slice();
+        hbRemItems.splice(hbRemIdx, 1);
+        hbRemTarget.save({ badges: hbRemItems });
+        renderInspector();
+        return;
+      }
       var fcAddBtn = e.target.closest("[data-fc-add]");
       if (fcAddBtn) {
         var fcAddTarget = inspectorFieldTarget();
@@ -3298,6 +3363,28 @@
         if (!statLabelItems[statLabelIdx]) return;
         statLabelItems[statLabelIdx] = Object.assign({}, statLabelItems[statLabelIdx], { label: statLabelIn.value.trim() });
         statLabelTarget.save({ items: statLabelItems });
+        return;
+      }
+      var hbValueIn = e.target.closest("input[data-hb-value]");
+      if (hbValueIn) {
+        var hbValueTarget = inspectorFieldTarget();
+        if (!hbValueTarget) return;
+        var hbValueIdx = parseInt(hbValueIn.dataset.index, 10);
+        var hbValueItems = (hbValueTarget.fields.badges || []).slice();
+        if (!hbValueItems[hbValueIdx]) return;
+        hbValueItems[hbValueIdx] = Object.assign({}, hbValueItems[hbValueIdx], { value: hbValueIn.value.trim() });
+        hbValueTarget.save({ badges: hbValueItems });
+        return;
+      }
+      var hbLabelIn = e.target.closest("input[data-hb-label]");
+      if (hbLabelIn) {
+        var hbLabelTarget = inspectorFieldTarget();
+        if (!hbLabelTarget) return;
+        var hbLabelIdx = parseInt(hbLabelIn.dataset.index, 10);
+        var hbLabelItems = (hbLabelTarget.fields.badges || []).slice();
+        if (!hbLabelItems[hbLabelIdx]) return;
+        hbLabelItems[hbLabelIdx] = Object.assign({}, hbLabelItems[hbLabelIdx], { label: hbLabelIn.value.trim() });
+        hbLabelTarget.save({ badges: hbLabelItems });
         return;
       }
       var fcIconIn = e.target.closest("input[data-fc-icon]");

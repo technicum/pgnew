@@ -2597,9 +2597,18 @@ async function migrateRecruitDemoFeatureSections(conn) {
   );
   if (heroSection) {
     const heroFields = typeof heroSection.fields === 'string' ? JSON.parse(heroSection.fields) : heroSection.fields;
+    // Same figures as the 'stats' section further down the page (never
+    // invents new numbers) -- just the compact, right-next-to-the-CTA
+    // form these small badges were built for (hero.badges, added
+    // alongside hero.form_id above).
+    const heroBadges = [
+      { value: '2,400+', label: 'placed' },
+      { value: '180+', label: 'client companies' },
+      { value: '15 yrs', label: 'in business' },
+    ];
     await conn.query(
       `UPDATE ${TABLES.pageSections} SET fields = ?, bg_color = '#10305a', text_color = '#ffffff' WHERE id = ?`,
-      [JSON.stringify({ ...heroFields, form_id: consultationFormId }), heroSection.id]
+      [JSON.stringify({ ...heroFields, form_id: consultationFormId, badges: heroBadges }), heroSection.id]
     );
   }
 
@@ -2625,6 +2634,67 @@ async function migrateRecruitDemoFeatureSections(conn) {
           }),
           promoBar.id,
         ]
+      );
+    }
+  }
+
+  // FAQ — right after testimonials, before the closing CTA. Reuses the
+  // pre-existing 'faq' section type (heading + items[{q,a}]) as-is; no new
+  // section type needed for this one, unlike feature_cards/process_steps.
+  await insertAfterType('testimonials', sections.length - 1, 'faq', {
+    ...defaultFields('faq'),
+    heading: 'Frequently asked questions',
+    items: [
+      { q: 'How long does a typical search take?', a: 'Most permanent and contract roles fill within 30 days. A retained executive search usually runs 5–8 weeks.' },
+      { q: 'What industries do you cover?', a: 'Finance, technology, sales & marketing, and operations — across full-time, contract and RPO engagements.' },
+      { q: 'Do you charge candidates anything?', a: "Never. Our fee is paid by the hiring company, not the candidate, at every stage of the process." },
+      { q: "What if a placement doesn't work out?", a: 'Every placement includes a replacement guarantee window — ask your consultant for the specifics on your search.' },
+    ],
+  });
+
+  // "For Employers" page — a dedicated landing spot for the hiring side of
+  // the business (the home page already covers candidates well with its
+  // Current Openings section), with the same consultation form embedded
+  // via a standalone 'form' section this time (not the hero) so an
+  // employer arriving here can submit a brief without scrolling back to
+  // the home page. Matched by path, so this only ever gets created once;
+  // its content stays editable from the page builder afterward.
+  const [[existingEmployersPage]] = await conn.query(
+    `SELECT id FROM ${TABLES.pages} WHERE store_id = ? AND path = '/for-employers'`,
+    [recruitStoreId]
+  );
+  if (!existingEmployersPage) {
+    const [employersPageResult] = await conn.query(
+      `INSERT INTO ${TABLES.pages} (store_id, name, path, is_home, status) VALUES (?, 'For Employers', '/for-employers', 0, 'published')`,
+      [recruitStoreId]
+    );
+    const employersPageId = employersPageResult.insertId;
+    const employersSections = [
+      { type: 'richtext', fields: { ...defaultFields('richtext'), heading: 'Hiring? Start with a 20-minute call.', body: 'Tell us the role, the team and what "good" looks like — a consultant who works your industry calls you back within one business day with a plan and a realistic timeline.', width: 'narrow', align: 'center' } },
+      { type: 'feature_cards', fields: { ...defaultFields('feature_cards'), heading: 'How we work with employers', items: [
+        { icon: '🎯', heading: 'Retained or contingency', body: 'Executive search runs retained; permanent and contract roles run contingency — you pick what fits the role.', bullets: ['One dedicated consultant per search', 'Shortlist back in 5–10 business days'], button_text: '', button_url: '' },
+        { icon: '🤝', heading: 'RPO for volume hiring', body: 'Scaling a team fast? We run your recruiting function end to end, not just individual searches.', bullets: ['Your job req becomes our job req', 'Weekly pipeline reporting'], button_text: '', button_url: '' },
+      ] } },
+      { type: 'form', fields: { form_id: consultationFormId } },
+    ];
+    let employersPos = 0;
+    for (const s of employersSections) {
+      await conn.query(
+        `INSERT INTO ${TABLES.pageSections} (page_id, region, type, position, fields) VALUES (?, 'body', ?, ?, ?)`,
+        [employersPageId, s.type, employersPos++, JSON.stringify(s.fields)]
+      );
+    }
+
+    // Add it to the existing "Main menu" -- seedStarterMenu (called when
+    // this store was first created) only populates a menu's items at
+    // CREATION time, so a page added later like this one needs its own
+    // menu_item insert rather than re-calling that function.
+    const [[mainMenu]] = await conn.query(`SELECT id FROM ${TABLES.menus} WHERE store_id = ? AND name = 'Main menu'`, [recruitStoreId]);
+    if (mainMenu) {
+      const [[{ c: menuItemCount }]] = await conn.query(`SELECT COUNT(*) AS c FROM ${TABLES.menuItems} WHERE menu_id = ?`, [mainMenu.id]);
+      await conn.query(
+        `INSERT INTO ${TABLES.menuItems} (menu_id, parent_id, position, type, target_id, label) VALUES (?, NULL, ?, 'page', ?, 'For Employers')`,
+        [mainMenu.id, menuItemCount, employersPageId]
       );
     }
   }

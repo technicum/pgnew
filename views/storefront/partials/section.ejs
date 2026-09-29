@@ -257,6 +257,15 @@
             <% } %>
           </div>
         <% } %>
+        <% if (section.fields.badges && section.fields.badges.length) { %>
+          <div class="hero-badges">
+            <% section.fields.badges.forEach(function(b) { %>
+              <% if (b.value || b.label) { %>
+                <span class="hero-badge"><% if (b.value) { %><strong><%= b.value %></strong><% } %> <%= b.label %></span>
+              <% } %>
+            <% }); %>
+          </div>
+        <% } %>
       </div>
       <% if (pzHeroForm) { %>
         <div class="hero-form-card">

@@ -419,6 +419,8 @@ body.builder-body button { font-family: inherit; }
 .b-sec-hero.has-form .b-sec-hero-content h2, .b-sec-hero.has-form .b-sec-hero-content p { margin-left: 0; margin-right: 0; }
 .b-sec-hero.has-form .b-sec-hero-actions { justify-content: flex-start; }
 .b-sec-hero-form-card { position: relative; z-index: 1; background: #fff; border-radius: var(--b-radius, 10px); box-shadow: 0 10px 24px rgba(0, 0, 0, .14); padding: 18px 16px; }
+.b-sec-hero-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; position: relative; z-index: 1; }
+.b-sec-hero-badge { display: inline-flex; gap: 4px; padding: 5px 12px; border-radius: 999px; border: 1px solid currentColor; opacity: .85; font-size: 12px; }
 
 .b-sec-imgtext { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; padding-top: 48px; padding-bottom: 48px; }
 .b-sec-imgtext.reverse { direction: rtl; }
