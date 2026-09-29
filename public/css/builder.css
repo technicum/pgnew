@@ -125,20 +125,61 @@
 .pz-kebab-menu button:hover { background: var(--muted); }
 .pz-kebab-menu button.danger { color: var(--destructive); }
 
-.pz-add-wrap { position: relative; }
-.pz-add-menu {
-  display: none; position: absolute; right: 0; top: 44px; z-index: 5; width: 220px;
-  background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
-  box-shadow: 0 8px 22px rgba(18,24,31,.14); padding: 6px; flex-direction: column;
+/* Add-content popup: every module in one searchable grid, grouped by
+   category. The cards are built from TYPE_META in public/js/builder.js. */
+.pz-modal-backdrop {
+  position: fixed; inset: 0; z-index: 50; background: rgba(18,24,31,.48);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 8vh 16px 16px;
 }
-.pz-add-menu.open { display: flex; }
-.pz-add-menu button {
-  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px;
-  border: none; background: none; border-radius: calc(var(--radius) - 4px); cursor: pointer;
-  font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; color: var(--foreground);
+.pz-modal-backdrop[hidden] { display: none; }
+.pz-modal {
+  width: 100%; max-width: 640px; max-height: 84vh; display: flex; flex-direction: column;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(18,24,31,.28); overflow: hidden;
+  animation: pz-modal-in .18s ease-out both;
 }
-.pz-add-menu button:hover { background: var(--muted); }
-.pz-add-menu svg { width: 17px; height: 17px; flex: none; }
+@keyframes pz-modal-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pz-modal-head { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); }
+.pz-modal-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.pz-modal-search { position: relative; }
+.pz-modal-search svg {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--muted-foreground); pointer-events: none;
+}
+.pz-modal-search .pz-field-input { height: 40px; padding-left: 34px; font-size: 14px; }
+.pz-modal-body { overflow-y: auto; padding: 6px 18px 18px; }
+.pz-module-group-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted-foreground); margin: 14px 0 8px;
+}
+.pz-module-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 480px) { .pz-module-grid { grid-template-columns: minmax(0, 1fr); } }
+.pz-module-card {
+  display: flex; align-items: flex-start; gap: 11px; width: 100%; text-align: left;
+  padding: 11px; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
+  background: var(--card); cursor: pointer; font-family: var(--font-sans); color: var(--foreground);
+  transition: border-color .12s ease, background-color .12s ease;
+}
+.pz-module-card:hover, .pz-module-card.active {
+  border-color: color-mix(in oklab, var(--primary) 45%, transparent);
+  background: color-mix(in oklab, var(--primary) 5%, transparent);
+}
+.pz-module-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.pz-module-card:disabled { opacity: .6; cursor: progress; }
+.pz-module-icon {
+  flex: none; width: 36px; height: 36px; border-radius: calc(var(--radius) - 2px);
+  display: grid; place-items: center;
+}
+.pz-module-name { display: block; font-size: 13.5px; font-weight: 600; }
+.pz-module-desc { display: block; font-size: 12px; color: var(--muted-foreground); margin-top: 2px; line-height: 1.4; }
+.pz-module-empty { text-align: center; color: var(--muted-foreground); font-size: 13px; padding: 36px 12px; }
+body.pz-modal-open { overflow: hidden; }
+
+.pz-save-btn:disabled { opacity: .5; cursor: default; }
 
 .pz-swatch-row { display: flex; gap: 12px; flex-wrap: wrap; }
 .pz-swatch {
@@ -198,3 +239,4 @@
 .pz-type-download { background: var(--muted);          color: var(--muted-foreground); }
 .pz-type-membership { background: var(--success-soft); color: var(--success); }
 .pz-type-link      { background: var(--muted);          color: var(--muted-foreground); }
+.pz-type-grow      { background: var(--secondary);      color: var(--secondary-foreground); }

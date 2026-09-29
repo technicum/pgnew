@@ -60,6 +60,10 @@
       <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
       <div class="ml-auto flex items-center gap-2">
         <a href="https://<%= user.handle %>.<%= siteDomain %>" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;" title="Not live yet — subdomains are still being set up" target="_blank">View live</a>
+        <button type="button" class="pz-save-btn inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted active:translate-y-px h-10 px-4" id="saveBtn" title="Save now (Ctrl+S)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          Save
+        </button>
         <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:translate-y-px h-10 px-4">Publish</button>
       </div>
     </header>
@@ -77,25 +81,16 @@
                   <h2 class="text-lg font-bold">Content</h2>
                   <p class="mt-1 text-sm text-muted-foreground">What you're selling, in the order visitors see it</p>
                 </div>
-                <div class="pz-add-wrap">
-                  <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4" id="addMenuBtn">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
-                    Add
-                  </button>
-                  <div class="pz-add-menu" id="addMenu">
-                    <button type="button" data-type="link"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg> Link</button>
-                    <button type="button" data-type="course"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 19.5V6a2 2 0 0 1 2-2h13v14"/><path d="M6 22a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2h13v4H6z"/></svg> Course</button>
-                    <button type="button" data-type="booking"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/></svg> Booking</button>
-                    <button type="button" data-type="download"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Download</button>
-                    <button type="button" data-type="membership"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M17 20h5v-1a4 4 0 0 0-4-4M9 20H4v-1a4 4 0 0 1 4-4m5-3a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-1a3 3 0 1 0 0-6"/></svg> Membership</button>
-                  </div>
-                </div>
+                <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4" id="addMenuBtn" aria-haspopup="dialog" aria-controls="addModal">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                  Add content
+                </button>
               </div>
 
               <div class="mt-5" id="blocksList" style="display:flex; flex-direction:column; gap:10px;"><!-- injected --></div>
 
               <div id="emptyBlocks" class="text-sm text-muted-foreground" style="display:none; text-align:center; padding:32px 18px; border:1px dashed var(--border); border-radius:calc(var(--radius) - 2px); margin-top:10px;">
-                Nothing on your store yet — tap "Add" to add a course, booking, download, membership or link.
+                Nothing on your store yet — tap "Add content" to add a course, booking, download, link and more.
               </div>
 
               <div class="pz-footer-toggle-row">
@@ -197,8 +192,31 @@
   </div>
 </div>
 
+<div class="pz-modal-backdrop" id="addModal" hidden>
+  <div class="pz-modal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <div class="pz-modal-head">
+      <div class="pz-modal-title-row">
+        <div>
+          <h2 class="text-lg font-bold" id="addModalTitle">Add content</h2>
+          <p class="text-xs text-muted-foreground" style="margin-top:2px;">Pick a module to add to your store</p>
+        </div>
+        <button type="button" class="pz-icon-btn" id="addModalClose" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="pz-modal-search">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" class="pz-field-input" id="moduleSearch" placeholder="Search modules — course, video, tips…" autocomplete="off" aria-label="Search modules" />
+      </div>
+    </div>
+    <div class="pz-modal-body" id="moduleList"><!-- injected --></div>
+  </div>
+</div>
+
 <script>
-  window.__PZ_INITIAL_BLOCKS__ = <%- JSON.stringify(blocks).replace(/</g, '<') %>;
+  // <-escaping keeps a block title like "</script>" from closing this
+  // tag early and running as HTML.
+  window.__PZ_INITIAL_BLOCKS__ = <%- JSON.stringify(blocks).replace(/</g, '\\u003c') %>;
   window.__PZ_ACCENT__ = <%- JSON.stringify(user.accent_color || '#ff6b4a') %>;
   window.__PZ_SITE_DOMAIN__ = <%- JSON.stringify(siteDomain) %>;
 </script>

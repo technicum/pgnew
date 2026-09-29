@@ -591,20 +591,55 @@
   .pz-kebab-menu button:hover { background: var(--muted); }
   .pz-kebab-menu button.danger { color: var(--destructive); }
 
-  .pz-add-wrap { position: relative; }
-  .pz-add-menu {
-    display: none; position: absolute; right: 0; top: 44px; z-index: 5; width: 220px;
-    background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
-    box-shadow: 0 8px 22px rgba(18,24,31,.14); padding: 6px; flex-direction: column;
+  /* Add-content popup: every module in one searchable grid, grouped by
+     category. Built from TYPE_META in the script, so a new module only
+     needs one entry there to show up here. */
+  .pz-modal-backdrop {
+    position: fixed; inset: 0; z-index: 50; background: rgba(18,24,31,.48);
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 8vh 16px 16px;
   }
-  .pz-add-menu.open { display: flex; }
-  .pz-add-menu button {
-    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 9px 10px;
-    border: none; background: none; border-radius: calc(var(--radius) - 4px); cursor: pointer;
-    font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; color: var(--foreground);
+  .pz-modal-backdrop[hidden] { display: none; }
+  .pz-modal {
+    width: 100%; max-width: 640px; max-height: 84vh; display: flex; flex-direction: column;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 24px 60px rgba(18,24,31,.28); overflow: hidden;
+    animation: rise-in .18s ease-out both;
   }
-  .pz-add-menu button:hover { background: var(--muted); }
-  .pz-add-menu svg { width: 17px; height: 17px; flex: none; }
+  .pz-modal-head { padding: 18px 18px 14px; border-bottom: 1px solid var(--border); }
+  .pz-modal-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .pz-modal-search { position: relative; }
+  .pz-modal-search svg {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; color: var(--muted-foreground); pointer-events: none;
+  }
+  .pz-modal-search .pz-field-input { height: 40px; padding-left: 34px; font-size: 14px; }
+  .pz-modal-body { overflow-y: auto; padding: 6px 18px 18px; }
+  .pz-module-group-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted-foreground); margin: 14px 0 8px;
+  }
+  .pz-module-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 480px) { .pz-module-grid { grid-template-columns: minmax(0, 1fr); } }
+  .pz-module-card {
+    display: flex; align-items: flex-start; gap: 11px; width: 100%; text-align: left;
+    padding: 11px; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
+    background: var(--card); cursor: pointer; font-family: var(--font-sans); color: var(--foreground);
+    transition: border-color .12s ease, background-color .12s ease;
+  }
+  .pz-module-card:hover, .pz-module-card.active {
+    border-color: color-mix(in oklab, var(--primary) 45%, transparent);
+    background: color-mix(in oklab, var(--primary) 5%, transparent);
+  }
+  .pz-module-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .pz-module-card .pz-module-icon {
+    flex: none; width: 36px; height: 36px; border-radius: calc(var(--radius) - 2px);
+    display: grid; place-items: center;
+  }
+  .pz-module-name { display: block; font-size: 13.5px; font-weight: 600; }
+  .pz-module-desc { display: block; font-size: 12px; color: var(--muted-foreground); margin-top: 2px; line-height: 1.4; }
+  .pz-module-empty { text-align: center; color: var(--muted-foreground); font-size: 13px; padding: 36px 12px; }
+  body.pz-modal-open { overflow: hidden; }
 
   .pz-swatch-row { display: flex; gap: 12px; flex-wrap: wrap; }
   .pz-swatch {
@@ -664,6 +699,7 @@
   .pz-type-download { background: var(--muted);          color: var(--muted-foreground); }
   .pz-type-membership { background: var(--success-soft); color: var(--success); }
   .pz-type-link      { background: var(--muted);          color: var(--muted-foreground); }
+  .pz-type-grow      { background: var(--secondary);      color: var(--secondary-foreground); }
 </style>
 </head>
 <body class="bg-background">
@@ -712,6 +748,11 @@
       </div>
       <div class="ml-auto flex items-center gap-2">
         <a href="#" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;" id="viewLiveBtn" target="_blank">View live</a>
+        <span class="hidden sm:block text-xs text-muted-foreground" id="saveStatus" aria-live="polite" style="margin-right:4px;">All changes saved</span>
+        <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted active:translate-y-px h-10 px-4 disabled:opacity-50" id="saveBtn" title="Save (Ctrl+S)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          Save
+        </button>
         <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:translate-y-px h-10 px-4">Publish</button>
       </div>
     </header>
@@ -729,25 +770,16 @@
                   <h2 class="text-lg font-bold">Content</h2>
                   <p class="mt-1 text-sm text-muted-foreground">What you're selling, in the order visitors see it</p>
                 </div>
-                <div class="pz-add-wrap">
-                  <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4" id="addMenuBtn">
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
-                    Add
-                  </button>
-                  <div class="pz-add-menu" id="addMenu">
-                    <button type="button" data-type="link"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg> Link</button>
-                    <button type="button" data-type="course"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 19.5V6a2 2 0 0 1 2-2h13v14"/><path d="M6 22a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2h13v4H6z"/></svg> Course</button>
-                    <button type="button" data-type="booking"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/></svg> Booking</button>
-                    <button type="button" data-type="download"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> Download</button>
-                    <button type="button" data-type="membership"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M17 20h5v-1a4 4 0 0 0-4-4M9 20H4v-1a4 4 0 0 1 4-4m5-3a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-1a3 3 0 1 0 0-6"/></svg> Membership</button>
-                  </div>
-                </div>
+                <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4" id="addMenuBtn" aria-haspopup="dialog" aria-controls="addModal">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                  Add content
+                </button>
               </div>
 
               <div class="mt-5" id="blocksList" style="display:flex; flex-direction:column; gap:10px;"><!-- injected --></div>
 
               <div id="emptyBlocks" class="text-sm text-muted-foreground" style="display:none; text-align:center; padding:32px 18px; border:1px dashed var(--border); border-radius:calc(var(--radius) - 2px); margin-top:10px;">
-                Nothing on your page yet — tap "Add" to add a course, booking, download, membership or link.
+                Nothing on your page yet — tap "Add content" to add a course, booking, download, link and more.
               </div>
 
               <div class="pz-footer-toggle-row">
@@ -851,22 +883,54 @@
   </div>
 </div>
 
+<div class="pz-modal-backdrop" id="addModal" hidden>
+  <div class="pz-modal" role="dialog" aria-modal="true" aria-labelledby="addModalTitle">
+    <div class="pz-modal-head">
+      <div class="pz-modal-title-row">
+        <div>
+          <h2 class="text-lg font-bold" id="addModalTitle">Add content</h2>
+          <p class="text-xs text-muted-foreground" style="margin-top:2px;">Pick a module to add to your page</p>
+        </div>
+        <button type="button" class="pz-icon-btn" id="addModalClose" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="pz-modal-search">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" class="pz-field-input" id="moduleSearch" placeholder="Search modules — course, video, tips…" autocomplete="off" aria-label="Search modules" />
+      </div>
+    </div>
+    <div class="pz-modal-body" id="moduleList"><!-- injected --></div>
+  </div>
+</div>
+
 <script>
 (function () {
+  // Every module the "Add content" popup offers, in display order. group
+  // sets the popup section; desc and keywords feed the search.
   const TYPE_META = {
-    link:       { label: 'Link',       cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL' },
-    course:     { label: 'Course',     cls: 'pz-type-course',     icon: '<path d="M4 19.5V6a2 2 0 0 1 2-2h13v14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 22a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2h13v4H6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. 6 lessons · lifetime access' },
-    booking:    { label: 'Booking',    cls: 'pz-type-booking',    icon: '<rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', hasPrice: true, subPlaceholder: 'e.g. 45 min · next slot Thu 2pm' },
-    download:   { label: 'Download',   cls: 'pz-type-download',   icon: '<path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', hasPrice: true, subPlaceholder: 'e.g. PDF · instant delivery' },
-    membership: { label: 'Membership', cls: 'pz-type-membership', icon: '<path d="M17 20h5v-1a4 4 0 0 0-4-4M9 20H4v-1a4 4 0 0 1 4-4m5-3a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-1a3 3 0 1 0 0-6" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. Private community · monthly' },
+    course:     { group: 'Sell', label: 'Course',     desc: 'Self-paced lessons with lifetime access', keywords: 'lessons class training program', cls: 'pz-type-course',     icon: '<path d="M4 19.5V6a2 2 0 0 1 2-2h13v14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 22a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2h13v4H6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. 6 lessons · lifetime access' },
+    booking:    { group: 'Sell', label: 'Booking',    desc: 'Paid 1:1 calls and consultations',         keywords: 'call session consultation appointment calendar coaching meeting', cls: 'pz-type-booking',    icon: '<rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', hasPrice: true, subPlaceholder: 'e.g. 45 min · next slot Thu 2pm' },
+    download:   { group: 'Sell', label: 'Download',   desc: 'Ebooks, templates and other digital files', keywords: 'digital product file pdf ebook template', cls: 'pz-type-download',   icon: '<path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', hasPrice: true, subPlaceholder: 'e.g. PDF · instant delivery' },
+    membership: { group: 'Sell', label: 'Membership', desc: 'Recurring access to a private community',  keywords: 'subscription community recurring monthly club', cls: 'pz-type-membership', icon: '<path d="M17 20h5v-1a4 4 0 0 0-4-4M9 20H4v-1a4 4 0 0 1 4-4m5-3a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-1a3 3 0 1 0 0-6" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. Private community · monthly' },
+    event:      { group: 'Sell', label: 'Webinar / Event', desc: 'Tickets for a live session or workshop', keywords: 'live workshop masterclass ticket seminar', cls: 'pz-type-booking',    icon: '<path d="m22 8-6 4 6 4V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/>', hasPrice: true, subPlaceholder: 'e.g. Live on Zoom · Sat 11am' },
+    tip:        { group: 'Sell', label: 'Tip jar',    desc: 'Let fans support you with any amount',      keywords: 'donation support pay what you want coffee', cls: 'pz-type-course',     icon: '<path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. Buy me a chai', pricePlaceholder: 'Min. amount' },
+    newsletter: { group: 'Grow', label: 'Newsletter signup', desc: 'Collect emails from visitors',        keywords: 'email subscribe list lead form', cls: 'pz-type-grow',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'e.g. Weekly career tips, no spam' },
+    social:     { group: 'Grow', label: 'Social links', desc: 'Instagram, YouTube, LinkedIn and more',   keywords: 'instagram youtube linkedin twitter x follow profile', cls: 'pz-type-grow',       icon: '<circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'e.g. instagram.com/yourname' },
+    testimonial:{ group: 'Grow', label: 'Testimonial', desc: 'Show a quote from a happy customer',       keywords: 'review quote social proof feedback', cls: 'pz-type-grow',       icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'e.g. — Priya, landed a PM role' },
+    link:       { group: 'Basics', label: 'Link',     desc: 'Send visitors to any website',              keywords: 'url website button external', cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL' },
+    video:      { group: 'Basics', label: 'Video',    desc: 'Embed a YouTube or Vimeo video',            keywords: 'youtube vimeo embed reel clip', cls: 'pz-type-link',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m10 9 5 3-5 3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'Video URL' },
+    text:       { group: 'Basics', label: 'Text',     desc: 'A heading with a short paragraph',          keywords: 'heading paragraph about section title', cls: 'pz-type-link',       icon: '<path d="M4 7V5h16v2M9 19h6M12 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'Paragraph text' },
   };
+  const MODULE_GROUPS = ['Sell', 'Grow', 'Basics'];
 
-  let blocks = [
+  const DEFAULT_BLOCKS = [
     { id: 1, type: 'course',     title: 'Personal Branding on LinkedIn', sub: '6 lessons · lifetime access',     price: '₹2,999',  visible: true },
     { id: 2, type: 'booking',    title: '1:1 Career Strategy Call',       sub: '45 min · next slot Thu 2:00pm',   price: '₹1,499',  visible: true },
     { id: 3, type: 'download',   title: 'Resume Template Pack',           sub: 'PDF + Notion · instant delivery', price: '₹399',    visible: true },
     { id: 4, type: 'membership', title: 'Career Circle',                  sub: 'Private community · monthly',     price: '₹499/mo', visible: true },
   ];
+  let blocks = DEFAULT_BLOCKS.map((b) => ({ ...b }));
   let nextId = 5;
 
   const blocksList = document.getElementById('blocksList');
@@ -880,7 +944,7 @@
   function blockCardHTML(block) {
     const meta = TYPE_META[block.type];
     const priceField = meta.hasPrice
-      ? `<input type="text" class="pz-field-input pz-price" data-field="price" data-id="${block.id}" value="${escapeHTML(block.price)}" placeholder="Price" style="width:96px; flex:none;" />`
+      ? `<input type="text" class="pz-field-input pz-price" data-field="price" data-id="${block.id}" value="${escapeHTML(block.price)}" placeholder="${meta.pricePlaceholder || 'Price'}" style="width:96px; flex:none;" />`
       : '';
     return `
       <div class="pz-block-card${block.visible ? '' : ' pz-hidden'}" data-id="${block.id}">
@@ -957,14 +1021,14 @@
         const id = Number(e.target.dataset.id);
         const field = e.target.dataset.field;
         const block = blocks.find((b) => b.id === id);
-        if (block) { block[field] = e.target.value; renderPreviewOnly(); }
+        if (block) { block[field] = e.target.value; renderPreviewOnly(); markDirty(); }
       });
     });
     blocksList.querySelectorAll('.toggle-visible').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
         const block = blocks.find((b) => b.id === id);
-        if (block) { block.visible = !block.visible; render(); }
+        if (block) { block.visible = !block.visible; render(); markDirty(); }
       });
     });
     blocksList.querySelectorAll('.kebab-btn').forEach((btn) => {
@@ -981,7 +1045,7 @@
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
         const block = blocks.find((b) => b.id === id);
-        if (block) { blocks.push({ ...block, id: nextId++, title: block.title + ' (copy)' }); render(); }
+        if (block) { blocks.push({ ...block, id: nextId++, title: block.title + ' (copy)' }); render(); markDirty(); }
       });
     });
     blocksList.querySelectorAll('.remove-block').forEach((btn) => {
@@ -989,34 +1053,111 @@
         const id = Number(e.currentTarget.dataset.id);
         blocks = blocks.filter((b) => b.id !== id);
         render();
+        markDirty();
       });
     });
   }
 
   document.addEventListener('click', closeAllKebabMenus);
 
-  // Add-block menu
+  // Add-content popup — every module, grouped, filtered by the search box.
   const addMenuBtn = document.getElementById('addMenuBtn');
-  const addMenu = document.getElementById('addMenu');
-  addMenuBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    addMenu.classList.toggle('open');
-  });
-  addMenu.querySelectorAll('button[data-type]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const type = btn.dataset.type;
-      const meta = TYPE_META[type];
-      blocks.push({ id: nextId++, type, title: '', sub: '', price: meta.hasPrice ? '' : '', visible: true });
-      addMenu.classList.remove('open');
-      render();
-      requestAnimationFrame(() => {
-        const last = blocksList.querySelector('.pz-block-card:last-child .pz-title');
-        if (last) last.focus();
-      });
+  const addModal = document.getElementById('addModal');
+  const moduleSearch = document.getElementById('moduleSearch');
+  const moduleList = document.getElementById('moduleList');
+
+  function moduleMatches(meta, query) {
+    if (!query) return true;
+    const haystack = `${meta.label} ${meta.desc} ${meta.keywords} ${meta.group}`.toLowerCase();
+    return query.split(/\s+/).every((word) => haystack.includes(word));
+  }
+
+  function renderModuleList() {
+    const query = moduleSearch.value.trim().toLowerCase();
+    const sections = MODULE_GROUPS.map((group) => {
+      const cards = Object.entries(TYPE_META)
+        .filter(([, meta]) => meta.group === group && moduleMatches(meta, query))
+        .map(([type, meta]) => `
+          <button type="button" class="pz-module-card" data-type="${type}">
+            <span class="pz-module-icon ${meta.cls}">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">${meta.icon}</svg>
+            </span>
+            <span style="min-width:0;">
+              <span class="pz-module-name">${meta.label}</span>
+              <span class="pz-module-desc">${meta.desc}</span>
+            </span>
+          </button>`)
+        .join('');
+      return cards ? `<div class="pz-module-group-label">${group}</div><div class="pz-module-grid">${cards}</div>` : '';
+    }).join('');
+
+    moduleList.innerHTML = sections
+      || `<div class="pz-module-empty">No modules match “${escapeHTML(moduleSearch.value.trim())}”.</div>`;
+    // First result is highlighted so Enter in the search box adds it.
+    const first = moduleList.querySelector('.pz-module-card');
+    if (first && query) first.classList.add('active');
+  }
+
+  function openAddModal() {
+    moduleSearch.value = '';
+    renderModuleList();
+    addModal.hidden = false;
+    document.body.classList.add('pz-modal-open');
+    moduleSearch.focus();
+  }
+
+  function closeAddModal() {
+    addModal.hidden = true;
+    document.body.classList.remove('pz-modal-open');
+    addMenuBtn.focus();
+  }
+
+  function addBlock(type) {
+    blocks.push({ id: nextId++, type, title: '', sub: '', price: '', visible: true });
+    closeAddModal();
+    render();
+    markDirty();
+    requestAnimationFrame(() => {
+      const last = blocksList.querySelector('.pz-block-card:last-child .pz-title');
+      if (last) { last.focus(); last.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
     });
+  }
+
+  addMenuBtn.addEventListener('click', openAddModal);
+  document.getElementById('addModalClose').addEventListener('click', closeAddModal);
+  addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAddModal(); });
+  moduleSearch.addEventListener('input', renderModuleList);
+  moduleList.addEventListener('click', (e) => {
+    const card = e.target.closest('.pz-module-card');
+    if (card) addBlock(card.dataset.type);
   });
-  document.addEventListener('click', (e) => {
-    if (!addMenu.contains(e.target) && e.target !== addMenuBtn) addMenu.classList.remove('open');
+  addModal.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); closeAddModal(); return; }
+    if (e.key === 'Enter' && e.target === moduleSearch) {
+      e.preventDefault();
+      const first = moduleList.querySelector('.pz-module-card');
+      if (first) addBlock(first.dataset.type);
+      return;
+    }
+    // Arrow keys move between results; Down from the search box enters the list.
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const cards = [...moduleList.querySelectorAll('.pz-module-card')];
+      if (!cards.length) return;
+      e.preventDefault();
+      const i = cards.indexOf(document.activeElement);
+      if (i === -1) { if (e.key === 'ArrowDown') cards[0].focus(); return; }
+      const next = e.key === 'ArrowDown' ? i + 1 : i - 1;
+      if (next < 0) moduleSearch.focus();
+      else cards[Math.min(next, cards.length - 1)].focus();
+    }
+    // Keep Tab inside the popup.
+    if (e.key === 'Tab') {
+      const focusables = [...addModal.querySelectorAll('button, input')];
+      const firstEl = focusables[0];
+      const lastEl = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === firstEl) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); firstEl.focus(); }
+    }
   });
 
   // Rail tab switching
@@ -1030,20 +1171,24 @@
   });
 
   // Design tab — swatches recolor the live preview avatar
+  function setAccent(color) {
+    document.querySelectorAll('.pz-swatch').forEach((s) => s.classList.toggle('active', s.dataset.color === color));
+    document.documentElement.style.setProperty('--preview-accent', color);
+  }
   document.querySelectorAll('.pz-swatch').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.pz-swatch').forEach((s) => s.classList.remove('active'));
-      btn.classList.add('active');
-      document.documentElement.style.setProperty('--preview-accent', btn.dataset.color);
-    });
+    btn.addEventListener('click', () => { setAccent(btn.dataset.color); markDirty(); });
   });
 
   // Badge toggle
   const badgeToggle = document.getElementById('badgeToggle');
   const previewBadge = document.getElementById('previewBadge');
-  badgeToggle.addEventListener('click', () => {
-    const on = badgeToggle.classList.toggle('on');
+  function setBadge(on) {
+    badgeToggle.classList.toggle('on', on);
     previewBadge.style.display = on ? '' : 'none';
+  }
+  badgeToggle.addEventListener('click', () => {
+    setBadge(!badgeToggle.classList.contains('on'));
+    markDirty();
   });
 
   // Promo bar dismiss
@@ -1067,21 +1212,95 @@
   const previewUrl = document.getElementById('previewUrl');
   const viewLiveBtn = document.getElementById('viewLiveBtn');
 
-  displayName.addEventListener('input', () => {
+  function syncName() {
     previewName.textContent = displayName.value || 'Your name';
     const i = initials(displayName.value);
     previewInitials.textContent = i;
     avatarInitials.textContent = i;
     switcherInitials.textContent = i;
-  });
-  bio.addEventListener('input', () => { previewBio.textContent = bio.value; });
-  handle.addEventListener('input', () => {
+  }
+  function syncBio() { previewBio.textContent = bio.value; }
+  function syncHandle() {
     const slug = handle.value.trim() || 'yourname';
     previewUrl.textContent = `${slug}.pagezaper.com`;
     switcherHandle.textContent = `@${slug}`;
     viewLiveBtn.href = `https://${slug}.pagezaper.com`;
+  }
+  displayName.addEventListener('input', () => { syncName(); markDirty(); });
+  bio.addEventListener('input', () => { syncBio(); markDirty(); });
+  handle.addEventListener('input', () => { syncHandle(); markDirty(); });
+
+  // Save — for now the draft lives in this browser's localStorage. When the
+  // builder is wired into the app, swap saveDraft/loadDraft for a POST/GET
+  // to the server; the rest of the flow (dirty tracking, button state,
+  // Ctrl+S, leave-page warning) stays the same.
+  const STORAGE_KEY = 'pz-builder-draft';
+  const saveBtn = document.getElementById('saveBtn');
+  const saveStatus = document.getElementById('saveStatus');
+  let dirty = false;
+
+  function markDirty() {
+    dirty = true;
+    saveBtn.disabled = false;
+    saveStatus.textContent = 'Unsaved changes';
+  }
+
+  function currentState() {
+    const accent = document.querySelector('.pz-swatch.active');
+    return {
+      blocks,
+      nextId,
+      profile: { name: displayName.value, handle: handle.value, bio: bio.value },
+      accent: accent ? accent.dataset.color : null,
+      badge: badgeToggle.classList.contains('on'),
+    };
+  }
+
+  function saveDraft() {
+    if (!dirty) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentState()));
+    } catch (err) {
+      saveStatus.textContent = 'Couldn’t save — try again';
+      return;
+    }
+    dirty = false;
+    saveBtn.disabled = true;
+    const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    saveStatus.textContent = `Saved at ${time}`;
+  }
+
+  function loadDraft() {
+    let state = null;
+    try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (err) { /* no usable draft */ }
+    if (!state) return;
+    if (Array.isArray(state.blocks)) {
+      // Drop blocks whose module no longer exists so render() can't crash.
+      blocks = state.blocks.filter((b) => TYPE_META[b.type]);
+      nextId = Math.max(Number(state.nextId) || 0, ...blocks.map((b) => b.id + 1), 1);
+    }
+    if (state.profile) {
+      displayName.value = state.profile.name ?? displayName.value;
+      handle.value = state.profile.handle ?? handle.value;
+      bio.value = state.profile.bio ?? bio.value;
+      syncName(); syncBio(); syncHandle();
+    }
+    if (state.accent) setAccent(state.accent);
+    if (typeof state.badge === 'boolean') setBadge(state.badge);
+  }
+
+  saveBtn.addEventListener('click', saveDraft);
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      saveDraft();
+    }
+  });
+  window.addEventListener('beforeunload', (e) => {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
   });
 
+  loadDraft();
   render();
 })();
 </script>
