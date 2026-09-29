@@ -495,10 +495,19 @@
             '<span class="b-btn-outline" data-field="button2_text" contenteditable="true">' + esc(d.button2_text || "Second button") + '</span>' +
             '</div>'
           : "";
-        return '<div class="b-sec-pad b-sec-hero' + (heroBgType !== "none" ? " has-custom-bg" : "") + (heroLight ? " has-light-text" : "") + '"' + heroBgStyle + '>' +
+        // Same "just name which form" preview as the standalone 'form'
+        // section's own canvas case below -- the real fields/heading/
+        // button live on the Forms screen, not here.
+        var heroForm = d.form_id
+          ? (DATA.forms || []).filter(function (f) { return String(f.id) === String(d.form_id); })[0]
+          : null;
+        var heroFormCard = heroForm
+          ? '<div class="b-sec-hero-form-card"><span class="b-nav-link">Form: ' + esc(heroForm.name) + '</span></div>'
+          : "";
+        return '<div class="b-sec-pad b-sec-hero' + (heroBgType !== "none" ? " has-custom-bg" : "") + (heroLight ? " has-light-text" : "") + (heroForm ? " has-form" : "") + '"' + heroBgStyle + '>' +
           heroMedia +
-          '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
-          '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p>' + heroBtns + '</div>';
+          '<div class="b-sec-hero-content"><h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
+          '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p>' + heroBtns + '</div>' + heroFormCard + '</div>';
 
       case "heading":
         // Real tag (h1-h6, see the Content tab's "HTML Tag" select), but
@@ -745,7 +754,14 @@
       }
 
       case "promo_bar":
-        return '<div class="b-promo-bar" style="background:' + esc(d.bg_color || "#111") + ';color:' + esc(d.text_color || "#fff") + ';">' +
+        var promoContact = (d.phone || d.email)
+          ? '<span class="b-promo-contact">' +
+            (d.phone ? '<span data-field="phone" contenteditable="true">' + esc(d.phone) + '</span>' : "") +
+            (d.email ? '<span data-field="email" contenteditable="true">' + esc(d.email) + '</span>' : "") +
+            '</span>'
+          : "";
+        return '<div class="b-promo-bar' + (promoContact ? " b-promo-bar-contact" : "") + '" style="background:' + esc(d.bg_color || "#111") + ';color:' + esc(d.text_color || "#fff") + ';">' +
+          promoContact +
           '<span data-field="text" contenteditable="true">' + esc(d.text) + '</span>' +
           (d.link_text ? '<span class="b-promo-link">' + esc(d.link_text) + '</span>' : "") +
           (d.dismissible ? '<span class="b-promo-close">&times;</span>' : "") +
@@ -1679,12 +1695,20 @@
   function inspectorFieldsFor(sec) {
     var d = sec.fields;
     switch (sec.type) {
-      case "hero":
+      case "hero": {
+        var heroFormOptions = [{ val: "", label: "— No form attached —" }].concat(
+          (DATA.forms || []).map(function (f) { return { val: String(f.id), label: esc(f.name) }; })
+        );
+        var heroFormHint = (DATA.forms || []).length
+          ? 'Attach a form to switch this hero to a two-column layout with the form as a card. <a href="/admin/forms" target="_blank" rel="noopener">Manage forms</a> to edit its fields or success message.'
+          : 'You don’t have any forms yet. <a href="/admin/forms" target="_blank" rel="noopener">Create one</a>, then come back and attach it here.';
         return field("Heading", textHtml("heading", d.heading)) +
           field("Subheading", textareaHtml("subheading", d.subheading)) +
           field("Button link (optional)", textHtml("button_url", d.button_url, "https://…")) +
           field("Second button link (optional)", textHtml("button2_url", d.button2_url, "https://…")) +
-          field("", '<div class="b-inspector-hint">Click the heading, subheading or either button directly on the canvas to edit its text. A button only shows once it has both text and a link. Background and text color live on the Style tab.</div>');
+          field("Attached form (optional)", selectHtml("form_id", heroFormOptions, String(d.form_id || ""))) +
+          field("", '<div class="b-inspector-hint">Click the heading, subheading or either button directly on the canvas to edit its text. A button only shows once it has both text and a link. ' + heroFormHint + ' Background and text color live on the Style tab.</div>');
+      }
       case "heading":
         return field("Title", textareaHtml("heading", d.heading, "Add Your Heading Text Here")) +
           field("Link", textHtml("link_url", d.link_url, "Type or paste your URL")) +
@@ -1795,10 +1819,12 @@
           field("", checkHtml("show_cart", !!d.show_cart, "Show cart icon"));
       }
       case "promo_bar":
-        return field("Link URL (optional)", textHtml("link_url", d.link_url, "https://…")) +
+        return field("Phone (optional)", textHtml("phone", d.phone, "+91 98765 43210")) +
+          field("Email (optional)", textHtml("email", d.email, "hello@yourbusiness.com")) +
+          field("Link URL (optional)", textHtml("link_url", d.link_url, "https://…")) +
           field("Link text", textHtml("link_text", d.link_text, "Shop now")) +
           field("", checkHtml("dismissible", !!d.dismissible, "Let visitors dismiss it")) +
-          field("", '<div class="b-inspector-hint">Click the message on the canvas to edit it. Colors live on the Style tab.</div>');
+          field("", '<div class="b-inspector-hint">Click the message, phone or email directly on the canvas to edit it. Setting a phone or email switches this to a two-sided bar (contact info left, message right). Colors live on the Style tab.</div>');
       case "link_columns":
         return field("Columns", textareaHtml("columns", columnsToText(d.columns), "# Shop\nHoodies | /shop/hoodies\nT-shirts | /shop/tshirts\n\n# Support\nContact | /pages/contact")) +
           field("", '<div class="b-inspector-hint">Start each column with “# Heading”, then list its links as “Label | URL”, one per line.</div>');

@@ -408,6 +408,18 @@ body.builder-body button { font-family: inherit; }
 .b-sec-hero-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; position: relative; z-index: 1; }
 .b-sec-hero-actions .b-btn-solid, .b-sec-hero-actions .b-btn-outline { font-size: 14px; padding: 10px 20px; }
 
+/* Canvas preview of a hero with a form attached (lib/sections.js's
+   hero.form_id) -- mirrors public/css/style.css's .hero-with-form/
+   .hero-form-card two-column layout so the builder looks like the live
+   page, without duplicating the actual form fields on the canvas (see
+   admin-builder.js's "form" section case above for why: the real fields
+   live on the Forms screen, this is just a named placeholder). */
+.b-sec-hero.has-form { display: grid; grid-template-columns: 1fr minmax(220px, 320px); align-items: center; gap: 28px; text-align: left; padding-left: 24px; padding-right: 24px; }
+.b-sec-hero.has-form .b-sec-hero-content { text-align: left; }
+.b-sec-hero.has-form .b-sec-hero-content h2, .b-sec-hero.has-form .b-sec-hero-content p { margin-left: 0; margin-right: 0; }
+.b-sec-hero.has-form .b-sec-hero-actions { justify-content: flex-start; }
+.b-sec-hero-form-card { position: relative; z-index: 1; background: #fff; border-radius: var(--b-radius, 10px); box-shadow: 0 10px 24px rgba(0, 0, 0, .14); padding: 18px 16px; }
+
 .b-sec-imgtext { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; padding-top: 48px; padding-bottom: 48px; }
 .b-sec-imgtext.reverse { direction: rtl; }
 .b-sec-imgtext.reverse > * { direction: ltr; }
@@ -561,6 +573,8 @@ body.builder-body button { font-family: inherit; }
 .b-nav-icons span { font-size: 12px; color: var(--b-muted); }
 
 .b-promo-bar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 24px; font-size: 12.5px; font-weight: 600; text-align: center; position: relative; }
+.b-promo-bar-contact { justify-content: space-between; text-align: left; }
+.b-promo-contact { display: flex; gap: 14px; }
 .b-promo-link { text-decoration: underline; text-underline-offset: 2px; }
 .b-promo-close { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); opacity: .7; font-size: 16px; line-height: 1; }
 

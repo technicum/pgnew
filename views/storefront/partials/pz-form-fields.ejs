@@ -1,0 +1,47 @@
+<%
+  // Shared field-rendering loop for a pz_forms form (see lib/forms.js),
+  // factored out so both the standalone 'form' section AND a hero's
+  // optional embedded form (lib/sections.js's hero.form_id, added
+  // alongside Feature cards/Process steps) render identical field markup
+  // instead of two copies drifting apart. Locals: pzForm (the resolved
+  // form row, fields already JSON-parsed) and section (the SECTION doing
+  // the embedding — just used to namespace field ids, so two forms on one
+  // page never collide, whether that section is a 'form' section or a
+  // 'hero' with a form attached).
+%>
+<div class="pz-form-fields">
+  <% pzForm.fields.forEach(function(f) { %>
+    <%
+      // labelDisplay: 'placeholder' swaps the visible label for placeholder
+      // text inside the field (falling back to the field's own label text
+      // if no separate placeholder was set) -- the label itself is kept,
+      // just visually hidden (sr-only), so screen readers still get it.
+      // lib/forms.js's sanitizeFieldList never sets this for radio/
+      // checkbox, so those two always keep a normal visible label.
+      var pzUsePlaceholder = f.labelDisplay === 'placeholder';
+      var pzPlaceholderText = f.placeholder || (pzUsePlaceholder ? f.label : '');
+    %>
+    <div class="pz-form-field pz-form-field-<%= f.size || 'medium' %>">
+      <label<% if (pzUsePlaceholder) { %> class="sr-only"<% } %> for="pzf-<%= section.id %>-<%= f.key %>"><%= f.label %><% if (f.required) { %><span class="pz-form-req">*</span><% } %></label>
+      <% if (f.type === 'textarea') { %>
+        <textarea id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>" rows="3"<% if (pzPlaceholderText) { %> placeholder="<%= pzPlaceholderText %>"<% } %><%= f.required ? ' required' : '' %>></textarea>
+      <% } else if (f.type === 'select') { %>
+        <select id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>"<%= f.required ? ' required' : '' %>>
+          <option value=""><%= pzPlaceholderText || 'Choose…' %></option>
+          <% (f.options || []).forEach(function(o) { %><option value="<%= o %>"><%= o %></option><% }); %>
+        </select>
+      <% } else if (f.type === 'radio' || f.type === 'checkbox') { %>
+        <div class="pz-form-choice-list">
+          <% (f.options || []).forEach(function(o, i) { %>
+            <label class="pz-form-choice">
+              <input type="<%= f.type %>" name="<%= f.type === 'checkbox' ? f.key + '[]' : f.key %>" value="<%= o %>" id="pzf-<%= section.id %>-<%= f.key %>-<%= i %>" />
+              <%= o %>
+            </label>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <input id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>" type="<%= f.type %>"<% if (pzPlaceholderText) { %> placeholder="<%= pzPlaceholderText %>"<% } %><%= f.required ? ' required' : '' %> />
+      <% } %>
+    </div>
+  <% }); %>
+</div>

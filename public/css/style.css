@@ -195,6 +195,45 @@ main.container {
 .hero-text-light p { color: rgba(255, 255, 255, .85); }
 .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; position: relative; z-index: 1; }
 
+/* Hero with an embedded lead form (lib/sections.js's hero.form_id) — the
+   text stays a normal centered hero when no form is attached; attaching
+   one switches to a two-column layout (text left, form as a card on the
+   right) since that's the point of putting a form in the hero at all: to
+   put it where it can't be missed, not below the fold. */
+.hero-with-form {
+  display: grid;
+  grid-template-columns: 1fr minmax(300px, 420px);
+  align-items: center;
+  gap: 40px;
+  text-align: left;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.hero-with-form .hero-content { text-align: left; }
+.hero-with-form .hero-actions { justify-content: flex-start; }
+.hero-form-card {
+  position: relative;
+  z-index: 1;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, .18);
+  padding: 28px 26px;
+  text-align: left;
+}
+.hero-form-card h3 { margin: 0 0 6px; font-size: 1.25rem; }
+.hero-form-card > p { margin: 0 0 18px; color: var(--color-muted); font-size: 0.92rem; }
+.hero-form-card .pz-form-fields { margin-bottom: 16px; }
+.hero-form-card .btn { width: 100%; }
+@media (max-width: 860px) {
+  .hero-with-form { grid-template-columns: 1fr; text-align: center; }
+  .hero-with-form .hero-content { text-align: center; }
+  .hero-with-form .hero-actions { justify-content: center; }
+  .hero-form-card { text-align: left; }
+}
+
 /* Universal background (Style tab, every section type except hero/heading —
    which keep their own dedicated version above/below — see section.ejs's
    pzUniBgExtras and lib/sections.js's sanitizeSectionSettings). Same
@@ -593,6 +632,22 @@ main.container {
   position: relative;
 }
 .pz-promo-link { text-decoration: underline; text-underline-offset: 2px; }
+
+/* Contact variant (lib/sections.js's promo_bar.phone/email) — a business
+   that wants "call us" visible on every page, not just an announcement.
+   Left side: clickable phone/email. Right side: the bar's existing `text`
+   field, repurposed as free-text (hours, a tagline) instead of a promo
+   message. Plain announcement bars (no phone/email set) are untouched --
+   this only applies when the contact variant class is present. */
+.pz-promo-bar-contact { justify-content: space-between; text-align: left; font-weight: 500; }
+.pz-promo-contact { display: flex; gap: 18px; flex-wrap: wrap; }
+.pz-promo-contact a { color: inherit; text-decoration: none; opacity: 0.92; }
+.pz-promo-contact a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.pz-promo-bar-contact .pz-promo-text { opacity: 0.85; }
+@media (max-width: 640px) {
+  .pz-promo-bar-contact { justify-content: center; text-align: center; }
+  .pz-promo-bar-contact .pz-promo-text { display: none; }
+}
 .pz-promo-close {
   position: absolute;
   right: 16px;

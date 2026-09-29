@@ -2551,6 +2551,83 @@ async function migrateRecruitDemoFeatureSections(conn) {
       { heading: 'Offer & onboard', body: 'We help close the offer and check in through the first 90 days.' },
     ],
   });
+
+  // A real lead-capture form (pz_forms), embedded directly in the hero
+  // (hero.form_id, added alongside feature_cards/process_steps above) --
+  // this is what actually makes the hero "lead-friendly" rather than just
+  // a CTA button. Matched by slug so this only ever gets created once;
+  // its content stays editable from the Forms screen afterward like any
+  // other form, this migration never touches it again once it exists.
+  const [[existingForm]] = await conn.query(
+    `SELECT id FROM ${TABLES.forms} WHERE store_id = ? AND slug = 'free-hiring-consultation'`,
+    [recruitStoreId]
+  );
+  let consultationFormId = existingForm && existingForm.id;
+  if (!consultationFormId) {
+    const consultationFields = [
+      { key: 'f1', label: 'Full name', type: 'text', required: true, size: 'medium', options: [], placeholder: 'Your name', labelDisplay: 'label' },
+      { key: 'f2', label: 'Phone number', type: 'tel', required: true, size: 'medium', options: [], placeholder: '10-digit mobile number', labelDisplay: 'label' },
+      { key: 'f3', label: "I'm looking to", type: 'select', required: true, size: 'large', options: ['Hire for an open role', 'Find my next role'], placeholder: '', labelDisplay: 'label' },
+    ];
+    const [formResult] = await conn.query(
+      `INSERT INTO ${TABLES.forms} (store_id, name, slug, heading, subtext, button_label, success_message, fields) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        recruitStoreId, 'Free Hiring Consultation', 'free-hiring-consultation',
+        'Get a free hiring consultation call', 'Tell us a bit about you — a consultant calls you back within one business day.',
+        'Request Free Callback', 'Thanks — a consultant will call you back within one business day.',
+        JSON.stringify(consultationFields),
+      ]
+    );
+    consultationFormId = formResult.insertId;
+  }
+
+  // Attach that form to the hero and switch it to the dark, two-column
+  // layout the form card needs to read against (same RECRUIT_NAVY as the
+  // stats band/closing CTA already use, kept as a literal here for the
+  // same reason those are -- this raw query can't read theme.json).
+  // Unconditional every boot, same as migrateRecruitDemoRedesign's own
+  // hero UPDATE above -- it runs first and always resets bg_color/
+  // text_color back to NULL, so this has to unconditionally re-apply
+  // navy after it every time rather than only on the form_id's first
+  // attach, or the hero would go back to a plain background on the very
+  // next restart.
+  const [[heroSection]] = await conn.query(
+    `SELECT id, fields FROM ${TABLES.pageSections} WHERE page_id = ? AND type = 'hero' LIMIT 1`,
+    [homeId]
+  );
+  if (heroSection) {
+    const heroFields = typeof heroSection.fields === 'string' ? JSON.parse(heroSection.fields) : heroSection.fields;
+    await conn.query(
+      `UPDATE ${TABLES.pageSections} SET fields = ?, bg_color = '#10305a', text_color = '#ffffff' WHERE id = ?`,
+      [JSON.stringify({ ...heroFields, form_id: consultationFormId }), heroSection.id]
+    );
+  }
+
+  // Sticky phone/email contact bar (promo_bar.phone/email, added alongside
+  // the hero form above) -- only set once, same "don't clobber a hand-set
+  // value" guard as whatsapp_number above; reuses the phone/email already
+  // promised on this store's own Contact page (migrateRecruitDemoStore).
+  const [[promoBar]] = await conn.query(
+    `SELECT id, fields FROM ${TABLES.pageSections} WHERE store_id = ? AND page_id IS NULL AND region = 'header' AND type = 'promo_bar' LIMIT 1`,
+    [recruitStoreId]
+  );
+  if (promoBar) {
+    const promoFields = typeof promoBar.fields === 'string' ? JSON.parse(promoBar.fields) : promoBar.fields;
+    if (!promoFields.phone && !promoFields.email) {
+      await conn.query(
+        `UPDATE ${TABLES.pageSections} SET fields = ? WHERE id = ?`,
+        [
+          JSON.stringify({
+            ...promoFields,
+            phone: '+91 98765 43210',
+            email: 'hello@sterlingcole.example',
+            text: 'Mon–Sat, 9 AM – 6 PM · Consultants reply within 1 business day',
+          }),
+          promoBar.id,
+        ]
+      );
+    }
+  }
 }
 
 async function init() {

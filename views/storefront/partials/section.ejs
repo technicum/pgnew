@@ -225,23 +225,38 @@
 %>
 <% if (section.type === 'hero') { %>
   <% var pzHeroLight = section.fields.bg_type !== 'none' && section.fields.text_theme === 'light'; %>
-  <section id="<%= pzId %>" class="hero<%= pzHeroLight ? ' hero-text-light' : '' %><%= pzExtra %>" style="<%= pzHeightStyle + pzHeroBgStyle(section.fields) %>">
+  <% var pzHeroForm = (typeof storeForms !== 'undefined' && section.fields.form_id) ? storeForms[section.fields.form_id] : null; %>
+  <section id="<%= pzId %>" class="hero<%= pzHeroLight ? ' hero-text-light' : '' %><%= pzHeroForm ? ' hero-with-form' : '' %><%= pzExtra %>" style="<%= pzHeightStyle + pzHeroBgStyle(section.fields) %>">
     <% if (section.fields.bg_type === 'video' && section.fields.bg_video_url) { %>
       <%- pzBgVideoHtml(section.fields.bg_video_url, 'hero-bg-video') %>
     <% } %>
     <% if ((section.fields.bg_type === 'image' || section.fields.bg_type === 'video') && section.fields.bg_overlay) { %>
       <div class="hero-bg-overlay"></div>
     <% } %>
-    <h1 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h1>
-    <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
-    <% if ((section.fields.button_text && section.fields.button_url) || (section.fields.button2_text && section.fields.button2_url)) { %>
-      <div class="hero-actions">
-        <% if (section.fields.button_text && section.fields.button_url) { %>
-          <a class="btn btn-primary" href="<%= section.fields.button_url %>" style="<%= pzElStyle('button_text') %>"><%= section.fields.button_text %></a>
-        <% } %>
-        <% if (section.fields.button2_text && section.fields.button2_url) { %>
-          <a class="btn btn-outline" href="<%= section.fields.button2_url %>" style="<%= pzElStyle('button2_text') %>"><%= section.fields.button2_text %></a>
-        <% } %>
+    <div class="hero-content">
+      <h1 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h1>
+      <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
+      <% if ((section.fields.button_text && section.fields.button_url) || (section.fields.button2_text && section.fields.button2_url)) { %>
+        <div class="hero-actions">
+          <% if (section.fields.button_text && section.fields.button_url) { %>
+            <a class="btn btn-primary" href="<%= section.fields.button_url %>" style="<%= pzElStyle('button_text') %>"><%= section.fields.button_text %></a>
+          <% } %>
+          <% if (section.fields.button2_text && section.fields.button2_url) { %>
+            <a class="btn btn-outline" href="<%= section.fields.button2_url %>" style="<%= pzElStyle('button2_text') %>"><%= section.fields.button2_text %></a>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+    <% if (pzHeroForm) { %>
+      <div class="hero-form-card">
+        <h3><%= pzHeroForm.heading %></h3>
+        <% if (pzHeroForm.subtext) { %><p><%= pzHeroForm.subtext %></p><% } %>
+        <form class="pz-form" action="/forms/submit" method="POST">
+          <input type="hidden" name="form_id" value="<%= pzHeroForm.id %>" />
+          <input type="hidden" name="section_id" value="<%= section.id %>" />
+          <%- include('pz-form-fields', { pzForm: pzHeroForm, section: section }) %>
+          <button type="submit" class="btn btn-primary"><%= pzHeroForm.button_label %></button>
+        </form>
       </div>
     <% } %>
   </section>
@@ -357,43 +372,7 @@
     <form class="pz-form" action="/forms/submit" method="POST">
       <input type="hidden" name="form_id" value="<%= pzForm.id %>" />
       <input type="hidden" name="section_id" value="<%= section.id %>" />
-      <div class="pz-form-fields">
-        <% pzForm.fields.forEach(function(f) { %>
-          <%
-            // labelDisplay: 'placeholder' swaps the visible label for
-            // placeholder text inside the field (falling back to the
-            // field's own label text if no separate placeholder was set)
-            // -- the label itself is kept, just visually hidden (sr-only),
-            // so screen readers still get it. lib/forms.js's
-            // sanitizeFieldList never sets this for radio/checkbox, so
-            // those two always keep a normal visible label.
-            var pzUsePlaceholder = f.labelDisplay === 'placeholder';
-            var pzPlaceholderText = f.placeholder || (pzUsePlaceholder ? f.label : '');
-          %>
-          <div class="pz-form-field pz-form-field-<%= f.size || 'medium' %>">
-            <label<% if (pzUsePlaceholder) { %> class="sr-only"<% } %> for="pzf-<%= section.id %>-<%= f.key %>"><%= f.label %><% if (f.required) { %><span class="pz-form-req">*</span><% } %></label>
-            <% if (f.type === 'textarea') { %>
-              <textarea id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>" rows="3"<% if (pzPlaceholderText) { %> placeholder="<%= pzPlaceholderText %>"<% } %><%= f.required ? ' required' : '' %>></textarea>
-            <% } else if (f.type === 'select') { %>
-              <select id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>"<%= f.required ? ' required' : '' %>>
-                <option value=""><%= pzPlaceholderText || 'Choose…' %></option>
-                <% (f.options || []).forEach(function(o) { %><option value="<%= o %>"><%= o %></option><% }); %>
-              </select>
-            <% } else if (f.type === 'radio' || f.type === 'checkbox') { %>
-              <div class="pz-form-choice-list">
-                <% (f.options || []).forEach(function(o, i) { %>
-                  <label class="pz-form-choice">
-                    <input type="<%= f.type %>" name="<%= f.type === 'checkbox' ? f.key + '[]' : f.key %>" value="<%= o %>" id="pzf-<%= section.id %>-<%= f.key %>-<%= i %>" />
-                    <%= o %>
-                  </label>
-                <% }); %>
-              </div>
-            <% } else { %>
-              <input id="pzf-<%= section.id %>-<%= f.key %>" name="<%= f.key %>" type="<%= f.type %>"<% if (pzPlaceholderText) { %> placeholder="<%= pzPlaceholderText %>"<% } %><%= f.required ? ' required' : '' %> />
-            <% } %>
-          </div>
-        <% }); %>
-      </div>
+      <%- include('pz-form-fields', { pzForm: pzForm, section: section }) %>
       <button type="submit" class="btn btn-primary" style="<%= pzElStyle('button') %>"><%= pzForm.button_label %></button>
     </form>
   </section>
@@ -652,9 +631,16 @@
     </div>
   </nav>
 
-<% } else if (section.type === 'promo_bar' && section.fields.text) { %>
-  <div id="<%= pzId %>" class="pz-promo-bar<%= pzExtra %>" style="<%= pzHeightStyle %>background:<%= section.fields.bg_color || '#111111' %>;color:<%= section.fields.text_color || '#ffffff' %>;" data-pz-promo<% if (section.fields.dismissible) { %> data-pz-dismissible<% } %>>
-    <span class="pz-promo-text" style="<%= pzElStyle('text') %>"><%= section.fields.text %></span>
+<% } else if (section.type === 'promo_bar' && (section.fields.text || section.fields.phone || section.fields.email)) { %>
+  <% var pzPromoContact = section.fields.phone || section.fields.email; %>
+  <div id="<%= pzId %>" class="pz-promo-bar<%= pzPromoContact ? ' pz-promo-bar-contact' : '' %><%= pzExtra %>" style="<%= pzHeightStyle %>background:<%= section.fields.bg_color || '#111111' %>;color:<%= section.fields.text_color || '#ffffff' %>;" data-pz-promo<% if (section.fields.dismissible) { %> data-pz-dismissible<% } %>>
+    <% if (pzPromoContact) { %>
+      <span class="pz-promo-contact">
+        <% if (section.fields.phone) { %><a href="tel:<%= section.fields.phone.replace(/[^0-9+]/g, '') %>"><%= section.fields.phone %></a><% } %>
+        <% if (section.fields.email) { %><a href="mailto:<%= section.fields.email %>"><%= section.fields.email %></a><% } %>
+      </span>
+    <% } %>
+    <% if (section.fields.text) { %><span class="pz-promo-text" style="<%= pzElStyle('text') %>"><%= section.fields.text %></span><% } %>
     <% if (section.fields.link_url && section.fields.link_text) { %>
       <a class="pz-promo-link" href="<%= section.fields.link_url %>"><%= section.fields.link_text %></a>
     <% } %>
