@@ -1,0 +1,52 @@
+/* ---------------------------------------------------------------------
+   Audience page: reuses the same field/status component classes as
+   builder.css (kept here instead of linking builder.css, since the rail
+   and phone-preview pieces there don't apply to this page) plus the
+   contact-row list this page needs.
+   --------------------------------------------------------------------- */
+
+.pz-field-input {
+  width: 100%; height: 36px; padding: 0 11px; border-radius: calc(var(--radius) - 4px);
+  border: 1px solid var(--border); background: var(--background);
+  font-family: var(--font-sans); font-size: 13.5px; color: var(--foreground);
+}
+.pz-field-input::placeholder { color: var(--muted-foreground); }
+.pz-field-input:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent); }
+.pz-field-error { color: var(--destructive); font-size: 12px; margin-top: 8px; display: none; }
+.pz-field-error.show { display: block; }
+
+.pz-save-status {
+  font-size: 12px; color: var(--muted-foreground); display: flex; align-items: center; gap: 6px;
+}
+.pz-save-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex: none; }
+.pz-save-status.saving .dot { background: var(--warning); }
+.pz-save-status.error .dot { background: var(--destructive); }
+
+.pz-icon-btn {
+  width: 28px; height: 28px; border-radius: calc(var(--radius) - 4px);
+  border: 1px solid transparent; background: none;
+  display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); cursor: pointer;
+}
+.pz-icon-btn:hover { background: var(--muted); color: var(--destructive); }
+
+.pz-contact-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  transition: opacity .15s ease;
+}
+.pz-contact-row:last-child { border-bottom: none; }
+.pz-contact-row.pz-removing { opacity: .4; }
+.pz-contact-avatar {
+  flex: none; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-foreground);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 13px;
+}
+.pz-contact-main { flex: 1; min-width: 0; }
+.pz-contact-name { font-weight: 600; font-size: 13.5px; }
+.pz-contact-meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+.pz-contact-note { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; font-style: italic; }
+.pz-contact-source {
+  flex: none; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+  padding: 3px 8px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground);
+}

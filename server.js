@@ -13,7 +13,6 @@ const session = require('express-session');
 const {
   findUserByEmail,
   findUserById,
-  findUserByHandle,
   createUser,
   verifyPassword,
   toPublicUser,
@@ -28,9 +27,14 @@ const {
   deleteBlock,
   duplicateBlock,
   TYPES: BLOCK_TYPES,
-  TYPE_LABELS: BLOCK_LABELS,
-  URL_TYPES: BLOCK_URL_TYPES,
 } = require('./lib/blocks');
+const {
+  listContacts,
+  countContacts,
+  createContact,
+  updateContact,
+  deleteContact,
+} = require('./lib/contacts');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -39,9 +43,6 @@ const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-// Behind nginx in production — lets req.hostname/req.protocol reflect what
-// the visitor actually requested (the store subdomain, https).
-app.set('trust proxy', 1);
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
@@ -66,121 +67,13 @@ app.use(session({
 const SITE_NAME = 'PageZaper';
 const SITE_DOMAIN = 'pagezaper.com';
 
-// Appended to /css and /js URLs in the views (?v=...) so every restart —
-// i.e. every deploy — gives browsers a new URL. Without it a browser can
-// pair a freshly rendered page with a cached, older builder.js and break.
-const ASSET_VERSION = Date.now().toString(36);
-
-// Makes siteName/siteDomain/assetVersion available in every view without
-// passing them explicitly on every res.render call.
+// Makes siteName/siteDomain available in every view without passing them
+// explicitly on every res.render call.
 app.use((req, res, next) => {
   res.locals.siteName = SITE_NAME;
   res.locals.siteDomain = SITE_DOMAIN;
-  res.locals.assetVersion = ASSET_VERSION;
   res.locals.currentUser = req.session.user || null;
-  res.locals.storeUrlFor = (handle) => storeUrlFor(req, handle);
   next();
-});
-
-// --- Public stores on subdomains ---------------------------------------
-// meera.pagezaper.com renders Meera's store. In local dev the same works
-// on meera.localhost:3000 (browsers resolve *.localhost to this machine
-// with no hosts-file edits). Anything else — pagezaper.com, www., the
-// VPS's IP — falls through to the normal site routes below.
-const STORE_BASE_DOMAINS = [SITE_DOMAIN, 'localhost'];
-
-function storeHandleFromHost(hostname) {
-  const host = String(hostname || '').toLowerCase();
-  for (const base of STORE_BASE_DOMAINS) {
-    if (!host.endsWith(`.${base}`)) continue;
-    const sub = host.slice(0, -(base.length + 1));
-    // Only one level deep (a.b.pagezaper.com isn't a store), and www is
-    // the main site.
-    if (!sub || sub.includes('.') || sub === 'www') return null;
-    return sub;
-  }
-  return null;
-}
-
-function isLocalRequest(req) {
-  return req.hostname === 'localhost' || req.hostname.endsWith('.localhost');
-}
-
-// Where a handle's store lives, as seen from this request — so "View live"
-// opens the local store while developing and the real one in production.
-function storeUrlFor(req, handle) {
-  if (isLocalRequest(req)) return `http://${handle}.localhost:${PORT}`;
-  return `https://${handle}.${SITE_DOMAIN}`;
-}
-
-// Link/Video/Social blocks store a URL the merchant typed. Only http(s)
-// links are rendered — never javascript: or data: — and a bare
-// "instagram.com/x" gets https:// added.
-function safeHref(raw) {
-  const value = String(raw || '').trim();
-  if (!value) return null;
-  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
-  try {
-    const url = new URL(withScheme);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-app.use(async (req, res, next) => {
-  const handle = storeHandleFromHost(req.hostname);
-  if (!handle) return next();
-
-  const notFound = (message) => res.status(404).render('error', {
-    title: `Store not found — ${SITE_NAME}`,
-    heading: 'Store not found',
-    message,
-  });
-
-  // A store is a single page for now; login/dashboard live on the main
-  // domain, not on every merchant's subdomain.
-  if (req.path !== '/' || (req.method !== 'GET' && req.method !== 'HEAD')) {
-    return notFound('The page you’re looking for doesn’t exist.');
-  }
-
-  try {
-    const owner = await findUserByHandle(handle);
-    if (!owner) return notFound(`There’s no store at ${handle}.${SITE_DOMAIN} yet.`);
-
-    const blocks = (await listBlocks(owner.id))
-      .filter((b) => b.visible && BLOCK_LABELS[b.type])
-      .map((b) => {
-        const href = BLOCK_URL_TYPES.has(b.type) ? safeHref(b.sub) : null;
-        return {
-          type: b.type,
-          label: BLOCK_LABELS[b.type],
-          title: b.title || BLOCK_LABELS[b.type],
-          // For URL blocks the raw URL isn't useful text — show the host.
-          sub: href ? new URL(href).host.replace(/^www\./, '') : b.sub,
-          price: b.price,
-          href,
-        };
-      });
-
-    const initials = owner.name.split(/\s+/).filter(Boolean).slice(0, 2)
-      .map((p) => p[0].toUpperCase()).join('') || 'U';
-
-    res.render('store', {
-      title: `${owner.name} — ${SITE_NAME}`,
-      owner: {
-        name: owner.name,
-        bio: owner.bio || '',
-        initials,
-        accent: /^#[0-9a-f]{6}$/i.test(owner.accent_color) ? owner.accent_color : '#ff6b4a',
-        showBadge: !!owner.show_badge,
-      },
-      blocks,
-      mainSiteUrl: isLocalRequest(req) ? `http://localhost:${PORT}` : `https://${SITE_DOMAIN}`,
-    });
-  } catch (err) {
-    next(err);
-  }
 });
 
 function redirectIfLoggedIn(req, res, next) {
@@ -401,6 +294,69 @@ app.post('/dashboard/builder/design', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Update design failed:', err);
     res.status(500).json({ error: 'Could not save your design. Please try again.' });
+  }
+});
+
+// --- Audience -----------------------------------------------------------
+// A merchant's people list. Same shape as the builder: the page itself is
+// a normal render, every action inside it is a fetch() against the JSON
+// endpoints below, and every endpoint scopes to req.session.user.id so one
+// merchant can never see or touch another merchant's contacts.
+
+app.get('/dashboard/audience', requireAuth, async (req, res, next) => {
+  try {
+    const contacts = await listContacts(req.session.user.id);
+    res.render('audience', {
+      title: `Audience — ${SITE_NAME}`,
+      user: req.session.user,
+      contacts,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/dashboard/audience', requireAuth, async (req, res) => {
+  try {
+    const { name, email, phone, note } = req.body || {};
+    const contact = await createContact(req.session.user.id, { name, email, phone, note });
+    res.status(201).json(contact);
+  } catch (err) {
+    if (err.code === 'NAME_REQUIRED' || err.code === 'CONTACT_METHOD_REQUIRED' || err.code === 'INVALID_EMAIL') {
+      return res.status(400).json({ error: err.message });
+    }
+    console.error('Create contact failed:', err);
+    res.status(500).json({ error: 'Could not add that person. Please try again.' });
+  }
+});
+
+app.patch('/dashboard/audience/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid contact id.' });
+    const { name, email, phone, note } = req.body || {};
+    const fields = {};
+    if (name !== undefined) fields.name = name;
+    if (email !== undefined) fields.email = email;
+    if (phone !== undefined) fields.phone = phone;
+    if (note !== undefined) fields.note = note;
+    await updateContact(req.session.user.id, id, fields);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Update contact failed:', err);
+    res.status(500).json({ error: 'Could not save that change. Please try again.' });
+  }
+});
+
+app.delete('/dashboard/audience/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid contact id.' });
+    await deleteContact(req.session.user.id, id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete contact failed:', err);
+    res.status(500).json({ error: 'Could not delete that person. Please try again.' });
   }
 });
 
