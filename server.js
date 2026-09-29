@@ -1,6 +1,7 @@
 // Slotpay server entrypoint — homepage only for now, same stack as
 // PageZaper (Node/Express + EJS views, public/ served statically) so this
 // can grow into a full app the same way PageZaper did.
+// Last touched: 2026-09-29 — forcing GitHub Desktop to notice this file.
 const express = require('express');
 const path = require('path');
 
