@@ -75,6 +75,8 @@
     gallery: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="11" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="2.5" y="10" width="6.5" height="6.5" rx="1"/><rect x="11" y="10" width="6.5" height="6.5" rx="1"/></svg>',
     video: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="15" height="12" rx="1.3"/><path d="M8.2 7.5v5l4.3-2.5-4.3-2.5Z" fill="currentColor" stroke="none"/></svg>',
     stats: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 16.5V11M9 16.5V6M14 16.5v-8M4 16.5h12"/></svg>',
+    feature_cards: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="2.5" y="3.5" width="6.5" height="13" rx="1.2"/><rect x="11" y="3.5" width="6.5" height="13" rx="1.2"/><path d="M4.3 7h2M12.8 7h2"/></svg>',
+    process_steps: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.5" cy="5" r="1.7"/><circle cx="4.5" cy="10" r="1.7"/><circle cx="4.5" cy="15" r="1.7"/><path d="M8.5 5h8M8.5 10h8M8.5 15h8"/></svg>',
     spotlight: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M10.5 2.5H16a1 1 0 0 1 1 1v5.5a1 1 0 0 1-.3.7l-7 7a1 1 0 0 1-1.4 0l-6-6a1 1 0 0 1 0-1.4l7-7a1 1 0 0 1 .2-.1Z"/><circle cx="13" cy="6" r="1"/></svg>',
     collections: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="3.5" width="15" height="4" rx="1"/><rect x="2.5" y="10.5" width="15" height="4" rx="1"/></svg>',
     logos: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.2"/><path d="M7 10h6M10 7v6"/></svg>',
@@ -487,10 +489,16 @@
           heroMedia += '<div class="b-sec-hero-overlay"></div>';
         }
         var heroLight = heroBgType !== "none" && d.text_theme === "light";
+        var heroBtns = (d.button_text || d.button_url || d.button2_text || d.button2_url)
+          ? '<div class="b-sec-hero-actions">' +
+            '<span class="b-btn-solid" style="background:var(--b-accent);color:var(--b-accent-ink);" data-field="button_text" contenteditable="true">' + esc(d.button_text || "Button text") + '</span>' +
+            '<span class="b-btn-outline" data-field="button2_text" contenteditable="true">' + esc(d.button2_text || "Second button") + '</span>' +
+            '</div>'
+          : "";
         return '<div class="b-sec-pad b-sec-hero' + (heroBgType !== "none" ? " has-custom-bg" : "") + (heroLight ? " has-light-text" : "") + '"' + heroBgStyle + '>' +
           heroMedia +
           '<h2 data-field="heading" contenteditable="true">' + esc(d.heading) + '</h2>' +
-          '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p></div>';
+          '<p data-field="subheading" contenteditable="true">' + esc(d.subheading) + '</p>' + heroBtns + '</div>';
 
       case "heading":
         // Real tag (h1-h6, see the Content tab's "HTML Tag" select), but
@@ -618,6 +626,36 @@
             '<div class="b-stat-label" data-field="items.' + idx + '.label" contenteditable="true">' + esc(it.label) + '</div></div>';
         }).join("");
         return '<div class="b-sec-pad b-sec-stats"><div class="b-stats-grid" data-cols="' + (d.cols || "4") + '">' + statCards + '</div></div>';
+      }
+
+      case "feature_cards": {
+        var fcItems = d.items && d.items.length ? d.items : [{ icon: "✓", heading: "Add a card", body: "", bullets: [], button_text: "", button_url: "" }];
+        var fcCards = fcItems.map(function (it, idx) {
+          var fcBullets = (it.bullets || []).length
+            ? '<ul class="b-fc-bullets">' + it.bullets.map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("") + '</ul>'
+            : "";
+          var fcBtn = it.button_text ? '<span class="b-fc-btn">' + esc(it.button_text) + '</span>' : "";
+          return '<div class="b-fc-card">' +
+            (it.icon ? '<div class="b-fc-icon" data-field="items.' + idx + '.icon" contenteditable="true">' + esc(it.icon) + '</div>' : "") +
+            '<h3 data-field="items.' + idx + '.heading" contenteditable="true">' + esc(it.heading) + '</h3>' +
+            '<p data-field="items.' + idx + '.body" contenteditable="true">' + esc(it.body) + '</p>' +
+            fcBullets + fcBtn + '</div>';
+        }).join("");
+        return '<div class="b-sec-pad b-sec-feature-cards">' +
+          (d.heading ? '<h3 class="b-sec-center-heading" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' : "") +
+          '<div class="b-fc-grid" data-cols="' + fcItems.length + '">' + fcCards + '</div></div>';
+      }
+
+      case "process_steps": {
+        var stepItems = d.items && d.items.length ? d.items : [{ heading: "Add a step", body: "" }];
+        var stepCards = stepItems.map(function (it, idx) {
+          return '<div class="b-step-card"><div class="b-step-num">' + (idx + 1) + '</div>' +
+            '<h4 data-field="items.' + idx + '.heading" contenteditable="true">' + esc(it.heading) + '</h4>' +
+            '<p data-field="items.' + idx + '.body" contenteditable="true">' + esc(it.body) + '</p></div>';
+        }).join("");
+        return '<div class="b-sec-pad b-sec-steps">' +
+          (d.heading ? '<h3 class="b-sec-center-heading" data-field="heading" contenteditable="true">' + esc(d.heading) + '</h3>' : "") +
+          '<div class="b-step-grid" data-cols="' + stepItems.length + '">' + stepCards + '</div></div>';
       }
 
       case "spotlight": {
@@ -1524,6 +1562,61 @@
     return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No stats yet — add one below.</div>') + '</div>' + addBtn;
   }
 
+  // Feature cards — same Elementor-style repeater as statsItemsEditorHtml
+  // above, just with more fields per card (icon/heading/body edit both here
+  // AND as contenteditable text directly on the canvas — see the
+  // "feature_cards" canvas-preview case; bullets/button only edit here,
+  // since a bullet list and a button have nothing natural to click on the
+  // canvas). data-fc-* wired in wireInspector's click/focusout handlers.
+  // Bullets are one line per bullet, same convention as logos' "names"
+  // field. Capped at 4 cards to match lib/sections.js's sanitizeFields.
+  function featureCardsItemsEditorHtml(items) {
+    var list = items || [];
+    var rows = list.map(function (it, i) {
+      return '<div class="b-faq-row" data-fc-row>' +
+        '<div class="b-faq-row-head">' +
+          '<span class="b-faq-row-num">Card ' + (i + 1) + '</span>' +
+          '<button type="button" class="b-faq-row-dup" data-fc-duplicate data-index="' + i + '" aria-label="Duplicate card" title="Duplicate">' + icon("dup") + '</button>' +
+          '<button type="button" class="b-faq-row-remove" data-fc-remove data-index="' + i + '" aria-label="Remove card" title="Remove">' + icon("trash") + '</button>' +
+        '</div>' +
+        '<input class="b-text-native" type="text" data-fc-icon data-index="' + i + '" value="' + esc(it.icon || "") + '" placeholder="Icon (emoji, e.g. 🎓)" />' +
+        '<input class="b-text-native" type="text" data-fc-heading data-index="' + i + '" value="' + esc(it.heading || "") + '" placeholder="Card heading" />' +
+        '<textarea class="b-text-native b-textarea-native" data-fc-body data-index="' + i + '" placeholder="Card description" rows="2">' + esc(it.body || "") + '</textarea>' +
+        '<textarea class="b-text-native b-textarea-native" data-fc-bullets data-index="' + i + '" placeholder="One bullet per line (optional)" rows="2">' + esc((it.bullets || []).join("\n")) + '</textarea>' +
+        '<input class="b-text-native" type="text" data-fc-button-text data-index="' + i + '" value="' + esc(it.button_text || "") + '" placeholder="Button text (optional)" />' +
+        '<input class="b-text-native" type="text" data-fc-button-url data-index="' + i + '" value="' + esc(it.button_url || "") + '" placeholder="Button link (optional)" />' +
+      '</div>';
+    }).join("");
+    var addBtn = list.length < 4
+      ? '<button type="button" class="b-btn-outline b-faq-add" data-fc-add>' + icon("plus") + ' Add Card</button>'
+      : '<div class="b-field-hint">Up to 4 cards.</div>';
+    return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No cards yet — add one below.</div>') + '</div>' + addBtn;
+  }
+
+  // Process steps — same Elementor-style repeater as faqItemsEditorHtml
+  // above (data-step-heading/data-step-body); step numbers are computed
+  // from position at render time (see section.ejs), never stored, so
+  // reordering with the row's own drag isn't needed here to stay correct.
+  // Capped at 6 steps to match lib/sections.js's sanitizeFields.
+  function processStepsItemsEditorHtml(items) {
+    var list = items || [];
+    var rows = list.map(function (it, i) {
+      return '<div class="b-faq-row" data-step-row>' +
+        '<div class="b-faq-row-head">' +
+          '<span class="b-faq-row-num">Step ' + (i + 1) + '</span>' +
+          '<button type="button" class="b-faq-row-dup" data-step-duplicate data-index="' + i + '" aria-label="Duplicate step" title="Duplicate">' + icon("dup") + '</button>' +
+          '<button type="button" class="b-faq-row-remove" data-step-remove data-index="' + i + '" aria-label="Remove step" title="Remove">' + icon("trash") + '</button>' +
+        '</div>' +
+        '<input class="b-text-native" type="text" data-step-heading data-index="' + i + '" value="' + esc(it.heading || "") + '" placeholder="Step heading" />' +
+        '<textarea class="b-text-native b-textarea-native" data-step-body data-index="' + i + '" placeholder="Step description" rows="2">' + esc(it.body || "") + '</textarea>' +
+      '</div>';
+    }).join("");
+    var addBtn = list.length < 6
+      ? '<button type="button" class="b-btn-outline b-faq-add" data-step-add>' + icon("plus") + ' Add Step</button>'
+      : '<div class="b-field-hint">Up to 6 steps.</div>';
+    return '<div class="b-faq-editor">' + (rows || '<div class="b-field-hint">No steps yet — add one below.</div>') + '</div>' + addBtn;
+  }
+
   // Testimonials — same Elementor-style repeater as faqItemsEditorHtml
   // above (data-testi-quote/data-testi-author, wired in wireInspector's
   // focusout handler); clicking a quote/name directly on the canvas still
@@ -1589,7 +1682,9 @@
       case "hero":
         return field("Heading", textHtml("heading", d.heading)) +
           field("Subheading", textareaHtml("subheading", d.subheading)) +
-          field("", '<div class="b-inspector-hint">You can also click the heading or subheading directly on the canvas to edit it. Background and text color live on the Style tab.</div>');
+          field("Button link (optional)", textHtml("button_url", d.button_url, "https://…")) +
+          field("Second button link (optional)", textHtml("button2_url", d.button2_url, "https://…")) +
+          field("", '<div class="b-inspector-hint">Click the heading, subheading or either button directly on the canvas to edit its text. A button only shows once it has both text and a link. Background and text color live on the Style tab.</div>');
       case "heading":
         return field("Title", textareaHtml("heading", d.heading, "Add Your Heading Text Here")) +
           field("Link", textHtml("link_url", d.link_url, "Type or paste your URL")) +
@@ -1640,6 +1735,14 @@
       case "stats":
         return field("Stats", statsItemsEditorHtml(d.items)) +
           field("", '<div class="b-inspector-hint">Click a number or label directly on the canvas to edit it — use Add, Duplicate, or Remove here to manage the list. Columns live on the Style tab.</div>');
+      case "feature_cards":
+        return field("Heading (optional)", textHtml("heading", d.heading, "How we help")) +
+          field("Cards", featureCardsItemsEditorHtml(d.items)) +
+          field("", '<div class="b-inspector-hint">Click a card’s icon, heading or description directly on the canvas to edit it — use the fields here to manage bullets, the button, and to Add, Duplicate, or Remove a card. Up to 4 cards.</div>');
+      case "process_steps":
+        return field("Heading (optional)", textHtml("heading", d.heading, "How it works")) +
+          field("Steps", processStepsItemsEditorHtml(d.items)) +
+          field("", '<div class="b-inspector-hint">Click a step’s heading or description directly on the canvas to edit it — use Add, Duplicate, or Remove here to manage the list. Steps are numbered automatically. Up to 6 steps.</div>');
       case "spotlight": {
         var prodOptions = DATA.products.map(function (p) { return { val: String(p.id), label: p.title }; });
         var picker = prodOptions.length
@@ -2799,6 +2902,74 @@
         renderInspector();
         return;
       }
+      var fcAddBtn = e.target.closest("[data-fc-add]");
+      if (fcAddBtn) {
+        var fcAddTarget = inspectorFieldTarget();
+        if (!fcAddTarget) return;
+        var fcAddItems = (fcAddTarget.fields.items || []).slice();
+        if (fcAddItems.length >= 4) return;
+        fcAddItems.push({ icon: "✓", heading: "New card", body: "Describe this card.", bullets: [], button_text: "", button_url: "" });
+        fcAddTarget.save({ items: fcAddItems });
+        renderInspector();
+        return;
+      }
+      var fcDupBtn = e.target.closest("[data-fc-duplicate]");
+      if (fcDupBtn) {
+        var fcDupTarget = inspectorFieldTarget();
+        if (!fcDupTarget) return;
+        var fcDupIdx = parseInt(fcDupBtn.dataset.index, 10);
+        var fcDupItems = (fcDupTarget.fields.items || []).slice();
+        var fcDupItem = fcDupItems[fcDupIdx];
+        if (fcDupItem && fcDupItems.length < 4) fcDupItems.splice(fcDupIdx + 1, 0, Object.assign({}, fcDupItem, { bullets: (fcDupItem.bullets || []).slice() }));
+        fcDupTarget.save({ items: fcDupItems });
+        renderInspector();
+        return;
+      }
+      var fcRemoveBtn = e.target.closest("[data-fc-remove]");
+      if (fcRemoveBtn) {
+        var fcRemTarget = inspectorFieldTarget();
+        if (!fcRemTarget) return;
+        var fcRemIdx = parseInt(fcRemoveBtn.dataset.index, 10);
+        var fcRemItems = (fcRemTarget.fields.items || []).slice();
+        fcRemItems.splice(fcRemIdx, 1);
+        fcRemTarget.save({ items: fcRemItems });
+        renderInspector();
+        return;
+      }
+      var stepAddBtn = e.target.closest("[data-step-add]");
+      if (stepAddBtn) {
+        var stepAddTarget = inspectorFieldTarget();
+        if (!stepAddTarget) return;
+        var stepAddItems = (stepAddTarget.fields.items || []).slice();
+        if (stepAddItems.length >= 6) return;
+        stepAddItems.push({ heading: "New step", body: "Describe this step." });
+        stepAddTarget.save({ items: stepAddItems });
+        renderInspector();
+        return;
+      }
+      var stepDupBtn = e.target.closest("[data-step-duplicate]");
+      if (stepDupBtn) {
+        var stepDupTarget = inspectorFieldTarget();
+        if (!stepDupTarget) return;
+        var stepDupIdx = parseInt(stepDupBtn.dataset.index, 10);
+        var stepDupItems = (stepDupTarget.fields.items || []).slice();
+        var stepDupItem = stepDupItems[stepDupIdx];
+        if (stepDupItem && stepDupItems.length < 6) stepDupItems.splice(stepDupIdx + 1, 0, Object.assign({}, stepDupItem));
+        stepDupTarget.save({ items: stepDupItems });
+        renderInspector();
+        return;
+      }
+      var stepRemoveBtn = e.target.closest("[data-step-remove]");
+      if (stepRemoveBtn) {
+        var stepRemTarget = inspectorFieldTarget();
+        if (!stepRemTarget) return;
+        var stepRemIdx = parseInt(stepRemoveBtn.dataset.index, 10);
+        var stepRemItems = (stepRemTarget.fields.items || []).slice();
+        stepRemItems.splice(stepRemIdx, 1);
+        stepRemTarget.save({ items: stepRemItems });
+        renderInspector();
+        return;
+      }
       var testiAddBtn = e.target.closest("[data-testi-add]");
       if (testiAddBtn) {
         var testiAddTarget = inspectorFieldTarget();
@@ -3101,6 +3272,95 @@
         if (!statLabelItems[statLabelIdx]) return;
         statLabelItems[statLabelIdx] = Object.assign({}, statLabelItems[statLabelIdx], { label: statLabelIn.value.trim() });
         statLabelTarget.save({ items: statLabelItems });
+        return;
+      }
+      var fcIconIn = e.target.closest("input[data-fc-icon]");
+      if (fcIconIn) {
+        var fcIconTarget = inspectorFieldTarget();
+        if (!fcIconTarget) return;
+        var fcIconIdx = parseInt(fcIconIn.dataset.index, 10);
+        var fcIconItems = (fcIconTarget.fields.items || []).slice();
+        if (!fcIconItems[fcIconIdx]) return;
+        fcIconItems[fcIconIdx] = Object.assign({}, fcIconItems[fcIconIdx], { icon: fcIconIn.value.trim() });
+        fcIconTarget.save({ items: fcIconItems });
+        return;
+      }
+      var fcHeadingIn = e.target.closest("input[data-fc-heading]");
+      if (fcHeadingIn) {
+        var fcHeadingTarget = inspectorFieldTarget();
+        if (!fcHeadingTarget) return;
+        var fcHeadingIdx = parseInt(fcHeadingIn.dataset.index, 10);
+        var fcHeadingItems = (fcHeadingTarget.fields.items || []).slice();
+        if (!fcHeadingItems[fcHeadingIdx]) return;
+        fcHeadingItems[fcHeadingIdx] = Object.assign({}, fcHeadingItems[fcHeadingIdx], { heading: fcHeadingIn.value.trim() });
+        fcHeadingTarget.save({ items: fcHeadingItems });
+        return;
+      }
+      var fcBodyIn = e.target.closest("textarea[data-fc-body]");
+      if (fcBodyIn) {
+        var fcBodyTarget = inspectorFieldTarget();
+        if (!fcBodyTarget) return;
+        var fcBodyIdx = parseInt(fcBodyIn.dataset.index, 10);
+        var fcBodyItems = (fcBodyTarget.fields.items || []).slice();
+        if (!fcBodyItems[fcBodyIdx]) return;
+        fcBodyItems[fcBodyIdx] = Object.assign({}, fcBodyItems[fcBodyIdx], { body: fcBodyIn.value.trim() });
+        fcBodyTarget.save({ items: fcBodyItems });
+        return;
+      }
+      var fcBulletsIn = e.target.closest("textarea[data-fc-bullets]");
+      if (fcBulletsIn) {
+        var fcBulletsTarget = inspectorFieldTarget();
+        if (!fcBulletsTarget) return;
+        var fcBulletsIdx = parseInt(fcBulletsIn.dataset.index, 10);
+        var fcBulletsItems = (fcBulletsTarget.fields.items || []).slice();
+        if (!fcBulletsItems[fcBulletsIdx]) return;
+        var fcBulletsList = fcBulletsIn.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+        fcBulletsItems[fcBulletsIdx] = Object.assign({}, fcBulletsItems[fcBulletsIdx], { bullets: fcBulletsList });
+        fcBulletsTarget.save({ items: fcBulletsItems });
+        return;
+      }
+      var fcBtnTextIn = e.target.closest("input[data-fc-button-text]");
+      if (fcBtnTextIn) {
+        var fcBtnTextTarget = inspectorFieldTarget();
+        if (!fcBtnTextTarget) return;
+        var fcBtnTextIdx = parseInt(fcBtnTextIn.dataset.index, 10);
+        var fcBtnTextItems = (fcBtnTextTarget.fields.items || []).slice();
+        if (!fcBtnTextItems[fcBtnTextIdx]) return;
+        fcBtnTextItems[fcBtnTextIdx] = Object.assign({}, fcBtnTextItems[fcBtnTextIdx], { button_text: fcBtnTextIn.value.trim() });
+        fcBtnTextTarget.save({ items: fcBtnTextItems });
+        return;
+      }
+      var fcBtnUrlIn = e.target.closest("input[data-fc-button-url]");
+      if (fcBtnUrlIn) {
+        var fcBtnUrlTarget = inspectorFieldTarget();
+        if (!fcBtnUrlTarget) return;
+        var fcBtnUrlIdx = parseInt(fcBtnUrlIn.dataset.index, 10);
+        var fcBtnUrlItems = (fcBtnUrlTarget.fields.items || []).slice();
+        if (!fcBtnUrlItems[fcBtnUrlIdx]) return;
+        fcBtnUrlItems[fcBtnUrlIdx] = Object.assign({}, fcBtnUrlItems[fcBtnUrlIdx], { button_url: fcBtnUrlIn.value.trim() });
+        fcBtnUrlTarget.save({ items: fcBtnUrlItems });
+        return;
+      }
+      var stepHeadingIn = e.target.closest("input[data-step-heading]");
+      if (stepHeadingIn) {
+        var stepHeadingTarget = inspectorFieldTarget();
+        if (!stepHeadingTarget) return;
+        var stepHeadingIdx = parseInt(stepHeadingIn.dataset.index, 10);
+        var stepHeadingItems = (stepHeadingTarget.fields.items || []).slice();
+        if (!stepHeadingItems[stepHeadingIdx]) return;
+        stepHeadingItems[stepHeadingIdx] = Object.assign({}, stepHeadingItems[stepHeadingIdx], { heading: stepHeadingIn.value.trim() });
+        stepHeadingTarget.save({ items: stepHeadingItems });
+        return;
+      }
+      var stepBodyIn = e.target.closest("textarea[data-step-body]");
+      if (stepBodyIn) {
+        var stepBodyTarget = inspectorFieldTarget();
+        if (!stepBodyTarget) return;
+        var stepBodyIdx = parseInt(stepBodyIn.dataset.index, 10);
+        var stepBodyItems = (stepBodyTarget.fields.items || []).slice();
+        if (!stepBodyItems[stepBodyIdx]) return;
+        stepBodyItems[stepBodyIdx] = Object.assign({}, stepBodyItems[stepBodyIdx], { body: stepBodyIn.value.trim() });
+        stepBodyTarget.save({ items: stepBodyItems });
         return;
       }
       var testiQuoteIn = e.target.closest("textarea[data-testi-quote]");

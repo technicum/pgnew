@@ -234,6 +234,16 @@
     <% } %>
     <h1 style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h1>
     <p style="<%= pzElStyle('subheading') %>"><%= section.fields.subheading %></p>
+    <% if ((section.fields.button_text && section.fields.button_url) || (section.fields.button2_text && section.fields.button2_url)) { %>
+      <div class="hero-actions">
+        <% if (section.fields.button_text && section.fields.button_url) { %>
+          <a class="btn btn-primary" href="<%= section.fields.button_url %>" style="<%= pzElStyle('button_text') %>"><%= section.fields.button_text %></a>
+        <% } %>
+        <% if (section.fields.button2_text && section.fields.button2_url) { %>
+          <a class="btn btn-outline" href="<%= section.fields.button2_url %>" style="<%= pzElStyle('button2_text') %>"><%= section.fields.button2_text %></a>
+        <% } %>
+      </div>
+    <% } %>
   </section>
 
 <% } else if (section.type === 'heading') { %>
@@ -424,6 +434,44 @@
         <div class="stat-item">
           <div class="stat-value"><%= it.value %></div>
           <div class="stat-label"><%= it.label %></div>
+        </div>
+      <% }); %>
+    </div>
+  </section>
+
+<% } else if (section.type === 'feature_cards' && section.fields.items && section.fields.items.length) { %>
+  <section id="<%= pzId %>" class="feature-cards-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
+    <% if (section.fields.heading) { %><h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2><% } %>
+    <div class="feature-cards-grid" data-cols="<%= section.fields.items.length %>">
+      <% section.fields.items.forEach(function(it) { %>
+        <div class="feature-card">
+          <% if (it.icon) { %><div class="feature-card-icon"><%= it.icon %></div><% } %>
+          <h3><%= it.heading %></h3>
+          <% if (it.body) { %><p><%= it.body %></p><% } %>
+          <% if (it.bullets && it.bullets.length) { %>
+            <ul class="feature-card-bullets">
+              <% it.bullets.forEach(function(b) { %><li><%= b %></li><% }); %>
+            </ul>
+          <% } %>
+          <% if (it.button_text && it.button_url) { %>
+            <a class="btn btn-primary" href="<%= it.button_url %>"><%= it.button_text %></a>
+          <% } %>
+        </div>
+      <% }); %>
+    </div>
+  </section>
+
+<% } else if (section.type === 'process_steps' && section.fields.items && section.fields.items.length) { %>
+  <section id="<%= pzId %>" class="process-steps-section<%= pzExtra %>" style="<%= pzHeightStyle %>">
+    <%- pzUniBgExtras(section) %>
+    <% if (section.fields.heading) { %><h2 class="section-title" style="<%= pzElStyle('heading') %>"><%= section.fields.heading %></h2><% } %>
+    <div class="process-steps-grid" data-cols="<%= section.fields.items.length %>">
+      <% section.fields.items.forEach(function(it, idx) { %>
+        <div class="process-step">
+          <div class="process-step-num"><%= idx + 1 %></div>
+          <h4><%= it.heading %></h4>
+          <% if (it.body) { %><p><%= it.body %></p><% } %>
         </div>
       <% }); %>
     </div>

@@ -405,6 +405,8 @@ body.builder-body button { font-family: inherit; }
 .b-sec-hero h2, .b-sec-hero p { position: relative; z-index: 1; }
 .b-sec-hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
 .b-sec-hero-overlay { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: -1; }
+.b-sec-hero-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; position: relative; z-index: 1; }
+.b-sec-hero-actions .b-btn-solid, .b-sec-hero-actions .b-btn-outline { font-size: 14px; padding: 10px 20px; }
 
 .b-sec-imgtext { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; padding-top: 48px; padding-bottom: 48px; }
 .b-sec-imgtext.reverse { direction: rtl; }
@@ -441,6 +443,23 @@ body.builder-body button { font-family: inherit; }
 .b-canvas-frame[data-vp="mobile"] .b-stats-grid { grid-template-columns: repeat(2,1fr) !important; }
 .b-stat-value { font-size: 26px; font-weight: 700; line-height: 1.15; }
 .b-stat-label { margin-top: 4px; font-size: 12.5px; color: var(--b-muted); }
+
+.b-sec-center-heading { text-align: center; font-size: 21px; margin-bottom: 26px; }
+.b-sec-feature-cards { padding-top: 40px; padding-bottom: 40px; }
+.b-fc-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.b-fc-card { border: 1px solid var(--b-line); border-radius: 12px; padding: 22px; background: var(--b-surface); }
+.b-fc-icon { font-size: 22px; margin-bottom: 10px; }
+.b-fc-card h3 { font-size: 17px; margin-bottom: 6px; }
+.b-fc-card p { font-size: 13.5px; color: var(--b-muted); line-height: 1.55; }
+.b-fc-bullets { margin: 10px 0 0; padding-left: 18px; font-size: 13px; color: var(--b-muted); }
+.b-fc-bullets li { margin-bottom: 4px; }
+.b-fc-btn { display: inline-block; margin-top: 12px; font-size: 12.5px; font-weight: 700; padding: 7px 14px; border-radius: 8px; background: var(--b-accent); color: var(--b-accent-ink); }
+
+.b-sec-steps { padding-top: 40px; padding-bottom: 40px; }
+.b-step-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.b-step-num { width: 30px; height: 30px; border-radius: 50%; background: var(--b-ink); color: var(--b-surface); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.b-step-card h4 { font-size: 14.5px; margin-bottom: 4px; }
+.b-step-card p { font-size: 13px; color: var(--b-muted); line-height: 1.5; }
 
 .b-sec-testimonials { padding-top: 40px; padding-bottom: 40px; }
 .b-testi-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; max-width: 900px; margin: 0 auto; }

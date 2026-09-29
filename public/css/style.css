@@ -193,6 +193,7 @@ main.container {
 }
 .hero-text-light h1 { color: #fff; }
 .hero-text-light p { color: rgba(255, 255, 255, .85); }
+.hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 22px; position: relative; z-index: 1; }
 
 /* Universal background (Style tab, every section type except hero/heading —
    which keep their own dedicated version above/below — see section.ejs's
@@ -367,6 +368,10 @@ main.container {
 .btn-block { display: block; width: 100%; }
 .btn-whatsapp { background: #25d366; color: #fff; margin-top: 12px; text-decoration: none; }
 .btn-whatsapp:hover { background: #1ebe5a; }
+.btn-outline { background: transparent; color: var(--color-primary); box-shadow: inset 0 0 0 1.5px var(--color-primary); }
+.btn-outline:hover { background: var(--color-primary); color: #fff; }
+.hero-text-light .btn-outline { color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.7); }
+.hero-text-light .btn-outline:hover { background: rgba(255,255,255,.15); }
 
 .link-btn {
   background: none;
@@ -900,6 +905,57 @@ main.container {
 .faq-item summary::after { content: "+"; float: right; color: var(--color-muted); font-weight: 400; }
 .faq-item[open] summary::after { content: "\2212"; }
 .faq-item p { color: var(--color-muted); margin: 10px 0 0; line-height: 1.6; }
+
+/* Feature cards */
+.feature-cards-section { padding: 40px 0; }
+.feature-cards-section .section-title { text-align: center; }
+.feature-cards-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.feature-card { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 28px; background: var(--color-surface); }
+.feature-card-icon { font-size: 28px; margin-bottom: 14px; }
+.feature-card h3 { margin: 0 0 8px; }
+.feature-card p { color: var(--color-muted); margin: 0; line-height: 1.6; }
+.feature-card-bullets { margin: 14px 0 0; padding-left: 20px; color: var(--color-muted); }
+.feature-card-bullets li { margin-bottom: 6px; }
+.feature-card .btn { margin-top: 18px; }
+
+/* Process steps */
+.process-steps-section { padding: 40px 0; }
+.process-steps-section .section-title { text-align: center; }
+.process-steps-grid { display: grid; gap: 28px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.process-step-num {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--color-primary); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; margin-bottom: 12px;
+}
+.process-step h4 { margin: 0 0 6px; }
+.process-step p { color: var(--color-muted); margin: 0; line-height: 1.55; font-size: 0.92rem; }
+
+/* Site-wide WhatsApp float + mobile sticky CTA bar (views/storefront/
+   partials/whatsapp-float.ejs) — only rendered when a store has set
+   whatsapp_number, so these rules are inert (nothing to style) otherwise. */
+.pz-wa-float {
+  position: fixed; right: 20px; bottom: 20px; z-index: 60;
+  width: 56px; height: 56px; border-radius: 50%; background: #25d366; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 24px -8px rgba(0,0,0,.4);
+}
+.pz-wa-float svg { width: 28px; height: 28px; }
+.pz-wa-float:hover { background: #1ebe5a; }
+.pz-mobile-cta-bar {
+  display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+  grid-template-columns: 1fr 1fr; background: var(--color-surface); border-top: 1px solid var(--color-border);
+  box-shadow: 0 -6px 18px -10px rgba(0,0,0,.25);
+}
+.pz-mobile-cta-bar a {
+  display: flex; align-items: center; justify-content: center; padding: 14px 8px;
+  font-weight: 700; font-size: 0.9rem; text-decoration: none;
+}
+.pz-mobile-cta-bar a:first-child { color: var(--color-primary); border-right: 1px solid var(--color-border); }
+.pz-mobile-cta-bar a:last-child { background: #25d366; color: #fff; }
+@media (max-width: 720px) {
+  .pz-mobile-cta-bar { display: grid; }
+  .pz-wa-float { bottom: 72px; }
+  body { padding-bottom: 58px; }
+}
 
 /* Countdown banner */
 .countdown { text-align: center; padding: 40px; border-radius: var(--radius); margin: 40px 0; background: var(--color-text); color: #fff; }
