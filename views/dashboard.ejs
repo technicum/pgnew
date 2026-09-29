@@ -27,7 +27,7 @@
         <div class="grid size-9 shrink-0 place-items-center rounded-md bg-accent font-display text-sm font-bold text-accent-foreground"><%= user.initials %></div>
         <span class="min-w-0 flex-1">
           <span class="block truncate text-sm font-semibold"><%= user.name %></span>
-          <span class="block truncate text-xs text-sidebar-foreground/55"><%= siteDomain %>/<%= user.handle %></span>
+          <span class="block truncate text-xs text-sidebar-foreground/55"><%= user.handle %>.<%= siteDomain %></span>
         </span>
       </div>
     </div>
@@ -100,10 +100,10 @@
         <div>
           <p class="text-sm font-semibold text-primary"><%= todayLabel %></p>
           <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Welcome, <%= user.name.split(' ')[0] %></h1>
-          <p class="mt-2 text-sm text-muted-foreground">Your store is live at <%= siteDomain %>/<%= user.handle %> — here's how it's doing.</p>
+          <p class="mt-2 text-sm text-muted-foreground">Your store is live at <%= user.handle %>.<%= siteDomain %> — here's how it's doing.</p>
         </div>
         <div class="flex gap-2" style="flex-wrap:wrap;">
-          <a href="#" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;">
+          <a href="<%= storeUrlFor(user.handle) %>" target="_blank" rel="noopener" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
             View my store
           </a>
@@ -198,7 +198,7 @@
               </span>
               <span class="flex-1">
                 <strong class="block text-sm">Share your store</strong>
-                <span class="text-xs text-muted-foreground"><%= siteDomain %>/<%= user.handle %></span>
+                <span class="text-xs text-muted-foreground"><%= user.handle %>.<%= siteDomain %></span>
               </span>
             </a>
           </div>

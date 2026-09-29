@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<% if (owner.bio) { %><meta name="description" content="<%= owner.bio %>" /><% } %>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="/css/store.css?v=<%= assetVersion %>" />
+</head>
+<body style="--store-accent: <%= owner.accent %>;">
+
+<main class="store">
+  <header class="store-header">
+    <div class="store-avatar" aria-hidden="true"><%= owner.initials %></div>
+    <h1 class="store-name"><%= owner.name %></h1>
+    <% if (owner.bio) { %><p class="store-bio"><%= owner.bio %></p><% } %>
+  </header>
+
+  <% if (!blocks.length) { %>
+    <p class="store-empty">Nothing here yet — check back soon.</p>
+  <% } %>
+
+  <div class="store-blocks">
+    <% blocks.forEach(function (block) { %>
+      <% if (block.type === 'text') { %>
+        <section class="store-text">
+          <h2><%= block.title %></h2>
+          <% if (block.sub) { %><p><%= block.sub %></p><% } %>
+        </section>
+      <% } else if (block.type === 'testimonial') { %>
+        <figure class="store-quote">
+          <blockquote><%= block.title %></blockquote>
+          <% if (block.sub) { %><figcaption><%= block.sub %></figcaption><% } %>
+        </figure>
+      <% } else if (block.href) { %>
+        <a class="store-block store-block-link" href="<%= block.href %>" target="_blank" rel="noopener noreferrer nofollow">
+          <span class="store-block-body">
+            <span class="store-block-title"><%= block.title %></span>
+            <span class="store-block-sub"><%= block.sub %></span>
+          </span>
+          <svg class="store-block-arrow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      <% } else { %>
+        <div class="store-block">
+          <span class="store-block-body">
+            <span class="store-block-label"><%= block.label %></span>
+            <span class="store-block-title"><%= block.title %></span>
+            <% if (block.sub) { %><span class="store-block-sub"><%= block.sub %></span><% } %>
+          </span>
+          <% if (block.price) { %><span class="store-block-price"><%= block.price %></span><% } %>
+        </div>
+      <% } %>
+    <% }) %>
+  </div>
+
+  <% if (owner.showBadge) { %>
+    <footer class="store-badge">
+      <a href="<%= mainSiteUrl %>">Made with <strong><%= siteName %></strong></a>
+    </footer>
+  <% } %>
+</main>
+
+</body>
+</html>

@@ -1,0 +1,75 @@
+/* ---------------------------------------------------------------------
+   Public store page (views/store.ejs) — what visitors see at
+   handle.pagezaper.com. Standalone: doesn't load dashboard.css, since
+   visitors never need the app's utility classes. --store-accent is set
+   per merchant on <body> from their Design tab choice.
+   --------------------------------------------------------------------- */
+
+:root {
+  --bg: #f5f6f4;
+  --card: #ffffff;
+  --fg: #12181f;
+  --muted: #6b7580;
+  --border: #e3e6e1;
+  --radius: 12px;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-sans); line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.store { max-width: 520px; margin: 0 auto; padding: 48px 16px 32px; min-height: 100vh; display: flex; flex-direction: column; }
+
+.store-header { text-align: center; margin-bottom: 28px; }
+.store-avatar {
+  width: 88px; height: 88px; border-radius: 50%; margin: 0 auto 16px;
+  background: var(--store-accent, #ff6b4a); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 600; font-size: 30px;
+}
+.store-name { font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.2; }
+.store-bio { color: var(--muted); font-size: 15px; margin: 8px auto 0; max-width: 380px; }
+
+.store-empty { text-align: center; color: var(--muted); font-size: 14px; padding: 32px 0; }
+
+.store-blocks { display: flex; flex-direction: column; gap: 12px; }
+
+.store-block {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; color: inherit; text-decoration: none;
+}
+.store-block-link { transition: border-color .15s ease, transform .15s ease; }
+.store-block-link:hover { border-color: var(--store-accent, #ff6b4a); transform: translateY(-1px); }
+.store-block-link:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 2px; }
+.store-block-body { display: flex; flex-direction: column; min-width: 0; }
+.store-block-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--store-accent, #ff6b4a); margin-bottom: 2px;
+}
+.store-block-title { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.store-block-sub { color: var(--muted); font-size: 13px; margin-top: 2px; overflow-wrap: anywhere; }
+.store-block-price { font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
+.store-block-arrow { flex: none; color: var(--muted); }
+
+.store-text { padding: 8px 4px; }
+.store-text h2 { font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+.store-text p { color: var(--muted); font-size: 14px; margin-top: 4px; white-space: pre-line; }
+
+.store-quote {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  border-left: 3px solid var(--store-accent, #ff6b4a); padding: 16px 18px;
+}
+.store-quote blockquote { font-size: 15px; font-style: italic; }
+.store-quote figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+
+.store-badge { margin-top: auto; padding-top: 40px; text-align: center; font-size: 12px; }
+.store-badge a { color: var(--muted); text-decoration: none; }
+.store-badge a:hover { color: var(--fg); }
+.store-badge strong { color: var(--fg); font-weight: 600; }

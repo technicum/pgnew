@@ -480,6 +480,10 @@
       if (data && data.user) {
         switcherHandle.textContent = `@${data.user.handle}`;
         previewUrl.textContent = `${data.user.handle}.${window.__PZ_SITE_DOMAIN__}`;
+        const viewLiveBtn = document.getElementById('viewLiveBtn');
+        if (viewLiveBtn && window.__PZ_STORE_URL__) {
+          viewLiveBtn.href = window.__PZ_STORE_URL__.replace('{handle}', data.user.handle);
+        }
       }
     }).catch((err) => {
       if (!debouncedProfileSave.has('profile')) profileSaveFailed = true;
