@@ -1,16 +1,18 @@
-/* Public lead-magnet pages (/l/:handle/:slug and the success screen).
-   Shares brand tokens with style.css (blue/navy, lime, coral, Fraunces +
-   IBM Plex Sans) and reuses .field / .btn / .auth-card from auth.css —
-   this sheet only adds the split offer layout and the cover mockup. */
+/* Public lead-magnet pages (meera.pagezaper.com/:slug and the success
+   screen). Shares brand tokens with style.css (blue/navy, lime, coral,
+   Fraunces + IBM Plex Sans) and reuses .field / .btn from auth.css — this
+   sheet adds the split offer layout, the cover mockup and the form card. */
 
+/* Logo strip — only the success screen still uses it; the signup page
+   carries its logo inside the offer panel (.lm-brand). */
 .lm-top {
   padding: 22px 28px 0;
 }
 
 .lm-wrap {
-  min-height: calc(100vh - 68px);
+  min-height: 100vh;
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
 }
 
 /* ---------- left: the offer ---------- */
@@ -20,13 +22,52 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 26px;
-  padding: 56px 52px;
+  padding: 28px 56px 32px;
   color: #fff;
   background: radial-gradient(ellipse 60% 45% at 12% 8%, rgba(255,255,255,.16), transparent 60%),
               radial-gradient(ellipse 55% 40% at 90% 95%, rgba(185,237,40,.14), transparent 65%),
               linear-gradient(160deg, var(--navy) 0%, var(--magnet-accent-dark, var(--blue-dark)) 55%, var(--magnet-accent, var(--blue)) 100%);
+}
+
+/* Soft rings in the corner, so a short title doesn't leave the panel bare. */
+.lm-visual::after {
+  content: '';
+  position: absolute;
+  right: -150px;
+  bottom: -150px;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 0 0 70px rgba(255,255,255,.04), 0 0 0 140px rgba(255,255,255,.03);
+  pointer-events: none;
+}
+
+/* Logo, offer and "made by" share one centred column. */
+.lm-visual > * {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 540px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.lm-brand {
+  color: #fff;
+}
+.lm-brand .logo-mark {
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.3);
+}
+
+.lm-offer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding: 48px 0;
 }
 
 .lm-kicker {
@@ -55,36 +96,33 @@
 .lm-visual h1 {
   font-family: 'Fraunces', Georgia, serif;
   font-weight: 600;
-  font-size: clamp(28px, 3vw, 38px);
-  line-height: 1.1;
+  font-size: clamp(32px, 3.6vw, 48px);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
   text-wrap: balance;
+  overflow-wrap: anywhere;
   margin: 0;
-  max-width: 15ch;
 }
 
 .lm-visual .lm-desc {
-  font-size: 15.5px;
+  font-size: 16.5px;
   line-height: 1.65;
-  color: rgba(255,255,255,.82);
-  max-width: 42ch;
+  color: rgba(255,255,255,.84);
+  max-width: 46ch;
+  overflow-wrap: anywhere;
   margin: 0;
 }
 
 .lm-offer-row {
   display: flex;
-  align-items: flex-end;
-  gap: 22px;
-  margin-top: 6px;
-}
-.lm-offer-row--no-cover {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 40px;
+  margin-top: 14px;
 }
 
 .lm-cover {
   flex: none;
-  width: 148px;
+  width: 140px;
   aspect-ratio: 3 / 4;
   background: #fff;
   border-radius: 12px;
@@ -97,22 +135,10 @@
   position: relative;
 }
 
-.lm-cover::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 18px 18px 0;
-  border-color: transparent var(--paper) transparent transparent;
-  border-radius: 0 12px 0 0;
-}
-
 .lm-cover-bar {
-  height: 22px;
+  height: 24px;
   border-radius: 5px;
+  margin-bottom: 3px;
   background: linear-gradient(135deg, var(--coral), #ff9a8f);
 }
 
@@ -139,20 +165,51 @@
   box-shadow: 0 6px 16px rgba(4,12,40,.3);
 }
 
+.lm-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255,255,255,.92);
+}
+
+.lm-points li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.lm-point-tick {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .lm-owner-row {
   display: flex;
   align-items: center;
   gap: 10px;
   padding-top: 20px;
-  margin-top: 4px;
   border-top: 1px solid rgba(255,255,255,.2);
   font-size: 13.5px;
   color: rgba(255,255,255,.78);
 }
 
+.lm-owner-text strong { color: #fff; font-weight: 600; }
+
 .lm-owner-avatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: rgba(255,255,255,.16);
   border: 1px solid rgba(255,255,255,.28);
@@ -161,7 +218,7 @@
   justify-content: center;
   font-family: 'Fraunces', serif;
   font-weight: 600;
-  font-size: 12.5px;
+  font-size: 13px;
   color: #fff;
   flex: none;
 }
@@ -178,7 +235,12 @@
 
 .lm-form-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 440px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 36px 32px 28px;
 }
 
 .lm-eyebrow {
@@ -190,18 +252,9 @@
   margin-bottom: 10px;
 }
 
-/* .btn-primary is shared with signup/login — override it only inside this
-   card, scoped, so a custom accent never leaks onto other pages. */
-.lm-form-card .btn-primary {
-  background: var(--magnet-accent, var(--blue));
-}
-.lm-form-card .btn-primary:hover {
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--magnet-accent, var(--blue)) 40%, transparent);
-}
-
 .lm-form-card h2 {
   font-family: 'Fraunces', Georgia, serif;
-  font-size: 24px;
+  font-size: 26px;
   margin: 0 0 8px;
 }
 
@@ -211,22 +264,47 @@
   margin: 0 0 26px;
 }
 
-/* Extra questions can be a dropdown or a tick box — auth.css only styles
-   text inputs inside .field. */
-.lm-form-card .field select {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1.5px solid var(--line);
-  background: var(--paper);
-  font-family: inherit;
-  font-size: 14.5px;
-  color: var(--ink);
-}
+.lm-form-card .field input:focus,
 .lm-form-card .field select:focus {
   outline: none;
   border-color: var(--magnet-accent, var(--blue));
   background: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--magnet-accent, var(--blue)) 16%, transparent);
+}
+
+/* .btn-primary is shared with signup/login — override it only inside this
+   card, scoped, so a custom accent never leaks onto other pages. */
+.lm-form-card .btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px 24px;
+  font-family: inherit;
+  font-size: 15.5px;
+}
+.lm-form-card .btn-primary {
+  background: var(--magnet-accent, var(--blue));
+}
+.lm-form-card .btn-primary:hover {
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--magnet-accent, var(--blue)) 40%, transparent);
+}
+
+/* Extra questions can be a dropdown, a tick box or a list of choices —
+   auth.css only styles text inputs inside .field. */
+.lm-form-card .field select {
+  width: 100%;
+  padding: 12px 40px 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  background-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: inherit;
+  font-size: 14.5px;
+  color: var(--ink);
 }
 .lm-form-card .field .lm-check {
   display: flex;
@@ -260,29 +338,41 @@
   height: 17px;
   padding: 0;
   margin: 1px 0 0;
+  box-shadow: none;
   accent-color: var(--magnet-accent, var(--blue));
 }
 
 .lm-privacy {
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 7px;
   font-size: 13px;
   color: var(--muted);
   margin-top: 18px;
+}
+.lm-privacy svg {
+  flex: none;
+  margin-top: 3px;
 }
 
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {
-  .lm-wrap { grid-template-columns: 1fr; }
-  .lm-visual { padding: 40px 28px 34px; gap: 20px; }
-  .lm-offer-row { align-items: center; }
-  .lm-cover { width: 104px; }
+  .lm-wrap { grid-template-columns: 1fr; min-height: 0; }
+  .lm-visual { padding: 22px 24px 26px; }
+  .lm-visual::after { display: none; }
+  .lm-offer { padding: 36px 0 32px; gap: 18px; }
+  .lm-offer-row { gap: 30px; margin-top: 10px; }
+  .lm-cover { width: 104px; padding: 11px; gap: 7px; }
+  .lm-cover-bar { height: 18px; }
   .lm-owner-row { padding-top: 16px; }
-  .lm-form-panel { padding: 40px 28px 56px; }
+  .lm-form-panel { padding: 28px 16px 56px; }
+  .lm-form-card { padding: 30px 22px 24px; }
 }
 
 @media (max-width: 460px) {
-  .lm-offer-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .lm-offer-row { flex-direction: column; align-items: flex-start; gap: 30px; }
 }
 
 /* ---------- success screen ---------- */
