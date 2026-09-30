@@ -74,18 +74,22 @@ var lmShowCover = magnet.show_cover === undefined || !!magnet.show_cover;
       <% } %>
 
       <form method="POST" action="/<%= magnet.slug %>" novalidate>
+        <% if (magnet.collect_name) { %>
         <div class="field">
           <label for="name">Your name</label>
           <input type="text" id="name" name="name" value="<%= values.name %>" placeholder="Full name" autocomplete="name" required />
         </div>
+        <% } %>
+        <% if (magnet.collect_email) { %>
         <div class="field">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" value="<%= values.email %>" placeholder="you@example.com" autocomplete="email" required />
         </div>
+        <% } %>
         <% if (magnet.collect_phone) { %>
         <div class="field">
-          <label for="phone">Phone <span style="font-weight:400; color:var(--muted);">(optional)</span></label>
-          <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="Phone number" autocomplete="tel" />
+          <label for="phone">Phone<% if (magnet.collect_email) { %> <span style="font-weight:400; color:var(--muted);">(optional)</span><% } %></label>
+          <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="Phone number" autocomplete="tel"<%= magnet.collect_email ? '' : ' required' %> />
         </div>
         <% } %>
         <% (magnet.extra_questions || []).forEach(function (q) { %>

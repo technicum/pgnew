@@ -390,13 +390,17 @@ app.get('/dashboard/lead-magnets', requireAuth, async (req, res, next) => {
 
 app.post('/dashboard/lead-magnets', requireAuth, async (req, res) => {
   try {
-    const { title, description, ctaText, fileUrl, successMessage, collectPhone, extraQuestions, accentColor, showCover } = req.body || {};
+    const {
+      title, description, ctaText, fileUrl, successMessage, collectName, collectEmail, collectPhone,
+      extraQuestions, accentColor, showCover,
+    } = req.body || {};
     const magnet = await createLeadMagnet(req.session.user.id, {
-      title, description, ctaText, fileUrl, successMessage, collectPhone, extraQuestions, accentColor, showCover,
+      title, description, ctaText, fileUrl, successMessage, collectName, collectEmail, collectPhone,
+      extraQuestions, accentColor, showCover,
     });
     res.status(201).json({ ...magnet, publicPath: `/${magnet.slug}` });
   } catch (err) {
-    if (err.code === 'TITLE_REQUIRED' || err.code === 'FILE_URL_REQUIRED' || err.code === 'INVALID_FILE_URL') {
+    if (['TITLE_REQUIRED', 'FILE_URL_REQUIRED', 'INVALID_FILE_URL', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Create lead magnet failed:', err);
@@ -409,7 +413,7 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid lead magnet id.' });
     const {
-      title, description, ctaText, fileUrl, visible, slug, successMessage, collectPhone,
+      title, description, ctaText, fileUrl, visible, slug, successMessage, collectName, collectEmail, collectPhone,
       extraQuestions, accentColor, showCover,
     } = req.body || {};
     const fields = {};
@@ -420,6 +424,8 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     if (visible !== undefined) fields.visible = visible;
     if (slug !== undefined) fields.slug = slug;
     if (successMessage !== undefined) fields.successMessage = successMessage;
+    if (collectName !== undefined) fields.collectName = collectName;
+    if (collectEmail !== undefined) fields.collectEmail = collectEmail;
     if (collectPhone !== undefined) fields.collectPhone = collectPhone;
     if (extraQuestions !== undefined) fields.extraQuestions = extraQuestions;
     if (accentColor !== undefined) fields.accentColor = accentColor;
@@ -427,7 +433,7 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     const changed = await updateLeadMagnet(req.session.user.id, id, fields);
     res.json({ ok: true, ...changed });
   } catch (err) {
-    if (['TITLE_REQUIRED', 'INVALID_FILE_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN'].includes(err.code)) {
+    if (['TITLE_REQUIRED', 'INVALID_FILE_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Update lead magnet failed:', err);

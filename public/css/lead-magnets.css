@@ -70,6 +70,7 @@ textarea.pz-field-input { height: auto; }
 .pz-magnet-option { margin-top: 12px; }
 .pz-magnet-option label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 600; }
 .pz-option-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.pz-field-toggles { display: flex; flex-direction: column; gap: 10px; }
 .pz-option-hint { font-size: 12px; color: var(--muted-foreground); }
 p.pz-option-hint { margin-top: 5px; }
 .pz-slug-field {

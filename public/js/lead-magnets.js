@@ -212,6 +212,22 @@
     });
   }
 
+  // The three standard fields on the public form, each switchable — col is
+  // the column a magnet carries from the server, key the name the API takes.
+  const FORM_FIELDS = [
+    { col: 'collect_name', key: 'collectName', label: 'Full name' },
+    { col: 'collect_email', key: 'collectEmail', label: 'Email' },
+    { col: 'collect_phone', key: 'collectPhone', label: 'Phone number' },
+  ];
+  function fieldToggleHTML(magnet, field) {
+    const on = !!magnet[field.col];
+    return `
+                  <div class="pz-option-row">
+                    <button type="button" class="pz-switch toggle-field${on ? ' on' : ''}" data-id="${magnet.id}" data-col="${field.col}" aria-label="Ask for ${field.label.toLowerCase()}" aria-pressed="${on ? 'true' : 'false'}"></button>
+                    <span>${field.label}</span>
+                  </div>`;
+  }
+
   function statsHTML(magnet) {
     const views = magnet.view_count || 0;
     const signups = magnet.signup_count || 0;
@@ -253,9 +269,9 @@
                 <label for="success-${magnet.id}">Thank-you message</label>
                 <textarea id="success-${magnet.id}" class="pz-field-input" data-field="successMessage" data-id="${magnet.id}" rows="2" maxlength="300" placeholder="Shown after signup — leave blank for the default." style="padding:8px 11px; resize:vertical;">${escapeHTML(magnet.success_message || '')}</textarea>
               </div>
-              <div class="pz-magnet-option pz-option-row">
-                <button type="button" class="pz-switch toggle-phone${magnet.collect_phone ? ' on' : ''}" data-id="${magnet.id}" aria-label="Ask for a phone number" aria-pressed="${magnet.collect_phone ? 'true' : 'false'}"></button>
-                <span>Also ask for a phone number <span class="pz-option-hint">(optional for the visitor)</span></span>
+              <div class="pz-magnet-option">
+                <label>Form fields</label>
+                <div class="pz-field-toggles">${FORM_FIELDS.map((f) => fieldToggleHTML(magnet, f)).join('')}</div>
               </div>
               <div class="pz-magnet-option">
                 <label>Extra questions</label>
@@ -367,18 +383,22 @@
         });
       });
     });
-    magnetsList.querySelectorAll('.toggle-phone').forEach((btn) => {
+    // Name / email / phone switches. The server refuses to turn off both
+    // email and phone (its message lands in the save status), and the
+    // catch puts the switch back.
+    magnetsList.querySelectorAll('.toggle-field').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
+        const field = FORM_FIELDS.find((f) => f.col === e.currentTarget.dataset.col);
         const magnet = magnets.find((m) => m.id === id);
-        if (!magnet) return;
-        magnet.collect_phone = magnet.collect_phone ? 0 : 1;
+        if (!magnet || !field) return;
+        magnet[field.col] = magnet[field.col] ? 0 : 1;
         render();
         api(`/dashboard/lead-magnets/${id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ collectPhone: !!magnet.collect_phone }),
+          body: JSON.stringify({ [field.key]: !!magnet[field.col] }),
         }).catch(() => {
-          magnet.collect_phone = magnet.collect_phone ? 0 : 1;
+          magnet[field.col] = magnet[field.col] ? 0 : 1;
           render();
         });
       });
@@ -545,7 +565,12 @@
   const descriptionInput = document.getElementById('magnetDescription');
   const fileUrlInput = document.getElementById('magnetFileUrl');
   const successInput = document.getElementById('magnetSuccessMessage');
-  const phoneToggle = document.getElementById('magnetCollectPhone');
+  const fieldToggles = {
+    collectName: document.getElementById('magnetCollectName'),
+    collectEmail: document.getElementById('magnetCollectEmail'),
+    collectPhone: document.getElementById('magnetCollectPhone'),
+  };
+  const fieldsError = document.getElementById('magnetFieldsError');
   const formError = document.getElementById('createFormError');
 
   // tabs
@@ -563,7 +588,13 @@
   const previewDesc = document.getElementById('previewDesc');
   const previewCta = document.getElementById('previewCta');
   const previewSlugUrl = document.getElementById('previewSlugUrl');
-  const previewPhoneField = document.getElementById('previewPhoneField');
+  const previewFields = {
+    collectName: document.getElementById('previewNameField'),
+    collectEmail: document.getElementById('previewEmailField'),
+    collectPhone: document.getElementById('previewPhoneField'),
+  };
+  const previewPhoneOptional = document.getElementById('previewPhoneOptional');
+  const magnetPhoneHint = document.getElementById('magnetPhoneHint');
   const previewExtraFields = document.getElementById('previewExtraFields');
   const previewCover = document.getElementById('previewCover');
   const previewFrame = document.querySelector('.pz-magnet-preview-frame');
@@ -588,10 +619,31 @@
   }
   [titleInput, descriptionInput, ctaInput].forEach((el) => el.addEventListener('input', syncPreview));
 
-  phoneToggle.addEventListener('click', () => {
-    phoneToggle.classList.toggle('on');
-    phoneToggle.setAttribute('aria-pressed', phoneToggle.classList.contains('on') ? 'true' : 'false');
-    previewPhoneField.style.display = phoneToggle.classList.contains('on') ? '' : 'none';
+  // Form tab: name / email / phone switches — all on to start with.
+  function fieldOn(key) {
+    return fieldToggles[key].classList.contains('on');
+  }
+  function setField(key, on) {
+    fieldToggles[key].classList.toggle('on', on);
+    fieldToggles[key].setAttribute('aria-pressed', on ? 'true' : 'false');
+    previewFields[key].style.display = on ? '' : 'none';
+    // Phone is only optional for the visitor while email is there to fall back on.
+    const phoneOptional = fieldOn('collectEmail');
+    previewPhoneOptional.style.display = phoneOptional ? '' : 'none';
+    magnetPhoneHint.textContent = phoneOptional ? '(optional for the visitor)' : '(required — it’s the only way to reach them)';
+  }
+  Object.keys(fieldToggles).forEach((key) => {
+    fieldToggles[key].addEventListener('click', () => {
+      const turningOff = fieldOn(key);
+      const other = key === 'collectEmail' ? 'collectPhone' : 'collectEmail';
+      if (turningOff && key !== 'collectName' && !fieldOn(other)) {
+        fieldsError.textContent = 'Keep email or phone switched on — you need a way to reach people.';
+        fieldsError.classList.add('show');
+        return;
+      }
+      fieldsError.classList.remove('show');
+      setField(key, !turningOff);
+    });
   });
 
   // Form tab: extra questions (local until the magnet is created)
@@ -648,9 +700,8 @@
     builderQuestions = [];
     builderAccent = '#1261ef';
     builderShowCover = true;
-    phoneToggle.classList.remove('on');
-    phoneToggle.setAttribute('aria-pressed', 'false');
-    previewPhoneField.style.display = 'none';
+    Object.keys(fieldToggles).forEach((key) => setField(key, true));
+    fieldsError.classList.remove('show');
     previewCover.style.display = 'flex';
     document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s, i) => s.classList.toggle('active', i === 0));
     document.getElementById('btab-design').querySelector('.swatch-custom').classList.remove('active');
@@ -665,6 +716,24 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     formError.classList.remove('show');
+    // Title and file link live on the Content tab, which may be hidden —
+    // the browser's own "required" check can't focus a hidden field and
+    // just swallows the click, so the form is novalidate and checked here.
+    const fileUrl = fileUrlInput.value.trim();
+    const missing = !titleInput.value.trim()
+      ? { input: titleInput, message: 'Give it a title, like “Free pricing checklist”.' }
+      : !fileUrl
+        ? { input: fileUrlInput, message: 'Add a link to the file — a Google Drive/Dropbox share link works fine.' }
+        : !/^https?:\/\//i.test(fileUrl)
+          ? { input: fileUrlInput, message: 'That file link needs to start with http:// or https://' }
+          : null;
+    if (missing) {
+      document.querySelector('.pz-tab-btn[data-btab="content"]').click();
+      formError.textContent = missing.message;
+      formError.classList.add('show');
+      missing.input.focus();
+      return;
+    }
     try {
       const created = await api('/dashboard/lead-magnets', {
         method: 'POST',
@@ -674,7 +743,9 @@
           description: descriptionInput.value,
           fileUrl: fileUrlInput.value,
           successMessage: successInput.value,
-          collectPhone: phoneToggle.classList.contains('on'),
+          collectName: fieldOn('collectName'),
+          collectEmail: fieldOn('collectEmail'),
+          collectPhone: fieldOn('collectPhone'),
           extraQuestions: builderQuestions,
           accentColor: builderAccent,
           showCover: builderShowCover,

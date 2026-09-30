@@ -126,7 +126,7 @@
             </button>
           </div>
 
-          <form id="createMagnetForm" class="mt-4">
+          <form id="createMagnetForm" class="mt-4" novalidate>
 
             <div class="pz-btabpanel active" id="btab-content">
               <div style="display:flex; flex-wrap:wrap; gap:10px;">
@@ -142,13 +142,26 @@
             </div>
 
             <div class="pz-btabpanel" id="btab-form">
-              <div class="pz-builder-option pz-option-row" style="margin-top:0;">
-                <button type="button" class="pz-switch" id="magnetCollectPhone" aria-label="Ask for a phone number" aria-pressed="false"></button>
-                <span>Also ask for a phone number <span class="pz-option-hint">(optional for the visitor)</span></span>
+              <p class="pz-section-label">Form fields</p>
+              <p class="pz-section-sub">Switch off anything you don’t need — just keep email or phone on so you can reach people.</p>
+              <div class="pz-field-toggles">
+                <div class="pz-option-row">
+                  <button type="button" class="pz-switch on" id="magnetCollectName" aria-label="Ask for a full name" aria-pressed="true"></button>
+                  <span>Full name</span>
+                </div>
+                <div class="pz-option-row">
+                  <button type="button" class="pz-switch on" id="magnetCollectEmail" aria-label="Ask for an email" aria-pressed="true"></button>
+                  <span>Email</span>
+                </div>
+                <div class="pz-option-row">
+                  <button type="button" class="pz-switch on" id="magnetCollectPhone" aria-label="Ask for a phone number" aria-pressed="true"></button>
+                  <span>Phone number <span class="pz-option-hint" id="magnetPhoneHint">(optional for the visitor)</span></span>
+                </div>
               </div>
+              <p class="pz-field-error" id="magnetFieldsError"></p>
               <div class="pz-divider"></div>
               <p class="pz-section-label">Extra questions</p>
-              <p class="pz-section-sub">Asked after name, email and phone. Drag to reorder.</p>
+              <p class="pz-section-sub">Asked after the fields above. Drag to reorder.</p>
               <div class="q-list" id="magnetQList"><!-- injected --></div>
               <div class="add-q-menu">
                 <button type="button" class="add-q-btn" id="magnetAddQBtn">
@@ -231,9 +244,9 @@
                 </div>
                 <div class="pz-magnet-preview-form">
                   <span class="pz-magnet-preview-label">Get instant access</span>
-                  <div class="pz-magnet-preview-input">Full name</div>
-                  <div class="pz-magnet-preview-input">you@example.com</div>
-                  <div class="pz-magnet-preview-input" id="previewPhoneField" style="display:none;">Phone number <span>(optional)</span></div>
+                  <div class="pz-magnet-preview-input" id="previewNameField">Full name</div>
+                  <div class="pz-magnet-preview-input" id="previewEmailField">you@example.com</div>
+                  <div class="pz-magnet-preview-input" id="previewPhoneField">Phone number <span id="previewPhoneOptional">(optional)</span></div>
                   <div id="previewExtraFields"><!-- injected --></div>
                   <div class="pz-magnet-preview-btn" id="previewCta">Get it free</div>
                 </div>
