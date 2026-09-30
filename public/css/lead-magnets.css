@@ -260,6 +260,7 @@ a.pz-copy-btn { display: inline-flex; align-items: center; }
 .pz-tab-btn:hover:not(.active) { color: var(--foreground); }
 .pz-btabpanel { display: none; }
 .pz-btabpanel.active { display: block; }
+#btab-content.active { display: flex; flex-direction: column; gap: 10px; }
 
 .pz-divider { height: 1px; background: var(--border); margin: 16px 0; }
 .pz-section-label { font-size: 13.5px; font-weight: 700; margin-bottom: 2px; }
