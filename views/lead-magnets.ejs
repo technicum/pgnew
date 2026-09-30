@@ -168,7 +168,6 @@
                   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
                   Add question
                 </button>
-                <div class="add-q-dropdown" id="magnetAddQDropdown"><!-- injected --></div>
               </div>
             </div>
 
@@ -268,6 +267,23 @@
 
     </div>
   </main>
+</div>
+
+<!-- "Add question" popup — opened from the create form and from each
+     magnet's Page options; the type tiles are injected by lead-magnets.js. -->
+<div class="pz-modal-backdrop" id="qTypeModal" aria-hidden="true">
+  <div class="pz-modal" role="dialog" aria-modal="true" aria-labelledby="qTypeModalTitle">
+    <div class="pz-modal-head">
+      <div>
+        <h3 id="qTypeModalTitle">Add a question</h3>
+        <p>Pick the kind of answer you want from visitors.</p>
+      </div>
+      <button type="button" class="pz-modal-close" id="qTypeModalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="q-type-grid" id="qTypeGrid"><!-- injected --></div>
+  </div>
 </div>
 
 <script>

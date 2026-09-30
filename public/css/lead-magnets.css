@@ -330,16 +330,43 @@ a.pz-copy-btn { display: inline-flex; align-items: center; }
   display: inline-flex; align-items: center; gap: 7px; background: none; border: none; cursor: pointer;
   font-family: inherit; font-size: 13px; font-weight: 600; color: var(--primary); padding: 4px 0;
 }
-.add-q-dropdown {
-  position: absolute; top: 100%; left: 0; margin-top: 6px; background: var(--card); border: 1px solid var(--border);
-  border-radius: calc(var(--radius) - 2px); box-shadow: 0 8px 24px rgba(18,36,85,.12); padding: 6px; display: none; z-index: 5; min-width: 130px;
+
+/* ---------- "Add question" popup: a tile per field type ---------- */
+.pz-modal-backdrop {
+  position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(7,19,79,.45);
 }
-.add-q-dropdown.open { display: block; }
-.add-q-option {
-  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 7px 8px; border-radius: 6px;
-  border: none; background: none; cursor: pointer; font-family: inherit; font-size: 12.5px; color: var(--foreground);
+.pz-modal-backdrop.open { display: flex; }
+.pz-modal {
+  width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow-y: auto;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(7,19,79,.28); padding: 20px;
 }
-.add-q-option:hover { background: var(--muted); }
+.pz-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.pz-modal-head h3 { font-size: 17px; font-weight: 700; }
+.pz-modal-head p { margin-top: 3px; font-size: 13px; color: var(--muted-foreground); }
+.pz-modal-close {
+  flex: none; width: 30px; height: 30px; border-radius: calc(var(--radius) - 4px); border: none; background: none;
+  display: flex; align-items: center; justify-content: center; color: var(--muted-foreground); cursor: pointer;
+}
+.pz-modal-close:hover { background: var(--muted); color: var(--foreground); }
+
+.q-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 480px) {
+  .q-type-grid { grid-template-columns: 1fr; }
+}
+.q-type-tile {
+  display: flex; align-items: center; gap: 10px; text-align: left; padding: 11px 12px;
+  border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); background: var(--card);
+  cursor: pointer; font-family: inherit; color: var(--foreground);
+}
+.q-type-tile:hover { border-color: var(--primary); background: var(--muted); }
+.q-type-tile:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent); }
+.q-type-tile .q-type-icon { width: 30px; height: 30px; border-radius: 8px; }
+.q-type-tile .q-type-icon svg { width: 14px; height: 14px; }
+.q-type-tile-text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.q-type-tile-text strong { font-size: 13px; font-weight: 600; }
+.q-type-tile-text span { font-size: 11.5px; color: var(--muted-foreground); }
 
 /* ---------- design tab: swatches + cover choice ---------- */
 .swatch-row { display: flex; gap: 9px; flex-wrap: wrap; }

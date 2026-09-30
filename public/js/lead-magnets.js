@@ -96,27 +96,61 @@
   // Same set as QUESTION_TYPES in lib/leadMagnets.js. label is what a new
   // question of that type starts out called.
   const QUESTION_TYPES = {
-    text: { cls: 'type-text', name: 'Text', label: 'Question', icon: '<path d="M5 6h14M12 6v13"/>' },
-    number: { cls: 'type-number', name: 'Number', label: 'Number', icon: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>' },
-    email: { cls: 'type-email', name: 'Email', label: 'Work email', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>' },
-    phone: { cls: 'type-phone', name: 'Phone', label: 'WhatsApp number', icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>' },
-    url: { cls: 'type-url', name: 'Link', label: 'Website', icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>' },
-    date: { cls: 'type-date', name: 'Date', label: 'Date', icon: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>' },
-    dropdown: { cls: 'type-dropdown', name: 'Dropdown', label: 'Pick one', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 11 3 3 3-3"/>' },
-    checkbox: { cls: 'type-checkbox', name: 'Tick box', label: 'I agree to be contacted', icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' },
+    text: { cls: 'type-text', name: 'Text', label: 'Question', hint: 'A short written answer', icon: '<path d="M5 6h14M12 6v13"/>' },
+    number: { cls: 'type-number', name: 'Number', label: 'Number', hint: 'Digits only — age, budget, team size', icon: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>' },
+    email: { cls: 'type-email', name: 'Email', label: 'Work email', hint: 'A second email address', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>' },
+    phone: { cls: 'type-phone', name: 'Phone', label: 'WhatsApp number', hint: 'Another phone or WhatsApp number', icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>' },
+    url: { cls: 'type-url', name: 'Link', label: 'Website', hint: 'A website or social profile', icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>' },
+    date: { cls: 'type-date', name: 'Date', label: 'Date', hint: 'A day picked from a calendar', icon: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>' },
+    dropdown: { cls: 'type-dropdown', name: 'Dropdown', label: 'Pick one', hint: 'One choice from your list', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 11 3 3 3-3"/>' },
+    checkbox: { cls: 'type-checkbox', name: 'Tick box', label: 'I agree to be contacted', hint: 'A yes/no or consent box', icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' },
   };
   const MAX_QUESTIONS = 4;
   const MAX_QUESTION_OPTIONS = 6;
   function questionIconHTML(meta) {
     return `<span class="q-type-icon ${meta.cls}"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${meta.icon}</svg></span>`;
   }
-  // The "Add question" menu — one entry per type, shared by the create form
-  // and every card.
-  const addQuestionOptionsHTML = Object.keys(QUESTION_TYPES).map((type) => `
-                    <button type="button" class="add-q-option" data-qtype="${type}">
-                      ${questionIconHTML(QUESTION_TYPES[type])}
-                      ${QUESTION_TYPES[type].name}
-                    </button>`).join('');
+  // The "Add question" popup — one tile per type, shared by the create form
+  // and every card. Whoever opens it passes what to do with the chosen type.
+  const typeModal = document.getElementById('qTypeModal');
+  const typeGrid = document.getElementById('qTypeGrid');
+  let onTypePicked = null;
+  let typePickerOpener = null;
+  typeGrid.innerHTML = Object.keys(QUESTION_TYPES).map((type) => `
+        <button type="button" class="q-type-tile" data-qtype="${type}">
+          ${questionIconHTML(QUESTION_TYPES[type])}
+          <span class="q-type-tile-text">
+            <strong>${QUESTION_TYPES[type].name}</strong>
+            <span>${QUESTION_TYPES[type].hint}</span>
+          </span>
+        </button>`).join('');
+  function openTypePicker(onPick) {
+    onTypePicked = onPick;
+    typePickerOpener = document.activeElement;
+    typeModal.classList.add('open');
+    typeModal.setAttribute('aria-hidden', 'false');
+    typeGrid.querySelector('.q-type-tile').focus();
+  }
+  function closeTypePicker() {
+    typeModal.classList.remove('open');
+    typeModal.setAttribute('aria-hidden', 'true');
+    onTypePicked = null;
+    // Picking a type re-renders the list, so the opener may be gone by now.
+    if (typePickerOpener && document.contains(typePickerOpener)) typePickerOpener.focus();
+    typePickerOpener = null;
+  }
+  typeGrid.querySelectorAll('.q-type-tile').forEach((tile) => {
+    tile.addEventListener('click', () => {
+      const pick = onTypePicked;
+      closeTypePicker();
+      if (pick) pick(tile.dataset.qtype);
+    });
+  });
+  document.getElementById('qTypeModalClose').addEventListener('click', closeTypePicker);
+  typeModal.addEventListener('click', (e) => { if (e.target === typeModal) closeTypePicker(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && typeModal.classList.contains('open')) closeTypePicker();
+  });
   function newQuestion(id, type) {
     const meta = QUESTION_TYPES[type] || QUESTION_TYPES.text;
     const q = { id, type: QUESTION_TYPES[type] ? type : 'text', label: meta.label, required: false };
@@ -321,8 +355,6 @@
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
                     Add question
                   </button>
-                  <div class="add-q-dropdown card-add-q-dropdown" data-id="${magnet.id}">${addQuestionOptionsHTML}
-                  </div>
                 </div>
               </div>
               <div class="pz-magnet-option">
@@ -493,26 +525,19 @@
       attachQuestionRowListeners(list, id, () => saveCardQuestions(id), () => render());
     });
     magnetsList.querySelectorAll('.card-add-q-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const dropdown = btn.nextElementSibling;
-        document.querySelectorAll('.add-q-dropdown.open').forEach((d) => { if (d !== dropdown) d.classList.remove('open'); });
-        dropdown.classList.toggle('open');
-      });
-    });
-    magnetsList.querySelectorAll('.card-add-q-dropdown .add-q-option').forEach((opt) => {
-      opt.addEventListener('click', () => {
-        const dropdown = opt.closest('.card-add-q-dropdown');
-        const id = Number(dropdown.dataset.id);
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.id);
         const magnet = magnets.find((m) => m.id === id);
         if (!magnet) return;
         magnet.extra_questions = magnet.extra_questions || [];
-        if (magnet.extra_questions.length >= MAX_QUESTIONS) { dropdown.classList.remove('open'); return; }
-        const nextId = (Math.max(0, ...magnet.extra_questions.map((q) => q.id)) || 0) + 1;
-        magnet.extra_questions.push(newQuestion(nextId, opt.dataset.qtype));
-        openOptions.add(id);
-        render();
-        saveCardQuestions(id);
+        if (magnet.extra_questions.length >= MAX_QUESTIONS) return;
+        openTypePicker((type) => {
+          const nextId = (Math.max(0, ...magnet.extra_questions.map((q) => q.id)) || 0) + 1;
+          magnet.extra_questions.push(newQuestion(nextId, type));
+          openOptions.add(id);
+          render();
+          saveCardQuestions(id);
+        });
       });
     });
 
@@ -691,16 +716,11 @@
     updatePreviewFields();
   }
   const addQBtn = document.getElementById('magnetAddQBtn');
-  const addQDropdown = document.getElementById('magnetAddQDropdown');
-  addQDropdown.innerHTML = addQuestionOptionsHTML;
-  addQBtn.addEventListener('click', (e) => { e.stopPropagation(); addQDropdown.classList.toggle('open'); });
-  document.addEventListener('click', () => { addQDropdown.classList.remove('open'); });
-  addQDropdown.querySelectorAll('.add-q-option').forEach((opt) => {
-    opt.addEventListener('click', () => {
-      if (builderQuestions.length >= MAX_QUESTIONS) { addQDropdown.classList.remove('open'); return; }
-      builderQuestions.push(newQuestion(builderNextQid++, opt.dataset.qtype));
+  addQBtn.addEventListener('click', () => {
+    if (builderQuestions.length >= MAX_QUESTIONS) return;
+    openTypePicker((type) => {
+      builderQuestions.push(newQuestion(builderNextQid++, type));
       renderBuilderQuestions();
-      addQDropdown.classList.remove('open');
     });
   });
 
