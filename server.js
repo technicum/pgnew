@@ -13,7 +13,6 @@ const session = require('express-session');
 const {
   findUserByEmail,
   findUserById,
-  findUserByHandle,
   createUser,
   verifyPassword,
   toPublicUser,
@@ -33,8 +32,6 @@ const {
   listContacts,
   countContacts,
   createContact,
-  createContactFromSource,
-  findExistingContact,
   updateContact,
   deleteContact,
 } = require('./lib/contacts');
@@ -43,8 +40,6 @@ const {
   createLeadMagnet,
   updateLeadMagnet,
   deleteLeadMagnet,
-  getPublicLeadMagnet,
-  incrementSignupCount,
 } = require('./lib/leadMagnets');
 const { installStorefront } = require('./lib/storefront');
 
@@ -397,7 +392,7 @@ app.post('/dashboard/lead-magnets', requireAuth, async (req, res) => {
   try {
     const { title, description, ctaText, fileUrl } = req.body || {};
     const magnet = await createLeadMagnet(req.session.user.id, { title, description, ctaText, fileUrl });
-    res.status(201).json({ ...magnet, publicPath: `/l/${req.session.user.handle}/${magnet.slug}` });
+    res.status(201).json({ ...magnet, publicPath: `/${magnet.slug}` });
   } catch (err) {
     if (err.code === 'TITLE_REQUIRED' || err.code === 'FILE_URL_REQUIRED' || err.code === 'INVALID_FILE_URL') {
       return res.status(400).json({ error: err.message });
@@ -411,17 +406,20 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid lead magnet id.' });
-    const { title, description, ctaText, fileUrl, visible } = req.body || {};
+    const { title, description, ctaText, fileUrl, visible, slug, successMessage, collectPhone } = req.body || {};
     const fields = {};
     if (title !== undefined) fields.title = title;
     if (description !== undefined) fields.description = description;
     if (ctaText !== undefined) fields.ctaText = ctaText;
     if (fileUrl !== undefined) fields.fileUrl = fileUrl;
     if (visible !== undefined) fields.visible = visible;
-    await updateLeadMagnet(req.session.user.id, id, fields);
-    res.json({ ok: true });
+    if (slug !== undefined) fields.slug = slug;
+    if (successMessage !== undefined) fields.successMessage = successMessage;
+    if (collectPhone !== undefined) fields.collectPhone = collectPhone;
+    const changed = await updateLeadMagnet(req.session.user.id, id, fields);
+    res.json({ ok: true, ...changed });
   } catch (err) {
-    if (err.code === 'TITLE_REQUIRED' || err.code === 'INVALID_FILE_URL') {
+    if (['TITLE_REQUIRED', 'INVALID_FILE_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN'].includes(err.code)) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Update lead magnet failed:', err);
@@ -441,79 +439,8 @@ app.delete('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
   }
 });
 
-// Public side: no auth — this is the link a merchant shares. A plain path
-// route (not a subdomain) so it works today without the storefront's
-// Host-header routing that hasn't been built yet.
-
-app.get('/l/:handle/:slug', async (req, res, next) => {
-  try {
-    const owner = await findUserByHandle(req.params.handle);
-    const magnet = owner ? await getPublicLeadMagnet(owner.id, req.params.slug) : null;
-    if (!owner || !magnet) {
-      return res.status(404).render('error', {
-        title: `Not found — ${SITE_NAME}`,
-        heading: 'This link isn’t live',
-        message: 'This lead magnet doesn’t exist, or the creator has taken it down.',
-      });
-    }
-    res.render('lead-magnet', {
-      title: `${magnet.title} — ${owner.name}`,
-      owner,
-      magnet,
-      error: null,
-      values: { name: '', email: '' },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.post('/l/:handle/:slug', async (req, res, next) => {
-  try {
-    const owner = await findUserByHandle(req.params.handle);
-    const magnet = owner ? await getPublicLeadMagnet(owner.id, req.params.slug) : null;
-    if (!owner || !magnet) {
-      return res.status(404).render('error', {
-        title: `Not found — ${SITE_NAME}`,
-        heading: 'This link isn’t live',
-        message: 'This lead magnet doesn’t exist, or the creator has taken it down.',
-      });
-    }
-
-    const name = (req.body.name || '').trim();
-    const email = (req.body.email || '').trim();
-
-    const rerender = (error) => res.status(400).render('lead-magnet', {
-      title: `${magnet.title} — ${owner.name}`,
-      owner,
-      magnet,
-      error,
-      values: { name, email },
-    });
-
-    if (!name) return rerender('Add your name to continue.');
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return rerender('That email address doesn’t look right.');
-
-    const existing = await findExistingContact(owner.id, { email });
-    if (!existing) {
-      await createContactFromSource(owner.id, {
-        name,
-        email,
-        note: `Lead magnet: ${magnet.title}`,
-        source: 'form',
-      });
-    }
-    await incrementSignupCount(magnet.id);
-
-    res.render('lead-magnet-success', {
-      title: `You're in — ${SITE_NAME}`,
-      owner,
-      magnet,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+// Public side: the link a merchant shares lives on their store subdomain
+// (meera.pagezaper.com/free-checklist) — see lib/storefront.js.
 
 // Anything that isn't one of the routes above — catches typos in a URL,
 // not a route that hasn't been built yet.

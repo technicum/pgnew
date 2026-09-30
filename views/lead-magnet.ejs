@@ -36,7 +36,7 @@
       <div class="auth-error"><%= error %></div>
     <% } %>
 
-    <form method="POST" action="/l/<%= owner.handle %>/<%= magnet.slug %>" novalidate style="text-align:left; margin-top:8px;">
+    <form method="POST" action="/<%= magnet.slug %>" novalidate style="text-align:left; margin-top:8px;">
       <div class="field">
         <label for="name">Your name</label>
         <input type="text" id="name" name="name" value="<%= values.name %>" placeholder="Full name" autocomplete="name" required />
@@ -45,6 +45,12 @@
         <label for="email">Email</label>
         <input type="email" id="email" name="email" value="<%= values.email %>" placeholder="you@example.com" autocomplete="email" required />
       </div>
+      <% if (magnet.collect_phone) { %>
+      <div class="field">
+        <label for="phone">Phone <span style="font-weight:400; color:var(--muted);">(optional)</span></label>
+        <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="Phone number" autocomplete="tel" />
+      </div>
+      <% } %>
       <button type="submit" class="btn btn-primary"><%= magnet.cta_text %></button>
     </form>
 

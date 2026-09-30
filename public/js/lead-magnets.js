@@ -5,8 +5,9 @@
 // same pattern as public/js/builder.js.
 (function () {
   let magnets = window.__PZ_INITIAL_MAGNETS__ || [];
-  const handle = window.__PZ_USER_HANDLE__;
-  const siteDomain = window.__PZ_SITE_DOMAIN__;
+  // The merchant's store origin (https://meera.pagezaper.com) — every
+  // lead magnet's public page hangs off it.
+  const storeUrl = window.__PZ_STORE_URL__;
 
   const magnetsList = document.getElementById('magnetsList');
   const emptyMagnets = document.getElementById('emptyMagnets');
@@ -79,11 +80,28 @@
   }
 
   // --- rendering -----------------------------------------------------
-  function publicPath(magnet) {
-    return `/l/${handle}/${magnet.slug}`;
-  }
   function publicUrl(magnet) {
-    return `${siteDomain}${publicPath(magnet)}`;
+    return `${storeUrl}/${magnet.slug}`;
+  }
+  const storeHost = storeUrl.replace(/^https?:\/\//, '');
+
+  // Dashboard field name -> the column name magnets carry from the server.
+  const FIELD_KEYS = { ctaText: 'cta_text', fileUrl: 'file_url', successMessage: 'success_message' };
+
+  // Which cards have "Page options" open — render() rebuilds every card,
+  // so this is what keeps a panel open across a toggle or a save.
+  const openOptions = new Set();
+
+  function statsHTML(magnet) {
+    const views = magnet.view_count || 0;
+    const signups = magnet.signup_count || 0;
+    // Views only started counting after signups did, so an older magnet
+    // can have more signups than views — no honest rate to show for it.
+    const rate = views > 0 && signups <= views ? `${Math.round((signups / views) * 100)}%` : '—';
+    return `
+          <span class="pz-magnet-stat"><strong>${views}</strong> ${views === 1 ? 'view' : 'views'}</span>
+          <span class="pz-magnet-stat"><strong>${signups}</strong> ${signups === 1 ? 'signup' : 'signups'}</span>
+          <span class="pz-magnet-stat"><strong>${rate}</strong> conversion</span>`;
   }
 
   function magnetCardHTML(magnet) {
@@ -100,6 +118,26 @@
             </div>
             <textarea class="pz-field-input" data-field="description" data-id="${magnet.id}" rows="1" placeholder="Description (optional)" style="resize:vertical;">${escapeHTML(magnet.description)}</textarea>
             <input type="url" class="pz-field-input" data-field="fileUrl" data-id="${magnet.id}" value="${escapeHTML(magnet.file_url)}" placeholder="Link to the file" />
+            <details class="pz-magnet-options" data-id="${magnet.id}"${openOptions.has(magnet.id) ? ' open' : ''}>
+              <summary>Page options</summary>
+              <div class="pz-magnet-option">
+                <label for="slug-${magnet.id}">Link</label>
+                <div class="pz-slug-field">
+                  <span>${escapeHTML(storeHost)}/</span>
+                  <input type="text" id="slug-${magnet.id}" class="slug-input" data-id="${magnet.id}" value="${escapeHTML(magnet.slug)}" maxlength="60" spellcheck="false" autocapitalize="off" />
+                </div>
+                <p class="pz-option-hint">Changing this breaks any link you’ve already shared.</p>
+                <p class="pz-field-error slug-error"></p>
+              </div>
+              <div class="pz-magnet-option">
+                <label for="success-${magnet.id}">Thank-you message</label>
+                <textarea id="success-${magnet.id}" class="pz-field-input" data-field="successMessage" data-id="${magnet.id}" rows="2" maxlength="300" placeholder="Shown after signup — leave blank for the default." style="padding:8px 11px; resize:vertical;">${escapeHTML(magnet.success_message || '')}</textarea>
+              </div>
+              <div class="pz-magnet-option pz-option-row">
+                <button type="button" class="pz-switch toggle-phone${magnet.collect_phone ? ' on' : ''}" data-id="${magnet.id}" aria-label="Ask for a phone number" aria-pressed="${magnet.collect_phone ? 'true' : 'false'}"></button>
+                <span>Also ask for a phone number <span class="pz-option-hint">(optional for the visitor)</span></span>
+              </div>
+            </details>
           </div>
           <div class="pz-magnet-actions">
             <button type="button" class="pz-switch toggle-visible${magnet.visible ? ' on' : ''}" data-id="${magnet.id}" title="${magnet.visible ? 'Live — visible to anyone with the link' : 'Unpublished — the link shows a not-found page'}" aria-label="Toggle published"></button>
@@ -110,10 +148,10 @@
         </div>
         <div class="pz-magnet-stats">
           <div class="pz-copy-link">
-            <input type="text" readonly value="${escapeHTML(publicUrl(magnet))}" data-path="${escapeHTML(publicPath(magnet))}" onclick="this.select()" />
+            <input type="text" readonly value="${escapeHTML(publicUrl(magnet).replace(/^https?:\/\//, ''))}" onclick="this.select()" />
             <button type="button" class="pz-copy-btn copy-link-btn" data-id="${magnet.id}">Copy link</button>
-          </div>
-          <span class="pz-magnet-stat"><strong>${magnet.signup_count || 0}</strong> ${magnet.signup_count === 1 ? 'signup' : 'signups'}</span>
+            <a class="pz-copy-btn" href="${escapeHTML(publicUrl(magnet))}" target="_blank" rel="noopener">Open</a>
+          </div>${statsHTML(magnet)}
         </div>
       </div>`;
   }
@@ -145,9 +183,56 @@
         const field = e.target.dataset.field;
         const magnet = magnets.find((m) => m.id === id);
         if (!magnet) return;
-        const key = field === 'ctaText' ? 'cta_text' : field === 'fileUrl' ? 'file_url' : field;
-        magnet[key] = e.target.value;
+        magnet[FIELD_KEYS[field] || field] = e.target.value;
         debouncedFieldSave(`${id}:${field}`, id, field, e.target.value);
+      });
+    });
+    magnetsList.querySelectorAll('.pz-magnet-options').forEach((details) => {
+      details.addEventListener('toggle', () => {
+        const id = Number(details.dataset.id);
+        if (details.open) openOptions.add(id); else openOptions.delete(id);
+      });
+    });
+    // The link saves when the field is left (or Enter is pressed), not per
+    // keystroke — every half-typed value would briefly be the live URL.
+    magnetsList.querySelectorAll('.slug-input').forEach((input) => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      });
+      input.addEventListener('change', () => {
+        const id = Number(input.dataset.id);
+        const magnet = magnets.find((m) => m.id === id);
+        if (!magnet || input.value.trim() === magnet.slug) return;
+        const errorEl = input.closest('.pz-magnet-option').querySelector('.slug-error');
+        errorEl.classList.remove('show');
+        api(`/dashboard/lead-magnets/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ slug: input.value }),
+        }).then((data) => {
+          // The server tidies the slug (lowercase, dashes) — show what it kept.
+          magnet.slug = (data && data.slug) || magnet.slug;
+          render();
+        }).catch((err) => {
+          input.value = magnet.slug;
+          errorEl.textContent = err.message || 'Couldn’t change the link.';
+          errorEl.classList.add('show');
+        });
+      });
+    });
+    magnetsList.querySelectorAll('.toggle-phone').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = Number(e.currentTarget.dataset.id);
+        const magnet = magnets.find((m) => m.id === id);
+        if (!magnet) return;
+        magnet.collect_phone = magnet.collect_phone ? 0 : 1;
+        render();
+        api(`/dashboard/lead-magnets/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ collectPhone: !!magnet.collect_phone }),
+        }).catch(() => {
+          magnet.collect_phone = magnet.collect_phone ? 0 : 1;
+          render();
+        });
       });
     });
     magnetsList.querySelectorAll('.toggle-visible').forEach((btn) => {
@@ -177,9 +262,8 @@
         const magnet = magnets.find((m) => m.id === id);
         if (!magnet) return;
         const input = clickedBtn.previousElementSibling;
-        const url = `${window.location.origin}${publicPath(magnet)}`;
         try {
-          await navigator.clipboard.writeText(url);
+          await navigator.clipboard.writeText(publicUrl(magnet));
         } catch (err) {
           if (input) { input.select(); document.execCommand('copy'); }
         }
@@ -193,7 +277,21 @@
       });
     });
     magnetsList.querySelectorAll('.remove-magnet').forEach((btn) => {
+      // Deleting takes the public page and its counts with it, so the
+      // first click only arms the button; a second within 3s deletes.
+      const icon = btn.innerHTML;
+      let disarmTimer = null;
       btn.addEventListener('click', (e) => {
+        if (!btn.classList.contains('confirm')) {
+          btn.classList.add('confirm');
+          btn.textContent = 'Delete?';
+          disarmTimer = setTimeout(() => {
+            btn.classList.remove('confirm');
+            btn.innerHTML = icon;
+          }, 3000);
+          return;
+        }
+        clearTimeout(disarmTimer);
         const id = Number(e.currentTarget.dataset.id);
         const card = magnetsList.querySelector(`.pz-magnet-card[data-id="${id}"]`);
         if (card) card.classList.add('pz-removing');
@@ -204,6 +302,8 @@
         }).catch(() => {
           magnets = previous;
           if (card) card.classList.remove('pz-removing');
+          btn.classList.remove('confirm');
+          btn.innerHTML = icon;
         });
       });
     });

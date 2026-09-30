@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="/css/dashboard.css" />
-<link rel="stylesheet" href="/css/lead-magnets.css" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
 </head>
 <body>
 <div class="min-h-screen bg-background">
@@ -150,10 +150,9 @@
 </div>
 
 <script>
-  window.__PZ_INITIAL_MAGNETS__ = <%- JSON.stringify(magnets).replace(/</g, '<') %>;
-  window.__PZ_USER_HANDLE__ = <%- JSON.stringify(user.handle) %>;
-  window.__PZ_SITE_DOMAIN__ = <%- JSON.stringify(siteDomain) %>;
+  window.__PZ_INITIAL_MAGNETS__ = <%- JSON.stringify(magnets).replace(/</g, '\\u003c') %>;
+  window.__PZ_STORE_URL__ = <%- JSON.stringify(storeUrlFor(user.handle)) %>;
 </script>
-<script src="/js/lead-magnets.js"></script>
+<script src="/js/lead-magnets.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

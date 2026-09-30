@@ -27,7 +27,7 @@
       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </div>
     <h1>You're in</h1>
-    <p class="auth-sub"><%= magnet.title %> is ready — grab it below.</p>
+    <p class="auth-sub"><%= magnet.success_message || `${magnet.title} is ready — grab it below.` %></p>
     <a href="<%= magnet.file_url %>" target="_blank" rel="noopener" class="btn btn-primary" style="width:100%; text-decoration:none; margin-top:8px;">
       <%= magnet.cta_text %>
     </a>
