@@ -235,6 +235,25 @@
   margin-bottom: 0;
   cursor: pointer;
 }
+/* Radio / checkbox groups: a heading styled like a field label, then one
+   .lm-check row per choice. */
+.lm-group-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: 9px;
+}
+.lm-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.lm-form-card .field .lm-choices .lm-check {
+  font-size: 14.5px;
+  font-weight: 400;
+  color: var(--ink);
+}
 .lm-form-card .field .lm-check input {
   flex: none;
   width: 17px;

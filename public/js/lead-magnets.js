@@ -102,8 +102,10 @@
     phone: { cls: 'type-phone', name: 'Phone', label: 'WhatsApp number', hint: 'Another phone or WhatsApp number', icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>' },
     url: { cls: 'type-url', name: 'Link', label: 'Website', hint: 'A website or social profile', icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>' },
     date: { cls: 'type-date', name: 'Date', label: 'Date', hint: 'A day picked from a calendar', icon: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>' },
-    dropdown: { cls: 'type-dropdown', name: 'Dropdown', label: 'Pick one', hint: 'One choice from your list', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 11 3 3 3-3"/>' },
-    checkbox: { cls: 'type-checkbox', name: 'Tick box', label: 'I agree to be contacted', hint: 'A yes/no or consent box', icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' },
+    radio: { cls: 'type-radio', name: 'Radio buttons', label: 'Pick one', options: true, hint: 'One choice, all shown at once', icon: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/>' },
+    checkboxes: { cls: 'type-checkboxes', name: 'Checkboxes', label: 'Pick any that apply', options: true, hint: 'Several choices from your list', icon: '<rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 7.5h7M14 17.5h7"/>' },
+    dropdown: { cls: 'type-dropdown', name: 'Dropdown', label: 'Pick one', options: true, hint: 'One choice from a compact list', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 11 3 3 3-3"/>' },
+    checkbox: { cls: 'type-checkbox', name: 'Single tick box', label: 'I agree to be contacted', hint: 'One yes/no or consent box', icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' },
   };
   const MAX_QUESTIONS = 4;
   const MAX_QUESTION_OPTIONS = 6;
@@ -154,7 +156,7 @@
   function newQuestion(id, type) {
     const meta = QUESTION_TYPES[type] || QUESTION_TYPES.text;
     const q = { id, type: QUESTION_TYPES[type] ? type : 'text', label: meta.label, required: false };
-    if (q.type === 'dropdown') q.options = ['Option 1', 'Option 2'];
+    if (meta.options) q.options = ['Option 1', 'Option 2'];
     return q;
   }
   function parseOptions(value) {
@@ -185,7 +187,7 @@
             <button type="button" class="q-required-toggle${q.required ? ' on' : ''}" data-qrequired title="Required">*</button>
           </div>
           <div class="q-type-name">${meta.name}${q.required ? ' · required' : ' · optional'}</div>
-          ${q.type === 'dropdown' ? `<input class="q-options-input" data-qoptions value="${escapeHTML((q.options || []).join(', '))}" placeholder="Choices, separated by commas" aria-label="Dropdown choices" />` : ''}
+          ${meta.options ? `<input class="q-options-input" data-qoptions value="${escapeHTML((q.options || []).join(', '))}" placeholder="Choices, separated by commas" aria-label="Choices" />` : ''}
         </div>
         <button type="button" class="q-remove" data-qremove aria-label="Remove question">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
@@ -666,6 +668,10 @@
       const opt = q.required ? '' : ' <span>(optional)</span>';
       if (q.type === 'checkbox') {
         return `<div class="pz-magnet-preview-check"><i></i>${escapeHTML(placeholder)}${opt}</div>`;
+      }
+      if (q.type === 'radio' || q.type === 'checkboxes') {
+        const choices = (q.options || []).map((o) => `<div class="pz-magnet-preview-check${q.type === 'radio' ? ' radio' : ''}"><i></i>${escapeHTML(o)}</div>`).join('');
+        return `<div class="pz-magnet-preview-group"><div class="pz-magnet-preview-group-label">${escapeHTML(placeholder)}${opt}</div>${choices}</div>`;
       }
       const caret = q.type === 'dropdown' ? '<b>▾</b>' : '';
       return `<div class="pz-magnet-preview-input">${escapeHTML(placeholder)}${opt}${caret}</div>`;
