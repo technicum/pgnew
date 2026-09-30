@@ -211,6 +211,39 @@
   margin: 0 0 26px;
 }
 
+/* Extra questions can be a dropdown or a tick box — auth.css only styles
+   text inputs inside .field. */
+.lm-form-card .field select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  background: var(--paper);
+  font-family: inherit;
+  font-size: 14.5px;
+  color: var(--ink);
+}
+.lm-form-card .field select:focus {
+  outline: none;
+  border-color: var(--magnet-accent, var(--blue));
+  background: var(--surface);
+}
+.lm-form-card .field .lm-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+.lm-form-card .field .lm-check input {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  margin: 1px 0 0;
+  accent-color: var(--magnet-accent, var(--blue));
+}
+
 .lm-privacy {
   text-align: center;
   font-size: 13px;

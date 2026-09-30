@@ -93,10 +93,40 @@
   const openOptions = new Set();
 
   // --- shared: extra questions + accent color (builder Form/Design tabs) --
+  // Same set as QUESTION_TYPES in lib/leadMagnets.js. label is what a new
+  // question of that type starts out called.
   const QUESTION_TYPES = {
-    text: { cls: 'type-text', name: 'Text', icon: '<path d="M5 6h14M12 6v13"/>' },
-    number: { cls: 'type-number', name: 'Number', icon: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>' },
+    text: { cls: 'type-text', name: 'Text', label: 'Question', icon: '<path d="M5 6h14M12 6v13"/>' },
+    number: { cls: 'type-number', name: 'Number', label: 'Number', icon: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>' },
+    email: { cls: 'type-email', name: 'Email', label: 'Work email', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>' },
+    phone: { cls: 'type-phone', name: 'Phone', label: 'WhatsApp number', icon: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>' },
+    url: { cls: 'type-url', name: 'Link', label: 'Website', icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>' },
+    date: { cls: 'type-date', name: 'Date', label: 'Date', icon: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>' },
+    dropdown: { cls: 'type-dropdown', name: 'Dropdown', label: 'Pick one', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m9 11 3 3 3-3"/>' },
+    checkbox: { cls: 'type-checkbox', name: 'Tick box', label: 'I agree to be contacted', icon: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>' },
   };
+  const MAX_QUESTIONS = 4;
+  const MAX_QUESTION_OPTIONS = 6;
+  function questionIconHTML(meta) {
+    return `<span class="q-type-icon ${meta.cls}"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${meta.icon}</svg></span>`;
+  }
+  // The "Add question" menu — one entry per type, shared by the create form
+  // and every card.
+  const addQuestionOptionsHTML = Object.keys(QUESTION_TYPES).map((type) => `
+                    <button type="button" class="add-q-option" data-qtype="${type}">
+                      ${questionIconHTML(QUESTION_TYPES[type])}
+                      ${QUESTION_TYPES[type].name}
+                    </button>`).join('');
+  function newQuestion(id, type) {
+    const meta = QUESTION_TYPES[type] || QUESTION_TYPES.text;
+    const q = { id, type: QUESTION_TYPES[type] ? type : 'text', label: meta.label, required: false };
+    if (q.type === 'dropdown') q.options = ['Option 1', 'Option 2'];
+    return q;
+  }
+  function parseOptions(value) {
+    const options = String(value).split(',').map((o) => o.trim().slice(0, 30)).filter(Boolean);
+    return [...new Set(options)].slice(0, MAX_QUESTION_OPTIONS);
+  }
   const ACCENT_PRESETS = ['#1261ef', '#c0322a', '#12733f', '#7048e8', '#07134f'];
   function shadeHex(hex, amount) {
     const num = parseInt(hex.slice(1), 16);
@@ -114,13 +144,14 @@
     return `
       <div class="q-row" draggable="true" data-qid="${q.id}" data-owner="${owner}">
         <span class="q-handle"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="6" r="1.3"/><circle cx="8" cy="12" r="1.3"/><circle cx="8" cy="18" r="1.3"/><circle cx="16" cy="6" r="1.3"/><circle cx="16" cy="12" r="1.3"/><circle cx="16" cy="18" r="1.3"/></svg></span>
-        <span class="q-type-icon ${meta.cls}"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${meta.icon}</svg></span>
+        ${questionIconHTML(meta)}
         <div class="q-body">
           <div class="q-label-row">
             <input class="q-label-input" data-qlabel value="${escapeHTML(q.label)}" />
             <button type="button" class="q-required-toggle${q.required ? ' on' : ''}" data-qrequired title="Required">*</button>
           </div>
           <div class="q-type-name">${meta.name}${q.required ? ' · required' : ' · optional'}</div>
+          ${q.type === 'dropdown' ? `<input class="q-options-input" data-qoptions value="${escapeHTML((q.options || []).join(', '))}" placeholder="Choices, separated by commas" aria-label="Dropdown choices" />` : ''}
         </div>
         <button type="button" class="q-remove" data-qremove aria-label="Remove question">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
@@ -170,6 +201,15 @@
         const q = getQuestions(owner).find((x) => x.id === qid);
         if (!q) return;
         q.label = input.value;
+        onSave();
+      });
+    });
+    list.querySelectorAll('[data-qoptions]').forEach((input) => {
+      input.addEventListener('input', () => {
+        const qid = Number(input.closest('.q-row').dataset.qid);
+        const q = getQuestions(owner).find((x) => x.id === qid);
+        if (!q) return;
+        q.options = parseOptions(input.value);
         onSave();
       });
     });
@@ -281,15 +321,7 @@
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
                     Add question
                   </button>
-                  <div class="add-q-dropdown card-add-q-dropdown" data-id="${magnet.id}">
-                    <button type="button" class="add-q-option" data-qtype="text">
-                      <span class="q-type-icon type-text"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 6h14M12 6v13"/></svg></span>
-                      Text
-                    </button>
-                    <button type="button" class="add-q-option" data-qtype="number">
-                      <span class="q-type-icon type-number"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>
-                      Number
-                    </button>
+                  <div class="add-q-dropdown card-add-q-dropdown" data-id="${magnet.id}">${addQuestionOptionsHTML}
                   </div>
                 </div>
               </div>
@@ -475,9 +507,9 @@
         const magnet = magnets.find((m) => m.id === id);
         if (!magnet) return;
         magnet.extra_questions = magnet.extra_questions || [];
-        if (magnet.extra_questions.length >= 4) { dropdown.classList.remove('open'); return; }
+        if (magnet.extra_questions.length >= MAX_QUESTIONS) { dropdown.classList.remove('open'); return; }
         const nextId = (Math.max(0, ...magnet.extra_questions.map((q) => q.id)) || 0) + 1;
-        magnet.extra_questions.push({ id: nextId, type: opt.dataset.qtype, label: opt.dataset.qtype === 'number' ? 'Number' : 'Question', required: false });
+        magnet.extra_questions.push(newQuestion(nextId, opt.dataset.qtype));
         openOptions.add(id);
         render();
         saveCardQuestions(id);
@@ -607,7 +639,11 @@
     previewExtraFields.innerHTML = builderQuestions.map((q) => {
       const placeholder = q.label || 'Question';
       const opt = q.required ? '' : ' <span>(optional)</span>';
-      return `<div class="pz-magnet-preview-input">${escapeHTML(placeholder)}${opt}</div>`;
+      if (q.type === 'checkbox') {
+        return `<div class="pz-magnet-preview-check"><i></i>${escapeHTML(placeholder)}${opt}</div>`;
+      }
+      const caret = q.type === 'dropdown' ? '<b>▾</b>' : '';
+      return `<div class="pz-magnet-preview-input">${escapeHTML(placeholder)}${opt}${caret}</div>`;
     }).join('');
   }
   function syncPreview() {
@@ -650,17 +686,19 @@
   const magnetQList = document.getElementById('magnetQList');
   function renderBuilderQuestions() {
     magnetQList.innerHTML = builderQuestions.map((q) => questionRowHTML(q, 'new')).join('');
-    attachQuestionRowListeners(magnetQList, 'new', () => {}, () => { renderBuilderQuestions(); });
+    // Nothing to save until the magnet exists — typing just refreshes the preview.
+    attachQuestionRowListeners(magnetQList, 'new', updatePreviewFields, () => { renderBuilderQuestions(); });
     updatePreviewFields();
   }
   const addQBtn = document.getElementById('magnetAddQBtn');
   const addQDropdown = document.getElementById('magnetAddQDropdown');
+  addQDropdown.innerHTML = addQuestionOptionsHTML;
   addQBtn.addEventListener('click', (e) => { e.stopPropagation(); addQDropdown.classList.toggle('open'); });
   document.addEventListener('click', () => { addQDropdown.classList.remove('open'); });
   addQDropdown.querySelectorAll('.add-q-option').forEach((opt) => {
     opt.addEventListener('click', () => {
-      if (builderQuestions.length >= 4) { addQDropdown.classList.remove('open'); return; }
-      builderQuestions.push({ id: builderNextQid++, type: opt.dataset.qtype, label: opt.dataset.qtype === 'number' ? 'Number' : 'Question', required: false });
+      if (builderQuestions.length >= MAX_QUESTIONS) { addQDropdown.classList.remove('open'); return; }
+      builderQuestions.push(newQuestion(builderNextQid++, opt.dataset.qtype));
       renderBuilderQuestions();
       addQDropdown.classList.remove('open');
     });
