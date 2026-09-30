@@ -390,8 +390,10 @@ app.get('/dashboard/lead-magnets', requireAuth, async (req, res, next) => {
 
 app.post('/dashboard/lead-magnets', requireAuth, async (req, res) => {
   try {
-    const { title, description, ctaText, fileUrl } = req.body || {};
-    const magnet = await createLeadMagnet(req.session.user.id, { title, description, ctaText, fileUrl });
+    const { title, description, ctaText, fileUrl, successMessage, collectPhone, extraQuestions, accentColor, showCover } = req.body || {};
+    const magnet = await createLeadMagnet(req.session.user.id, {
+      title, description, ctaText, fileUrl, successMessage, collectPhone, extraQuestions, accentColor, showCover,
+    });
     res.status(201).json({ ...magnet, publicPath: `/${magnet.slug}` });
   } catch (err) {
     if (err.code === 'TITLE_REQUIRED' || err.code === 'FILE_URL_REQUIRED' || err.code === 'INVALID_FILE_URL') {
@@ -406,7 +408,10 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid lead magnet id.' });
-    const { title, description, ctaText, fileUrl, visible, slug, successMessage, collectPhone } = req.body || {};
+    const {
+      title, description, ctaText, fileUrl, visible, slug, successMessage, collectPhone,
+      extraQuestions, accentColor, showCover,
+    } = req.body || {};
     const fields = {};
     if (title !== undefined) fields.title = title;
     if (description !== undefined) fields.description = description;
@@ -416,6 +421,9 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     if (slug !== undefined) fields.slug = slug;
     if (successMessage !== undefined) fields.successMessage = successMessage;
     if (collectPhone !== undefined) fields.collectPhone = collectPhone;
+    if (extraQuestions !== undefined) fields.extraQuestions = extraQuestions;
+    if (accentColor !== undefined) fields.accentColor = accentColor;
+    if (showCover !== undefined) fields.showCover = showCover;
     const changed = await updateLeadMagnet(req.session.user.id, id, fields);
     res.json({ ok: true, ...changed });
   } catch (err) {

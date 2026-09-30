@@ -1,0 +1,308 @@
+/* Public lead-magnet pages (/l/:handle/:slug and the success screen).
+   Shares brand tokens with style.css (blue/navy, lime, coral, Fraunces +
+   IBM Plex Sans) and reuses .field / .btn / .auth-card from auth.css —
+   this sheet only adds the split offer layout and the cover mockup. */
+
+.lm-top {
+  padding: 22px 28px 0;
+}
+
+.lm-wrap {
+  min-height: calc(100vh - 68px);
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+}
+
+/* ---------- left: the offer ---------- */
+
+.lm-visual {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 26px;
+  padding: 56px 52px;
+  color: #fff;
+  background: radial-gradient(ellipse 60% 45% at 12% 8%, rgba(255,255,255,.16), transparent 60%),
+              radial-gradient(ellipse 55% 40% at 90% 95%, rgba(185,237,40,.14), transparent 65%),
+              linear-gradient(160deg, var(--navy) 0%, var(--magnet-accent-dark, var(--blue-dark)) 55%, var(--magnet-accent, var(--blue)) 100%);
+}
+
+.lm-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  padding: 6px 14px 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.22);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.lm-kicker .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  flex: none;
+}
+
+.lm-visual h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1.1;
+  text-wrap: balance;
+  margin: 0;
+  max-width: 15ch;
+}
+
+.lm-visual .lm-desc {
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: rgba(255,255,255,.82);
+  max-width: 42ch;
+  margin: 0;
+}
+
+.lm-offer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  margin-top: 6px;
+}
+.lm-offer-row--no-cover {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lm-cover {
+  flex: none;
+  width: 148px;
+  aspect-ratio: 3 / 4;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(4,12,40,.4);
+  transform: rotate(-4deg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  position: relative;
+}
+
+.lm-cover::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 18px 18px 0;
+  border-color: transparent var(--paper) transparent transparent;
+  border-radius: 0 12px 0 0;
+}
+
+.lm-cover-bar {
+  height: 22px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, var(--coral), #ff9a8f);
+}
+
+.lm-cover-line {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+
+.lm-cover-line.short { width: 60%; }
+
+.lm-cover-badge {
+  position: absolute;
+  bottom: -12px;
+  right: -12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(4,12,40,.3);
+}
+
+.lm-owner-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 20px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,.2);
+  font-size: 13.5px;
+  color: rgba(255,255,255,.78);
+}
+
+.lm-owner-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #fff;
+  flex: none;
+}
+
+/* ---------- right: the form ---------- */
+
+.lm-form-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+  background: var(--paper);
+}
+
+.lm-form-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.lm-eyebrow {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--magnet-accent-dark, var(--blue-dark));
+  margin-bottom: 10px;
+}
+
+/* .btn-primary is shared with signup/login — override it only inside this
+   card, scoped, so a custom accent never leaks onto other pages. */
+.lm-form-card .btn-primary {
+  background: var(--magnet-accent, var(--blue));
+}
+.lm-form-card .btn-primary:hover {
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--magnet-accent, var(--blue)) 40%, transparent);
+}
+
+.lm-form-card h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 24px;
+  margin: 0 0 8px;
+}
+
+.lm-form-card .lm-sub {
+  color: var(--muted);
+  font-size: 14.5px;
+  margin: 0 0 26px;
+}
+
+.lm-privacy {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 18px;
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 900px) {
+  .lm-wrap { grid-template-columns: 1fr; }
+  .lm-visual { padding: 40px 28px 34px; gap: 20px; }
+  .lm-offer-row { align-items: center; }
+  .lm-cover { width: 104px; }
+  .lm-owner-row { padding-top: 16px; }
+  .lm-form-panel { padding: 40px 28px 56px; }
+}
+
+@media (max-width: 460px) {
+  .lm-offer-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+}
+
+/* ---------- success screen ---------- */
+
+.lm-success-wrap {
+  min-height: calc(100vh - 68px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 24px 64px;
+  background: var(--paper);
+}
+
+.lm-success-card {
+  width: 100%;
+  max-width: 440px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+}
+
+.lm-success-top {
+  padding: 40px 32px 34px;
+  text-align: center;
+  color: #fff;
+  background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255,255,255,.18), transparent 65%),
+              linear-gradient(160deg, var(--navy) 0%, var(--blue-dark) 60%, var(--blue) 100%);
+}
+
+.lm-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+}
+
+.lm-success-top h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 27px;
+  margin: 0 0 8px;
+}
+
+.lm-success-top p {
+  font-size: 14.5px;
+  color: rgba(255,255,255,.82);
+  margin: 0;
+}
+
+.lm-success-body {
+  background: var(--surface);
+  padding: 30px 32px 32px;
+  text-align: center;
+}
+
+.lm-success-body .btn {
+  width: 100%;
+  text-decoration: none;
+  padding: 14px 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.lm-success-note {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 18px 0 0;
+}

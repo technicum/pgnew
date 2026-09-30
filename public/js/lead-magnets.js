@@ -92,6 +92,126 @@
   // so this is what keeps a panel open across a toggle or a save.
   const openOptions = new Set();
 
+  // --- shared: extra questions + accent color (builder Form/Design tabs) --
+  const QUESTION_TYPES = {
+    text: { cls: 'type-text', name: 'Text', icon: '<path d="M5 6h14M12 6v13"/>' },
+    number: { cls: 'type-number', name: 'Number', icon: '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>' },
+  };
+  const ACCENT_PRESETS = ['#1261ef', '#c0322a', '#12733f', '#7048e8', '#07134f'];
+  function shadeHex(hex, amount) {
+    const num = parseInt(hex.slice(1), 16);
+    const clamp = (n) => Math.min(255, Math.max(0, n));
+    const r = clamp((num >> 16) + amount);
+    const g = clamp(((num >> 8) & 0xff) + amount);
+    const b = clamp((num & 0xff) + amount);
+    return '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('');
+  }
+
+  // owner is 'new' for the create form, or a magnet id for an existing card
+  // — every handler below reads it back off the row to know what to save.
+  function questionRowHTML(q, owner) {
+    const meta = QUESTION_TYPES[q.type] || QUESTION_TYPES.text;
+    return `
+      <div class="q-row" draggable="true" data-qid="${q.id}" data-owner="${owner}">
+        <span class="q-handle"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="6" r="1.3"/><circle cx="8" cy="12" r="1.3"/><circle cx="8" cy="18" r="1.3"/><circle cx="16" cy="6" r="1.3"/><circle cx="16" cy="12" r="1.3"/><circle cx="16" cy="18" r="1.3"/></svg></span>
+        <span class="q-type-icon ${meta.cls}"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${meta.icon}</svg></span>
+        <div class="q-body">
+          <div class="q-label-row">
+            <input class="q-label-input" data-qlabel value="${escapeHTML(q.label)}" />
+            <button type="button" class="q-required-toggle${q.required ? ' on' : ''}" data-qrequired title="Required">*</button>
+          </div>
+          <div class="q-type-name">${meta.name}${q.required ? ' · required' : ' · optional'}</div>
+        </div>
+        <button type="button" class="q-remove" data-qremove aria-label="Remove question">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
+        </button>
+      </div>`;
+  }
+
+  function swatchRowHTML(accent, owner) {
+    return ACCENT_PRESETS.map((c) => `<button type="button" class="swatch${accent === c ? ' active' : ''}" data-accent="${c}" data-owner="${owner}" style="background:${c};" aria-label="Accent color"></button>`).join('')
+      + `<span class="swatch swatch-custom${ACCENT_PRESETS.includes(accent) ? '' : ' active'}" title="Custom color">
+           <input type="color" class="custom-accent" data-owner="${owner}" value="${accent}" />
+         </span>`;
+  }
+
+  // 'new' for the create form's in-progress list, a magnet id (number) for
+  // an existing card's own extra_questions array — every caller below goes
+  // through these three so both contexts share one implementation.
+  let builderQuestions = [];
+  let builderNextQid = 1;
+  function getQuestions(owner) {
+    if (owner === 'new') return builderQuestions;
+    const magnet = magnets.find((m) => m.id === owner);
+    if (!magnet) return [];
+    if (!magnet.extra_questions) magnet.extra_questions = [];
+    return magnet.extra_questions;
+  }
+  function removeQuestion(owner, qid) {
+    const arr = getQuestions(owner);
+    const idx = arr.findIndex((q) => q.id === qid);
+    if (idx !== -1) arr.splice(idx, 1);
+  }
+  function reorderQuestions(owner, fromId, toId) {
+    const arr = getQuestions(owner);
+    const fromIdx = arr.findIndex((q) => q.id === fromId);
+    const toIdx = arr.findIndex((q) => q.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    arr.splice(toIdx, 0, arr.splice(fromIdx, 1)[0]);
+  }
+
+  // Wires one rendered q-list's rows: label typing calls onSave only (so
+  // focus survives a keystroke), everything structural (required toggle,
+  // remove, drag reorder) calls onRerender then onSave.
+  function attachQuestionRowListeners(list, owner, onSave, onRerender) {
+    list.querySelectorAll('[data-qlabel]').forEach((input) => {
+      input.addEventListener('input', () => {
+        const qid = Number(input.closest('.q-row').dataset.qid);
+        const q = getQuestions(owner).find((x) => x.id === qid);
+        if (!q) return;
+        q.label = input.value;
+        onSave();
+      });
+    });
+    list.querySelectorAll('[data-qrequired]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const qid = Number(btn.closest('.q-row').dataset.qid);
+        const q = getQuestions(owner).find((x) => x.id === qid);
+        if (!q) return;
+        q.required = !q.required;
+        onRerender();
+        onSave();
+      });
+    });
+    list.querySelectorAll('[data-qremove]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const qid = Number(btn.closest('.q-row').dataset.qid);
+        removeQuestion(owner, qid);
+        onRerender();
+        onSave();
+      });
+    });
+    let dragQid = null;
+    list.querySelectorAll('.q-row').forEach((row) => {
+      row.addEventListener('dragstart', () => { dragQid = Number(row.dataset.qid); row.classList.add('dragging'); });
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        list.querySelectorAll('.q-row').forEach((r) => r.classList.remove('drag-over'));
+      });
+      row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('drag-over'); });
+      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        const targetQid = Number(row.dataset.qid);
+        if (dragQid === null || dragQid === targetQid) return;
+        reorderQuestions(owner, dragQid, targetQid);
+        onRerender();
+        onSave();
+      });
+    });
+  }
+
   function statsHTML(magnet) {
     const views = magnet.view_count || 0;
     const signups = magnet.signup_count || 0;
@@ -136,6 +256,34 @@
               <div class="pz-magnet-option pz-option-row">
                 <button type="button" class="pz-switch toggle-phone${magnet.collect_phone ? ' on' : ''}" data-id="${magnet.id}" aria-label="Ask for a phone number" aria-pressed="${magnet.collect_phone ? 'true' : 'false'}"></button>
                 <span>Also ask for a phone number <span class="pz-option-hint">(optional for the visitor)</span></span>
+              </div>
+              <div class="pz-magnet-option">
+                <label>Extra questions</label>
+                <div class="q-list card-q-list" data-id="${magnet.id}">${(magnet.extra_questions || []).map((q) => questionRowHTML(q, magnet.id)).join('')}</div>
+                <div class="add-q-menu">
+                  <button type="button" class="add-q-btn card-add-q-btn" data-id="${magnet.id}">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                    Add question
+                  </button>
+                  <div class="add-q-dropdown card-add-q-dropdown" data-id="${magnet.id}">
+                    <button type="button" class="add-q-option" data-qtype="text">
+                      <span class="q-type-icon type-text"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 6h14M12 6v13"/></svg></span>
+                      Text
+                    </button>
+                    <button type="button" class="add-q-option" data-qtype="number">
+                      <span class="q-type-icon type-number"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>
+                      Number
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="pz-magnet-option">
+                <label>Accent color</label>
+                <div class="swatch-row card-swatch-row" data-id="${magnet.id}">${swatchRowHTML(magnet.accent_color || '#1261ef', magnet.id)}</div>
+              </div>
+              <div class="pz-magnet-option pz-option-row">
+                <button type="button" class="pz-switch toggle-cover${magnet.show_cover ? ' on' : ''}" data-id="${magnet.id}" aria-label="Show cover graphic" aria-pressed="${magnet.show_cover ? 'true' : 'false'}"></button>
+                <span>Show the cover graphic on the page</span>
               </div>
             </details>
           </div>
@@ -235,6 +383,87 @@
         });
       });
     });
+    // --- card: accent color -------------------------------------------
+    magnetsList.querySelectorAll('.card-swatch-row .swatch[data-accent]').forEach((sw) => {
+      sw.addEventListener('click', () => {
+        const id = Number(sw.dataset.owner);
+        const magnet = magnets.find((m) => m.id === id);
+        if (!magnet) return;
+        magnet.accent_color = sw.dataset.accent;
+        render();
+        api(`/dashboard/lead-magnets/${id}`, { method: 'PATCH', body: JSON.stringify({ accentColor: magnet.accent_color }) }).catch(() => {});
+      });
+    });
+    magnetsList.querySelectorAll('.custom-accent').forEach((input) => {
+      input.addEventListener('input', () => {
+        const id = Number(input.dataset.owner);
+        const magnet = magnets.find((m) => m.id === id);
+        if (!magnet) return;
+        magnet.accent_color = input.value;
+        debouncedFieldSave(`${id}:accentColor`, id, 'accentColor', input.value);
+      });
+      input.addEventListener('change', () => {
+        const id = Number(input.dataset.owner);
+        const magnet = magnets.find((m) => m.id === id);
+        if (magnet) render();
+      });
+    });
+
+    // --- card: cover graphic toggle -------------------------------------
+    magnetsList.querySelectorAll('.toggle-cover').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const id = Number(e.currentTarget.dataset.id);
+        const magnet = magnets.find((m) => m.id === id);
+        if (!magnet) return;
+        magnet.show_cover = magnet.show_cover ? 0 : 1;
+        render();
+        api(`/dashboard/lead-magnets/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ showCover: !!magnet.show_cover }),
+        }).catch(() => {
+          magnet.show_cover = magnet.show_cover ? 0 : 1;
+          render();
+        });
+      });
+    });
+
+    // --- card: extra questions ------------------------------------------
+    function saveCardQuestions(id) {
+      const magnet = magnets.find((m) => m.id === id);
+      if (!magnet) return;
+      api(`/dashboard/lead-magnets/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ extraQuestions: magnet.extra_questions || [] }),
+      }).catch(() => {});
+    }
+    magnetsList.querySelectorAll('.card-q-list').forEach((list) => {
+      const id = Number(list.dataset.id);
+      attachQuestionRowListeners(list, id, () => saveCardQuestions(id), () => render());
+    });
+    magnetsList.querySelectorAll('.card-add-q-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dropdown = btn.nextElementSibling;
+        document.querySelectorAll('.add-q-dropdown.open').forEach((d) => { if (d !== dropdown) d.classList.remove('open'); });
+        dropdown.classList.toggle('open');
+      });
+    });
+    magnetsList.querySelectorAll('.card-add-q-dropdown .add-q-option').forEach((opt) => {
+      opt.addEventListener('click', () => {
+        const dropdown = opt.closest('.card-add-q-dropdown');
+        const id = Number(dropdown.dataset.id);
+        const magnet = magnets.find((m) => m.id === id);
+        if (!magnet) return;
+        magnet.extra_questions = magnet.extra_questions || [];
+        if (magnet.extra_questions.length >= 4) { dropdown.classList.remove('open'); return; }
+        const nextId = (Math.max(0, ...magnet.extra_questions.map((q) => q.id)) || 0) + 1;
+        magnet.extra_questions.push({ id: nextId, type: opt.dataset.qtype, label: opt.dataset.qtype === 'number' ? 'Number' : 'Question', required: false });
+        openOptions.add(id);
+        render();
+        saveCardQuestions(id);
+      });
+    });
+
     magnetsList.querySelectorAll('.toggle-visible').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
@@ -309,13 +538,129 @@
     });
   }
 
-  // --- create form ------------------------------------------------------
+  // --- create form: Content / Form / Design tabs + live preview ---------
   const form = document.getElementById('createMagnetForm');
   const titleInput = document.getElementById('magnetTitle');
   const ctaInput = document.getElementById('magnetCta');
   const descriptionInput = document.getElementById('magnetDescription');
   const fileUrlInput = document.getElementById('magnetFileUrl');
+  const successInput = document.getElementById('magnetSuccessMessage');
+  const phoneToggle = document.getElementById('magnetCollectPhone');
   const formError = document.getElementById('createFormError');
+
+  // tabs
+  document.querySelectorAll('.pz-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pz-tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.pz-btabpanel').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('btab-' + btn.dataset.btab).classList.add('active');
+    });
+  });
+
+  // content preview
+  const previewTitle = document.getElementById('previewTitle');
+  const previewDesc = document.getElementById('previewDesc');
+  const previewCta = document.getElementById('previewCta');
+  const previewSlugUrl = document.getElementById('previewSlugUrl');
+  const previewPhoneField = document.getElementById('previewPhoneField');
+  const previewExtraFields = document.getElementById('previewExtraFields');
+  const previewCover = document.getElementById('previewCover');
+  const previewFrame = document.querySelector('.pz-magnet-preview-frame');
+  const baseSlugUrl = previewSlugUrl.textContent.replace(/\/…$/, '/');
+
+  function slugify(str) {
+    return String(str || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || '…';
+  }
+  function updatePreviewFields() {
+    previewExtraFields.innerHTML = builderQuestions.map((q) => {
+      const placeholder = q.label || 'Question';
+      const opt = q.required ? '' : ' <span>(optional)</span>';
+      return `<div class="pz-magnet-preview-input">${escapeHTML(placeholder)}${opt}</div>`;
+    }).join('');
+  }
+  function syncPreview() {
+    previewTitle.textContent = titleInput.value.trim() || 'Your lead magnet title';
+    previewDesc.textContent = descriptionInput.value.trim() || 'A line about what someone gets when they sign up.';
+    previewDesc.style.display = descriptionInput.value.trim() ? '' : 'none';
+    previewCta.textContent = ctaInput.value.trim() || 'Get it free';
+    previewSlugUrl.textContent = baseSlugUrl + slugify(titleInput.value);
+  }
+  [titleInput, descriptionInput, ctaInput].forEach((el) => el.addEventListener('input', syncPreview));
+
+  phoneToggle.addEventListener('click', () => {
+    phoneToggle.classList.toggle('on');
+    phoneToggle.setAttribute('aria-pressed', phoneToggle.classList.contains('on') ? 'true' : 'false');
+    previewPhoneField.style.display = phoneToggle.classList.contains('on') ? '' : 'none';
+  });
+
+  // Form tab: extra questions (local until the magnet is created)
+  const magnetQList = document.getElementById('magnetQList');
+  function renderBuilderQuestions() {
+    magnetQList.innerHTML = builderQuestions.map((q) => questionRowHTML(q, 'new')).join('');
+    attachQuestionRowListeners(magnetQList, 'new', () => {}, () => { renderBuilderQuestions(); });
+    updatePreviewFields();
+  }
+  const addQBtn = document.getElementById('magnetAddQBtn');
+  const addQDropdown = document.getElementById('magnetAddQDropdown');
+  addQBtn.addEventListener('click', (e) => { e.stopPropagation(); addQDropdown.classList.toggle('open'); });
+  document.addEventListener('click', () => { addQDropdown.classList.remove('open'); });
+  addQDropdown.querySelectorAll('.add-q-option').forEach((opt) => {
+    opt.addEventListener('click', () => {
+      if (builderQuestions.length >= 4) { addQDropdown.classList.remove('open'); return; }
+      builderQuestions.push({ id: builderNextQid++, type: opt.dataset.qtype, label: opt.dataset.qtype === 'number' ? 'Number' : 'Question', required: false });
+      renderBuilderQuestions();
+      addQDropdown.classList.remove('open');
+    });
+  });
+
+  // Design tab: accent color + cover toggle
+  let builderAccent = '#1261ef';
+  let builderShowCover = true;
+  document.querySelectorAll('#magnetSwatchRow .swatch[data-accent]').forEach((sw) => {
+    sw.addEventListener('click', () => {
+      document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s) => s.classList.remove('active'));
+      sw.classList.add('active');
+      builderAccent = sw.dataset.accent;
+      previewFrame.style.setProperty('--pv-accent', builderAccent);
+      previewFrame.style.setProperty('--pv-accent-dark', shadeHex(builderAccent, -60));
+    });
+  });
+  const magnetCustomColor = document.getElementById('magnetCustomColor');
+  magnetCustomColor.addEventListener('input', () => {
+    document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s) => s.classList.remove('active'));
+    magnetCustomColor.parentElement.classList.add('active');
+    builderAccent = magnetCustomColor.value;
+    previewFrame.style.setProperty('--pv-accent', builderAccent);
+    previewFrame.style.setProperty('--pv-accent-dark', shadeHex(builderAccent, -60));
+  });
+  document.querySelectorAll('#btab-design .cover-opt').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#btab-design .cover-opt').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      builderShowCover = btn.dataset.cover !== 'off';
+      previewCover.style.display = builderShowCover ? 'flex' : 'none';
+    });
+  });
+
+  function resetBuilder() {
+    form.reset();
+    builderQuestions = [];
+    builderAccent = '#1261ef';
+    builderShowCover = true;
+    phoneToggle.classList.remove('on');
+    phoneToggle.setAttribute('aria-pressed', 'false');
+    previewPhoneField.style.display = 'none';
+    previewCover.style.display = 'flex';
+    document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s, i) => s.classList.toggle('active', i === 0));
+    document.getElementById('btab-design').querySelector('.swatch-custom').classList.remove('active');
+    document.querySelectorAll('#btab-design .cover-opt').forEach((b, i) => b.classList.toggle('active', i === 0));
+    previewFrame.style.removeProperty('--pv-accent');
+    previewFrame.style.removeProperty('--pv-accent-dark');
+    renderBuilderQuestions();
+    syncPreview();
+    document.querySelector('.pz-tab-btn[data-btab="content"]').click();
+  }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -328,11 +673,16 @@
           ctaText: ctaInput.value,
           description: descriptionInput.value,
           fileUrl: fileUrlInput.value,
+          successMessage: successInput.value,
+          collectPhone: phoneToggle.classList.contains('on'),
+          extraQuestions: builderQuestions,
+          accentColor: builderAccent,
+          showCover: builderShowCover,
         }),
       });
       magnets.unshift(created);
       render();
-      form.reset();
+      resetBuilder();
       titleInput.focus();
     } catch (err) {
       formError.textContent = err.message || 'Could not create that lead magnet. Please try again.';
@@ -340,5 +690,6 @@
     }
   });
 
+  renderBuilderQuestions();
   render();
 })();

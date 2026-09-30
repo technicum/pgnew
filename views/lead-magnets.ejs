@@ -106,24 +106,141 @@
         </div>
       </section>
 
-      <section class="mt-6 rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-        <h2 class="text-lg font-bold">Create a lead magnet</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Link to the file — a Google Drive or Dropbox share link works fine to start.</p>
-        <form id="createMagnetForm" class="mt-4" style="display:flex; flex-direction:column; gap:10px;">
-          <div style="display:flex; flex-wrap:wrap; gap:10px;">
-            <input type="text" id="magnetTitle" class="pz-field-input" placeholder="Title — e.g. Free pricing checklist" style="flex:1.4; min-width:220px;" required />
-            <input type="text" id="magnetCta" class="pz-field-input" placeholder="Button text (optional)" style="flex:1; min-width:160px;" />
-          </div>
-          <textarea id="magnetDescription" class="pz-field-input" rows="2" placeholder="What is it, and why should someone want it? (optional)" style="height:auto; padding:9px 11px; resize:vertical;"></textarea>
-          <input type="url" id="magnetFileUrl" class="pz-field-input" placeholder="Link to the file (https://…)" required />
-          <div>
-            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
-              Create lead magnet
+      <section class="mt-6 pz-builder">
+        <div class="pz-builder-form rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+          <h2 class="text-lg font-bold">Build a lead magnet</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Link to the file — a Google Drive or Dropbox share link works fine to start.</p>
+
+          <div class="pz-tabs">
+            <button type="button" class="pz-tab-btn active" data-btab="content">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="11" height="4" rx="1"/></svg>
+              Content
+            </button>
+            <button type="button" class="pz-tab-btn" data-btab="form">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
+              Form
+            </button>
+            <button type="button" class="pz-tab-btn" data-btab="design">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              Design
             </button>
           </div>
-        </form>
-        <p class="pz-field-error" id="createFormError"></p>
+
+          <form id="createMagnetForm" class="mt-4">
+
+            <div class="pz-btabpanel active" id="btab-content" style="display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <input type="text" id="magnetTitle" class="pz-field-input" placeholder="Title — e.g. Free pricing checklist" style="flex:1.4; min-width:220px;" required />
+                <input type="text" id="magnetCta" class="pz-field-input" placeholder="Button text (optional)" style="flex:1; min-width:160px;" />
+              </div>
+              <textarea id="magnetDescription" class="pz-field-input" rows="2" placeholder="What is it, and why should someone want it? (optional)" style="height:auto; padding:9px 11px; resize:vertical;"></textarea>
+              <input type="url" id="magnetFileUrl" class="pz-field-input" placeholder="Link to the file (https://…)" required />
+              <div class="pz-builder-option">
+                <label for="magnetSuccessMessage">Thank-you message <span class="pz-option-hint">(optional — shown right after signup)</span></label>
+                <textarea id="magnetSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default." style="height:auto; padding:9px 11px; resize:vertical;"></textarea>
+              </div>
+            </div>
+
+            <div class="pz-btabpanel" id="btab-form">
+              <div class="pz-builder-option pz-option-row" style="margin-top:0;">
+                <button type="button" class="pz-switch" id="magnetCollectPhone" aria-label="Ask for a phone number" aria-pressed="false"></button>
+                <span>Also ask for a phone number <span class="pz-option-hint">(optional for the visitor)</span></span>
+              </div>
+              <div class="pz-divider"></div>
+              <p class="pz-section-label">Extra questions</p>
+              <p class="pz-section-sub">Asked after name, email and phone. Drag to reorder.</p>
+              <div class="q-list" id="magnetQList"><!-- injected --></div>
+              <div class="add-q-menu">
+                <button type="button" class="add-q-btn" id="magnetAddQBtn">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                  Add question
+                </button>
+                <div class="add-q-dropdown" id="magnetAddQDropdown">
+                  <button type="button" class="add-q-option" data-qtype="text">
+                    <span class="q-type-icon type-text"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 6h14M12 6v13"/></svg></span>
+                    Text
+                  </button>
+                  <button type="button" class="add-q-option" data-qtype="number">
+                    <span class="q-type-icon type-number"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></span>
+                    Number
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="pz-btabpanel" id="btab-design">
+              <p class="pz-section-label">Accent color</p>
+              <p class="pz-section-sub">Used for the button, badge and background on the public page.</p>
+              <div class="swatch-row" id="magnetSwatchRow">
+                <button type="button" class="swatch active" data-accent="#1261ef" style="background:#1261ef;" aria-label="Blue"></button>
+                <button type="button" class="swatch" data-accent="#c0322a" style="background:#ff6c62;" aria-label="Coral"></button>
+                <button type="button" class="swatch" data-accent="#12733f" style="background:#2fae6b;" aria-label="Green"></button>
+                <button type="button" class="swatch" data-accent="#7048e8" style="background:#7048e8;" aria-label="Violet"></button>
+                <button type="button" class="swatch" data-accent="#07134f" style="background:#07134f;" aria-label="Navy"></button>
+                <span class="swatch swatch-custom" title="Custom color">
+                  <input type="color" id="magnetCustomColor" value="#1261ef" />
+                </span>
+              </div>
+              <div class="pz-divider"></div>
+              <p class="pz-section-label">Cover graphic</p>
+              <p class="pz-section-sub">The small file preview shown on the page.</p>
+              <div class="cover-choice">
+                <button type="button" class="cover-opt active" data-cover="on">Show cover</button>
+                <button type="button" class="cover-opt" data-cover="off">Hide cover</button>
+              </div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                Create lead magnet
+              </button>
+            </div>
+          </form>
+          <p class="pz-field-error" id="createFormError"></p>
+        </div>
+
+        <div class="pz-builder-preview">
+          <div style="position:sticky; top:104px;">
+            <div class="flex items-center justify-between" style="margin-bottom:14px;">
+              <h2 class="text-sm font-bold">Live preview</h2>
+              <span class="text-xs text-muted-foreground" style="font-variant-numeric:tabular-nums;">What visitors will see</span>
+            </div>
+            <div class="pz-magnet-preview-frame">
+              <div class="pz-magnet-preview-chrome">
+                <span></span><span></span><span></span>
+                <span class="pz-magnet-preview-url" id="previewSlugUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/…</span>
+              </div>
+              <div class="pz-magnet-preview-screen">
+                <div class="pz-magnet-preview-visual">
+                  <span class="pz-magnet-preview-kicker"><span></span>Free download</span>
+                  <h3 id="previewTitle">Your lead magnet title</h3>
+                  <p id="previewDesc">A line about what someone gets when they sign up.</p>
+                  <div class="pz-magnet-preview-cover" id="previewCover" aria-hidden="true">
+                    <div class="bar"></div>
+                    <div class="line"></div>
+                    <div class="line short"></div>
+                    <div class="badge">
+                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="12" height="12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 12l6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                  <div class="pz-magnet-preview-owner">
+                    <span class="pz-magnet-preview-avatar"><%= (user.initials || 'U').charAt(0) %></span>
+                    Made by <strong><%= user.name %></strong>
+                  </div>
+                </div>
+                <div class="pz-magnet-preview-form">
+                  <span class="pz-magnet-preview-label">Get instant access</span>
+                  <div class="pz-magnet-preview-input">Full name</div>
+                  <div class="pz-magnet-preview-input">you@example.com</div>
+                  <div class="pz-magnet-preview-input" id="previewPhoneField" style="display:none;">Phone number <span>(optional)</span></div>
+                  <div id="previewExtraFields"><!-- injected --></div>
+                  <div class="pz-magnet-preview-btn" id="previewCta">Get it free</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
