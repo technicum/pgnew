@@ -42,6 +42,7 @@ const {
   deleteLeadMagnet,
 } = require('./lib/leadMagnets');
 const { installStorefront } = require('./lib/storefront');
+const { MySQLSessionStore } = require('./lib/sessionStore');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -61,6 +62,8 @@ app.use(session({
   // Falls back to a fixed dev secret so `node server.js` works with no
   // .env at all; set SESSION_SECRET in production's .env for real signing.
   secret: process.env.SESSION_SECRET || 'pagezaper-dev-secret-change-in-production',
+  // Kept in MySQL so a restart/deploy doesn't log everyone out.
+  store: new MySQLSessionStore(),
   resave: false,
   saveUninitialized: false,
   cookie: {
