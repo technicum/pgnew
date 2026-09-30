@@ -46,6 +46,7 @@ const {
   getPublicLeadMagnet,
   incrementSignupCount,
 } = require('./lib/leadMagnets');
+const { installStorefront } = require('./lib/storefront');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -77,6 +78,9 @@ app.use(session({
 // change instead of hunting through views/*.ejs.
 const SITE_NAME = 'PageZaper';
 const SITE_DOMAIN = 'pagezaper.com';
+
+// Store subdomains, trust proxy, assetVersion and storeUrlFor for views.
+installStorefront(app, { siteName: SITE_NAME, siteDomain: SITE_DOMAIN, port: PORT });
 
 // Makes siteName/siteDomain available in every view without passing them
 // explicitly on every res.render call.
