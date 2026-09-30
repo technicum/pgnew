@@ -1,4 +1,4 @@
-/* Signup / login — shares brand tokens with style.css (teal/coral,
+/* Signup / login — shares brand tokens with style.css (blue/navy,
    Fraunces + IBM Plex Sans) but these two pages don't need the marketing
    site's nav/hero/footer rules, so they get their own small sheet. */
 
@@ -44,7 +44,7 @@
 .auth-error {
   background: var(--coral-soft);
   color: var(--coral-dark);
-  border: 1px solid rgba(226, 80, 47, 0.25);
+  border: 1px solid rgba(192, 50, 42, 0.25);
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 13.5px;
@@ -77,7 +77,7 @@
 
 .field input:focus {
   outline: none;
-  border-color: var(--teal);
+  border-color: var(--blue);
   background: var(--surface);
 }
 
@@ -101,7 +101,7 @@
 }
 
 .auth-switch a {
-  color: var(--teal-dark);
+  color: var(--blue-dark);
   font-weight: 600;
   text-decoration: none;
 }

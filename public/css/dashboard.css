@@ -408,7 +408,7 @@
    generated; everything the components reference is a var(--token), so
    redefining the tokens here (after the :root above, so it wins on
    cascade order) re-skins the whole dashboard to match the marketing
-   site's teal/coral palette and Fraunces/IBM Plex Sans pairing without
+   site's blue/navy/lime palette and Fraunces/IBM Plex Sans pairing without
    touching a single utility class.
    --------------------------------------------------------------------- */
 :root {
@@ -416,37 +416,37 @@
   --font-display: 'Fraunces', Georgia, serif;
   --default-font-family: 'IBM Plex Sans', -apple-system, sans-serif;
 
-  --background: #f5f6f4;
-  --foreground: #12181f;
+  --background: #fbfaf6;
+  --foreground: #111827;
   --card: #ffffff;
-  --card-foreground: #12181f;
+  --card-foreground: #111827;
   --popover: #ffffff;
-  --popover-foreground: #12181f;
-  --primary: #0f8b6c;
-  --primary-foreground: #f5fbf9;
-  --secondary: #ffe9e2;
-  --secondary-foreground: #7a2c15;
-  --muted: #eceeea;
-  --muted-foreground: #6b7580;
-  --accent: #ff6b4a;
-  --accent-foreground: #2b1006;
-  --border: #e3e6e1;
-  --input: #e3e6e1;
-  --ring: #0f8b6c;
+  --popover-foreground: #111827;
+  --primary: #1261ef;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f3ff;
+  --secondary-foreground: #07134f;
+  --muted: #f1f3f6;
+  --muted-foreground: #667085;
+  --accent: #b9ed28;
+  --accent-foreground: #07134f;
+  --border: #dce2ec;
+  --input: #dce2ec;
+  --ring: #1261ef;
 
-  --sidebar: #12181f;
-  --sidebar-foreground: #eef1ee;
-  --sidebar-primary: #0f8b6c;
-  --sidebar-primary-foreground: #f5fbf9;
-  --sidebar-accent: #1c242d;
-  --sidebar-accent-foreground: #f5fbf9;
+  --sidebar: #07134f;
+  --sidebar-foreground: #eef2ff;
+  --sidebar-primary: #b9ed28;
+  --sidebar-primary-foreground: #07134f;
+  --sidebar-accent: #14236e;
+  --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #0f8b6c;
+  --sidebar-ring: #b9ed28;
 
-  --success: #0f8b6c;
-  --success-soft: #e3f2ec;
-  --warning: #e2502f;
-  --warning-soft: #ffe9e2;
+  --success: #12733f;
+  --success-soft: #e9f9cf;
+  --warning: #c0322a;
+  --warning-soft: #ffe3de;
 }
 
 body { font-family: var(--font-sans); }
