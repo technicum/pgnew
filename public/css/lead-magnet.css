@@ -43,7 +43,7 @@
   pointer-events: none;
 }
 
-/* Logo, offer and "made by" share one centred column. */
+/* Logo and offer share one centred column. */
 .lm-visual > * {
   position: relative;
   z-index: 1;
@@ -195,34 +195,6 @@
   justify-content: center;
 }
 
-.lm-owner-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255,255,255,.2);
-  font-size: 13.5px;
-  color: rgba(255,255,255,.78);
-}
-
-.lm-owner-text strong { color: #fff; font-weight: 600; }
-
-.lm-owner-avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.28);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Fraunces', serif;
-  font-weight: 600;
-  font-size: 13px;
-  color: #fff;
-  flex: none;
-}
-
 /* ---------- right: the form ---------- */
 
 .lm-form-panel {
@@ -366,7 +338,6 @@
   .lm-offer-row { gap: 30px; margin-top: 10px; }
   .lm-cover { width: 104px; padding: 11px; gap: 7px; }
   .lm-cover-bar { height: 18px; }
-  .lm-owner-row { padding-top: 16px; }
   .lm-form-panel { padding: 28px 16px 56px; }
   .lm-form-card { padding: 30px 22px 24px; }
 }
