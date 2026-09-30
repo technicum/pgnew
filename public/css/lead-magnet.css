@@ -60,6 +60,18 @@
   background: rgba(255,255,255,.16);
   border: 1px solid rgba(255,255,255,.3);
 }
+/* A merchant's own logo image — capped so a tall or huge file can't push
+   the offer down. */
+.lm-brand-logo {
+  display: block;
+  line-height: 0;
+}
+.lm-brand-logo img {
+  max-height: 44px;
+  max-width: min(220px, 100%);
+  width: auto;
+  object-fit: contain;
+}
 
 .lm-offer {
   flex: 1;

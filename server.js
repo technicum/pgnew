@@ -395,15 +395,15 @@ app.post('/dashboard/lead-magnets', requireAuth, async (req, res) => {
   try {
     const {
       title, description, ctaText, fileUrl, successMessage, collectName, collectEmail, collectPhone,
-      extraQuestions, accentColor, showCover,
+      extraQuestions, accentColor, showCover, brandType, brandText, brandLogoUrl,
     } = req.body || {};
     const magnet = await createLeadMagnet(req.session.user.id, {
       title, description, ctaText, fileUrl, successMessage, collectName, collectEmail, collectPhone,
-      extraQuestions, accentColor, showCover,
+      extraQuestions, accentColor, showCover, brandType, brandText, brandLogoUrl,
     });
     res.status(201).json({ ...magnet, publicPath: `/${magnet.slug}` });
   } catch (err) {
-    if (['TITLE_REQUIRED', 'FILE_URL_REQUIRED', 'INVALID_FILE_URL', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
+    if (['TITLE_REQUIRED', 'FILE_URL_REQUIRED', 'INVALID_FILE_URL', 'INVALID_LOGO_URL', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Create lead magnet failed:', err);
@@ -417,7 +417,7 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid lead magnet id.' });
     const {
       title, description, ctaText, fileUrl, visible, slug, successMessage, collectName, collectEmail, collectPhone,
-      extraQuestions, accentColor, showCover,
+      extraQuestions, accentColor, showCover, brandType, brandText, brandLogoUrl,
     } = req.body || {};
     const fields = {};
     if (title !== undefined) fields.title = title;
@@ -433,10 +433,13 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     if (extraQuestions !== undefined) fields.extraQuestions = extraQuestions;
     if (accentColor !== undefined) fields.accentColor = accentColor;
     if (showCover !== undefined) fields.showCover = showCover;
+    if (brandType !== undefined) fields.brandType = brandType;
+    if (brandText !== undefined) fields.brandText = brandText;
+    if (brandLogoUrl !== undefined) fields.brandLogoUrl = brandLogoUrl;
     const changed = await updateLeadMagnet(req.session.user.id, id, fields);
     res.json({ ok: true, ...changed });
   } catch (err) {
-    if (['TITLE_REQUIRED', 'INVALID_FILE_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
+    if (['TITLE_REQUIRED', 'INVALID_FILE_URL', 'INVALID_LOGO_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Update lead magnet failed:', err);

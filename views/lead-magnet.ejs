@@ -25,18 +25,30 @@ function shade(hex, amount) {
 var lmAccent = /^#[0-9a-f]{6}$/i.test(magnet.accent_color) ? magnet.accent_color : '#1261ef';
 var lmAccentDark = shade(lmAccent, -60);
 var lmShowCover = magnet.show_cover === undefined || !!magnet.show_cover;
+// Top of the page (Design tab): the merchant's logo, their brand name as
+// text, or — with neither set — the PageZaper mark.
+var lmBrandText = String(magnet.brand_text || '').trim();
+var lmBrandLogo = magnet.brand_type === 'logo' && /^https?:\/\//i.test(magnet.brand_logo_url || '') ? magnet.brand_logo_url : '';
 %>
 <body class="lm-page" style="--magnet-accent:<%= lmAccent %>; --magnet-accent-dark:<%= lmAccentDark %>;">
 
 <div class="lm-wrap">
 
   <div class="lm-visual">
+    <% if (lmBrandLogo) { %>
+    <a href="/" class="lm-brand lm-brand-logo">
+      <img src="<%= lmBrandLogo %>" alt="<%= lmBrandText || owner.name %>" />
+    </a>
+    <% } else if (lmBrandText) { %>
+    <a href="/" class="logo lm-brand"><%= lmBrandText %></a>
+    <% } else { %>
     <a href="/" class="logo lm-brand">
       <span class="logo-mark">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </span>
       <%= siteName %>
     </a>
+    <% } %>
 
     <div class="lm-offer">
       <span class="lm-kicker"><span class="dot"></span>Free download</span>

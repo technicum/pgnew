@@ -766,14 +766,55 @@
     previewFrame.style.setProperty('--pv-accent', builderAccent);
     previewFrame.style.setProperty('--pv-accent-dark', shadeHex(builderAccent, -60));
   });
-  document.querySelectorAll('#btab-design .cover-opt').forEach((btn) => {
+  document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#btab-design .cover-opt').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       builderShowCover = btn.dataset.cover !== 'off';
       previewCover.style.display = builderShowCover ? 'flex' : 'none';
     });
   });
+
+  // Design tab: top of the page — brand name as text, or a logo image.
+  // Blank text shows the PageZaper mark, same as views/lead-magnet.ejs.
+  const brandTextInput = document.getElementById('magnetBrandText');
+  const brandLogoInput = document.getElementById('magnetBrandLogo');
+  const brandLogoHint = document.getElementById('magnetBrandLogoHint');
+  const brandError = document.getElementById('magnetBrandError');
+  const previewBrand = document.getElementById('previewBrand');
+  const siteName = previewBrand.dataset.siteName;
+  let builderBrandType = 'text';
+  function isHttpUrl(value) {
+    return /^https?:\/\//i.test(value);
+  }
+  function syncBrandPreview() {
+    const text = brandTextInput.value.trim();
+    const logo = brandLogoInput.value.trim();
+    if (builderBrandType === 'logo' && isHttpUrl(logo)) {
+      previewBrand.innerHTML = `<img src="${escapeHTML(logo)}" alt="${escapeHTML(text || 'Logo')}" />`;
+    } else if (text) {
+      previewBrand.textContent = text;
+    } else {
+      previewBrand.innerHTML = `<span class="mark"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>${escapeHTML(siteName)}`;
+    }
+  }
+  function setBuilderBrand(type) {
+    builderBrandType = type === 'logo' ? 'logo' : 'text';
+    const logo = builderBrandType === 'logo';
+    document.querySelectorAll('#magnetBrandChoice .cover-opt').forEach((b) => b.classList.toggle('active', (b.dataset.brand === 'logo') === logo));
+    brandTextInput.style.display = logo ? 'none' : '';
+    brandLogoInput.style.display = logo ? '' : 'none';
+    brandLogoHint.style.display = logo ? '' : 'none';
+    brandError.classList.remove('show');
+    syncBrandPreview();
+  }
+  document.querySelectorAll('#magnetBrandChoice .cover-opt').forEach((btn) => {
+    btn.addEventListener('click', () => setBuilderBrand(btn.dataset.brand));
+  });
+  [brandTextInput, brandLogoInput].forEach((el) => el.addEventListener('input', () => {
+    brandError.classList.remove('show');
+    syncBrandPreview();
+  }));
 
   function setBuilderAccent(color) {
     builderAccent = color;
@@ -790,7 +831,7 @@
   }
   function setBuilderCover(show) {
     builderShowCover = show;
-    document.querySelectorAll('#btab-design .cover-opt').forEach((b) => b.classList.toggle('active', (b.dataset.cover !== 'off') === show));
+    document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((b) => b.classList.toggle('active', (b.dataset.cover !== 'off') === show));
     previewCover.style.display = show ? 'flex' : 'none';
   }
 
@@ -822,6 +863,9 @@
     builderNextQid = Math.max(0, ...builderQuestions.map((q) => q.id)) + 1;
     setBuilderAccent(magnet.accent_color || '#1261ef');
     setBuilderCover(!!magnet.show_cover);
+    brandTextInput.value = magnet.brand_text || '';
+    brandLogoInput.value = magnet.brand_logo_url || '';
+    setBuilderBrand(magnet.brand_type);
     fieldsError.classList.remove('show');
     formError.classList.remove('show');
     renderBuilderQuestions();
@@ -848,7 +892,9 @@
     previewCover.style.display = 'flex';
     document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s, i) => s.classList.toggle('active', i === 0));
     document.getElementById('btab-design').querySelector('.swatch-custom').classList.remove('active');
-    document.querySelectorAll('#btab-design .cover-opt').forEach((b, i) => b.classList.toggle('active', i === 0));
+    document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((b, i) => b.classList.toggle('active', i === 0));
+    // form.reset() above already emptied the brand inputs.
+    setBuilderBrand('text');
     previewFrame.style.removeProperty('--pv-accent');
     previewFrame.style.removeProperty('--pv-accent-dark');
     renderBuilderQuestions();
@@ -879,6 +925,14 @@
       missing.input.focus();
       return;
     }
+    const brandLogoUrl = brandLogoInput.value.trim();
+    if (builderBrandType === 'logo' && brandLogoUrl && !isHttpUrl(brandLogoUrl)) {
+      document.querySelector('.pz-tab-btn[data-btab="design"]').click();
+      brandError.textContent = 'The logo link needs to start with http:// or https://';
+      brandError.classList.add('show');
+      brandLogoInput.focus();
+      return;
+    }
     const payload = {
       title: titleInput.value,
       ctaText: ctaInput.value,
@@ -891,6 +945,9 @@
       extraQuestions: builderQuestions,
       accentColor: builderAccent,
       showCover: builderShowCover,
+      brandType: builderBrandType,
+      brandText: brandTextInput.value,
+      brandLogoUrl,
     };
     const savingId = editingId;
     try {
@@ -910,6 +967,9 @@
             extra_questions: payload.extraQuestions,
             accent_color: payload.accentColor,
             show_cover: payload.showCover ? 1 : 0,
+            brand_type: payload.brandType,
+            brand_text: payload.brandText.trim().slice(0, 60),
+            brand_logo_url: payload.brandLogoUrl,
           });
         }
         resetBuilder();
@@ -927,5 +987,6 @@
   });
 
   renderBuilderQuestions();
+  syncBrandPreview();
   render();
 })();

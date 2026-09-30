@@ -172,6 +172,17 @@
             </div>
 
             <div class="pz-btabpanel" id="btab-design">
+              <p class="pz-section-label">Top of the page</p>
+              <p class="pz-section-sub">Show your brand name, or your logo.</p>
+              <div class="cover-choice" id="magnetBrandChoice">
+                <button type="button" class="cover-opt active" data-brand="text">Brand name</button>
+                <button type="button" class="cover-opt" data-brand="logo">Logo</button>
+              </div>
+              <input type="text" id="magnetBrandText" class="pz-field-input pz-brand-input" maxlength="60" placeholder="Your brand name — blank shows <%= siteName %>" />
+              <input type="url" id="magnetBrandLogo" class="pz-field-input pz-brand-input" placeholder="Link to your logo image (https://…)" style="display:none;" />
+              <p class="pz-option-hint" id="magnetBrandLogoHint" style="display:none;">A PNG or SVG with a transparent background looks best on the colored panel.</p>
+              <p class="pz-field-error" id="magnetBrandError"></p>
+              <div class="pz-divider"></div>
               <p class="pz-section-label">Accent color</p>
               <p class="pz-section-sub">Used for the button, badge and background on the public page.</p>
               <div class="swatch-row" id="magnetSwatchRow">
@@ -187,7 +198,7 @@
               <div class="pz-divider"></div>
               <p class="pz-section-label">Cover graphic</p>
               <p class="pz-section-sub">The small file preview shown on the page.</p>
-              <div class="cover-choice">
+              <div class="cover-choice" id="magnetCoverChoice">
                 <button type="button" class="cover-opt active" data-cover="on">Show cover</button>
                 <button type="button" class="cover-opt" data-cover="off">Hide cover</button>
               </div>
@@ -218,6 +229,7 @@
               </div>
               <div class="pz-magnet-preview-screen">
                 <div class="pz-magnet-preview-visual">
+                  <div class="pz-magnet-preview-brand" id="previewBrand" data-site-name="<%= siteName %>"><!-- set by lead-magnets.js --></div>
                   <span class="pz-magnet-preview-kicker"><span></span>Free download</span>
                   <h3 id="previewTitle">Your lead magnet title</h3>
                   <p id="previewDesc">A line about what someone gets when they sign up.</p>
