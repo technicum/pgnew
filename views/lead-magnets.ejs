@@ -108,7 +108,7 @@
 
       <section class="mt-6 pz-builder">
         <div class="pz-builder-form rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-          <h2 class="text-lg font-bold">Build a lead magnet</h2>
+          <h2 class="text-lg font-bold" id="builderHeading">Build a lead magnet</h2>
           <p class="mt-1 text-sm text-muted-foreground">Link to the file — a Google Drive or Dropbox share link works fine to start.</p>
 
           <div class="pz-tabs">
@@ -193,11 +193,13 @@
               </div>
             </div>
 
-            <div style="margin-top:16px;">
+            <div style="margin-top:16px; display:flex; align-items:center; gap:10px;">
               <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
-                Create lead magnet
+                <svg id="builderSubmitIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                <span id="builderSubmitLabel">Create lead magnet</span>
               </button>
+              <!-- Shown only while a card's Edit button has a magnet loaded in here. -->
+              <button type="button" class="pz-card-btn" id="builderCancelBtn" style="display:none; height:40px; padding:0 14px; font-size:13.5px;">Cancel</button>
             </div>
           </form>
           <p class="pz-field-error" id="createFormError"></p>

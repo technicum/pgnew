@@ -92,6 +92,10 @@
   // so this is what keeps a panel open across a toggle or a save.
   const openOptions = new Set();
 
+  // The magnet currently loaded into the builder by a card's Edit button,
+  // or null while the builder is creating a new one.
+  let editingId = null;
+
   // --- shared: extra questions + accent color (builder Form/Design tabs) --
   // Same set as QUESTION_TYPES in lib/leadMagnets.js. label is what a new
   // question of that type starts out called.
@@ -318,7 +322,7 @@
 
   function magnetCardHTML(magnet) {
     return `
-      <div class="pz-magnet-card${magnet.visible ? '' : ' pz-hidden'}" data-id="${magnet.id}">
+      <div class="pz-magnet-card${magnet.visible ? '' : ' pz-hidden'}${magnet.id === editingId ? ' pz-editing' : ''}" data-id="${magnet.id}">
         <div class="pz-magnet-top">
           <div class="pz-magnet-icon">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 8v4"/><path d="M12 15h.01"/></svg>
@@ -371,8 +375,13 @@
           </div>
           <div class="pz-magnet-actions">
             <button type="button" class="pz-switch toggle-visible${magnet.visible ? ' on' : ''}" data-id="${magnet.id}" title="${magnet.visible ? 'Live — visible to anyone with the link' : 'Unpublished — the link shows a not-found page'}" aria-label="Toggle published"></button>
-            <button type="button" class="pz-icon-btn remove-magnet" data-id="${magnet.id}" aria-label="Delete lead magnet">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
+            <button type="button" class="pz-card-btn edit-magnet" data-id="${magnet.id}">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+              Edit
+            </button>
+            <button type="button" class="pz-card-btn danger remove-magnet" data-id="${magnet.id}">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
+              Delete
             </button>
           </div>
         </div>
@@ -584,6 +593,9 @@
         }, 1600);
       });
     });
+    magnetsList.querySelectorAll('.edit-magnet').forEach((btn) => {
+      btn.addEventListener('click', () => startEdit(Number(btn.dataset.id)));
+    });
     magnetsList.querySelectorAll('.remove-magnet').forEach((btn) => {
       // Deleting takes the public page and its counts with it, so the
       // first click only arms the button; a second within 3s deletes.
@@ -592,7 +604,7 @@
       btn.addEventListener('click', (e) => {
         if (!btn.classList.contains('confirm')) {
           btn.classList.add('confirm');
-          btn.textContent = 'Delete?';
+          btn.textContent = 'Click again to delete';
           disarmTimer = setTimeout(() => {
             btn.classList.remove('confirm');
             btn.innerHTML = icon;
@@ -606,6 +618,8 @@
         const previous = magnets;
         api(`/dashboard/lead-magnets/${id}`, { method: 'DELETE' }).then(() => {
           magnets = magnets.filter((m) => m.id !== id);
+          // It was open in the builder — nothing left to save changes to.
+          if (editingId === id) resetBuilder();
           render();
         }).catch(() => {
           magnets = previous;
@@ -682,7 +696,9 @@
     previewDesc.textContent = descriptionInput.value.trim() || 'A line about what someone gets when they sign up.';
     previewDesc.style.display = descriptionInput.value.trim() ? '' : 'none';
     previewCta.textContent = ctaInput.value.trim() || 'Get it free';
-    previewSlugUrl.textContent = baseSlugUrl + slugify(titleInput.value);
+    // An existing magnet keeps its link whatever the title becomes.
+    const editing = magnets.find((m) => m.id === editingId);
+    previewSlugUrl.textContent = baseSlugUrl + (editing ? editing.slug : slugify(titleInput.value));
   }
   [titleInput, descriptionInput, ctaInput].forEach((el) => el.addEventListener('input', syncPreview));
 
@@ -759,7 +775,70 @@
     });
   });
 
+  function setBuilderAccent(color) {
+    builderAccent = color;
+    document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s) => s.classList.remove('active'));
+    const preset = document.querySelector(`#magnetSwatchRow .swatch[data-accent="${color}"]`);
+    if (preset) {
+      preset.classList.add('active');
+    } else {
+      magnetCustomColor.value = color;
+      magnetCustomColor.parentElement.classList.add('active');
+    }
+    previewFrame.style.setProperty('--pv-accent', color);
+    previewFrame.style.setProperty('--pv-accent-dark', shadeHex(color, -60));
+  }
+  function setBuilderCover(show) {
+    builderShowCover = show;
+    document.querySelectorAll('#btab-design .cover-opt').forEach((b) => b.classList.toggle('active', (b.dataset.cover !== 'off') === show));
+    previewCover.style.display = show ? 'flex' : 'none';
+  }
+
+  // The builder doubles as the editor: a card's Edit button loads that
+  // magnet in here, and the submit button saves it instead of creating.
+  const builderHeading = document.getElementById('builderHeading');
+  const builderSubmitLabel = document.getElementById('builderSubmitLabel');
+  const builderSubmitIcon = document.getElementById('builderSubmitIcon');
+  const builderCancelBtn = document.getElementById('builderCancelBtn');
+  function setBuilderMode() {
+    const editing = editingId !== null;
+    builderHeading.textContent = editing ? 'Edit lead magnet' : 'Build a lead magnet';
+    builderSubmitLabel.textContent = editing ? 'Save changes' : 'Create lead magnet';
+    builderSubmitIcon.style.display = editing ? 'none' : '';
+    builderCancelBtn.style.display = editing ? '' : 'none';
+  }
+  function startEdit(id) {
+    const magnet = magnets.find((m) => m.id === id);
+    if (!magnet) return;
+    editingId = id;
+    titleInput.value = magnet.title;
+    ctaInput.value = magnet.cta_text;
+    descriptionInput.value = magnet.description;
+    fileUrlInput.value = magnet.file_url;
+    successInput.value = magnet.success_message || '';
+    FORM_FIELDS.forEach((f) => setField(f.key, !!magnet[f.col]));
+    // A copy, so nothing on the card changes until it's saved.
+    builderQuestions = JSON.parse(JSON.stringify(magnet.extra_questions || []));
+    builderNextQid = Math.max(0, ...builderQuestions.map((q) => q.id)) + 1;
+    setBuilderAccent(magnet.accent_color || '#1261ef');
+    setBuilderCover(!!magnet.show_cover);
+    fieldsError.classList.remove('show');
+    formError.classList.remove('show');
+    renderBuilderQuestions();
+    syncPreview();
+    setBuilderMode();
+    document.querySelector('.pz-tab-btn[data-btab="content"]').click();
+    render();
+    document.querySelector('.pz-builder').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    titleInput.focus({ preventScroll: true });
+  }
+  builderCancelBtn.addEventListener('click', () => resetBuilder());
+
   function resetBuilder() {
+    const wasEditing = editingId !== null;
+    editingId = null;
+    setBuilderMode();
+    formError.classList.remove('show');
     form.reset();
     builderQuestions = [];
     builderAccent = '#1261ef';
@@ -775,6 +854,8 @@
     renderBuilderQuestions();
     syncPreview();
     document.querySelector('.pz-tab-btn[data-btab="content"]').click();
+    // Drops the "being edited" highlight from its card.
+    if (wasEditing) render();
   }
 
   form.addEventListener('submit', async (e) => {
@@ -798,29 +879,49 @@
       missing.input.focus();
       return;
     }
+    const payload = {
+      title: titleInput.value,
+      ctaText: ctaInput.value,
+      description: descriptionInput.value,
+      fileUrl: fileUrlInput.value,
+      successMessage: successInput.value,
+      collectName: fieldOn('collectName'),
+      collectEmail: fieldOn('collectEmail'),
+      collectPhone: fieldOn('collectPhone'),
+      extraQuestions: builderQuestions,
+      accentColor: builderAccent,
+      showCover: builderShowCover,
+    };
+    const savingId = editingId;
     try {
-      const created = await api('/dashboard/lead-magnets', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: titleInput.value,
-          ctaText: ctaInput.value,
-          description: descriptionInput.value,
-          fileUrl: fileUrlInput.value,
-          successMessage: successInput.value,
-          collectName: fieldOn('collectName'),
-          collectEmail: fieldOn('collectEmail'),
-          collectPhone: fieldOn('collectPhone'),
-          extraQuestions: builderQuestions,
-          accentColor: builderAccent,
-          showCover: builderShowCover,
-        }),
-      });
+      if (savingId !== null) {
+        await api(`/dashboard/lead-magnets/${savingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        const magnet = magnets.find((m) => m.id === savingId);
+        if (magnet) {
+          Object.assign(magnet, {
+            title: payload.title.trim(),
+            cta_text: payload.ctaText.trim() || 'Get it free',
+            description: payload.description.trim(),
+            file_url: payload.fileUrl.trim(),
+            success_message: payload.successMessage.trim(),
+            collect_name: payload.collectName ? 1 : 0,
+            collect_email: payload.collectEmail ? 1 : 0,
+            collect_phone: payload.collectPhone ? 1 : 0,
+            extra_questions: payload.extraQuestions,
+            accent_color: payload.accentColor,
+            show_cover: payload.showCover ? 1 : 0,
+          });
+        }
+        resetBuilder();
+        return;
+      }
+      const created = await api('/dashboard/lead-magnets', { method: 'POST', body: JSON.stringify(payload) });
       magnets.unshift(created);
       render();
       resetBuilder();
       titleInput.focus();
     } catch (err) {
-      formError.textContent = err.message || 'Could not create that lead magnet. Please try again.';
+      formError.textContent = err.message || (savingId !== null ? 'Could not save those changes. Please try again.' : 'Could not create that lead magnet. Please try again.');
       formError.classList.add('show');
     }
   });
