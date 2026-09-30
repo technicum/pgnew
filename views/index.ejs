@@ -1,380 +1,84 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title><%= title %></title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <meta name="description" content="Grow your audience, sell digital products, automate conversations, and run your creator business from one beautiful page.">
+  <meta property="og:title" content="<%= siteName %> — The Creator Business Toolkit">
+  <meta property="og:description" content="One page to grow your audience and turn followers into customers.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxMjYxZWYiLz4KICA8cGF0aCBkPSJNMzYgOCAxNCAzNWgxNWwtMiAyMSAyMy0zMEgzNWwxLTE4WiIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4=" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--paper:#fbfaf6;--ink:#111827;--blue:#1261ef;--navy:#07134f;--lime:#b9ed28;--coral:#ff6c62;--muted:#667085;--line:#dce2ec;--surface:#fff;--pale:#e8f3ff;--shadow:0 22px 60px #1224551c}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font-family:Manrope,Arial,sans-serif;letter-spacing:0}a{color:inherit;text-decoration:none}.wrap{width:min(1160px,calc(100% - 40px));margin:auto}.announcement{height:36px;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--navy);color:#fff;font-size:12px;font-weight:700}.announcement a{text-decoration:underline}.nav{height:78px;padding:0 4vw;display:flex;align-items:center;justify-content:space-between;background:#fff;position:relative;z-index:10}.brand{display:flex;align-items:center;gap:9px;font-size:21px;font-weight:800}.mark{width:32px;height:32px;display:grid;place-items:center;background:var(--blue);color:#fff;border-radius:7px 2px;transform:rotate(-4deg)}.brand b{color:var(--blue)}.navlinks{display:flex;gap:5px;padding:5px;background:#f1f3f6;border-radius:99px}.navlinks a{padding:8px 16px;border-radius:99px;font-size:13px;font-weight:700}.navlinks a:hover{background:#fff}.actions{display:flex;align-items:center;gap:18px;font-size:13px;font-weight:700}.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 20px;border-radius:99px;font-size:13px;font-weight:800}.btn-blue{background:var(--blue);color:#fff;box-shadow:0 8px 24px #1261ef3d}.btn-white{background:#fff;color:var(--navy);box-shadow:0 10px 30px #06134732}.menu{display:none;border:0;background:transparent;font-size:27px}.mobile-nav{display:none}
+    .hero{min-height:920px;width:calc(100% - 32px);margin:auto;border-radius:18px;position:relative;overflow:hidden;background:#1261ef;color:#fff}.hero-bg{position:absolute;inset:0;width:100%;height:100%;background:radial-gradient(ellipse 60% 40% at 18% 18%,#ffffff59,transparent 60%),radial-gradient(ellipse 46% 32% at 78% 12%,#ffffff42,transparent 65%),radial-gradient(ellipse 65% 40% at 55% 92%,#ffffff26,transparent 70%),linear-gradient(180deg,#4d8fff 0%,#1261ef 48%,#0a2f9e 100%)}.hero:after{content:"";position:absolute;inset:0;background:linear-gradient(#1015a5a8 0%,#1261ef70 45%,transparent 78%)}.hero-copy{position:relative;z-index:2;text-align:center;width:min(820px,90%);margin:auto;padding-top:68px}.pill{display:inline-flex;padding:7px 12px;border:1px solid #ffffff60;border-radius:99px;background:#ffffff1c;font-size:10px;font-weight:800;text-transform:uppercase}.pill:before{content:"";width:7px;height:7px;margin:2px 8px 0 0;border-radius:50%;background:var(--lime)}h1,h2,h3,p{margin-top:0}.hero h1{font-size:clamp(48px,6.2vw,87px);line-height:.95;margin:22px 0 16px}em{font-family:"Instrument Serif",Georgia,serif;font-weight:400}.hero p{max-width:620px;margin:0 auto;line-height:1.65;color:#ffffffe3}.hero-actions{margin-top:25px;display:flex;justify-content:center;align-items:center;gap:20px}.video-link{font-size:13px;font-weight:800}.stage{position:absolute;z-index:3;width:min(820px,78%);height:370px;left:50%;bottom:-24px;transform:translateX(-50%);border:3px solid #fff;border-radius:13px 13px 0 0;background:#fff;color:var(--ink);box-shadow:0 28px 70px #0613474d;overflow:hidden}.browser{height:36px;background:#edf1f6;border-bottom:1px solid var(--line);padding:10px 13px;font-size:9px;text-align:center;color:var(--muted)}.browser:before{content:"● ● ●";float:left;color:var(--coral);word-spacing:2px}.dashboard{padding:24px 30px}.dashhead{display:flex;justify-content:space-between}.dashhead span{font-size:10px;color:var(--muted)}.dashhead strong{display:block;font-size:17px}.avatar{width:35px;height:35px;display:grid;place-items:center;border-radius:50%;background:var(--navy);color:#fff;font-size:10px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0 12px}.stat,.chart{padding:14px;border:1px solid var(--line);border-radius:6px}.stat small{display:block;font-size:7px;color:var(--muted)}.stat strong{display:block;font-size:17px;margin:4px 0}.stat i{font-size:8px;color:#16884e}.chart{height:150px}.chart label{font-size:10px;font-weight:800}.bars{height:100px;display:flex;align-items:end;gap:8px;border-bottom:1px solid var(--line)}.bars i{flex:1;background:var(--blue);border-radius:2px 2px 0 0}.sale{position:absolute;right:22px;bottom:18px;padding:12px 16px;background:#fff;border:1px solid var(--line);border-radius:7px;box-shadow:var(--shadow);font-size:9px}.sale b{display:block;font-size:11px}.proof{padding:32px;text-align:center;background:#fff;border-bottom:1px solid var(--line)}.proof small{display:block;margin-bottom:16px;color:var(--muted);font-weight:800}.proof div{display:flex;justify-content:center;flex-wrap:wrap;gap:60px;font-size:11px;font-weight:800}
+    section.content{padding:105px 0}.kicker{display:block;margin-bottom:14px;color:var(--blue);font-size:11px;font-weight:800;text-transform:uppercase}.heading{max-width:720px;margin-bottom:46px}.heading h2,.split-title h2,.faq h2,.cta h2{font-size:clamp(41px,5vw,67px);line-height:.98;margin-bottom:20px}.heading p,.split-title p,.faq p{color:var(--muted);line-height:1.7}.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:var(--shadow)}.visual{height:285px;display:grid;place-items:center;padding:25px;background:var(--pale)}.card:nth-child(2) .visual{background:#e7fac2}.card:nth-child(3) .visual{background:#ffe3de}.mock{width:78%;padding:24px;border-radius:8px;background:#fff;box-shadow:var(--shadow);transform:rotate(-2deg)}.mock b{display:block;font-family:"Instrument Serif",serif;font-size:26px;line-height:1;margin:9px 0 16px}.mock span{display:block;margin:7px 0;font-size:10px}.mock .fake-btn{padding:9px;background:var(--blue);color:#fff;text-align:center;border-radius:5px;font-weight:800}.card:nth-child(2) .mock{border:6px solid var(--ink);border-bottom:0;border-radius:22px 22px 0 0;text-align:center;transform:rotate(3deg) translateY(25px)}.card:nth-child(3) .fake-btn{background:var(--coral)}.copy{padding:26px}.copy small{color:var(--blue);font-weight:800}.copy h3{font-size:22px;line-height:1.18;margin:10px 0}.copy p{font-size:13px;line-height:1.65;color:var(--muted)}.copy a{font-size:12px;font-weight:800;color:var(--blue)}
+    .sell{padding:100px 0;background:var(--navy);color:#fff}.split-title{display:grid;grid-template-columns:1.3fr .7fr;align-items:end;gap:60px}.split-title .kicker{color:var(--lime)}.split-title p{color:#ffffffae}.money{display:grid;grid-template-columns:repeat(2,1fr);margin-top:52px;border:1px solid #ffffff22}.money article{padding:42px;border:1px solid #ffffff18}.money .num{float:right;font:44px "Instrument Serif";color:#ffffff1f}.money .icon{width:48px;height:48px;display:grid;place-items:center;margin-bottom:45px;border:1px solid #ffffff30;border-radius:50%;color:var(--lime);font-size:20px}.money small,.money a{color:var(--lime);font-weight:800}.money h3{font-size:28px;margin:10px 0}.money p{max-width:430px;color:#ffffffa6;font-size:13px;line-height:1.7}.money a{font-size:12px}
+    .workflow{display:grid;grid-template-columns:.85fr 1.15fr;gap:80px;align-items:center}.checks{padding:0;list-style:none;line-height:2.2;font-size:13px;font-weight:700}.checks li:before{content:"✓";color:var(--blue);margin-right:10px}.map{height:450px;position:relative;border:1px solid var(--line);border-radius:8px;background-color:#fff;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:22px 22px;box-shadow:var(--shadow)}.node{position:absolute;padding:16px 20px;background:#fff;border:1px solid var(--line);border-radius:7px;box-shadow:var(--shadow);font-size:12px;font-weight:800}.node.one{left:8%;top:12%}.node.two{right:7%;top:42%;color:var(--blue)}.node.three{left:12%;bottom:12%;color:#18804c}.notice{position:absolute;right:6%;bottom:7%;padding:14px 18px;background:var(--navy);color:#fff;border-radius:7px}.notice small{display:block;color:#ffffff99}.notice strong{font-size:18px}.stories{padding:105px 0;background:var(--pale)}.quotes{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}.quote,.metric{padding:36px;background:#fff;border:1px solid var(--line);border-radius:8px}.quote.big{grid-row:span 2;min-height:400px;display:flex;flex-direction:column;justify-content:space-between}.stars{color:#f1bf13}.quote blockquote{margin:30px 0;font:28px/1.3 "Instrument Serif"}.quote.big blockquote{font-size:39px}.person{font-size:12px}.person b{display:block}.person span{color:var(--muted)}.metric{display:flex;align-items:center;gap:24px;background:var(--lime)}.metric strong{font:70px "Instrument Serif"}.metric span{font-size:13px;font-weight:700;line-height:1.5}.faq{display:grid;grid-template-columns:.75fr 1.25fr;gap:90px}.faq details{border-top:1px solid var(--line)}.faq details:last-child{border-bottom:1px solid var(--line)}.faq summary{padding:24px 0;cursor:pointer;font-weight:800}.faq details p{font-size:13px;padding-right:30px}.cta{width:calc(100% - 32px);margin:auto;padding:100px 20px;text-align:center;background:var(--blue);color:#fff;border-radius:12px}.cta .kicker{color:var(--lime)}.cta h2{font-size:clamp(54px,7vw,92px);margin-bottom:18px}.cta p{color:#ffffffc2}.footer{padding:70px 0 30px;display:grid;grid-template-columns:1fr auto;gap:50px}.footer p{margin-top:15px;color:var(--muted);font-size:13px}.footer nav{display:flex;gap:28px;font-size:12px;font-weight:800}.legal{grid-column:1/-1;display:flex;justify-content:space-between;padding-top:24px;border-top:1px solid var(--line);color:var(--muted);font-size:10px}
+    @media(max-width:850px){.navlinks,.actions{display:none}.menu{display:block}.mobile-nav.open{display:flex;position:absolute;top:70px;left:15px;right:15px;flex-direction:column;gap:22px;padding:24px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);font-weight:800}.feature-grid{grid-template-columns:1fr}.split-title,.workflow,.faq{grid-template-columns:1fr}.quotes{grid-template-columns:1fr}.quote.big{grid-row:auto}.money{grid-template-columns:1fr}}
+    @media(max-width:600px){.wrap{width:calc(100% - 28px)}.announcement{font-size:10px}.nav{height:66px;padding:0 16px}.hero{width:calc(100% - 16px);min-height:680px;border-radius:10px}.hero-copy{padding-top:45px}.hero h1{font-size:45px}.hero p{font-size:14px}.hero-actions{flex-direction:column}.stage{width:94%;height:285px}.dashboard{padding:18px}.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(3){display:none}.proof div{gap:18px}.feature-grid{grid-template-columns:1fr}.visual{height:270px}section.content,.stories{padding:78px 0}.heading h2,.split-title h2,.faq h2{font-size:43px}.sell{padding:78px 0}.money article{padding:30px}.map{height:380px}.node.one{left:4%}.node.two{right:4%}.node.three{left:5%}.notice{right:4%;bottom:4%}.quote.big blockquote{font-size:31px}.metric{display:grid}.faq{gap:35px}.cta{width:calc(100% - 16px);padding:75px 20px}.footer{grid-template-columns:1fr}.footer nav{flex-wrap:wrap}.legal{flex-direction:column;gap:8px}}
+  </style>
 </head>
-<body>
+<body id="top">
+  <div class="announcement">✦ Launch your creator business in minutes <a href="/signup">Start free →</a></div>
+  <header class="nav">
+    <a class="brand" href="#top"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
+    <nav class="navlinks" aria-label="Main navigation"><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
+    <div class="actions"><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free →</a></div>
+    <button class="menu" type="button" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a class="btn btn-blue" href="/signup">Start for free</a></nav>
+  </header>
 
-<header class="site">
-  <div class="wrap nav">
-    <a href="/" class="logo">
-      <span class="logo-mark">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </span>
-      <%= siteName %>
-    </a>
-    <nav class="nav-links">
-      <a href="#how">How it works</a>
-      <a href="#features">Features</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
-    </nav>
-    <div class="nav-actions">
-      <a href="/login" class="btn btn-outline">Log in</a>
-      <a href="/signup" class="btn btn-primary">Start free</a>
-    </div>
-  </div>
-</header>
+  <main>
+    <section class="hero">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-copy"><span class="pill">Built for ambitious creators</span><h1>The one page that turns<br><em>attention into income.</em></h1><p>Grow your audience, sell what you know, and automate the busywork—without juggling five different tools.</p><div class="hero-actions"><a class="btn btn-white" href="/signup">Build my page →</a><a class="video-link" href="#tools">▶ &nbsp;See how it works</a></div></div>
+      <div class="stage"><div class="browser">pagezaper.com/arjuncreates</div><div class="dashboard"><div class="dashhead"><div><span>Good morning, Arjun</span><strong>Your business is growing.</strong></div><div class="avatar">AC</div></div><div class="stats"><div class="stat"><small>PAGE VIEWS</small><strong>24.8K</strong><i>↗ 18.4%</i></div><div class="stat"><small>SALES</small><strong>₹48,290</strong><i>↗ 24.1%</i></div><div class="stat"><small>NEW LEADS</small><strong>1,284</strong><i>↗ 12.8%</i></div></div><div class="chart"><label>Revenue</label><div class="bars"><i style="height:28%"></i><i style="height:46%"></i><i style="height:38%"></i><i style="height:66%"></i><i style="height:54%"></i><i style="height:76%"></i><i style="height:62%"></i><i style="height:88%"></i><i style="height:72%"></i><i style="height:96%"></i></div></div></div><div class="sale"><b>🟢 New sale!</b>The Creator Playbook · ₹999</div></div>
+    </section>
+    <div class="proof"><small>EVERYTHING YOUR CREATOR BUSINESS NEEDS</small><div><span>NO-CODE SETUP</span><span>INSTANT PAYOUTS</span><span>SMART AUTOMATION</span><span>BEAUTIFUL STOREFRONTS</span></div></div>
 
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div>
-      <span class="eyebrow">Built for Indian creators &amp; service pros</span>
-      <h1>One store.<br>Every way you <em>earn</em>.</h1>
-      <p class="hero-sub">Courses, digital downloads, bookings, paid communities and every social link — one store, one checkout, with UPI/card payment built in, not bolted on.</p>
-      <div class="hero-ctas">
-        <a href="/signup" class="btn btn-primary">Create your store — free</a>
-        <a href="#how" class="btn btn-outline">See how it works</a>
-      </div>
-      <div class="hero-note">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        No card required · live in under 10 minutes
-      </div>
-    </div>
-    <div class="widget">
-      <div class="widget-top">
-        <div class="widget-avatar"></div>
-        <div>
-          <div class="widget-top-name">Meera Kapoor</div>
-          <div class="widget-top-role">Career Coach · <%= siteDomain %>/meera</div>
-        </div>
-      </div>
-      <div class="widget-body">
-        <div class="widget-item">
-          <span class="widget-item-tag">Course</span>
-          <div style="flex:1; min-width:0;">
-            <strong>Personal Branding on LinkedIn</strong>
-            <span class="meta">6 lessons · lifetime access</span>
-          </div>
-          <div class="price">₹2,999</div>
-        </div>
-        <div class="widget-item">
-          <span class="widget-item-tag">Booking</span>
-          <div style="flex:1; min-width:0;">
-            <strong>1:1 Career Strategy Call</strong>
-            <span class="meta">45 min · next slot Thu 2:00pm</span>
-          </div>
-          <div class="price">₹1,499</div>
-        </div>
-        <div class="widget-item">
-          <span class="widget-item-tag">Download</span>
-          <div style="flex:1; min-width:0;">
-            <strong>Resume Template Pack</strong>
-            <span class="meta">PDF + Notion · instant delivery</span>
-          </div>
-          <div class="price">₹399</div>
-        </div>
-        <div class="widget-item selected">
-          <span class="widget-item-tag">Membership</span>
-          <div style="flex:1; min-width:0;">
-            <strong>Career Circle</strong>
-            <span class="meta">Private community · monthly</span>
-          </div>
-          <div class="price">₹499/mo</div>
-        </div>
-        <div class="widget-pay">
-          <div>
-            <div class="widget-pay-label">Checkout · Career Circle</div>
-            <div class="widget-pay-amount">₹499</div>
-          </div>
-          <button class="widget-pay-btn">Pay with UPI</button>
-        </div>
-      </div>
-      <div class="widget-foot">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="12" height="12"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.6"/></svg>
-        Secured checkout · payout in 1 business day
-      </div>
-    </div>
-  </div>
-</section>
+    <section class="content wrap" id="tools"><div class="heading"><span class="kicker">Grow your reach</span><h2>From follower to fan,<br><em>without the friction.</em></h2><p>Simple tools that help more people discover you—and give them a reason to stay.</p></div><div class="feature-grid">
+      <article class="card"><div class="visual"><div class="mock"><small>AUTOMATIC REPLY</small><b>“Here’s the guide you asked for.”</b><span>✓ Triggered from a comment</span><div class="fake-btn">Send instantly →</div></div></div><div class="copy"><small>AUTODM</small><h3>Turn comments into conversations</h3><p>Send the right link, resource, or offer instantly when someone comments on your content.</p><a href="/signup">Explore AutoDM →</a></div></article>
+      <article class="card"><div class="visual"><div class="mock"><small>@maya.makes</small><b>Designing a life I love.</b><span>Shop my templates</span><div class="fake-btn">Join the newsletter</div></div></div><div class="copy"><small>LINK-IN-BIO</small><h3>One page for everything you create</h3><p>Showcase your links, products, socials, and latest work in a storefront that feels unmistakably yours.</p><a href="/signup">Explore your page →</a></div></article>
+      <article class="card"><div class="visual"><div class="mock"><small>FREE DOWNLOAD</small><b>The Creator Launch Checklist</b><span>✓ 32 practical steps</span><span>✓ Zero fluff</span><div class="fake-btn">Get the checklist</div></div></div><div class="copy"><small>LEAD MAGNETS</small><h3>Build an audience you own</h3><p>Share valuable freebies and capture the details you need to keep the conversation going.</p><a href="/signup">Explore lead magnets →</a></div></article>
+    </div></section>
 
-<section class="contrast">
-  <div class="wrap">
-    <div class="contrast-head">
-      <span class="eyebrow">Why not just prompt an AI to build a site?</span>
-      <h2>A pretty page is free now. The infrastructure to actually sell on it isn't.</h2>
-    </div>
-    <div class="contrast-grid">
-      <div class="contrast-col">
-        <div class="contrast-col-label">What an AI website builder gives you</div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          A good-looking page with "Buy" and "Book Now" buttons that go nowhere
-        </div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          No real calendar — two people can "book" the same slot
-        </div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          No way to actually deliver a course or a paid download after checkout
-        </div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          No payment gateway wired up, no membership access control, no refund handling
-        </div>
-      </div>
-      <div class="contrast-col win">
-        <div class="contrast-col-label">What <%= siteName %> gives you</div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Real availability that locks a slot the moment someone starts paying
-        </div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Courses and downloads unlocked automatically the instant payment clears
-        </div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          UPI and card payments, refunds, and membership renewals — all built in
-        </div>
-        <div class="contrast-item">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          One link for everything you sell — and every social profile you run
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    <section class="sell" id="sell"><div class="wrap"><div class="split-title"><div><span class="kicker">Make your knowledge valuable</span><h2>More ways to earn.<br><em>One place to run it.</em></h2></div><p>Whether you sell a download or your time, <%= siteName %> makes the experience effortless for you and your customers.</p></div><div class="money">
+      <article><span class="num">01</span><div class="icon">▣</div><small>DIGITAL PRODUCTS</small><h3>Sell your ideas, beautifully</h3><p>Upload guides, templates, videos, or audio and turn them into a polished, checkout-ready product page.</p><a href="/signup">Try it free →</a></article>
+      <article><span class="num">02</span><div class="icon">◎</div><small>MEMBERSHIPS</small><h3>Bring your people together</h3><p>Launch a paid community and manage subscriptions without stitching together a stack of tools.</p><a href="/signup">Try it free →</a></article>
+      <article><span class="num">03</span><div class="icon">▷</div><small>COURSES</small><h3>Teach at your own pace</h3><p>Organize lessons, welcome students, and create an end-to-end learning experience that feels premium.</p><a href="/signup">Try it free →</a></article>
+      <article><span class="num">04</span><div class="icon">□</div><small>BOOKINGS</small><h3>Make your time valuable</h3><p>Share your availability, accept payment, and book coaching calls without the back-and-forth.</p><a href="/signup">Try it free →</a></article>
+    </div></div></section>
 
-<section class="steps" id="how">
-  <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">How it works</span>
-      <h2>Live in three steps</h2>
-      <p>No developer, no separate payment setup, no calendar app to wire up.</p>
-    </div>
-    <div class="step-row">
-      <div class="step">
-        <div class="step-num">01</div>
-        <h3>Claim your store</h3>
-        <p>Pick your handle — <%= siteDomain %>/yourname — and add your photo, bio and social links.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <h3>Add what you sell</h3>
-        <p>A bookable call, a course, a downloadable file, a paid community — set a price and, for bookings, your real availability.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <h3>Share your link</h3>
-        <p>Post it in your bio. Buyers pay by UPI or card for whatever they picked, and the money settles to your account the next business day.</p>
-      </div>
-    </div>
-  </div>
-</section>
+    <section class="content wrap workflow"><div><span class="kicker">One connected workflow</span><h2>Your biggest ideas.<br><em>On autopilot.</em></h2><p>Turn a comment into a conversation, a conversation into a lead, and a lead into a customer.</p><ul class="checks"><li>Capture leads while you sleep</li><li>Send the right offer automatically</li><li>See every result in one dashboard</li></ul><a class="btn btn-blue" href="/signup">Build your workflow →</a></div><div class="map"><div class="node one">◎ &nbsp;Someone comments</div><div class="node two">ϟ &nbsp;<%= siteName %> responds</div><div class="node three">$ &nbsp;New customer</div><div class="notice"><small>Revenue today</small><strong>₹12,480</strong></div></div></section>
 
-<section class="features" id="features">
-  <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">Everything in one store</span>
-      <h2>Built around the part that's actually hard</h2>
-    </div>
-    <div class="feature-grid">
-      <div class="feature-card lead">
-        <div>
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          </div>
-          <h3>One store, everything you sell</h3>
-          <p>Courses, downloads, bookings and memberships live side by side on one store, with one checkout — instead of stitching together five different tools.</p>
-        </div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19.5V6a2 2 0 0 1 2-2h13v14" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 22a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2h13v4H6z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        </div>
-        <h3>Courses</h3>
-        <p>Host lessons and drip content, with access granted automatically the moment payment clears.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </div>
-        <h3>Digital downloads</h3>
-        <p>Sell PDFs, templates, presets or video files — delivered instantly, no manual emailing.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </div>
-        <h3>Bookings &amp; calls</h3>
-        <p>Real availability that locks a slot the moment someone starts paying — no double-booking.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 20h5v-1a4 4 0 0 0-4-4M9 20H4v-1a4 4 0 0 1 4-4m5-3a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-1a3 3 0 1 0 0-6" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-        </div>
-        <h3>Memberships &amp; communities</h3>
-        <p>Paid access to a group or channel, with renewals and access control handled for you.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>
-        </div>
-        <h3>UPI &amp; card payments</h3>
-        <p>Checkout runs on a licensed payment gateway — no separate merchant account to set up yourself.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v18M5 8l7-5 7 5M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        </div>
-        <h3>Next-day payouts</h3>
-        <p>Track what's coming in and cash out to your bank account, usually within one business day.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-4-1L3 20l1-5.5a8.38 8.38 0 0 1-1-4A8.5 8.5 0 0 1 11.5 2 8.38 8.38 0 0 1 21 11.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        </div>
-        <h3>WhatsApp reminders</h3>
-        <p>Automatic order confirmations and booking reminders — fewer no-shows, less manual chasing.</p>
-      </div>
-    </div>
-  </div>
-</section>
+    <section class="stories" id="stories"><div class="wrap"><div class="heading"><span class="kicker">Creator stories</span><h2>Built for people<br><em>building something.</em></h2></div><div class="quotes"><article class="quote big"><div class="stars">★★★★★</div><blockquote>“<%= siteName %> gave me the confidence to launch. My first digital product made 120 sales in one weekend.”</blockquote><div class="person"><b>Meera Shah</b><span>Illustrator &amp; educator</span></div></article><article class="quote"><div class="stars">★★★★★</div><blockquote>“I replaced four subscriptions and finally have a storefront that feels like my brand.”</blockquote><div class="person"><b>Rohan Kapoor</b><span>Fitness coach</span></div></article><article class="metric"><strong>3.2×</strong><span>more conversions when creators connect two or more <%= siteName %> tools.</span></article></div></div></section>
 
-<section class="growth" id="growth">
-  <div class="wrap growth-grid">
-    <div class="growth-copy">
-      <span class="eyebrow">Beyond the store</span>
-      <h2>Selling is only half of it — you still have to fill the store.</h2>
-      <p>A checkout link is only worth as much as the traffic that reaches it. These are the tools for that other half, built into the same account instead of three separate subscriptions.</p>
-    </div>
-    <div class="growth-list">
-      <div class="growth-item">
-        <div class="growth-item-num">01</div>
-        <div>
-          <h3>Lead capture forms</h3>
-          <p>Drop a form on your store or embed it anywhere — a waitlist, a discovery call request, a giveaway entry — and every submission lands in one place, not scattered across inboxes.</p>
-        </div>
-      </div>
-      <div class="growth-item">
-        <div class="growth-item-num">02</div>
-        <div>
-          <h3>WhatsApp broadcasts</h3>
-          <p>Message your list directly — a new course launch, a limited-slot opening, a reminder to finish checkout — from the same account that already handles your booking confirmations.</p>
-        </div>
-      </div>
-      <div class="growth-item">
-        <div class="growth-item-num">03</div>
-        <div>
-          <h3>One contact list</h3>
-          <p>Everyone who's booked, bought or filled a form ends up in a single list you actually own — not locked inside a social platform's algorithm.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+    <section class="content wrap faq" id="faq"><div><span class="kicker">Good questions</span><h2>Everything you<br><em>need to know.</em></h2><p>Still curious? Write to <a href="mailto:hello@<%= siteDomain %>">hello@<%= siteDomain %></a></p></div><div><details open><summary>What is <%= siteName %>?</summary><p><%= siteName %> is an all-in-one toolkit for creators to grow an audience, sell digital products, automate social conversations, and manage their online business.</p></details><details><summary>Who is <%= siteName %> for?</summary><p>It is designed for creators, coaches, educators, freelancers, and anyone turning useful knowledge into a sustainable online business.</p></details><details><summary>Can I start for free?</summary><p>Yes. Create your page and explore the core tools for free. Upgrade only when you need more advanced growth and selling features.</p></details><details><summary>What can I sell?</summary><p>Sell guides, templates, courses, memberships, event tickets, coaching sessions, or any other digital experience you create.</p></details></div></section>
 
-<section class="pricing" id="pricing">
-  <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">Pricing</span>
-      <h2>Start free, pay as you earn</h2>
-      <p>Illustrative pricing — shown for direction, not finalized.</p>
-    </div>
-    <div class="price-grid">
-      <div class="price-card">
-        <div class="price-name">Starter</div>
-        <div class="price-amount">₹0</div>
-        <div class="price-fee">+ 5% per sale</div>
-        <ul class="price-list">
-          <li><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited bookings &amp; products</li>
-          <li><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> UPI &amp; card checkout</li>
-          <li><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Next-day payouts</li>
-        </ul>
-        <a href="/signup" class="btn btn-outline">Start free</a>
-      </div>
-      <div class="price-card pro">
-        <div class="price-name">Pro</div>
-        <div class="price-amount">₹999<span style="font-size:15px; font-weight:500;">/mo</span></div>
-        <div class="price-fee">+ 2% per sale</div>
-        <ul class="price-list">
-          <li><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Everything in Starter</li>
-          <li><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> WhatsApp reminders &amp; custom domain</li>
-          <li><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Remove <%= siteName %> branding</li>
-        </ul>
-        <a href="/signup" class="btn btn-primary" style="background:#fff; color:var(--ink);">Go Pro</a>
-      </div>
-    </div>
-    <p class="pricing-note">Platform fee is taken only on completed, paid transactions — nothing is charged for a free booking or an unpaid link click.</p>
-  </div>
-</section>
+    <section class="cta" id="start"><span class="kicker">Your audience is already waiting</span><h2>Make your next click<br><em>count.</em></h2><p>Start free. Build in minutes. Grow on your terms.</p><a class="btn btn-white" href="/signup">Start building for free →</a></section>
+  </main>
 
-<section class="faq" id="faq">
-  <div class="wrap">
-    <div class="section-head">
-      <span class="eyebrow">Questions</span>
-      <h2>Before you start</h2>
-    </div>
-    <div class="faq-list">
-      <details class="faq-item" open>
-        <summary>Where does the money actually go?</summary>
-        <p>Straight to your own bank account through the payment gateway — we're never holding your funds. The platform fee is deducted automatically at the time of each sale, so what settles to you is already net.</p>
-      </details>
-      <details class="faq-item">
-        <summary>Do I need a business account or GST number?</summary>
-        <p>No — you can start with a personal bank account. If your turnover later crosses the GST threshold, that's between you and the tax department, same as any other income; we don't require anything extra to get set up.</p>
-      </details>
-      <details class="faq-item">
-        <summary>What happens if a client cancels a booking?</summary>
-        <p>You set your own cancellation and refund policy per service. If a refund is due, it's issued back through the same payment method — no manual bank transfers on your end.</p>
-      </details>
-      <details class="faq-item">
-        <summary>Can I use my own domain instead of the default store URL?</summary>
-        <p>Yes, on the Pro plan — point your own domain at your store and the default URL disappears from anything client-facing.</p>
-      </details>
-      <details class="faq-item">
-        <summary>Is client data kept private?</summary>
-        <p>Your contact list, bookings and sales data belong to your account only — nothing is shared with other creators on the platform, and you can export your contact list at any time.</p>
-      </details>
-    </div>
-  </div>
-</section>
+  <footer class="footer wrap"><div><a class="brand" href="#top"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a><p>The simpler way to grow and monetize your audience.</p></div><nav><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav><div class="legal"><span>© <%= new Date().getFullYear() %> <%= siteName %>. All rights reserved.</span><span>Made for creators everywhere.</span></div></footer>
 
-<section class="cta">
-  <div class="wrap">
-    <h2>Your calendar is worth more than a link.</h2>
-    <p>Set it up once. Every booking after that pays for itself.</p>
-    <div class="cta-ctas">
-      <a href="/signup" class="btn btn-primary">Create your store — free</a>
-    </div>
-  </div>
-</section>
-
-<footer class="site">
-  <div class="wrap foot-row">
-    <a href="/" class="logo" style="font-size:16px;">
-      <span class="logo-mark" style="width:24px;height:24px;">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </span>
-      <%= siteName %>
-    </a>
-    <div class="foot-links">
-      <a href="#how">How it works</a>
-      <a href="#features">Features</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
-    </div>
-    <div class="foot-copy">&copy; <%= new Date().getFullYear() %> <%= siteName %>. Built in India.</div>
-  </div>
-</footer>
-
+  <script>
+    const button = document.querySelector('.menu');
+    const mobileNav = document.querySelector('.mobile-nav');
+    button.addEventListener('click', () => {
+      const open = mobileNav.classList.toggle('open');
+      button.textContent = open ? '×' : '☰';
+      button.setAttribute('aria-expanded', String(open));
+    });
+    mobileNav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+      mobileNav.classList.remove('open');
+      button.textContent = '☰';
+      button.setAttribute('aria-expanded', 'false');
+    }));
+  </script>
 </body>
 </html>

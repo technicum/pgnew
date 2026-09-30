@@ -103,7 +103,7 @@ function requireAuth(req, res, next) {
 
 app.get('/', (req, res) => {
   res.render('index', {
-    title: `${SITE_NAME} — One store. Every way you earn.`,
+    title: `${SITE_NAME} — The Creator Business Toolkit`,
   });
 });
 
