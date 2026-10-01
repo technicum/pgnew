@@ -42,6 +42,18 @@ const {
   deleteLeadMagnet,
 } = require('./lib/leadMagnets');
 const { saveUpload, UPLOAD_TYPES, MAX_UPLOAD_BYTES } = require('./lib/uploads');
+const {
+  listPaymentPages,
+  createPaymentPage,
+  updatePaymentPage,
+  deletePaymentPage,
+  listCoupons,
+  createCoupon,
+  setCouponActive,
+  deleteCoupon,
+} = require('./lib/paymentPages');
+const { listOrders, orderStatsByPage, getOrder, markOrderPaid, cancelOrder } = require('./lib/orders');
+const { paymentMode } = require('./lib/payments');
 const { installStorefront } = require('./lib/storefront');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 
@@ -319,18 +331,22 @@ app.post('/dashboard/builder/design', requireAuth, async (req, res) => {
 
 app.get('/dashboard/audience', requireAuth, async (req, res, next) => {
   try {
-    const [rows, magnets] = await Promise.all([
+    const [rows, magnets, payPages] = await Promise.all([
       listContacts(req.session.user.id),
       listLeadMagnets(req.session.user.id),
+      listPaymentPages(req.session.user.id),
     ]);
-    // Each contact's source_label names what it came from — for a lead
-    // magnet signup that magnet's current title (so a rename shows up
-    // here), else the title saved at signup if the magnet is gone or the
-    // signup predates source_id. audience.js groups the list by it.
-    const magnetTitles = new Map(magnets.map((m) => [m.id, m.title]));
+    // Each contact's source_label names what it came from — a lead
+    // magnet's or payment page's current title (so a rename shows up
+    // here), else the title saved at the time if it's gone or the contact
+    // predates source_id. audience.js groups the list by it.
+    const currentTitles = {
+      form: new Map(magnets.map((m) => [m.id, m.title])),
+      order: new Map(payPages.map((p) => [p.id, p.title])),
+    };
     const contacts = rows.map((c) => ({
       ...c,
-      source_label: (c.source === 'form' && magnetTitles.get(c.source_id)) || c.source_name || '',
+      source_label: (currentTitles[c.source] && currentTitles[c.source].get(c.source_id)) || c.source_name || '',
     }));
     res.render('audience', {
       title: `Audience — ${SITE_NAME}`,
@@ -498,6 +514,148 @@ app.delete('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Delete lead magnet failed:', err);
     res.status(500).json({ error: 'Could not delete that lead magnet. Please try again.' });
+  }
+});
+
+// --- Payment pages, coupons, orders ----------------------------------------
+// Same shape as lead magnets: one render per page, JSON endpoints for every
+// action, everything scoped to req.session.user.id. The public side
+// (/pay/... on the store subdomain) is lib/paymentStorefront.js.
+
+// Errors thrown by lib/paymentPages.js for something the merchant typed —
+// shown as-is; anything else is a server fault.
+const PAYMENT_INPUT_ERRORS = new Set([
+  'INVALID_FIELD', 'TITLE_REQUIRED', 'INVALID_DELIVERY_URL', 'INVALID_COVER_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN', 'CODE_TAKEN',
+]);
+function sendPaymentError(res, err, fallback) {
+  if (PAYMENT_INPUT_ERRORS.has(err.code)) return res.status(400).json({ error: err.message });
+  if (err.code === 'NOT_FOUND') return res.status(404).json({ error: err.message });
+  console.error(fallback, err);
+  return res.status(500).json({ error: `${fallback} Please try again.` });
+}
+function idParam(req) {
+  const id = Number(req.params.id);
+  return Number.isInteger(id) ? id : null;
+}
+// Pages for the dashboard script: the stored row plus paid-order stats.
+function withStats(page, stats) {
+  const s = stats.get(page.id) || { paidCount: 0, revenue: 0 };
+  return { ...page, paid_count: s.paidCount, revenue: s.revenue };
+}
+
+app.get('/dashboard/payment-pages', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const [pages, coupons, stats] = await Promise.all([listPaymentPages(userId), listCoupons(userId), orderStatsByPage(userId)]);
+    res.render('payment-pages', {
+      title: `Payment pages — ${SITE_NAME}`,
+      user: req.session.user,
+      pages: pages.map((p) => withStats(p, stats)),
+      coupons,
+      paymentMode: paymentMode(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/dashboard/payment-pages', requireAuth, async (req, res) => {
+  try {
+    const page = await createPaymentPage(req.session.user.id, req.body || {});
+    res.status(201).json({ ...page, paid_count: 0, revenue: 0 });
+  } catch (err) {
+    sendPaymentError(res, err, 'Could not create that payment page.');
+  }
+});
+
+app.patch('/dashboard/payment-pages/:id', requireAuth, async (req, res) => {
+  const id = idParam(req);
+  if (id === null) return res.status(400).json({ error: 'Invalid payment page id.' });
+  try {
+    const page = await updatePaymentPage(req.session.user.id, id, req.body || {});
+    const stats = await orderStatsByPage(req.session.user.id);
+    res.json(withStats(page, stats));
+  } catch (err) {
+    sendPaymentError(res, err, 'Could not save that change.');
+  }
+});
+
+app.delete('/dashboard/payment-pages/:id', requireAuth, async (req, res) => {
+  const id = idParam(req);
+  if (id === null) return res.status(400).json({ error: 'Invalid payment page id.' });
+  try {
+    await deletePaymentPage(req.session.user.id, id);
+    res.json({ ok: true });
+  } catch (err) {
+    sendPaymentError(res, err, 'Could not delete that payment page.');
+  }
+});
+
+app.post('/dashboard/coupons', requireAuth, async (req, res) => {
+  try {
+    res.status(201).json(await createCoupon(req.session.user.id, req.body || {}));
+  } catch (err) {
+    sendPaymentError(res, err, 'Could not create that coupon.');
+  }
+});
+
+app.patch('/dashboard/coupons/:id', requireAuth, async (req, res) => {
+  const id = idParam(req);
+  if (id === null) return res.status(400).json({ error: 'Invalid coupon id.' });
+  try {
+    await setCouponActive(req.session.user.id, id, !!(req.body && req.body.active));
+    res.json({ ok: true });
+  } catch (err) {
+    sendPaymentError(res, err, 'Could not update that coupon.');
+  }
+});
+
+app.delete('/dashboard/coupons/:id', requireAuth, async (req, res) => {
+  const id = idParam(req);
+  if (id === null) return res.status(400).json({ error: 'Invalid coupon id.' });
+  try {
+    await deleteCoupon(req.session.user.id, id);
+    res.json({ ok: true });
+  } catch (err) {
+    sendPaymentError(res, err, 'Could not delete that coupon.');
+  }
+});
+
+app.get('/dashboard/orders', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const [orders, pages] = await Promise.all([listOrders(userId), listPaymentPages(userId)]);
+    res.render('orders', {
+      title: `Orders — ${SITE_NAME}`,
+      user: req.session.user,
+      orders,
+      pages: pages.map((p) => ({ id: p.id, title: p.title })),
+      paymentMode: paymentMode(),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Settling a pending order by hand — how "manual" mode works (the merchant
+// was paid by UPI/bank transfer), and a way to cancel an abandoned one.
+app.patch('/dashboard/orders/:id', requireAuth, async (req, res) => {
+  const id = idParam(req);
+  if (id === null) return res.status(400).json({ error: 'Invalid order id.' });
+  const status = req.body && req.body.status;
+  if (status !== 'paid' && status !== 'cancelled') return res.status(400).json({ error: 'Unknown order status.' });
+  try {
+    const userId = req.session.user.id;
+    const changed = status === 'paid'
+      ? await markOrderPaid(userId, id, { provider: 'manual' })
+      : await cancelOrder(userId, id);
+    const order = await getOrder(userId, id);
+    if (!order) return res.status(404).json({ error: 'That order doesn’t exist.' });
+    if (!changed) return res.status(409).json({ error: `That order is already ${order.status}.`, order });
+    res.json({ ok: true, order });
+  } catch (err) {
+    console.error('Update order failed:', err);
+    res.status(500).json({ error: 'Could not update that order. Please try again.' });
   }
 });
 

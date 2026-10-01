@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<% if (page.description) { %><meta name="description" content="<%= page.description.slice(0, 160) %>" /><% } %>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/auth.css" />
+<link rel="stylesheet" href="/css/lead-magnet.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/payment-page.css?v=<%= assetVersion %>" />
+</head>
+<%
+var ppShowCover = !!page.show_cover;
+var ppFlexible = page.price_type === 'flexible';
+%>
+<body class="lm-page" style="<%= lmThemeStyle(page) %>">
+
+<main class="lm-shell">
+
+  <div class="lm-head">
+    <a href="/" class="logo lm-brand"><%= owner.name %></a>
+  </div>
+
+  <article class="lm-card">
+    <% if (ppShowCover) { %>
+    <header class="lm-hero">
+      <%- include('partials/lm-banner', { magnet: page }) %>
+      <div class="lm-hero-text">
+        <span class="lm-kicker"><span class="dot"></span><%= priceLabel %></span>
+        <h1><%= page.title %></h1>
+      </div>
+    </header>
+    <% } %>
+
+    <div class="lm-card-body">
+      <% if (!ppShowCover) { %>
+      <span class="lm-kicker"><span class="dot"></span><%= priceLabel %></span>
+      <h1><%= page.title %></h1>
+      <% } %>
+      <% if (page.description) { %><p class="pp-desc"><%= page.description %></p><% } %>
+
+      <% if (mode === 'test') { %>
+      <p class="pp-test-note">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        Test mode — no real payment is taken.
+      </p>
+      <% } %>
+
+      <% if (error) { %>
+        <div class="auth-error" role="alert"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/pay/<%= page.slug %>" id="payForm" novalidate
+            data-quote-url="/pay/<%= page.slug %>/quote" data-cta="<%= page.cta_text %>">
+
+        <% if (ppFlexible) { %>
+        <div class="field">
+          <label for="amount">Your amount<span class="lm-req" aria-hidden="true">*</span></label>
+          <div class="pp-amount">
+            <span aria-hidden="true">₹</span>
+            <input type="text" inputmode="decimal" id="amount" name="amount" value="<%= values.amount %>" autocomplete="off" required />
+          </div>
+          <p class="pp-hint">
+            <% if (page.min_price) { %>Minimum <%= formatINR(page.min_price) %><% } else { %>Any amount<% } %><% if (page.suggested_price) { %> · suggested <%= formatINR(page.suggested_price) %><% } %>
+          </p>
+        </div>
+        <% } %>
+
+        <% if (page.allow_quantity) { %>
+        <div class="field">
+          <label for="quantity">Quantity</label>
+          <div class="pp-qty" data-max="<%= page.max_quantity %>">
+            <button type="button" class="pp-qty-btn" data-step="-1" aria-label="One fewer">−</button>
+            <input type="number" id="quantity" name="quantity" value="<%= values.quantity %>" min="1" max="<%= page.max_quantity %>" inputmode="numeric" />
+            <button type="button" class="pp-qty-btn" data-step="1" aria-label="One more">+</button>
+          </div>
+          <% if (!ppFlexible) { %><p class="pp-hint"><%= formatINR(page.price) %> each · up to <%= page.max_quantity %></p><% } %>
+        </div>
+        <% } %>
+
+        <div class="field">
+          <label for="name">Your name<span class="lm-req" aria-hidden="true">*</span></label>
+          <input type="text" id="name" name="name" value="<%= values.name %>" placeholder="Full name" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for="email">Your email<span class="lm-req" aria-hidden="true">*</span></label>
+          <input type="email" id="email" name="email" value="<%= values.email %>" placeholder="you@example.com" autocomplete="email" required />
+        </div>
+        <% if (page.collect_phone) { %>
+        <div class="field">
+          <label for="phone">Your phone number<span class="lm-req" aria-hidden="true">*</span></label>
+          <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="Phone number" autocomplete="tel" required />
+        </div>
+        <% } %>
+
+        <details class="pp-coupon"<%= values.coupon ? ' open' : '' %>>
+          <summary>Have a coupon code?</summary>
+          <div class="pp-coupon-row">
+            <input type="text" id="coupon" name="coupon" value="<%= values.coupon %>" placeholder="Enter code" autocomplete="off" autocapitalize="characters" aria-label="Coupon code" />
+            <button type="button" class="pp-coupon-apply" id="couponApply">Apply</button>
+          </div>
+          <p class="pp-coupon-msg" id="couponMsg" aria-live="polite"><% if (q.coupon) { %><%= q.coupon.code %> applied — <%= q.coupon.label %><% } %></p>
+        </details>
+
+        <dl class="pp-summary" id="paySummary" aria-live="polite">
+          <div><dt>Subtotal<% if (page.allow_quantity) { %> <span id="sumQty">(× <%= q.quantity %>)</span><% } %></dt><dd id="sumSubtotal"><%= q.display.subtotal %></dd></div>
+          <div id="sumDiscountRow"<%= q.discount ? '' : ' hidden' %>><dt>Discount <span id="sumCoupon"><%= q.coupon ? q.coupon.code : '' %></span></dt><dd id="sumDiscount">−<%= q.display.discount %></dd></div>
+          <div class="pp-summary-total"><dt>Total</dt><dd id="sumTotal"><%= q.display.total %></dd></div>
+        </dl>
+
+        <button type="submit" class="btn btn-primary" id="payButton"><%= page.cta_text %> · <%= q.display.total %></button>
+      </form>
+    </div>
+
+    <p class="lm-card-foot">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <span>Secure checkout. Your details go only to <%= owner.name %>.</span>
+    </p>
+  </article>
+
+</main>
+
+<script src="/js/payment-page.js?v=<%= assetVersion %>"></script>
+</body>
+</html>

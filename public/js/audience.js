@@ -10,11 +10,13 @@
   const emptyContacts = document.getElementById('emptyContacts');
   const emptyContactsTitle = document.getElementById('emptyContactsTitle');
   const emptyContactsSub = document.getElementById('emptyContactsSub');
-  const contactCount = document.getElementById('contactCount');
-  const contactCountLabel = document.getElementById('contactCountLabel');
+  const contactCountLine = document.getElementById('contactCountLine');
   const saveStatus = document.getElementById('saveStatus');
   const saveStatusText = document.getElementById('saveStatusText');
   const searchInput = document.getElementById('contactSearch');
+  const sourceFilter = document.getElementById('contactSourceFilter');
+  const reachFilter = document.getElementById('contactReachFilter');
+  const clearFiltersBtn = document.getElementById('contactClearFilters');
 
   function escapeHTML(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -93,7 +95,9 @@
     }
     const noteHTML = note ? `<div class="pz-contact-note">${escapeHTML(note)}</div>` : '';
     return `
-      <div class="pz-contact-row" data-id="${contact.id}" data-search="${escapeHTML(`${contact.name} ${contact.email} ${contact.phone}`.toLowerCase())}">
+      <div class="pz-contact-row" data-id="${contact.id}"
+        data-search="${escapeHTML(`${contact.name} ${contact.email} ${contact.phone} ${contact.note || ''}`.toLowerCase())}"
+        data-email="${contact.email ? '1' : ''}" data-phone="${contact.phone ? '1' : ''}">
         <div class="pz-contact-avatar">${escapeHTML(initials(contact.name))}</div>
         <div class="pz-contact-main">
           <div class="pz-contact-name">${escapeHTML(contact.name || 'Untitled')}</div>
@@ -104,11 +108,6 @@
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
         </button>
       </div>`;
-  }
-
-  function updateCount() {
-    contactCount.textContent = contacts.length;
-    contactCountLabel.textContent = contacts.length === 1 ? 'person' : 'people';
   }
 
   // The list is grouped by source (lib/contacts.js SOURCES), in this order;
@@ -145,9 +144,37 @@
     return `${n} ${n === 1 ? 'person' : 'people'}`;
   }
 
+  // Source filter options follow the groups actually on the page: one per
+  // source, plus each named group (every lead magnet) under its source.
+  // Values are "source:<source>" or "group:<source>|<label>".
+  function renderSourceOptions(groups) {
+    const current = sourceFilter.value;
+    const opts = ['<option value="">All sources</option>'];
+    SOURCES.forEach(({ source, fallback }) => {
+      const inSource = groups.filter((g) => g.source === source);
+      if (!inSource.length) return;
+      const named = inSource.filter((g) => g.label);
+      if (!named.length) {
+        opts.push(`<option value="source:${source}">${escapeHTML(fallback)}</option>`);
+        return;
+      }
+      opts.push(`<optgroup label="${escapeHTML(fallback)}">`);
+      opts.push(`<option value="source:${source}">All ${escapeHTML(fallback.toLowerCase())}</option>`);
+      inSource.forEach((g) => {
+        opts.push(`<option value="${escapeHTML(`group:${source}|${g.label}`)}">${escapeHTML(g.title)}</option>`);
+      });
+      opts.push('</optgroup>');
+    });
+    sourceFilter.innerHTML = opts.join('');
+    // Keep the choice across re-renders, unless that group has emptied out.
+    sourceFilter.value = [...sourceFilter.options].some((o) => o.value === current) ? current : '';
+  }
+
   function render() {
-    contactsList.innerHTML = groupContacts().map(({ source, kind, title, label, members }) => `
-        <section class="pz-contact-group" data-source="${source}">
+    const groups = groupContacts();
+    renderSourceOptions(groups);
+    contactsList.innerHTML = groups.map(({ source, kind, title, label, members }) => `
+        <section class="pz-contact-group" data-source="${source}" data-key="${escapeHTML(`${source}|${label}`)}">
           <div class="pz-contact-group-head">
             <div>
               ${kind ? `<span class="pz-contact-group-kind">${escapeHTML(kind)}</span>` : ''}
@@ -157,17 +184,8 @@
           </div>
           ${members.map((c) => contactRowHTML(c, label)).join('')}
         </section>`).join('');
-    contactsList.style.display = contacts.length ? '' : 'none';
-    if (contacts.length) {
-      emptyContacts.style.display = 'none';
-    } else {
-      emptyContactsTitle.textContent = 'No one here yet';
-      emptyContactsSub.textContent = 'Add the first person above, or come back once someone books or buys from your store.';
-      emptyContacts.style.display = 'flex';
-    }
-    updateCount();
     attachRowListeners();
-    applySearch();
+    applyFilters();
   }
 
   function attachRowListeners() {
@@ -188,38 +206,68 @@
     });
   }
 
-  // --- search (client-side only) --------------------------------------
-  function applySearch() {
+  // --- search + filters (client-side only) ----------------------------
+  // Search matches name/email/phone/note; the source filter narrows to one
+  // source or one named group (a single lead magnet); the contact-info
+  // filter keeps people you can email, text, or both.
+  function applyFilters() {
     const q = (searchInput.value || '').trim().toLowerCase();
+    const sourceValue = sourceFilter.value;
+    const reach = reachFilter.value;
+    const filtering = !!(q || sourceValue || reach);
+    clearFiltersBtn.hidden = !filtering;
+
+    const rowMatches = (row) => (!q || (row.dataset.search || '').includes(q))
+      && (reach !== 'email' || row.dataset.email)
+      && (reach !== 'phone' || row.dataset.phone)
+      && (reach !== 'both' || (row.dataset.email && row.dataset.phone));
+    const groupMatches = (group) => !sourceValue
+      || (sourceValue.startsWith('source:') && group.dataset.source === sourceValue.slice(7))
+      || (sourceValue.startsWith('group:') && group.dataset.key === sourceValue.slice(6));
+
     let visibleCount = 0;
-    contactsList.querySelectorAll('.pz-contact-row').forEach((row) => {
-      const match = !q || (row.dataset.search || '').includes(q);
-      row.style.display = match ? '' : 'none';
-      if (match) visibleCount += 1;
-    });
-    // A group with nothing matching drops out; the rest count their matches.
     contactsList.querySelectorAll('.pz-contact-group').forEach((group) => {
-      const shown = [...group.querySelectorAll('.pz-contact-row')].filter((r) => r.style.display !== 'none').length;
+      const inGroup = groupMatches(group);
+      let shown = 0;
+      group.querySelectorAll('.pz-contact-row').forEach((row) => {
+        const match = inGroup && rowMatches(row);
+        row.style.display = match ? '' : 'none';
+        if (match) shown += 1;
+      });
+      visibleCount += shown;
+      // A group with nothing matching drops out; the rest count their matches.
       const count = group.querySelector('.pz-contact-group-count');
+      const total = Number(count.dataset.total);
       group.style.display = shown ? '' : 'none';
-      count.textContent = q ? `${shown} of ${count.dataset.total}` : countLabel(Number(count.dataset.total));
+      count.textContent = shown < total ? `${shown} of ${total}` : countLabel(total);
     });
-    if (q && contacts.length) {
-      if (visibleCount === 0) {
-        emptyContactsTitle.textContent = 'No matches';
-        emptyContactsSub.textContent = `Nobody in your audience matches “${q}”.`;
-        emptyContacts.style.display = 'flex';
-        contactsList.style.display = 'none';
-      } else {
-        emptyContacts.style.display = 'none';
-        contactsList.style.display = '';
-      }
-    } else if (contacts.length) {
-      emptyContacts.style.display = 'none';
-      contactsList.style.display = '';
+
+    contactCountLine.textContent = filtering && contacts.length
+      ? `Showing ${visibleCount} of ${countLabel(contacts.length)}`
+      : `${countLabel(contacts.length)} in your audience`;
+
+    if (!contacts.length) {
+      emptyContactsTitle.textContent = 'No one here yet';
+      emptyContactsSub.textContent = 'Add the first person above, or come back once someone books or buys from your store.';
+    } else if (!visibleCount) {
+      emptyContactsTitle.textContent = 'No matches';
+      emptyContactsSub.textContent = q
+        ? `Nobody matches “${searchInput.value.trim()}” with these filters.`
+        : 'Nobody matches these filters.';
     }
+    emptyContacts.style.display = visibleCount ? 'none' : 'flex';
+    contactsList.style.display = visibleCount ? '' : 'none';
   }
-  searchInput.addEventListener('input', applySearch);
+  searchInput.addEventListener('input', applyFilters);
+  sourceFilter.addEventListener('change', applyFilters);
+  reachFilter.addEventListener('change', applyFilters);
+  clearFiltersBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    sourceFilter.value = '';
+    reachFilter.value = '';
+    applyFilters();
+    searchInput.focus();
+  });
 
   // --- add-person form --------------------------------------------------
   const form = document.getElementById('addContactForm');

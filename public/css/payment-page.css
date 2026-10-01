@@ -1,0 +1,185 @@
+/* Public payment pages (views/payment-page.ejs, payment-checkout.ejs,
+   payment-receipt.ejs). Built on lead-magnet.css — same shell, card,
+   cover and fields — this adds the money bits: amount input, quantity
+   stepper, coupon, order summary. */
+
+.pp-desc {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  margin: 0 0 24px;
+}
+.lm-card h1 + .pp-desc { margin-top: 8px; }
+
+.pp-hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 7px 0 0;
+}
+
+.pp-test-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 22px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fff7e6;
+  border: 1px solid #fbd38d;
+  color: #8a5300;
+  font-size: 13px;
+  font-weight: 500;
+}
+.pp-test-note svg { flex: none; }
+
+/* ₹ amount — the rupee sign sits inside the field. */
+.pp-amount { position: relative; }
+.pp-amount span {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+.lm-card .pp-amount input:not([type="checkbox"]) {
+  padding-left: 32px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* Quantity stepper. */
+.pp-qty {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 8px;
+  background: #eef0f4;
+  overflow: hidden;
+}
+.pp-qty-btn {
+  width: 42px;
+  border: 0;
+  background: none;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.pp-qty-btn:hover { background: color-mix(in srgb, var(--magnet-accent) 12%, #eef0f4); }
+.pp-qty-btn:disabled { color: #b0b6c3; cursor: default; background: none; }
+.lm-card .pp-qty input:not([type="checkbox"]) {
+  width: 64px;
+  text-align: center;
+  border-radius: 0;
+  padding: 11px 4px;
+  font-weight: 600;
+  -moz-appearance: textfield;
+}
+.pp-qty input::-webkit-outer-spin-button,
+.pp-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Coupon — tucked away until asked for. */
+.pp-coupon { margin: 4px 0 20px; }
+.pp-coupon summary {
+  cursor: pointer;
+  width: fit-content;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--magnet-accent-dark);
+  list-style: none;
+}
+.pp-coupon summary::-webkit-details-marker { display: none; }
+.pp-coupon summary::before { content: '+ '; }
+.pp-coupon[open] summary::before { content: '− '; }
+.pp-coupon-row { display: flex; gap: 8px; margin-top: 10px; }
+.lm-card .pp-coupon-row input:not([type="checkbox"]) {
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.pp-coupon-apply {
+  flex: none;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1.5px solid var(--magnet-accent);
+  background: var(--surface);
+  color: var(--magnet-accent-dark);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pp-coupon-apply:hover { background: color-mix(in srgb, var(--magnet-accent) 8%, var(--surface)); }
+.pp-coupon-msg { min-height: 0; margin: 7px 0 0; font-size: 13px; color: #127a43; }
+.pp-coupon-msg:empty { display: none; }
+.pp-coupon-msg.is-error { color: #c0322a; }
+
+/* Order summary. */
+.pp-summary {
+  margin: 0 0 6px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #f7f8fa;
+  border: 1px solid #eef0f4;
+  font-size: 14px;
+  text-align: left;
+}
+.pp-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+.pp-summary > div[hidden] { display: none; }
+.pp-summary dt { color: var(--ink-soft); min-width: 0; overflow-wrap: anywhere; }
+.pp-summary dt span { color: var(--muted); font-size: 12.5px; }
+.pp-summary dd { margin: 0; font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.pp-summary .pp-summary-total {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed #d5dae3;
+  font-weight: 700;
+  font-size: 16px;
+}
+.pp-summary .pp-summary-total dt { color: var(--ink); }
+#paySummary.is-updating { opacity: .55; transition: opacity .1s; }
+
+/* Test checkout screen. */
+.pp-checkout { margin-top: 24px; }
+.pp-test-badge {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff7e6;
+  border: 1px solid #fbd38d;
+  color: #8a5300;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.pp-checkout .pp-summary { margin-bottom: 10px; }
+.pp-checkout-actions { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.pp-link-btn {
+  border: 0;
+  background: none;
+  padding: 4px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Receipt. */
+.pp-receipt { margin-top: 22px; }
+.lm-card-success .lm-desc + .btn { margin-top: 18px; }
+.lm-success-icon.pp-status-pending { background: #ffd666; }
+.lm-success-icon.pp-status-cancelled { background: #e5e7eb; color: #475467; }

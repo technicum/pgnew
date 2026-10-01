@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/auth.css" />
+<link rel="stylesheet" href="/css/lead-magnet.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/payment-page.css?v=<%= assetVersion %>" />
+</head>
+<%#  The buyer's receipt (/pay/:slug/order/:token). The delivery link is
+     only ever printed for a paid order. %>
+<%
+var paid = order.status === 'paid';
+var cancelled = order.status === 'cancelled';
+var placedOn = new Date(order.paid_at || order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+%>
+<body class="lm-page" style="<%= lmThemeStyle(page) %>">
+
+<main class="lm-shell">
+  <div class="lm-head">
+    <a href="/" class="logo lm-brand"><%= owner.name %></a>
+  </div>
+
+  <article class="lm-card lm-card-success">
+    <div class="lm-banner-wrap">
+      <%- include('partials/lm-banner', { magnet: page }) %>
+      <div class="lm-success-icon pp-status-<%= order.status %>">
+        <% if (paid) { %>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5L10 17L19 7"/></svg>
+        <% } else if (cancelled) { %>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        <% } else { %>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="lm-card-body">
+      <% if (paid) { %>
+        <h1>Payment received</h1>
+        <p class="lm-desc"><%= page.success_message || `Thanks, ${order.buyer_name.split(' ')[0]}! You’re all set.` %></p>
+        <% if (page.delivery_url) { %>
+        <a href="<%= page.delivery_url %>" target="_blank" rel="noopener" class="btn btn-primary">
+          Access your purchase
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+        </a>
+        <% } %>
+      <% } else if (cancelled) { %>
+        <h1>Order cancelled</h1>
+        <p class="lm-desc">Nothing was charged. You can start again whenever you’re ready.</p>
+        <a href="/pay/<%= page.slug %>" class="btn btn-primary">Back to <%= page.title %></a>
+      <% } else { %>
+        <h1>Order placed</h1>
+        <p class="lm-desc"><%= owner.name %> will confirm your payment shortly. Keep this page — your purchase unlocks here as soon as it’s confirmed.</p>
+      <% } %>
+
+      <dl class="pp-summary pp-receipt">
+        <div><dt><%= order.page_title %><% if (order.quantity > 1) { %> × <%= order.quantity %><% } %></dt><dd><%= formatINR(order.subtotal) %></dd></div>
+        <% if (order.discount) { %><div><dt>Discount <span><%= order.coupon_code %></span></dt><dd>−<%= formatINR(order.discount) %></dd></div><% } %>
+        <div class="pp-summary-total"><dt><%= paid ? 'Paid' : 'Total' %></dt><dd><%= formatINR(order.total) %></dd></div>
+      </dl>
+      <p class="pp-hint">Order #<%= order.id %> · <%= placedOn %> · <%= order.buyer_email %><% if (order.provider === 'test') { %> · test payment<% } %></p>
+    </div>
+
+    <p class="lm-card-foot"><span>Save this page’s link — it’s your receipt.</span></p>
+  </article>
+</main>
+
+</body>
+</html>
