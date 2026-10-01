@@ -319,7 +319,19 @@ app.post('/dashboard/builder/design', requireAuth, async (req, res) => {
 
 app.get('/dashboard/audience', requireAuth, async (req, res, next) => {
   try {
-    const contacts = await listContacts(req.session.user.id);
+    const [rows, magnets] = await Promise.all([
+      listContacts(req.session.user.id),
+      listLeadMagnets(req.session.user.id),
+    ]);
+    // Each contact's source_label names what it came from — for a lead
+    // magnet signup that magnet's current title (so a rename shows up
+    // here), else the title saved at signup if the magnet is gone or the
+    // signup predates source_id. audience.js groups the list by it.
+    const magnetTitles = new Map(magnets.map((m) => [m.id, m.title]));
+    const contacts = rows.map((c) => ({
+      ...c,
+      source_label: (c.source === 'form' && magnetTitles.get(c.source_id)) || c.source_name || '',
+    }));
     res.render('audience', {
       title: `Audience — ${SITE_NAME}`,
       user: req.session.user,
