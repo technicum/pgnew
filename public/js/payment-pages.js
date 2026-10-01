@@ -419,7 +419,9 @@
       }
       resetBuilder();
       renderPages();
+      // Coupon rows and the "applies to" picker show page titles.
       renderCouponPageOptions();
+      renderCoupons();
     } catch (err) {
       showFormError(err.message || 'Could not save that payment page. Please try again.');
     }

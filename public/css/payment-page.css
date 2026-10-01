@@ -34,21 +34,93 @@
 }
 .pp-test-note svg { flex: none; }
 
+/* ---------- products ---------- */
+.pp-body > .lm-kicker + h1 { margin-bottom: 6px; }
+.pp-items {
+  list-style: none;
+  margin: 0 0 26px;
+  padding: 0;
+  border-top: 1px solid #eef0f4;
+}
+.pp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid #eef0f4;
+}
+.pp-item-thumb {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--magnet-accent) 10%, var(--surface));
+  color: var(--magnet-accent-dark);
+}
+.pp-thumb-physical { background: #f1ecff; color: #5b3cc4; }
+.pp-thumb-coffee { background: #fff3e6; color: #a5560c; }
+.pp-item-main { flex: 1; min-width: 0; }
+.pp-item-title { margin: 1px 0 0; font-weight: 600; font-size: 15px; color: var(--ink); overflow-wrap: anywhere; }
+.pp-item-type { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.pp-stock-low { color: #c0322a; font-weight: 600; }
+.pp-item-price {
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+.pp-item-price strong { display: block; font-size: 15px; color: var(--magnet-accent-dark); }
+.pp-item-price s { display: block; font-size: 12px; color: var(--muted); }
+.pp-item .pp-qty,
+.pp-item .pp-amount,
+.pp-item .pp-coffee { margin-top: 9px; }
+
+.pp-section-label {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pp-field-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+.pp-field-row .field { min-width: 0; }
+
+/* Inputs inside a product row share the filled look of the .field inputs
+   (lead-magnet.css) without being in a .field. */
+.pp-item input {
+  border: 1.5px solid transparent;
+  background: #eef0f4;
+  font-family: inherit;
+  color: var(--ink);
+}
+.pp-item input:focus {
+  outline: none;
+  border-color: var(--magnet-accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--magnet-accent) 16%, transparent);
+}
+
 /* ₹ amount — the rupee sign sits inside the field. */
-.pp-amount { position: relative; }
+.pp-amount { position: relative; max-width: 180px; }
 .pp-amount span {
   position: absolute;
-  left: 14px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--ink-soft);
   pointer-events: none;
 }
-.lm-card .pp-amount input:not([type="checkbox"]) {
-  padding-left: 32px;
-  font-size: 17px;
+.pp-amount input {
+  width: 100%;
+  padding: 9px 12px 9px 28px;
+  border-radius: 8px;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -61,26 +133,57 @@
   overflow: hidden;
 }
 .pp-qty-btn {
-  width: 42px;
+  width: 36px;
   border: 0;
   background: none;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
 }
 .pp-qty-btn:hover { background: color-mix(in srgb, var(--magnet-accent) 12%, #eef0f4); }
 .pp-qty-btn:disabled { color: #b0b6c3; cursor: default; background: none; }
-.lm-card .pp-qty input:not([type="checkbox"]) {
-  width: 64px;
+.pp-qty input {
+  width: 52px;
   text-align: center;
   border-radius: 0;
-  padding: 11px 4px;
+  padding: 7px 4px;
+  font-size: 14px;
   font-weight: 600;
   -moz-appearance: textfield;
 }
 .pp-qty input::-webkit-outer-spin-button,
-.pp-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pp-qty input::-webkit-inner-spin-button,
+.pp-coffee input::-webkit-outer-spin-button,
+.pp-coffee input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Coffee: ×1 / ×3 / ×5, or any number. */
+.pp-coffee { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pp-coffee-pill {
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  border: 1.5px solid #e1e5ec;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.pp-coffee-pill.active { background: var(--magnet-accent); border-color: var(--magnet-accent); color: #fff; }
+.pp-coffee-custom { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 12.5px; color: var(--muted); }
+.pp-coffee-custom input {
+  width: 58px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  -moz-appearance: textfield;
+}
+
+.lm-card .btn.pp-pay-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 
 /* Coupon — tucked away until asked for. */
 .pp-coupon { margin: 4px 0 20px; }
@@ -95,12 +198,28 @@
 .pp-coupon summary::-webkit-details-marker { display: none; }
 .pp-coupon summary::before { content: '+ '; }
 .pp-coupon[open] summary::before { content: '− '; }
-.pp-coupon-row { display: flex; gap: 8px; margin-top: 10px; }
-.lm-card .pp-coupon-row input:not([type="checkbox"]) {
+.pp-coupon-row { display: flex; align-items: stretch; gap: 8px; margin-top: 10px; }
+/* Same filled look as the .field inputs (lead-magnet.css), which this row
+   sits outside of. */
+.lm-card .pp-coupon-row input {
   flex: 1;
   min-width: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background: #eef0f4;
+  font-family: inherit;
+  font-size: 14.5px;
+  color: var(--ink);
   text-transform: uppercase;
   letter-spacing: .04em;
+}
+.lm-card .pp-coupon-row input::placeholder { color: #98a2b3; text-transform: none; letter-spacing: 0; }
+.lm-card .pp-coupon-row input:focus {
+  outline: none;
+  border-color: var(--magnet-accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--magnet-accent) 16%, transparent);
 }
 .pp-coupon-apply {
   flex: none;
@@ -183,3 +302,50 @@
 .lm-card-success .lm-desc + .btn { margin-top: 18px; }
 .lm-success-icon.pp-status-pending { background: #ffd666; }
 .lm-success-icon.pp-status-cancelled { background: #e5e7eb; color: #475467; }
+
+/* Receipt: one row per digital product's file, and where the parcel goes. */
+.pp-files {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 1px solid #eef0f4;
+  border-radius: 10px;
+  text-align: left;
+}
+.pp-files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #eef0f4;
+  font-size: 14px;
+}
+.pp-files li:last-child { border-bottom: none; }
+.pp-files span { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.pp-files a {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--magnet-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.pp-ship-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f1ecff;
+  color: #3f2a8c;
+  font-size: 13px;
+  text-align: left;
+}
+.pp-ship-note svg { flex: none; margin-top: 2px; }

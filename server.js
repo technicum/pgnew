@@ -52,7 +52,7 @@ const {
   setCouponActive,
   deleteCoupon,
 } = require('./lib/paymentPages');
-const { listOrders, orderStatsByPage, getOrder, markOrderPaid, cancelOrder } = require('./lib/orders');
+const { listOrders, orderStatsByPage, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode } = require('./lib/payments');
 const { installStorefront } = require('./lib/storefront');
 const { MySQLSessionStore } = require('./lib/sessionStore');
@@ -539,8 +539,8 @@ function idParam(req) {
 }
 // Pages for the dashboard script: the stored row plus paid-order stats.
 function withStats(page, stats) {
-  const s = stats.get(page.id) || { paidCount: 0, revenue: 0 };
-  return { ...page, paid_count: s.paidCount, revenue: s.revenue };
+  const s = stats.get(page.id) || { paidCount: 0, revenue: 0, toShip: 0 };
+  return { ...page, paid_count: s.paidCount, revenue: s.revenue, to_ship: s.toShip };
 }
 
 app.get('/dashboard/payment-pages', requireAuth, async (req, res, next) => {
@@ -562,7 +562,7 @@ app.get('/dashboard/payment-pages', requireAuth, async (req, res, next) => {
 app.post('/dashboard/payment-pages', requireAuth, async (req, res) => {
   try {
     const page = await createPaymentPage(req.session.user.id, req.body || {});
-    res.status(201).json({ ...page, paid_count: 0, revenue: 0 });
+    res.status(201).json({ ...page, paid_count: 0, revenue: 0, to_ship: 0 });
   } catch (err) {
     sendPaymentError(res, err, 'Could not create that payment page.');
   }
@@ -637,21 +637,26 @@ app.get('/dashboard/orders', requireAuth, async (req, res, next) => {
   }
 });
 
-// Settling a pending order by hand — how "manual" mode works (the merchant
-// was paid by UPI/bank transfer), and a way to cancel an abandoned one.
+// Settling an order by hand — marking a pending one paid (how "manual"
+// mode works: the merchant was paid by UPI/bank transfer), cancelling an
+// abandoned one, or marking a paid order's parcel as shipped.
 app.patch('/dashboard/orders/:id', requireAuth, async (req, res) => {
   const id = idParam(req);
   if (id === null) return res.status(400).json({ error: 'Invalid order id.' });
   const status = req.body && req.body.status;
-  if (status !== 'paid' && status !== 'cancelled') return res.status(400).json({ error: 'Unknown order status.' });
+  if (!['paid', 'cancelled', 'shipped'].includes(status)) return res.status(400).json({ error: 'Unknown order status.' });
   try {
     const userId = req.session.user.id;
-    const changed = status === 'paid'
-      ? await markOrderPaid(userId, id, { provider: 'manual' })
-      : await cancelOrder(userId, id);
+    let changed;
+    if (status === 'paid') changed = await markOrderPaid(userId, id, { provider: 'manual' });
+    else if (status === 'cancelled') changed = await cancelOrder(userId, id);
+    else changed = await markOrderShipped(userId, id);
     const order = await getOrder(userId, id);
     if (!order) return res.status(404).json({ error: 'That order doesn’t exist.' });
-    if (!changed) return res.status(409).json({ error: `That order is already ${order.status}.`, order });
+    if (!changed) {
+      const now = status === 'shipped' && order.status === 'paid' ? (order.fulfillment || 'not for shipping') : order.status;
+      return res.status(409).json({ error: `That order is already ${now}.`, order });
+    }
     res.json({ ok: true, order });
   } catch (err) {
     console.error('Update order failed:', err);

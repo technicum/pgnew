@@ -28,11 +28,7 @@
       <h1>Pay <%= formatINR(order.total) %></h1>
       <p class="pp-desc">This is a simulated payment — no gateway is connected yet, and no money moves. Complete it to see exactly what a buyer gets after paying.</p>
 
-      <dl class="pp-summary">
-        <div><dt><%= order.page_title %><% if (order.quantity > 1) { %> × <%= order.quantity %><% } %></dt><dd><%= formatINR(order.subtotal) %></dd></div>
-        <% if (order.discount) { %><div><dt>Discount <span><%= order.coupon_code %></span></dt><dd>−<%= formatINR(order.discount) %></dd></div><% } %>
-        <div class="pp-summary-total"><dt>Total</dt><dd><%= formatINR(order.total) %></dd></div>
-      </dl>
+      <%- include('partials/order-summary', { order: order, formatINR: formatINR }) %>
       <p class="pp-hint">Paying as <%= order.buyer_name %> · <%= order.buyer_email %></p>
 
       <form method="POST" action="/pay/<%= page.slug %>/checkout/<%= order.token %>" class="pp-checkout-actions">

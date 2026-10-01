@@ -1,0 +1,11 @@
+<%# What an order bought, line by line, with discount, shipping and total.
+    Shared by the test checkout and the receipt; pass totalLabel to
+    rename the last row ("Paid" on a paid receipt). %>
+<dl class="pp-summary<%= locals.summaryClass ? ' ' + summaryClass : '' %>">
+  <% order.items.forEach(function (item) { %>
+  <div><dt><%= item.title %><% if (item.qty > 1) { %> × <%= item.qty %><% } %></dt><dd><%= formatINR(item.amount) %></dd></div>
+  <% }) %>
+  <% if (order.discount) { %><div><dt>Discount <span><%= order.coupon_code %></span></dt><dd>−<%= formatINR(order.discount) %></dd></div><% } %>
+  <% if (order.shipping) { %><div><dt>Shipping</dt><dd><%= formatINR(order.shipping) %></dd></div><% } %>
+  <div class="pp-summary-total"><dt><%= locals.totalLabel || 'Total' %></dt><dd><%= formatINR(order.total) %></dd></div>
+</dl>

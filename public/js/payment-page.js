@@ -1,26 +1,30 @@
-// Public payment page (views/payment-page.ejs) — live total and inline
-// coupon check. Every number shown comes back from the server's own
-// quote() (POST /pay/:slug/quote), the same one that prices the real
-// order, so the page never does money maths itself. Without this script
-// the form still works: the total is simply worked out on submit.
+// Public payment page (views/payment-page.ejs) — live totals, quantity
+// steppers, coffee pills and the inline coupon check. Every number shown
+// comes back from the server's own quote() (POST /pay/:slug/quote), the
+// same one that prices the real order, so the page never does money maths
+// itself. Without this script the form still works: the total is simply
+// worked out on submit.
 (function () {
   const form = document.getElementById('payForm');
   if (!form) return;
   const quoteUrl = form.dataset.quoteUrl;
-  const cta = form.dataset.cta;
-  const amountInput = document.getElementById('amount');
-  const qtyInput = document.getElementById('quantity');
   const couponInput = document.getElementById('coupon');
   const couponApply = document.getElementById('couponApply');
   const couponMsg = document.getElementById('couponMsg');
   const summary = document.getElementById('paySummary');
-  const sumQty = document.getElementById('sumQty');
-  const sumSubtotal = document.getElementById('sumSubtotal');
-  const sumDiscountRow = document.getElementById('sumDiscountRow');
-  const sumCoupon = document.getElementById('sumCoupon');
-  const sumDiscount = document.getElementById('sumDiscount');
-  const sumTotal = document.getElementById('sumTotal');
-  const payButton = document.getElementById('payButton');
+  const $ = (id) => document.getElementById(id);
+
+  // Each product's current choice, read straight from its inputs.
+  function readItems() {
+    const items = {};
+    form.querySelectorAll('.pp-item').forEach((row) => {
+      const id = row.dataset.pid;
+      const qty = row.querySelector(`[name="qty_${id}"]`);
+      const amount = row.querySelector(`[name="amount_${id}"]`);
+      items[id] = { qty: qty ? qty.value : undefined, amount: amount ? amount.value : undefined };
+    });
+    return items;
+  }
 
   // Only the latest request's answer is applied, however they arrive.
   let seq = 0;
@@ -33,21 +37,21 @@
       const res = await fetch(quoteUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amountInput ? amountInput.value : undefined,
-          quantity: qtyInput ? qtyInput.value : undefined,
-          coupon: appliedCoupon,
-        }),
+        body: JSON.stringify({ items: readItems(), coupon: appliedCoupon }),
       });
       const q = await res.json();
       if (mine !== seq || !res.ok) return;
-      if (sumQty) sumQty.textContent = `(× ${q.quantity})`;
-      sumSubtotal.textContent = q.display.subtotal;
-      sumDiscountRow.hidden = !q.hasDiscount;
-      sumCoupon.textContent = q.coupon ? q.coupon.code : '';
-      sumDiscount.textContent = `−${q.display.discount}`;
-      sumTotal.textContent = q.display.total;
-      payButton.textContent = `${cta} · ${q.display.total}`;
+      Object.entries(q.display.lines).forEach(([id, text]) => {
+        const el = form.querySelector(`[data-line-for="${id}"]`);
+        if (el) el.textContent = text;
+      });
+      $('sumSubtotal').textContent = q.display.subtotal;
+      $('sumDiscountRow').hidden = !q.hasDiscount;
+      $('sumCoupon').textContent = q.coupon ? q.coupon.code : '';
+      $('sumDiscount').textContent = `−${q.display.discount}`;
+      if ($('sumShipping')) $('sumShipping').textContent = q.display.shipping;
+      $('sumTotal').textContent = q.display.total;
+      $('payButtonText').textContent = `Pay ${q.display.total}`;
       if (showCouponResult || q.couponError) {
         couponMsg.classList.toggle('is-error', !!q.couponError);
         couponMsg.textContent = q.couponError || (q.coupon ? `${q.coupon.code} applied — ${q.coupon.label}` : '');
@@ -67,26 +71,41 @@
     timer = setTimeout(refresh, 250);
   }
 
-  if (amountInput) amountInput.addEventListener('input', refreshSoon);
-
-  if (qtyInput) {
-    const stepper = qtyInput.closest('.pp-qty');
+  // Quantity steppers.
+  form.querySelectorAll('.pp-qty').forEach((stepper) => {
+    const input = stepper.querySelector('input');
     const max = Number(stepper.dataset.max) || 1;
-    const buttons = stepper.querySelectorAll('.pp-qty-btn');
-    const clampQty = () => {
-      const n = Math.min(max, Math.max(1, Math.round(Number(qtyInput.value) || 1)));
-      qtyInput.value = n;
-      buttons[0].disabled = n <= 1;
-      buttons[1].disabled = n >= max;
+    const [dec, inc] = stepper.querySelectorAll('.pp-qty-btn');
+    const clamp = () => {
+      const n = Math.min(max, Math.max(1, Math.round(Number(input.value) || 1)));
+      input.value = n;
+      dec.disabled = n <= 1 || input.disabled;
+      inc.disabled = n >= max || input.disabled;
     };
-    buttons.forEach((btn) => btn.addEventListener('click', () => {
-      qtyInput.value = (Number(qtyInput.value) || 1) + Number(btn.dataset.step);
-      clampQty();
+    [dec, inc].forEach((btn) => btn.addEventListener('click', () => {
+      input.value = (Number(input.value) || 1) + Number(btn.dataset.step);
+      clamp();
       refreshSoon();
     }));
-    qtyInput.addEventListener('change', () => { clampQty(); refreshSoon(); });
-    clampQty();
-  }
+    input.addEventListener('change', () => { clamp(); refreshSoon(); });
+    clamp();
+  });
+
+  // Coffee: ×1 / ×3 / ×5 pills set the count; the box takes any other number.
+  form.querySelectorAll('.pp-coffee').forEach((row) => {
+    const input = row.querySelector('input');
+    const pills = row.querySelectorAll('.pp-coffee-pill');
+    const mark = () => pills.forEach((p) => p.classList.toggle('active', Number(p.dataset.setQty) === Number(input.value)));
+    pills.forEach((pill) => pill.addEventListener('click', () => {
+      input.value = pill.dataset.setQty;
+      mark();
+      refreshSoon();
+    }));
+    input.addEventListener('input', () => { mark(); refreshSoon(); });
+  });
+
+  // Pay-what-you-want amounts.
+  form.querySelectorAll('[name^="amount_"]').forEach((input) => input.addEventListener('input', refreshSoon));
 
   function applyCoupon() {
     appliedCoupon = couponInput.value.trim();

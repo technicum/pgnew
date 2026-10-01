@@ -8,8 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
-<%# The builder, tabs, swatches, cover controls and phone preview are the
-    lead magnet builder's — shared styles, payment-specific bits on top. %>
+<%# Shared dashboard pieces (save status, switches, swatches, cover
+    controls, copy-link box) come from the lead magnet builder's sheet;
+    the payment builder's own layout is payments-dashboard.css. %>
 <link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/payments-dashboard.css?v=<%= assetVersion %>" />
 </head>
@@ -32,57 +33,52 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+    <div class="mx-auto max-w-[1120px] px-4 py-7 md:px-8 md:py-9">
 
-      <section class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p class="text-sm font-semibold text-primary">Get paid</p>
-          <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Payment pages</h1>
-          <p class="mt-2 text-sm text-muted-foreground">Sell anything from one link — a session, a course, a template. Buyers land in your <a href="/dashboard/audience" style="color:var(--primary); text-decoration:underline;">Audience</a>, and every sale shows up in <a href="/dashboard/orders" style="color:var(--primary); text-decoration:underline;">Orders</a>.</p>
-        </div>
+      <section>
+        <p class="text-sm font-semibold text-primary">Get paid</p>
+        <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Payment pages</h1>
+        <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">One checkout link that can hold one product or several — a course plus a physical workbook, a bundle of downloads, anything. Mix digital and physical freely; the page only asks for a shipping address when it needs one.</p>
       </section>
 
       <%- include('partials/payment-mode-note', { paymentMode: paymentMode }) %>
 
-      <section class="mt-6 pz-builder">
-        <div class="pz-builder-form rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+      <section class="pb-grid">
+        <div class="pb-form rounded-lg border border-border bg-card shadow-sm">
           <h2 class="text-lg font-bold" id="builderHeading">Create a payment page</h2>
-          <p class="mt-1 text-sm text-muted-foreground">Set a price, add what buyers get after paying, and share the link.</p>
+          <p class="pb-hint">Add one product to sell something simple, or stack several into a bundle.</p>
 
-          <div class="pz-tabs">
-            <button type="button" class="pz-tab-btn active" data-btab="content">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="11" height="4" rx="1"/></svg>
-              Content
+          <div class="pb-tabs" role="tablist">
+            <button type="button" class="pb-tab active" data-tab="page" role="tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="11" height="4" rx="1"/></svg>
+              Page
             </button>
-            <button type="button" class="pz-tab-btn" data-btab="pricing">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></svg>
-              Pricing
+            <button type="button" class="pb-tab" data-tab="products" role="tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3V5a3 3 0 0 0-6 0v2H8a1 1 0 0 0-1 .89L5.6 19.78A2 2 0 0 0 7.59 22h8.82a2 2 0 0 0 2-2.22L17 7.89A1 1 0 0 0 16 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
+              Products <span class="pb-count" id="tabProductCount">1</span>
             </button>
-            <button type="button" class="pz-tab-btn" data-btab="design">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <button type="button" class="pb-tab" data-tab="design" role="tab">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
               Design
             </button>
           </div>
 
-          <form id="pageForm" class="mt-4" novalidate>
-
-            <div class="pz-btabpanel active" id="btab-content">
-              <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                <input type="text" id="ppTitle" class="pz-field-input" maxlength="200" placeholder="Title — e.g. 1:1 coaching session" style="flex:1.4; min-width:220px;" />
-                <input type="text" id="ppCta" class="pz-field-input" maxlength="60" placeholder="Button text (default: Pay now)" style="flex:1; min-width:160px;" />
+          <form id="pageForm" novalidate>
+            <!-- Page tab -->
+            <div class="pb-panel active" id="tab-page">
+              <input type="text" id="ppTitle" class="pz-field-input" maxlength="200" placeholder="Page headline — e.g. Complete Starter Bundle" />
+              <textarea id="ppDescription" class="pz-field-input" rows="2" maxlength="1000" placeholder="A line about what’s included (optional)"></textarea>
+              <div class="pb-note">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <span>Add your products in the <strong>Products</strong> tab. The shipping-address section only appears on the checkout page if at least one product there is Physical.</span>
               </div>
-              <textarea id="ppDescription" class="pz-field-input" rows="3" maxlength="1000" placeholder="What are they buying? What’s included? (optional)" style="height:auto; padding:9px 11px; resize:vertical;"></textarea>
-              <div class="pz-builder-option">
-                <label for="ppDeliveryUrl">After payment <span class="pz-option-hint">(optional — a download, course or booking link they unlock)</span></label>
-                <input type="url" id="ppDeliveryUrl" class="pz-field-input" maxlength="500" placeholder="https://…" />
+              <div class="pb-option">
+                <label for="ppSuccessMessage" class="pb-label">Thank-you message <span class="pz-option-hint">(optional — shown on the receipt)</span></label>
+                <textarea id="ppSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default."></textarea>
               </div>
-              <div class="pz-builder-option">
-                <label for="ppSuccessMessage">Thank-you message <span class="pz-option-hint">(optional — shown on the receipt)</span></label>
-                <textarea id="ppSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default." style="height:auto; padding:9px 11px; resize:vertical;"></textarea>
-              </div>
-              <!-- Only while editing: new pages get a link from their title. -->
-              <div class="pz-builder-option" id="ppSlugRow" hidden>
-                <label for="ppSlug">Link</label>
+              <!-- Only while editing: new pages get a link from their headline. -->
+              <div class="pb-option" id="ppSlugRow" hidden>
+                <label for="ppSlug" class="pb-label">Link</label>
                 <div class="pz-slug-field">
                   <span><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/</span>
                   <input type="text" id="ppSlug" maxlength="60" spellcheck="false" autocapitalize="off" />
@@ -91,55 +87,19 @@
               </div>
             </div>
 
-            <div class="pz-btabpanel" id="btab-pricing">
-              <p class="pz-section-label">Price</p>
-              <div class="cover-choice" id="ppPriceTypeChoice">
-                <button type="button" class="cover-opt active" data-price-type="fixed">Fixed price</button>
-                <button type="button" class="cover-opt" data-price-type="flexible">Pay what you want</button>
-              </div>
-              <div class="pp-money-row" id="ppFixedRow">
-                <label class="pp-money">
-                  <span class="pp-money-label">Price</span>
-                  <span class="pp-money-input"><i>₹</i><input type="text" inputmode="decimal" id="ppPrice" class="pz-field-input" placeholder="499" /></span>
-                </label>
-              </div>
-              <div class="pp-money-row" id="ppFlexibleRow" hidden>
-                <label class="pp-money">
-                  <span class="pp-money-label">Minimum</span>
-                  <span class="pp-money-input"><i>₹</i><input type="text" inputmode="decimal" id="ppMinPrice" class="pz-field-input" placeholder="0" /></span>
-                </label>
-                <label class="pp-money">
-                  <span class="pp-money-label">Suggested</span>
-                  <span class="pp-money-input"><i>₹</i><input type="text" inputmode="decimal" id="ppSuggestedPrice" class="pz-field-input" placeholder="299" /></span>
-                </label>
-              </div>
-              <p class="pz-option-hint" id="ppPriceHint">Buyers pay exactly this.</p>
-
-              <div class="pz-divider"></div>
-              <p class="pz-section-label">Quantity</p>
-              <div class="pz-option-row">
-                <button type="button" class="pz-switch" id="ppAllowQuantity" aria-label="Let buyers choose a quantity" aria-pressed="false"></button>
-                <span>Let buyers choose how many <span class="pz-option-hint">(tickets, seats, copies)</span></span>
-              </div>
-              <div class="pp-money-row" id="ppMaxQtyRow" hidden>
-                <label class="pp-money">
-                  <span class="pp-money-label">Max per order</span>
-                  <input type="number" id="ppMaxQuantity" class="pz-field-input" min="1" max="100" value="10" />
-                </label>
-              </div>
-
-              <div class="pz-divider"></div>
-              <p class="pz-section-label">Checkout details</p>
-              <p class="pz-section-sub">Name and email are always asked for — the receipt goes to the email.</p>
-              <div class="pz-option-row">
-                <button type="button" class="pz-switch on" id="ppCollectPhone" aria-label="Ask for a phone number" aria-pressed="true"></button>
-                <span>Phone number</span>
-              </div>
+            <!-- Products tab: one card per product (payment-pages.js) -->
+            <div class="pb-panel" id="tab-products">
+              <div class="pb-prod-list" id="prodList"></div>
+              <button type="button" class="pb-add-product" id="addProductBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                Add another product
+              </button>
             </div>
 
-            <div class="pz-btabpanel" id="btab-design">
+            <!-- Design tab -->
+            <div class="pb-panel" id="tab-design">
               <p class="pz-section-label">Accent color</p>
-              <p class="pz-section-sub">Used for the button, badge and background on the page.</p>
+              <p class="pz-section-sub">Used across the whole payment page — header, price and buy button.</p>
               <div class="swatch-row" id="ppSwatchRow">
                 <button type="button" class="swatch active" data-accent="#1261ef" style="background:#1261ef;" aria-label="Blue"></button>
                 <button type="button" class="swatch" data-accent="#c0322a" style="background:#ff6c62;" aria-label="Coral"></button>
@@ -152,7 +112,7 @@
               </div>
               <div class="pz-divider"></div>
               <p class="pz-section-label">Cover</p>
-              <p class="pz-section-sub">The banner across the top, with your title on it.</p>
+              <p class="pz-section-sub">The banner across the top, with your headline on it.</p>
               <div class="cover-choice cover-choice-wrap" id="ppCoverChoice">
                 <button type="button" class="cover-opt active" data-cover="art">Artwork</button>
                 <button type="button" class="cover-opt" data-cover="image">Image</button>
@@ -197,9 +157,9 @@
               </div>
             </div>
 
-            <div style="margin-top:16px; display:flex; align-items:center; gap:10px;">
-              <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4">
-                <svg id="builderSubmitIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+            <div class="pb-actions">
+              <button type="submit" class="pb-primary">
+                <svg id="builderSubmitIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
                 <span id="builderSubmitLabel">Create payment page</span>
               </button>
               <button type="button" class="pz-card-btn" id="builderCancelBtn" hidden style="height:40px; padding:0 14px; font-size:13.5px;">Cancel</button>
@@ -208,63 +168,53 @@
           <p class="pz-field-error" id="pageFormError"></p>
         </div>
 
-        <div class="pz-builder-preview">
-          <div style="position:sticky; top:104px;">
-            <div class="flex items-center justify-between" style="margin-bottom:14px;">
-              <h2 class="text-sm font-bold">Live preview</h2>
+        <!-- Live preview: what buyers will see -->
+        <div>
+          <div class="pb-preview-head">
+            <h2>Live preview</h2>
+            <span>What buyers will see</span>
+          </div>
+          <div class="pb-preview-frame" id="ppPreviewFrame">
+            <div class="pb-preview-chrome">
+              <span></span><span></span><span></span>
+              <span class="pb-preview-url" id="ppPreviewUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/…</span>
             </div>
-            <div class="pz-magnet-preview-frame" id="ppPreviewFrame">
-              <div class="pz-magnet-preview-chrome">
-                <span></span><span></span><span></span>
-                <span class="pz-magnet-preview-url" id="ppPreviewUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/…</span>
-              </div>
-              <div class="pz-magnet-preview-screen">
-                <div class="pz-magnet-preview-visual">
-                  <div class="pz-magnet-preview-brand"><%= user.name %></div>
-                  <div class="pz-magnet-preview-card">
-                    <div class="pz-magnet-preview-cover" id="ppPreviewCover" aria-hidden="true">
-                      <img id="ppPreviewCoverImage" alt="" style="display:none;" />
-                      <video id="ppPreviewCoverVideo" muted loop autoplay playsinline style="display:none;"></video>
-                      <svg id="ppPreviewCoverArt" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M-40 60 C 140 230, 380 200, 640 -20 L 640 -40 L -40 -40 Z" fill="rgba(4,8,30,.86)"/>
-                        <path d="M-40 80 C 140 250, 390 215, 640 0 L 640 40 C 400 250, 120 290, -40 140 Z" fill="#fff" fill-opacity=".28"/>
-                        <path d="M-40 150 C 160 280, 420 250, 640 70 L 640 130 C 430 290, 170 300, -40 215 Z" fill="#fff" fill-opacity=".16"/>
-                        <path d="M70 215 C 100 130, 160 70, 240 30" stroke="#fff" stroke-opacity=".38" stroke-width="22" stroke-linecap="round" fill="none"/>
-                      </svg>
-                      <div class="pz-magnet-preview-head">
-                        <span class="pz-magnet-preview-kicker"><span></span><b id="ppPreviewPriceLabel">₹0</b></span>
-                        <h3 id="ppPreviewTitle">Your payment page title</h3>
-                      </div>
-                    </div>
-                    <div class="pz-magnet-preview-form">
-                      <p class="pp-preview-desc" id="ppPreviewDesc" hidden></p>
-                      <div class="pz-magnet-preview-field" id="ppPreviewAmount" hidden>
-                        <span class="pz-magnet-preview-field-label">Your amount<i>*</i></span>
-                        <div class="pz-magnet-preview-input pp-preview-amount">₹ <b id="ppPreviewAmountValue">0</b></div>
-                      </div>
-                      <div class="pz-magnet-preview-field" id="ppPreviewQty" hidden>
-                        <span class="pz-magnet-preview-field-label">Quantity</span>
-                        <div class="pp-preview-qty"><span>−</span><b>1</b><span>+</span></div>
-                      </div>
-                      <div class="pz-magnet-preview-field">
-                        <span class="pz-magnet-preview-field-label">Your name<i>*</i></span>
-                        <div class="pz-magnet-preview-input">Full name</div>
-                      </div>
-                      <div class="pz-magnet-preview-field">
-                        <span class="pz-magnet-preview-field-label">Your email<i>*</i></span>
-                        <div class="pz-magnet-preview-input">you@example.com</div>
-                      </div>
-                      <div class="pz-magnet-preview-field" id="ppPreviewPhone">
-                        <span class="pz-magnet-preview-field-label">Your phone number<i>*</i></span>
-                        <div class="pz-magnet-preview-input">Phone number</div>
-                      </div>
-                      <p class="pp-preview-coupon">+ Have a coupon code?</p>
-                      <div class="pp-preview-total"><span>Total</span><b id="ppPreviewTotal">₹0</b></div>
-                      <div class="pz-magnet-preview-btn" id="ppPreviewCta">Pay now · ₹0</div>
-                    </div>
-                    <div class="pz-magnet-preview-foot">Secure checkout. Your details go only to <%= user.name %>.</div>
-                  </div>
+            <div class="pb-preview-screen">
+              <div class="pb-preview-top" id="ppPreviewTop">
+                <img id="ppPreviewCoverImage" alt="" hidden />
+                <video id="ppPreviewCoverVideo" muted loop autoplay playsinline hidden></video>
+                <div class="pb-preview-top-text">
+                  <span class="pb-kicker"><span></span>Secure checkout</span>
+                  <h3 id="ppPreviewTitle">Your payment page</h3>
                 </div>
+              </div>
+              <p class="pb-preview-desc" id="ppPreviewDesc" hidden></p>
+              <div class="pb-preview-items" id="ppPreviewItems"></div>
+              <div class="pb-preview-body">
+                <span class="pb-preview-label">Buyer details</span>
+                <div class="pb-preview-input">Full name</div>
+                <div class="pb-preview-input">you@example.com</div>
+                <div class="pb-preview-ship" id="ppPreviewShip" hidden>
+                  <div class="pb-preview-input">Address line</div>
+                  <div class="pb-preview-ship-row">
+                    <div class="pb-preview-input">City</div>
+                    <div class="pb-preview-input">Pincode</div>
+                  </div>
+                  <div class="pb-preview-input">Phone number</div>
+                </div>
+                <div class="pb-preview-totals">
+                  <div class="pb-preview-total-row"><span>Subtotal</span><span id="ppPreviewSubtotal">₹0</span></div>
+                  <div class="pb-preview-total-row" id="ppPreviewShipRow" hidden><span>Shipping</span><span id="ppPreviewShipAmt">Free</span></div>
+                  <div class="pb-preview-total-row grand"><span>Total</span><span id="ppPreviewTotal">₹0</span></div>
+                </div>
+                <div class="pb-preview-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                  <span id="ppPreviewBtnText">Pay ₹0</span>
+                </div>
+                <p class="pb-preview-secure">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Secure checkout
+                </p>
               </div>
             </div>
           </div>
@@ -272,10 +222,10 @@
       </section>
 
       <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
-        <div class="flex items-center justify-between border-b border-border p-5 md:px-6">
+        <div class="pb-list-head">
           <div>
             <h2 class="text-lg font-bold">Your payment pages</h2>
-            <p class="mt-1 text-sm text-muted-foreground" id="pageCountLine"></p>
+            <p id="pageCountLine"></p>
           </div>
         </div>
         <div id="pagesList"><!-- injected --></div>
@@ -291,7 +241,7 @@
       <section class="mt-6 rounded-lg border border-border bg-card shadow-sm" id="coupons">
         <div class="border-b border-border p-5 md:px-6">
           <h2 class="text-lg font-bold">Coupon codes</h2>
-          <p class="mt-1 text-sm text-muted-foreground">Discounts buyers enter at checkout. A code counts as used once its order is paid.</p>
+          <p class="mt-1 text-sm text-muted-foreground">Discounts buyers enter at checkout — taken off the products, not shipping. A code counts as used once its order is paid.</p>
           <form id="couponForm" class="pp-coupon-form" novalidate>
             <input type="text" id="couponCode" class="pz-field-input" maxlength="30" placeholder="Code, e.g. LAUNCH20" autocapitalize="characters" spellcheck="false" />
             <div class="pp-coupon-discount">

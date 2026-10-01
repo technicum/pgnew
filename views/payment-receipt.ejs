@@ -45,11 +45,29 @@ var placedOn = new Date(order.paid_at || order.created_at).toLocaleDateString('e
       <% if (paid) { %>
         <h1>Payment received</h1>
         <p class="lm-desc"><%= page.success_message || `Thanks, ${order.buyer_name.split(' ')[0]}! You’re all set.` %></p>
-        <% if (page.delivery_url) { %>
-        <a href="<%= page.delivery_url %>" target="_blank" rel="noopener" class="btn btn-primary">
-          Access your purchase
+        <%# One button per digital product that has a file link. %>
+        <% if (files.length === 1) { %>
+        <a href="<%= files[0].url %>" target="_blank" rel="noopener" class="btn btn-primary">
+          Open <%= files[0].title %>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
         </a>
+        <% } else if (files.length > 1) { %>
+        <ul class="pp-files">
+          <% files.forEach(function (f) { %>
+          <li>
+            <span><%= f.title %></span>
+            <a href="<%= f.url %>" target="_blank" rel="noopener">Open
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+            </a>
+          </li>
+          <% }) %>
+        </ul>
+        <% } %>
+        <% if (order.fulfillment) { %>
+        <p class="pp-ship-note">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>
+          <span><%= order.fulfillment === 'shipped' ? 'Shipped' : 'Shipping' %> to <%= order.ship_address ? [order.ship_address.line, order.ship_address.city, order.ship_address.pincode].filter(Boolean).join(', ') : 'your address' %></span>
+        </p>
         <% } %>
       <% } else if (cancelled) { %>
         <h1>Order cancelled</h1>
@@ -60,11 +78,7 @@ var placedOn = new Date(order.paid_at || order.created_at).toLocaleDateString('e
         <p class="lm-desc"><%= owner.name %> will confirm your payment shortly. Keep this page — your purchase unlocks here as soon as it’s confirmed.</p>
       <% } %>
 
-      <dl class="pp-summary pp-receipt">
-        <div><dt><%= order.page_title %><% if (order.quantity > 1) { %> × <%= order.quantity %><% } %></dt><dd><%= formatINR(order.subtotal) %></dd></div>
-        <% if (order.discount) { %><div><dt>Discount <span><%= order.coupon_code %></span></dt><dd>−<%= formatINR(order.discount) %></dd></div><% } %>
-        <div class="pp-summary-total"><dt><%= paid ? 'Paid' : 'Total' %></dt><dd><%= formatINR(order.total) %></dd></div>
-      </dl>
+      <%- include('partials/order-summary', { order: order, formatINR: formatINR, summaryClass: 'pp-receipt', totalLabel: paid ? 'Paid' : 'Total' }) %>
       <p class="pp-hint">Order #<%= order.id %> · <%= placedOn %> · <%= order.buyer_email %><% if (order.provider === 'test') { %> · test payment<% } %></p>
     </div>
 

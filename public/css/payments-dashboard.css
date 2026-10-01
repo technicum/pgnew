@@ -83,6 +83,7 @@
 }
 .pp-coupon-form .pz-field-input { height: 36px; }
 #couponCode { text-transform: uppercase; letter-spacing: .04em; }
+#couponCode::placeholder { text-transform: none; letter-spacing: 0; }
 .pp-coupon-discount { display: flex; gap: 6px; }
 .pp-coupon-discount input { flex: 1; min-width: 0; }
 .pp-coupon-discount select { flex: 0 0 82px; }
@@ -130,7 +131,7 @@
 
 .pp-order-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.3fr) auto auto;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) 110px 180px;
   align-items: center;
   gap: 14px;
   padding: 14px 20px;

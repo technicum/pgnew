@@ -85,7 +85,7 @@
       : '';
     return `
       <div class="pp-order-row" data-id="${o.id}"
-           data-search="${escapeHTML(`${o.buyer_name} ${o.buyer_email} ${o.buyer_phone} #${o.id} ${o.id} ${o.coupon_code}`.toLowerCase())}">
+           data-search="${escapeHTML(`${o.buyer_name} ${o.buyer_email} ${o.buyer_phone} ${o.coupon_code}`.toLowerCase())}">
         <div class="pp-order-buyer">
           <strong>${escapeHTML(o.buyer_name || o.buyer_email)}</strong>
           <span>${contact}</span>
@@ -121,7 +121,10 @@
   }
 
   function applyFilters() {
-    const q = searchInput.value.trim().toLowerCase().replace(/^#/, '');
+    const q = searchInput.value.trim().toLowerCase();
+    // "#12" is an order number — matched exactly, not as a substring of
+    // phone numbers and the like.
+    const orderNo = (q.match(/^#(\d+)$/) || [])[1];
     const status = statusFilter.value;
     const page = pageFilter.value;
     const filtering = !!(q || status || page);
@@ -129,7 +132,8 @@
     let shown = 0;
     list.querySelectorAll('.pp-order-row').forEach((row) => {
       const o = orders.find((x) => x.id === Number(row.dataset.id));
-      const match = (!q || row.dataset.search.includes(q)) && (!status || o.status === status) && (!page || pageKey(o) === page);
+      const textMatch = !q || (orderNo ? String(o.id) === orderNo : row.dataset.search.includes(q));
+      const match = textMatch && (!status || o.status === status) && (!page || pageKey(o) === page);
       row.hidden = !match;
       if (match) shown += 1;
     });
