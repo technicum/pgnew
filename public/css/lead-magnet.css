@@ -88,6 +88,65 @@
   display: block;
 }
 
+/* Signup page: the cover becomes the card's header, with the badge, title
+   and description set on it. 2:1 leaves room for the text (1500×750 fits
+   exactly); a long title grows it rather than spilling over. The banner
+   fills it from behind and a bottom scrim keeps the white text readable
+   over any image, video or light color. */
+.lm-hero {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  color: #fff;
+}
+.lm-hero > .lm-banner {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+.lm-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(4,8,30,0) 30%, rgba(4,8,30,.35) 62%, rgba(4,8,30,.72) 100%);
+  pointer-events: none;
+}
+/* Flat color / artwork are designed backgrounds — a lighter touch. */
+.lm-hero:has(.lm-banner-art)::after,
+.lm-hero:has(.lm-banner-color)::after {
+  background: linear-gradient(180deg, rgba(4,8,30,0) 45%, rgba(4,8,30,.28) 100%);
+}
+.lm-hero-text {
+  position: relative;
+  z-index: 1;
+  padding: 72px 56px 28px;
+  text-shadow: 0 1px 12px rgba(4,8,30,.35);
+}
+.lm-hero .lm-kicker {
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  text-shadow: none;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.lm-hero .lm-kicker .dot { background: var(--lime); }
+.lm-card .lm-hero h1 {
+  color: #fff;
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+.lm-card .lm-hero .lm-desc {
+  color: rgba(255,255,255,.88);
+  max-width: 46ch;
+}
+/* The heading moved up into the cover, so the form opens the body. */
+.lm-hero + .lm-card-body form,
+.lm-hero + .lm-card-body .auth-error { margin-top: 0; }
+.lm-hero + .lm-card-body .auth-error { margin-bottom: 20px; }
+
 .lm-card-body {
   padding: 34px 56px 30px;
 }
@@ -302,6 +361,9 @@
   .lm-head { margin-bottom: 18px; }
   .lm-card-body { padding: 26px 22px 24px; }
   .lm-card h1 { font-size: 23px; }
+  .lm-card .lm-hero h1 { font-size: 24px; }
+  .lm-hero-text { padding: 56px 22px 22px; }
+  .lm-card .lm-hero .lm-desc { font-size: 14px; }
   /* Fixed in the corner it would sit on top of the submit button. */
   .lm-made-with { position: static; margin-top: 22px; }
 }

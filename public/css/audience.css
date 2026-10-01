@@ -46,7 +46,14 @@
 .pz-contact-name { font-weight: 600; font-size: 13.5px; }
 .pz-contact-meta { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
 .pz-contact-note { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; font-style: italic; }
-.pz-contact-source {
-  flex: none; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
-  padding: 3px 8px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground);
+/* One group per source (audience.js SOURCE_GROUPS), each under its own heading. */
+.pz-contact-group + .pz-contact-group { border-top: 1px solid var(--border); }
+.pz-contact-group-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 16px 20px 10px; background: var(--muted);
+  border-bottom: 1px solid var(--border);
 }
+.pz-contact-group-head h3 {
+  margin: 0; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0;
+}
+.pz-contact-group-count { font-size: 12px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }

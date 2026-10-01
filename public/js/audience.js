@@ -92,7 +92,6 @@
           ${metaHTML}
           ${noteHTML}
         </div>
-        <span class="pz-contact-source">${escapeHTML(contact.source || 'manual')}</span>
         <button type="button" class="pz-icon-btn remove-contact" data-id="${contact.id}" aria-label="Remove person">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
         </button>
@@ -104,8 +103,34 @@
     contactCountLabel.textContent = contacts.length === 1 ? 'person' : 'people';
   }
 
+  // The list is grouped under one heading per source (lib/contacts.js
+  // SOURCES), in this order; anything unrecognised lands with 'manual'.
+  const SOURCE_GROUPS = [
+    { source: 'form', label: 'Lead magnet signups' },
+    { source: 'order', label: 'Orders' },
+    { source: 'booking', label: 'Bookings' },
+    { source: 'manual', label: 'Added by hand' },
+  ];
+  function groupOf(contact) {
+    return SOURCE_GROUPS.some((g) => g.source === contact.source) ? contact.source : 'manual';
+  }
+  function countLabel(n) {
+    return `${n} ${n === 1 ? 'person' : 'people'}`;
+  }
+
   function render() {
-    contactsList.innerHTML = contacts.map(contactRowHTML).join('');
+    contactsList.innerHTML = SOURCE_GROUPS.map(({ source, label }) => {
+      const members = contacts.filter((c) => groupOf(c) === source);
+      if (!members.length) return '';
+      return `
+        <section class="pz-contact-group" data-source="${source}">
+          <div class="pz-contact-group-head">
+            <h3>${escapeHTML(label)}</h3>
+            <span class="pz-contact-group-count" data-total="${members.length}">${countLabel(members.length)}</span>
+          </div>
+          ${members.map(contactRowHTML).join('')}
+        </section>`;
+    }).join('');
     contactsList.style.display = contacts.length ? '' : 'none';
     if (contacts.length) {
       emptyContacts.style.display = 'none';
@@ -145,6 +170,13 @@
       const match = !q || (row.dataset.search || '').includes(q);
       row.style.display = match ? '' : 'none';
       if (match) visibleCount += 1;
+    });
+    // A group with nothing matching drops out; the rest count their matches.
+    contactsList.querySelectorAll('.pz-contact-group').forEach((group) => {
+      const shown = [...group.querySelectorAll('.pz-contact-row')].filter((r) => r.style.display !== 'none').length;
+      const count = group.querySelector('.pz-contact-group-count');
+      group.style.display = shown ? '' : 'none';
+      count.textContent = q ? `${shown} of ${count.dataset.total}` : countLabel(Number(count.dataset.total));
     });
     if (q && contacts.length) {
       if (visibleCount === 0) {

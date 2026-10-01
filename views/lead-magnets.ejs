@@ -217,7 +217,7 @@
                   <button type="button" class="pz-cover-clear" data-clear="image">Remove</button>
                 </div>
                 <input type="text" id="magnetCoverImage" class="pz-field-input pz-brand-input" maxlength="500" placeholder="…or paste an image link (https://…)" />
-                <p class="pz-option-hint">JPG, PNG, WebP or GIF, up to 5 MB. 1500 × 500 fits the banner exactly.</p>
+                <p class="pz-option-hint">JPG, PNG, WebP or GIF, up to 5 MB. 1500 × 750 fits the banner exactly; your title sits on top of it.</p>
               </div>
               <div class="pz-cover-media" id="magnetCoverVideoPanel" style="display:none;">
                 <div class="pz-cover-upload">
@@ -284,11 +284,14 @@
                         <path d="M-40 150 C 160 280, 420 250, 640 70 L 640 130 C 430 290, 170 300, -40 215 Z" fill="#fff" fill-opacity=".16"/>
                         <path d="M70 215 C 100 130, 160 70, 240 30" stroke="#fff" stroke-opacity=".38" stroke-width="22" stroke-linecap="round" fill="none"/>
                       </svg>
+                      <!-- On the cover, like the public page; plain text above the form when the cover is off (.is-off). -->
+                      <div class="pz-magnet-preview-head">
+                        <span class="pz-magnet-preview-kicker"><span></span>Free download</span>
+                        <h3 id="previewTitle">Your lead magnet title</h3>
+                        <p id="previewDesc">A line about what someone gets when they sign up.</p>
+                      </div>
                     </div>
                     <div class="pz-magnet-preview-form">
-                      <span class="pz-magnet-preview-kicker"><span></span>Free download</span>
-                      <h3 id="previewTitle">Your lead magnet title</h3>
-                      <p id="previewDesc">A line about what someone gets when they sign up.</p>
                       <div class="pz-magnet-preview-field" id="previewNameField">
                         <span class="pz-magnet-preview-field-label">What's your name?<i>*</i></span>
                         <div class="pz-magnet-preview-input">Full name</div>

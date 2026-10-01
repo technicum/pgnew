@@ -41,12 +41,24 @@ var lmBrandLogo = magnet.brand_type === 'logo' && /^https?:\/\//i.test(magnet.br
   </div>
 
   <article class="lm-card">
-    <% if (lmShowCover) { %><%- include('partials/lm-banner') %><% } %>
+    <%# With a cover the heading sits on it; with the cover off it opens the card body. %>
+    <% if (lmShowCover) { %>
+    <header class="lm-hero">
+      <%- include('partials/lm-banner') %>
+      <div class="lm-hero-text">
+        <span class="lm-kicker"><span class="dot"></span>Free download</span>
+        <h1><%= magnet.title %></h1>
+        <% if (magnet.description) { %><p class="lm-desc"><%= magnet.description %></p><% } %>
+      </div>
+    </header>
+    <% } %>
 
     <div class="lm-card-body">
+      <% if (!lmShowCover) { %>
       <span class="lm-kicker"><span class="dot"></span>Free download</span>
       <h1><%= magnet.title %></h1>
       <% if (magnet.description) { %><p class="lm-desc"><%= magnet.description %></p><% } %>
+      <% } %>
 
       <% if (error) { %>
         <div class="auth-error"><%= error %></div>

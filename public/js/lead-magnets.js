@@ -805,7 +805,7 @@
       : 'Matches your accent color.';
     coverColorReset.style.display = builderCoverColor ? '' : 'none';
 
-    previewCover.style.display = builderShowCover ? 'flex' : 'none';
+    previewCover.classList.toggle('is-off', !builderShowCover);
     const image = coverImageInput.value.trim();
     const video = coverVideoInput.value.trim();
     // An image/video cover with no usable link yet shows the artwork,
