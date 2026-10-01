@@ -1,0 +1,160 @@
+/* Dashboard: Payment pages + Orders. Payment pages also loads
+   lead-magnets.css for the shared builder (tabs, swatches, cover
+   controls, phone preview, cards); this adds the money-specific pieces. */
+
+/* Some of the shared classes set display:flex, which would otherwise beat
+   the hidden attribute this page's script toggles. */
+[hidden] { display: none !important; }
+
+.pp-mode-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.pp-mode-note svg { flex: none; margin-top: 1px; }
+.pp-mode-note p { margin: 0; }
+.pp-mode-note a { color: inherit; font-weight: 600; text-decoration: underline; }
+.pp-mode-test { background: #fff7e6; border: 1px solid #fbd38d; color: #8a5300; }
+.pp-mode-manual { background: var(--secondary); border: 1px solid var(--border); color: var(--secondary-foreground); }
+
+/* ₹ inputs in the Pricing tab. */
+.pp-money-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+.pp-money { display: flex; flex-direction: column; gap: 5px; flex: 1 1 140px; max-width: 220px; }
+.pp-money-label { font-size: 12px; font-weight: 600; }
+.pp-money-input { position: relative; display: block; }
+.pp-money-input i {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  font-style: normal; font-weight: 600; color: var(--muted-foreground); pointer-events: none;
+}
+.pp-money-input .pz-field-input { padding-left: 26px; font-weight: 600; }
+#ppPriceHint { margin-top: 8px; }
+
+/* Preview extras (the rest is lead-magnets.css's preview). */
+.pp-preview-desc { font-size: 11.5px; line-height: 1.5; color: #475467; margin: 0 0 12px; white-space: pre-line; word-break: break-word; }
+.pz-magnet-preview-kicker b { font-weight: 600; }
+.pp-preview-amount { color: #111827; font-weight: 600; }
+.pp-preview-amount b { font-weight: 600; margin-left: 2px; }
+.pp-preview-qty {
+  display: inline-flex; align-items: center; height: 30px; border-radius: 6px; background: #eef0f4; font-size: 12px; color: #111827;
+}
+.pp-preview-qty span { width: 28px; text-align: center; font-weight: 600; }
+.pp-preview-qty b { width: 30px; text-align: center; }
+.pp-preview-coupon { font-size: 11px; font-weight: 600; color: var(--pv-accent-dark, var(--primary)); margin: 2px 0 10px; }
+.pp-preview-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 8px 10px; border-radius: 7px; background: #f7f8fa; border: 1px solid #eef0f4;
+  font-size: 11.5px; color: #344054;
+}
+.pp-preview-total b { font-size: 13px; color: #111827; }
+
+/* Payment page cards. */
+.pp-page-card { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.pp-page-card:last-child { border-bottom: none; }
+.pp-page-card.pz-editing { background: color-mix(in oklab, var(--primary) 5%, var(--card)); }
+.pp-page-card.pp-hidden .pp-page-title { opacity: .55; }
+.pp-page-top { display: flex; align-items: flex-start; gap: 12px; }
+.pp-page-icon {
+  flex: none; width: 36px; height: 36px; border-radius: calc(var(--radius) - 2px);
+  display: grid; place-items: center; background: var(--secondary); color: var(--secondary-foreground);
+}
+.pp-page-main { flex: 1; min-width: 0; }
+.pp-page-title { font-weight: 700; font-size: 14.5px; overflow-wrap: anywhere; }
+.pp-page-meta { margin-top: 3px; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12.5px; color: var(--muted-foreground); }
+.pp-page-meta .pp-tag {
+  padding: 1px 8px; border-radius: 999px; background: var(--muted); font-weight: 600; font-size: 11px;
+}
+.pp-page-meta .pp-tag.off { background: color-mix(in oklab, var(--destructive) 12%, var(--card)); color: var(--destructive); }
+.pp-page-actions { flex: none; display: flex; align-items: center; gap: 6px; }
+.pp-page-bottom { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.pp-page-bottom .pz-copy-link { flex: 1 1 320px; }
+
+/* Coupons. */
+.pp-coupon-form {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1fr) minmax(150px, 1.2fr) minmax(120px, .9fr) minmax(130px, .9fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+.pp-coupon-form .pz-field-input { height: 36px; }
+#couponCode { text-transform: uppercase; letter-spacing: .04em; }
+.pp-coupon-discount { display: flex; gap: 6px; }
+.pp-coupon-discount input { flex: 1; min-width: 0; }
+.pp-coupon-discount select { flex: 0 0 82px; }
+.pp-coupon-form select { cursor: pointer; }
+@media (max-width: 960px) {
+  .pp-coupon-form { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 520px) {
+  .pp-coupon-form { grid-template-columns: 1fr; }
+}
+
+.pp-coupon-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.pp-coupon-row:last-child { border-bottom: none; }
+.pp-coupon-row.pp-off .pp-coupon-code { opacity: .5; text-decoration: line-through; }
+.pp-coupon-code {
+  flex: none; min-width: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700; letter-spacing: .03em;
+}
+.pp-coupon-info { flex: 1; min-width: 0; color: var(--muted-foreground); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.pp-coupon-info strong { color: var(--foreground); font-weight: 600; }
+.pp-empty-line { padding: 18px 20px; font-size: 13px; color: var(--muted-foreground); margin: 0; }
+
+/* ---------- Orders page ---------- */
+.pp-order-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.pp-order-stat { padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); }
+.pp-order-stat p { margin: 0; font-size: 12px; color: var(--muted-foreground); font-weight: 600; }
+.pp-order-stat strong { display: block; margin-top: 6px; font-family: var(--font-display); font-size: 24px; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .pp-order-stats { grid-template-columns: 1fr; } }
+
+.pp-orders-tools {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+}
+.pp-orders-search { position: relative; flex: 1 1 240px; min-width: 0; }
+.pp-orders-search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none; }
+.pp-orders-search .pz-field-input { padding-left: 34px; }
+.pp-orders-tools select { flex: 0 1 190px; width: auto; min-width: 0; cursor: pointer; }
+.pp-orders-clear {
+  border: 0; background: none; padding: 0 4px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: var(--muted-foreground); text-decoration: underline;
+}
+
+.pp-order-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.3fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.pp-order-row:last-child { border-bottom: none; }
+.pp-order-buyer strong { display: block; font-size: 13.5px; overflow-wrap: anywhere; }
+.pp-order-buyer span, .pp-order-what span { display: block; color: var(--muted-foreground); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+.pp-order-what { min-width: 0; }
+.pp-order-amount { text-align: right; font-variant-numeric: tabular-nums; }
+.pp-order-amount strong { display: block; font-size: 14px; }
+.pp-order-amount span { color: var(--muted-foreground); font-size: 11.5px; }
+.pp-order-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 150px; }
+.pp-status {
+  padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+}
+.pp-status-paid { background: var(--success-soft); color: var(--success); }
+.pp-status-pending { background: var(--warning-soft); color: var(--warning); }
+.pp-status-cancelled { background: var(--muted); color: var(--muted-foreground); }
+.pp-order-actions { display: flex; gap: 6px; }
+.pp-order-row.pp-busy { opacity: .5; pointer-events: none; }
+@media (max-width: 760px) {
+  .pp-order-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .pp-order-what { grid-column: 1 / -1; grid-row: 2; }
+  .pp-order-side { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; min-width: 0; }
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/payments-dashboard.css?v=<%= assetVersion %>" />
+</head>
+<body>
+<div class="min-h-screen bg-background">
+
+  <%- include('partials/dashboard-sidebar', { navActive: '/dashboard/orders' }) %>
+
+  <main class="lg:ml-64">
+    <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <div>
+        <p class="text-sm font-semibold text-primary" style="line-height:1;">Orders</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
+        <div class="mx-1 h-7 w-px bg-border"></div>
+        <div class="flex items-center gap-2 rounded-md p-1.5">
+          <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+
+      <section>
+        <p class="text-sm font-semibold text-primary">Sales</p>
+        <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Orders</h1>
+        <p class="mt-2 text-sm text-muted-foreground">Everything bought through your <a href="/dashboard/payment-pages" style="color:var(--primary); text-decoration:underline;">payment pages</a>, newest first.</p>
+      </section>
+
+      <%- include('partials/payment-mode-note', { paymentMode: paymentMode }) %>
+
+      <section class="pp-order-stats" aria-label="Totals">
+        <div class="pp-order-stat"><p>Revenue</p><strong id="statRevenue">₹0</strong></div>
+        <div class="pp-order-stat"><p>Paid orders</p><strong id="statPaid">0</strong></div>
+        <div class="pp-order-stat"><p>Awaiting payment</p><strong id="statPending">0</strong></div>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
+        <div class="flex items-center justify-between border-b border-border p-5 md:px-6">
+          <div>
+            <h2 class="text-lg font-bold">All orders</h2>
+            <p class="mt-1 text-sm text-muted-foreground" id="orderCountLine"></p>
+          </div>
+        </div>
+
+        <div class="pp-orders-tools">
+          <div class="pp-orders-search">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+            <input type="search" id="orderSearch" class="pz-field-input" placeholder="Search by buyer, email, phone or order #…" aria-label="Search orders" />
+          </div>
+          <select id="orderStatusFilter" class="pz-field-input" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Awaiting payment</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select id="orderPageFilter" class="pz-field-input" aria-label="Filter by payment page">
+            <option value="">All payment pages</option>
+          </select>
+          <button type="button" class="pp-orders-clear" id="orderClearFilters" hidden>Clear</button>
+        </div>
+
+        <div id="ordersList"><!-- injected --></div>
+        <div id="emptyOrders" class="flex flex-col items-center justify-center gap-3 p-6" style="padding:56px 24px; text-align:center;" hidden>
+          <div class="grid size-10 place-items-center rounded-md bg-muted text-muted-foreground">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"></path><path d="M3.103 6.034h17.794"></path><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"></path></svg>
+          </div>
+          <p class="text-sm font-semibold" id="emptyOrdersTitle">No orders yet</p>
+          <p class="text-sm text-muted-foreground" style="max-width:380px;" id="emptyOrdersSub">Share one of your payment pages — every purchase shows up here.</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  window.__PZ_ORDERS__ = <%- JSON.stringify(orders).replace(/</g, '\\u003c') %>;
+  window.__PZ_ORDER_PAGES__ = <%- JSON.stringify(pages).replace(/</g, '\\u003c') %>;
+</script>
+<script src="/js/orders.js?v=<%= assetVersion %>"></script>
+</body>
+</html>
