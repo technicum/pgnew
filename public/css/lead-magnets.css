@@ -207,13 +207,21 @@ a.pz-copy-btn { display: inline-flex; align-items: center; }
 .pz-magnet-preview-cover {
   display: flex;
   position: relative;
-  height: 92px;
+  aspect-ratio: 3 / 1;
   background:
     radial-gradient(ellipse 60% 90% at 8% 100%, color-mix(in srgb, var(--pv-accent, var(--primary)) 55%, #fff), transparent 70%),
     radial-gradient(ellipse 55% 80% at 100% 100%, color-mix(in srgb, var(--pv-accent, var(--primary)) 70%, #8b5cf6), transparent 70%),
     linear-gradient(120deg, var(--pv-accent, var(--primary)) 0%, var(--pv-accent-dark, #0a2f9e) 100%);
 }
-.pz-magnet-preview-cover svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pz-magnet-preview-cover svg,
+.pz-magnet-preview-cover img,
+.pz-magnet-preview-cover video { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pz-magnet-preview-cover img,
+.pz-magnet-preview-cover video { object-fit: cover; }
+/* Image / video / color covers: the background color shows instead of the
+   artwork gradient (JS sets --pv-cover-color, or it follows the accent). */
+.pz-magnet-preview-cover.is-plain { background: var(--pv-cover-color, var(--pv-accent-dark, #0a2f9e)); }
+.pz-magnet-preview-cover.is-color { background: var(--pv-cover-color, var(--pv-accent, var(--primary))); }
 
 .pz-magnet-preview-form { padding: 16px 18px 16px; }
 
@@ -421,3 +429,21 @@ a.pz-copy-btn { display: inline-flex; align-items: center; }
   text-align: center; font-size: 12px; font-weight: 600; color: var(--muted-foreground); background: var(--card);
 }
 .cover-opt.active { border-color: var(--primary); background: var(--secondary); color: var(--secondary-foreground); }
+
+/* ---------- design tab: cover image / video / color ---------- */
+.cover-choice-wrap { flex-wrap: wrap; }
+.cover-choice-wrap .cover-opt { flex: 1 1 0; min-width: 64px; padding: 9px 6px; }
+.pz-cover-media { margin-top: 12px; }
+.pz-cover-upload { display: flex; align-items: center; gap: 10px; }
+.pz-upload-btn { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.pz-upload-btn.is-busy { opacity: .6; pointer-events: none; }
+.pz-cover-clear {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--muted-foreground); text-decoration: underline;
+}
+.pz-cover-clear:hover { color: var(--foreground); }
+.pz-cover-media .pz-option-hint { margin-top: 6px; }
+.pz-cover-color { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.pz-cover-color > div { flex: 1; min-width: 0; }
+.pz-cover-color-label { font-size: 12.5px; font-weight: 600; margin: 0; }
+.pz-cover-color .pz-option-hint { margin: 2px 0 0; }

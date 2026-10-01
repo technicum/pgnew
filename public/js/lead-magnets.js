@@ -368,8 +368,8 @@
                 <div class="swatch-row card-swatch-row" data-id="${magnet.id}">${swatchRowHTML(magnet.accent_color || '#1261ef', magnet.id)}</div>
               </div>
               <div class="pz-magnet-option pz-option-row">
-                <button type="button" class="pz-switch toggle-cover${magnet.show_cover ? ' on' : ''}" data-id="${magnet.id}" aria-label="Show cover graphic" aria-pressed="${magnet.show_cover ? 'true' : 'false'}"></button>
-                <span>Show the cover graphic on the page</span>
+                <button type="button" class="pz-switch toggle-cover${magnet.show_cover ? ' on' : ''}" data-id="${magnet.id}" aria-label="Show cover banner" aria-pressed="${magnet.show_cover ? 'true' : 'false'}"></button>
+                <span>Show the cover banner on the page</span>
               </div>
             </details>
           </div>
@@ -747,9 +747,14 @@
     });
   });
 
-  // Design tab: accent color + cover toggle
+  // Design tab: accent color + cover banner
   let builderAccent = '#1261ef';
   let builderShowCover = true;
+  // 'art' | 'image' | 'video' | 'color' — kept while the cover is set to
+  // None, so switching it back on (here or on the card) restores it.
+  let builderCoverType = 'art';
+  // '' follows the accent, same as cover_color on the server.
+  let builderCoverColor = '';
   document.querySelectorAll('#magnetSwatchRow .swatch[data-accent]').forEach((sw) => {
     sw.addEventListener('click', () => {
       document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s) => s.classList.remove('active'));
@@ -757,6 +762,7 @@
       builderAccent = sw.dataset.accent;
       previewFrame.style.setProperty('--pv-accent', builderAccent);
       previewFrame.style.setProperty('--pv-accent-dark', shadeHex(builderAccent, -60));
+      syncCoverPreview();
     });
   });
   const magnetCustomColor = document.getElementById('magnetCustomColor');
@@ -766,15 +772,125 @@
     builderAccent = magnetCustomColor.value;
     previewFrame.style.setProperty('--pv-accent', builderAccent);
     previewFrame.style.setProperty('--pv-accent-dark', shadeHex(builderAccent, -60));
+    syncCoverPreview();
   });
+
+  const coverImageInput = document.getElementById('magnetCoverImage');
+  const coverVideoInput = document.getElementById('magnetCoverVideo');
+  const coverImagePanel = document.getElementById('magnetCoverImagePanel');
+  const coverVideoPanel = document.getElementById('magnetCoverVideoPanel');
+  const coverColorRow = document.getElementById('magnetCoverColorRow');
+  const coverColorInput = document.getElementById('magnetCoverColor');
+  const coverColorHint = document.getElementById('magnetCoverColorHint');
+  const coverColorReset = document.getElementById('magnetCoverColorReset');
+  const coverError = document.getElementById('magnetCoverError');
+  const previewCoverImage = document.getElementById('previewCoverImage');
+  const previewCoverVideo = document.getElementById('previewCoverVideo');
+  const previewCoverArt = document.getElementById('previewCoverArt');
+  // Our own uploads (/uploads/…) or an http(s) link — same rule as the server.
+  function isCoverUrl(value) {
+    return isHttpUrl(value) || /^\/uploads\//.test(value);
+  }
+  function syncCoverPreview() {
+    const type = builderCoverType;
+    document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((b) => {
+      b.classList.toggle('active', builderShowCover ? b.dataset.cover === type : b.dataset.cover === 'none');
+    });
+    coverImagePanel.style.display = builderShowCover && type === 'image' ? '' : 'none';
+    coverVideoPanel.style.display = builderShowCover && type === 'video' ? '' : 'none';
+    coverColorRow.style.display = builderShowCover && type !== 'art' ? '' : 'none';
+    coverColorInput.value = builderCoverColor || shadeHex(builderAccent, type === 'color' ? 0 : -60);
+    coverColorHint.textContent = builderCoverColor
+      ? (type === 'color' ? 'Fills the banner.' : 'Shows behind the cover while it loads.')
+      : 'Matches your accent color.';
+    coverColorReset.style.display = builderCoverColor ? '' : 'none';
+
+    previewCover.style.display = builderShowCover ? 'flex' : 'none';
+    const image = coverImageInput.value.trim();
+    const video = coverVideoInput.value.trim();
+    // An image/video cover with no usable link yet shows the artwork,
+    // exactly like the public page does.
+    const shown = (type === 'image' && !isCoverUrl(image)) || (type === 'video' && !isCoverUrl(video)) ? 'art' : type;
+    previewCover.classList.toggle('is-plain', shown === 'image' || shown === 'video');
+    previewCover.classList.toggle('is-color', shown === 'color');
+    if (builderCoverColor) previewCover.style.setProperty('--pv-cover-color', builderCoverColor);
+    else previewCover.style.removeProperty('--pv-cover-color');
+    previewCoverArt.style.display = shown === 'art' ? '' : 'none';
+    previewCoverImage.style.display = shown === 'image' ? '' : 'none';
+    if (shown === 'image' && previewCoverImage.getAttribute('src') !== image) previewCoverImage.src = image;
+    previewCoverVideo.style.display = shown === 'video' ? '' : 'none';
+    if (shown === 'video') {
+      if (previewCoverVideo.getAttribute('src') !== video) previewCoverVideo.src = video;
+      previewCoverVideo.play().catch(() => {});
+    } else {
+      previewCoverVideo.pause();
+    }
+  }
   document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      builderShowCover = btn.dataset.cover !== 'off';
-      previewCover.style.display = builderShowCover ? 'flex' : 'none';
+      builderShowCover = btn.dataset.cover !== 'none';
+      if (builderShowCover) builderCoverType = btn.dataset.cover;
+      coverError.classList.remove('show');
+      syncCoverPreview();
     });
   });
+  [coverImageInput, coverVideoInput].forEach((el) => el.addEventListener('input', () => {
+    coverError.classList.remove('show');
+    syncCoverPreview();
+  }));
+  coverColorInput.addEventListener('input', () => {
+    builderCoverColor = coverColorInput.value;
+    syncCoverPreview();
+  });
+  coverColorReset.addEventListener('click', () => {
+    builderCoverColor = '';
+    syncCoverPreview();
+  });
+  document.querySelectorAll('.pz-cover-media .pz-cover-clear').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      (btn.dataset.clear === 'video' ? coverVideoInput : coverImageInput).value = '';
+      syncCoverPreview();
+    });
+  });
+
+  // Uploads go up as the raw file (server.js /dashboard/uploads) and come
+  // back as a /uploads/… URL, dropped into the link field like a pasted one.
+  const UPLOAD_LIMITS = { image: 5, video: 30 };
+  function wireCoverUpload(fileInput, urlInput, kind) {
+    const button = fileInput.closest('.pz-upload-btn');
+    const label = button.querySelector('span');
+    const idleLabel = label.textContent;
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      fileInput.value = '';
+      if (!file) return;
+      coverError.classList.remove('show');
+      const fail = (message) => {
+        coverError.textContent = message;
+        coverError.classList.add('show');
+      };
+      if (!file.type.startsWith(`${kind}/`)) return fail(kind === 'video' ? 'Choose an MP4 or WebM video.' : 'Choose a JPG, PNG, WebP or GIF image.');
+      if (file.size > UPLOAD_LIMITS[kind] * 1024 * 1024) return fail(`That file is too big — keep ${kind}s under ${UPLOAD_LIMITS[kind]} MB.`);
+      button.classList.add('is-busy');
+      label.textContent = 'Uploading…';
+      try {
+        const { url } = await api('/dashboard/uploads', {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+        urlInput.value = url;
+        syncCoverPreview();
+      } catch (err) {
+        fail(err.message || 'Could not upload that file. Please try again.');
+      } finally {
+        button.classList.remove('is-busy');
+        label.textContent = idleLabel;
+      }
+    });
+  }
+  wireCoverUpload(document.getElementById('magnetCoverImageFile'), coverImageInput, 'image');
+  wireCoverUpload(document.getElementById('magnetCoverVideoFile'), coverVideoInput, 'video');
 
   // Design tab: top of the page — brand name as text, or a logo image.
   // Blank text shows the PageZaper mark, same as views/lead-magnet.ejs.
@@ -829,11 +945,16 @@
     }
     previewFrame.style.setProperty('--pv-accent', color);
     previewFrame.style.setProperty('--pv-accent-dark', shadeHex(color, -60));
+    syncCoverPreview();
   }
-  function setBuilderCover(show) {
+  function setBuilderCover({ show = true, type = 'art', image = '', video = '', color = '' } = {}) {
     builderShowCover = show;
-    document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((b) => b.classList.toggle('active', (b.dataset.cover !== 'off') === show));
-    previewCover.style.display = show ? 'flex' : 'none';
+    builderCoverType = ['art', 'image', 'video', 'color'].includes(type) ? type : 'art';
+    builderCoverColor = color;
+    coverImageInput.value = image;
+    coverVideoInput.value = video;
+    coverError.classList.remove('show');
+    syncCoverPreview();
   }
 
   // The builder doubles as the editor: a card's Edit button loads that
@@ -863,7 +984,13 @@
     builderQuestions = JSON.parse(JSON.stringify(magnet.extra_questions || []));
     builderNextQid = Math.max(0, ...builderQuestions.map((q) => q.id)) + 1;
     setBuilderAccent(magnet.accent_color || '#1261ef');
-    setBuilderCover(!!magnet.show_cover);
+    setBuilderCover({
+      show: !!magnet.show_cover,
+      type: magnet.cover_type,
+      image: magnet.cover_image_url || '',
+      video: magnet.cover_video_url || '',
+      color: magnet.cover_color || '',
+    });
     brandTextInput.value = magnet.brand_text || '';
     brandLogoInput.value = magnet.brand_logo_url || '';
     setBuilderBrand(magnet.brand_type);
@@ -887,13 +1014,11 @@
     form.reset();
     builderQuestions = [];
     builderAccent = '#1261ef';
-    builderShowCover = true;
     Object.keys(fieldToggles).forEach((key) => setField(key, true));
     fieldsError.classList.remove('show');
-    previewCover.style.display = 'flex';
     document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s, i) => s.classList.toggle('active', i === 0));
-    document.getElementById('btab-design').querySelector('.swatch-custom').classList.remove('active');
-    document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((b, i) => b.classList.toggle('active', i === 0));
+    document.querySelector('#magnetSwatchRow .swatch-custom').classList.remove('active');
+    setBuilderCover();
     // form.reset() above already emptied the brand inputs.
     setBuilderBrand('text');
     previewFrame.style.removeProperty('--pv-accent');
@@ -934,6 +1059,17 @@
       brandLogoInput.focus();
       return;
     }
+    const coverImageUrl = coverImageInput.value.trim();
+    const coverVideoUrl = coverVideoInput.value.trim();
+    const badCover = [coverImageUrl && !isCoverUrl(coverImageUrl) && coverImageInput, coverVideoUrl && !isCoverUrl(coverVideoUrl) && coverVideoInput].find(Boolean);
+    if (badCover) {
+      document.querySelector('.pz-tab-btn[data-btab="design"]').click();
+      setBuilderCover({ show: true, type: badCover === coverVideoInput ? 'video' : 'image', image: coverImageUrl, video: coverVideoUrl, color: builderCoverColor });
+      coverError.textContent = 'The cover link needs to start with http:// or https://';
+      coverError.classList.add('show');
+      badCover.focus();
+      return;
+    }
     const payload = {
       title: titleInput.value,
       ctaText: ctaInput.value,
@@ -946,6 +1082,10 @@
       extraQuestions: builderQuestions,
       accentColor: builderAccent,
       showCover: builderShowCover,
+      coverType: builderCoverType,
+      coverImageUrl,
+      coverVideoUrl,
+      coverColor: builderCoverColor,
       brandType: builderBrandType,
       brandText: brandTextInput.value,
       brandLogoUrl,
@@ -968,6 +1108,10 @@
             extra_questions: payload.extraQuestions,
             accent_color: payload.accentColor,
             show_cover: payload.showCover ? 1 : 0,
+            cover_type: payload.coverType,
+            cover_image_url: payload.coverImageUrl,
+            cover_video_url: payload.coverVideoUrl,
+            cover_color: payload.coverColor,
             brand_type: payload.brandType,
             brand_text: payload.brandText.trim().slice(0, 60),
             brand_logo_url: payload.brandLogoUrl,
@@ -989,5 +1133,6 @@
 
   renderBuilderQuestions();
   syncBrandPreview();
+  syncCoverPreview();
   render();
 })();

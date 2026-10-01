@@ -41,6 +41,7 @@ const {
   updateLeadMagnet,
   deleteLeadMagnet,
 } = require('./lib/leadMagnets');
+const { saveUpload, UPLOAD_TYPES, MAX_UPLOAD_BYTES } = require('./lib/uploads');
 const { installStorefront } = require('./lib/storefront');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 
@@ -396,14 +397,16 @@ app.post('/dashboard/lead-magnets', requireAuth, async (req, res) => {
     const {
       title, description, ctaText, fileUrl, successMessage, collectName, collectEmail, collectPhone,
       extraQuestions, accentColor, showCover, brandType, brandText, brandLogoUrl,
+      coverType, coverImageUrl, coverVideoUrl, coverColor,
     } = req.body || {};
     const magnet = await createLeadMagnet(req.session.user.id, {
       title, description, ctaText, fileUrl, successMessage, collectName, collectEmail, collectPhone,
       extraQuestions, accentColor, showCover, brandType, brandText, brandLogoUrl,
+      coverType, coverImageUrl, coverVideoUrl, coverColor,
     });
     res.status(201).json({ ...magnet, publicPath: `/${magnet.slug}` });
   } catch (err) {
-    if (['TITLE_REQUIRED', 'FILE_URL_REQUIRED', 'INVALID_FILE_URL', 'INVALID_LOGO_URL', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
+    if (['TITLE_REQUIRED', 'FILE_URL_REQUIRED', 'INVALID_FILE_URL', 'INVALID_LOGO_URL', 'INVALID_COVER_URL', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Create lead magnet failed:', err);
@@ -418,6 +421,7 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     const {
       title, description, ctaText, fileUrl, visible, slug, successMessage, collectName, collectEmail, collectPhone,
       extraQuestions, accentColor, showCover, brandType, brandText, brandLogoUrl,
+      coverType, coverImageUrl, coverVideoUrl, coverColor,
     } = req.body || {};
     const fields = {};
     if (title !== undefined) fields.title = title;
@@ -436,14 +440,40 @@ app.patch('/dashboard/lead-magnets/:id', requireAuth, async (req, res) => {
     if (brandType !== undefined) fields.brandType = brandType;
     if (brandText !== undefined) fields.brandText = brandText;
     if (brandLogoUrl !== undefined) fields.brandLogoUrl = brandLogoUrl;
+    if (coverType !== undefined) fields.coverType = coverType;
+    if (coverImageUrl !== undefined) fields.coverImageUrl = coverImageUrl;
+    if (coverVideoUrl !== undefined) fields.coverVideoUrl = coverVideoUrl;
+    if (coverColor !== undefined) fields.coverColor = coverColor;
     const changed = await updateLeadMagnet(req.session.user.id, id, fields);
     res.json({ ok: true, ...changed });
   } catch (err) {
-    if (['TITLE_REQUIRED', 'INVALID_FILE_URL', 'INVALID_LOGO_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
+    if (['TITLE_REQUIRED', 'INVALID_FILE_URL', 'INVALID_LOGO_URL', 'INVALID_COVER_URL', 'SLUG_REQUIRED', 'SLUG_TAKEN', 'CONTACT_FIELD_REQUIRED'].includes(err.code)) {
       return res.status(400).json({ error: err.message });
     }
     console.error('Update lead magnet failed:', err);
     res.status(500).json({ error: 'Could not save that change. Please try again.' });
+  }
+});
+
+// One file per request, sent as the raw body with its own Content-Type
+// (the builder's cover image/video upload) — see lib/uploads.js. Parse
+// errors (too big, cut off) come back as JSON rather than the error page.
+const readUploadBody = express.raw({ type: Object.keys(UPLOAD_TYPES), limit: MAX_UPLOAD_BYTES });
+app.post('/dashboard/uploads', requireAuth, (req, res, next) => {
+  readUploadBody(req, res, (err) => {
+    if (!err) return next();
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'That file is too big — keep videos under 30 MB and images under 5 MB.' });
+    res.status(400).json({ error: 'Could not read that file. Please try again.' });
+  });
+}, async (req, res) => {
+  try {
+    const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    const url = await saveUpload(req.session.user.id, mime, req.body);
+    res.status(201).json({ url });
+  } catch (err) {
+    if (err.code === 'INVALID_UPLOAD') return res.status(400).json({ error: err.message });
+    console.error('Upload failed:', err);
+    res.status(500).json({ error: 'Could not upload that file. Please try again.' });
   }
 });
 

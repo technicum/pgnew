@@ -196,11 +196,53 @@
                 </span>
               </div>
               <div class="pz-divider"></div>
-              <p class="pz-section-label">Cover graphic</p>
-              <p class="pz-section-sub">The small file preview shown on the page.</p>
-              <div class="cover-choice" id="magnetCoverChoice">
-                <button type="button" class="cover-opt active" data-cover="on">Show cover</button>
-                <button type="button" class="cover-opt" data-cover="off">Hide cover</button>
+              <p class="pz-section-label">Cover</p>
+              <p class="pz-section-sub">The banner across the top of the card.</p>
+              <div class="cover-choice cover-choice-wrap" id="magnetCoverChoice">
+                <button type="button" class="cover-opt active" data-cover="art">Artwork</button>
+                <button type="button" class="cover-opt" data-cover="image">Image</button>
+                <button type="button" class="cover-opt" data-cover="video">Video</button>
+                <button type="button" class="cover-opt" data-cover="color">Color</button>
+                <button type="button" class="cover-opt" data-cover="none">None</button>
+              </div>
+
+              <!-- Image / video: upload a file, or paste a link to one. -->
+              <div class="pz-cover-media" id="magnetCoverImagePanel" style="display:none;">
+                <div class="pz-cover-upload">
+                  <label class="pz-card-btn pz-upload-btn">
+                    <input type="file" id="magnetCoverImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M5 20h14"/></svg>
+                    <span>Upload image</span>
+                  </label>
+                  <button type="button" class="pz-cover-clear" data-clear="image">Remove</button>
+                </div>
+                <input type="text" id="magnetCoverImage" class="pz-field-input pz-brand-input" maxlength="500" placeholder="…or paste an image link (https://…)" />
+                <p class="pz-option-hint">JPG, PNG, WebP or GIF, up to 5 MB. 1500 × 500 fits the banner exactly.</p>
+              </div>
+              <div class="pz-cover-media" id="magnetCoverVideoPanel" style="display:none;">
+                <div class="pz-cover-upload">
+                  <label class="pz-card-btn pz-upload-btn">
+                    <input type="file" id="magnetCoverVideoFile" accept="video/mp4,video/webm" hidden />
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M5 20h14"/></svg>
+                    <span>Upload video</span>
+                  </label>
+                  <button type="button" class="pz-cover-clear" data-clear="video">Remove</button>
+                </div>
+                <input type="text" id="magnetCoverVideo" class="pz-field-input pz-brand-input" maxlength="500" placeholder="…or paste a link to an .mp4 (https://…)" />
+                <p class="pz-option-hint">MP4 or WebM, up to 30 MB. Plays muted on a loop, so a short clip works best.</p>
+              </div>
+              <p class="pz-field-error" id="magnetCoverError"></p>
+
+              <!-- Fills the banner for "Color"; shows behind an image or video while it loads. -->
+              <div class="pz-cover-color" id="magnetCoverColorRow">
+                <span class="swatch swatch-custom" title="Banner background color">
+                  <input type="color" id="magnetCoverColor" value="#0a2f9e" />
+                </span>
+                <div>
+                  <p class="pz-cover-color-label">Background color</p>
+                  <p class="pz-option-hint" id="magnetCoverColorHint">Matches your accent color.</p>
+                </div>
+                <button type="button" class="pz-cover-clear" id="magnetCoverColorReset" style="display:none;">Use accent</button>
               </div>
             </div>
 
@@ -234,7 +276,9 @@
                   <div class="pz-magnet-preview-brand" id="previewBrand" data-site-name="<%= siteName %>"><!-- set by lead-magnets.js --></div>
                   <div class="pz-magnet-preview-card">
                     <div class="pz-magnet-preview-cover" id="previewCover" aria-hidden="true">
-                      <svg viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                      <img id="previewCoverImage" alt="" style="display:none;" />
+                      <video id="previewCoverVideo" muted loop autoplay playsinline style="display:none;"></video>
+                      <svg id="previewCoverArt" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
                         <path d="M-40 60 C 140 230, 380 200, 640 -20 L 640 -40 L -40 -40 Z" fill="rgba(4,8,30,.86)"/>
                         <path d="M-40 80 C 140 250, 390 215, 640 0 L 640 40 C 400 250, 120 290, -40 140 Z" fill="#fff" fill-opacity=".28"/>
                         <path d="M-40 150 C 160 280, 420 250, 640 70 L 640 130 C 430 290, 170 300, -40 215 Z" fill="#fff" fill-opacity=".16"/>

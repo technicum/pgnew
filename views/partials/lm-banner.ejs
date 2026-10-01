@@ -1,8 +1,23 @@
-<%# Abstract cover art across the top of a lead-magnet card: glossy ribbons
-    over the magnet's accent (--magnet-accent*), so every magnet gets a
-    banner without the merchant uploading an image. Shared by the signup
+<%# The banner across the top of a lead-magnet card (Design tab → Cover):
+    the merchant's image or looping video, a flat color, or — the default,
+    and the fallback when an image/video has no link yet — glossy ribbons
+    drawn in the magnet's accent. cover_color fills the banner for "color"
+    and sits behind an image/video while it loads. Shared by the signup
     page and the success screen. %>
-<div class="lm-banner" aria-hidden="true">
+<%
+var lmSafeMedia = function (url) { return /^(https?:\/\/|\/uploads\/)/i.test(url || '') ? url : ''; };
+var lmCoverImage = lmSafeMedia(magnet.cover_image_url);
+var lmCoverVideo = lmSafeMedia(magnet.cover_video_url);
+var lmCoverType = magnet.cover_type || 'art';
+if ((lmCoverType === 'image' && !lmCoverImage) || (lmCoverType === 'video' && !lmCoverVideo)) lmCoverType = 'art';
+var lmCoverColor = /^#[0-9a-f]{6}$/i.test(magnet.cover_color || '') ? magnet.cover_color : '';
+%>
+<div class="lm-banner lm-banner-<%= lmCoverType %>" aria-hidden="true"<% if (lmCoverColor) { %> style="--cover-color:<%= lmCoverColor %>;"<% } %>>
+  <% if (lmCoverType === 'image') { %>
+  <img src="<%= lmCoverImage %>" alt="" />
+  <% } else if (lmCoverType === 'video') { %>
+  <video src="<%= lmCoverVideo %>" autoplay muted loop playsinline preload="auto"></video>
+  <% } else if (lmCoverType === 'art') { %>
   <svg viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="lmRibbonA" x1="0" y1="0" x2="1" y2="1">
@@ -21,4 +36,5 @@
     <path d="M70 215 C 100 130, 160 70, 240 30" stroke="#fff" stroke-opacity=".38" stroke-width="22" stroke-linecap="round" fill="none"/>
     <path d="M520 225 C 540 155, 590 95, 660 65" stroke="#fff" stroke-opacity=".22" stroke-width="14" stroke-linecap="round" fill="none"/>
   </svg>
+  <% } %>
 </div>
