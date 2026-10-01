@@ -679,7 +679,7 @@
   function updatePreviewFields() {
     previewExtraFields.innerHTML = builderQuestions.map((q) => {
       const placeholder = q.label || 'Question';
-      const opt = q.required ? '' : ' <span>(optional)</span>';
+      const opt = q.required ? '<em>*</em>' : ' <span>(optional)</span>';
       if (q.type === 'checkbox') {
         return `<div class="pz-magnet-preview-check"><i></i>${escapeHTML(placeholder)}${opt}</div>`;
       }
@@ -687,8 +687,9 @@
         const choices = (q.options || []).map((o) => `<div class="pz-magnet-preview-check${q.type === 'radio' ? ' radio' : ''}"><i></i>${escapeHTML(o)}</div>`).join('');
         return `<div class="pz-magnet-preview-group"><div class="pz-magnet-preview-group-label">${escapeHTML(placeholder)}${opt}</div>${choices}</div>`;
       }
-      const caret = q.type === 'dropdown' ? '<b>▾</b>' : '';
-      return `<div class="pz-magnet-preview-input">${escapeHTML(placeholder)}${opt}${caret}</div>`;
+      // Same as the public page: the question as a label over an empty input.
+      const caret = q.type === 'dropdown' ? 'Choose…<b>▾</b>' : '';
+      return `<div class="pz-magnet-preview-field"><span class="pz-magnet-preview-field-label">${escapeHTML(placeholder)}${opt}</span><div class="pz-magnet-preview-input">${caret}</div></div>`;
     }).join('');
   }
   function syncPreview() {

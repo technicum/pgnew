@@ -1,0 +1,9 @@
+<%# Small corner credit on lead-magnet pages. Only shown when the merchant
+    has put their own brand at the top — otherwise the PageZaper mark is
+    already there. %>
+<% if (String(magnet.brand_text || '').trim() || (magnet.brand_type === 'logo' && /^https?:\/\//i.test(magnet.brand_logo_url || ''))) { %>
+<a href="https://<%= siteDomain %>" class="lm-made-with">
+  <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  Made with <b><%= siteName %></b>
+</a>
+<% } %>

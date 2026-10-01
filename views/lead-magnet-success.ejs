@@ -9,37 +9,35 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/css/auth.css" />
-<link rel="stylesheet" href="/css/lead-magnet.css" />
+<link rel="stylesheet" href="/css/lead-magnet.css?v=<%= assetVersion %>" />
 </head>
-<body class="lm-page">
+<body class="lm-page" style="<%= lmThemeStyle(magnet) %>">
 
-<div class="lm-top">
-  <a href="/" class="logo">
-    <span class="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </span>
-    <%= siteName %>
-  </a>
-</div>
+<main class="lm-shell">
 
-<div class="lm-success-wrap">
-  <div class="lm-success-card">
-    <div class="lm-success-top">
+  <article class="lm-card lm-card-success">
+    <div class="lm-banner-wrap">
+      <%- include('partials/lm-banner') %>
       <div class="lm-success-icon">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="26" height="26" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5L10 17L19 7"/></svg>
       </div>
-      <h1>You're in</h1>
-      <p><%= magnet.success_message || `${magnet.title} is ready — grab it below.` %></p>
     </div>
-    <div class="lm-success-body">
+
+    <div class="lm-card-body">
+      <h1>You're in!</h1>
+      <p class="lm-desc"><%= magnet.success_message || `${magnet.title} is ready — grab it below.` %></p>
       <a href="<%= magnet.file_url %>" target="_blank" rel="noopener" class="btn btn-primary">
         <%= magnet.cta_text %>
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 12l6 6 6-6"/><path d="M5 20h14"/></svg>
       </a>
-      <p class="lm-success-note">From <%= owner.name %>, on <%= siteName %>.</p>
     </div>
-  </div>
-</div>
+
+    <p class="lm-card-foot"><span>From <%= owner.name %>, on <%= siteName %>.</span></p>
+  </article>
+
+  <%- include('partials/lm-made-with') %>
+
+</main>
 
 </body>
 </html>

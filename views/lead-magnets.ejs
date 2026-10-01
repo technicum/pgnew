@@ -228,27 +228,40 @@
                 <span class="pz-magnet-preview-url" id="previewSlugUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/…</span>
               </div>
               <div class="pz-magnet-preview-screen">
+                <%# Mirrors views/lead-magnet.ejs: brand over the accent backdrop,
+                    then one card — cover banner, title, labelled fields, button. %>
                 <div class="pz-magnet-preview-visual">
                   <div class="pz-magnet-preview-brand" id="previewBrand" data-site-name="<%= siteName %>"><!-- set by lead-magnets.js --></div>
-                  <span class="pz-magnet-preview-kicker"><span></span>Free download</span>
-                  <h3 id="previewTitle">Your lead magnet title</h3>
-                  <p id="previewDesc">A line about what someone gets when they sign up.</p>
-                  <div class="pz-magnet-preview-cover" id="previewCover" aria-hidden="true">
-                    <div class="bar"></div>
-                    <div class="line"></div>
-                    <div class="line short"></div>
-                    <div class="badge">
-                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="12" height="12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 12l6 6 6-6"/></svg>
+                  <div class="pz-magnet-preview-card">
+                    <div class="pz-magnet-preview-cover" id="previewCover" aria-hidden="true">
+                      <svg viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M-40 60 C 140 230, 380 200, 640 -20 L 640 -40 L -40 -40 Z" fill="rgba(4,8,30,.86)"/>
+                        <path d="M-40 80 C 140 250, 390 215, 640 0 L 640 40 C 400 250, 120 290, -40 140 Z" fill="#fff" fill-opacity=".28"/>
+                        <path d="M-40 150 C 160 280, 420 250, 640 70 L 640 130 C 430 290, 170 300, -40 215 Z" fill="#fff" fill-opacity=".16"/>
+                        <path d="M70 215 C 100 130, 160 70, 240 30" stroke="#fff" stroke-opacity=".38" stroke-width="22" stroke-linecap="round" fill="none"/>
+                      </svg>
                     </div>
+                    <div class="pz-magnet-preview-form">
+                      <span class="pz-magnet-preview-kicker"><span></span>Free download</span>
+                      <h3 id="previewTitle">Your lead magnet title</h3>
+                      <p id="previewDesc">A line about what someone gets when they sign up.</p>
+                      <div class="pz-magnet-preview-field" id="previewNameField">
+                        <span class="pz-magnet-preview-field-label">What's your name?<i>*</i></span>
+                        <div class="pz-magnet-preview-input">Full name</div>
+                      </div>
+                      <div class="pz-magnet-preview-field" id="previewEmailField">
+                        <span class="pz-magnet-preview-field-label">Your email<i>*</i></span>
+                        <div class="pz-magnet-preview-input">you@example.com</div>
+                      </div>
+                      <div class="pz-magnet-preview-field" id="previewPhoneField">
+                        <span class="pz-magnet-preview-field-label">Your phone number <span id="previewPhoneOptional">(optional)</span></span>
+                        <div class="pz-magnet-preview-input">Phone number</div>
+                      </div>
+                      <div id="previewExtraFields"><!-- injected --></div>
+                      <div class="pz-magnet-preview-btn" id="previewCta">Get it free</div>
+                    </div>
+                    <div class="pz-magnet-preview-foot">By continuing, you agree to receive updates.</div>
                   </div>
-                </div>
-                <div class="pz-magnet-preview-form">
-                  <span class="pz-magnet-preview-label">Get instant access</span>
-                  <div class="pz-magnet-preview-input" id="previewNameField">Full name</div>
-                  <div class="pz-magnet-preview-input" id="previewEmailField">you@example.com</div>
-                  <div class="pz-magnet-preview-input" id="previewPhoneField">Phone number <span id="previewPhoneOptional">(optional)</span></div>
-                  <div id="previewExtraFields"><!-- injected --></div>
-                  <div class="pz-magnet-preview-btn" id="previewCta">Get it free</div>
                 </div>
               </div>
             </div>

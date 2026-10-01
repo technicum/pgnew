@@ -1,433 +1,295 @@
 /* Public lead-magnet pages (meera.pagezaper.com/:slug and the success
-   screen). Shares brand tokens with style.css (blue/navy, lime, coral,
-   Fraunces + IBM Plex Sans) and reuses .field / .btn from auth.css — this
-   sheet adds the split offer layout, the cover mockup and the form card. */
+   screen). One centred card over a backdrop that fades from the magnet's
+   accent to paper: cover art banner, title, filled form fields, pill
+   button and a consent strip. Shares brand tokens with style.css and
+   reuses .field / .btn from auth.css. The accent comes in as
+   --magnet-accent / -dark / -light (app.locals.lmThemeStyle). */
 
-/* Logo strip — only the success screen still uses it; the signup page
-   carries its logo inside the offer panel (.lm-brand). */
-.lm-top {
-  padding: 22px 28px 0;
-}
-
-.lm-wrap {
+.lm-page {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  background:
+    radial-gradient(ellipse 70% 320px at 50% 0%, color-mix(in srgb, var(--magnet-accent) 45%, transparent), transparent),
+    linear-gradient(180deg, color-mix(in srgb, var(--magnet-accent-dark) 70%, var(--navy)) 0, color-mix(in srgb, var(--magnet-accent-dark) 45%, var(--paper)) 220px, var(--paper) 440px);
+  background-repeat: no-repeat;
+  background-color: var(--paper);
 }
 
-/* ---------- left: the offer ---------- */
-
-.lm-visual {
-  position: relative;
-  overflow: hidden;
+.lm-shell {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 28px 56px 32px;
-  color: #fff;
-  background: radial-gradient(ellipse 60% 45% at 12% 8%, rgba(255,255,255,.16), transparent 60%),
-              radial-gradient(ellipse 55% 40% at 90% 95%, rgba(185,237,40,.14), transparent 65%),
-              linear-gradient(160deg, var(--navy) 0%, var(--magnet-accent-dark, var(--blue-dark)) 55%, var(--magnet-accent, var(--blue)) 100%);
+  align-items: center;
+  padding: 26px 16px 72px;
 }
 
-/* Soft rings in the corner, so a short title doesn't leave the panel bare. */
-.lm-visual::after {
-  content: '';
-  position: absolute;
-  right: -150px;
-  bottom: -150px;
-  width: 380px;
-  height: 380px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,.14);
-  box-shadow: 0 0 0 70px rgba(255,255,255,.04), 0 0 0 140px rgba(255,255,255,.03);
-  pointer-events: none;
-}
+/* ---------- brand above the card ---------- */
 
-/* Logo and offer share one centred column. */
-.lm-visual > * {
-  position: relative;
-  z-index: 1;
+.lm-head {
   width: 100%;
-  max-width: 540px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 560px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
 }
 
-.lm-brand {
-  color: #fff;
-}
+.lm-brand { color: #fff; }
 .lm-brand .logo-mark {
   background: rgba(255,255,255,.16);
   border: 1px solid rgba(255,255,255,.3);
 }
 /* A merchant's own logo image — capped so a tall or huge file can't push
-   the offer down. */
-.lm-brand-logo {
-  display: block;
-  line-height: 0;
-}
+   the card down. */
+.lm-brand-logo { display: block; line-height: 0; }
 .lm-brand-logo img {
-  max-height: 44px;
-  max-width: min(220px, 100%);
+  max-height: 40px;
+  max-width: min(200px, 100%);
   width: auto;
   object-fit: contain;
 }
 
-.lm-offer {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 22px;
-  padding: 48px 0;
+/* ---------- the card ---------- */
+
+.lm-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--surface);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 24px 60px rgba(7,19,79,.18);
+}
+
+/* Cover art — the SVG ribbons sit over a two-tone accent gradient. */
+.lm-banner {
+  position: relative;
+  height: 190px;
+  background:
+    radial-gradient(ellipse 60% 90% at 8% 100%, var(--magnet-accent-light), transparent 70%),
+    radial-gradient(ellipse 55% 80% at 100% 100%, color-mix(in srgb, var(--magnet-accent) 70%, #8b5cf6), transparent 70%),
+    linear-gradient(120deg, var(--magnet-accent) 0%, var(--magnet-accent-dark) 100%);
+}
+.lm-banner svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.lm-card-body {
+  padding: 34px 56px 30px;
 }
 
 .lm-kicker {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  width: fit-content;
-  padding: 6px 14px 6px 10px;
+  padding: 5px 12px 5px 9px;
   border-radius: 999px;
-  background: rgba(255,255,255,.14);
-  border: 1px solid rgba(255,255,255,.22);
-  font-size: 12px;
+  background: color-mix(in srgb, var(--magnet-accent) 10%, var(--surface));
+  color: var(--magnet-accent-dark);
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: .03em;
+  letter-spacing: .04em;
   text-transform: uppercase;
+  margin-bottom: 14px;
 }
-
 .lm-kicker .dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--lime);
+  background: var(--magnet-accent);
   flex: none;
 }
 
-.lm-visual h1 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-weight: 600;
-  font-size: clamp(32px, 3.6vw, 48px);
-  line-height: 1.08;
+.lm-card h1 {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.2;
   letter-spacing: -0.01em;
+  color: var(--ink);
   text-wrap: balance;
   overflow-wrap: anywhere;
-  margin: 0;
+  margin: 0 0 6px;
 }
 
-.lm-visual .lm-desc {
-  font-size: 16.5px;
-  line-height: 1.65;
-  color: rgba(255,255,255,.84);
-  max-width: 46ch;
+.lm-card .lm-desc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted);
   overflow-wrap: anywhere;
   margin: 0;
 }
 
-.lm-offer-row {
-  display: flex;
-  align-items: center;
-  gap: 40px;
-  margin-top: 14px;
-}
+.lm-card form { margin-top: 28px; }
+.lm-card .auth-error { margin: 22px 0 0; }
 
-.lm-cover {
-  flex: none;
-  width: 140px;
-  aspect-ratio: 3 / 4;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 24px 48px rgba(4,12,40,.4);
-  transform: rotate(-4deg);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  position: relative;
-}
+/* ---------- fields: label above a soft, filled input ---------- */
 
-.lm-cover-bar {
-  height: 24px;
-  border-radius: 5px;
-  margin-bottom: 3px;
-  background: linear-gradient(135deg, var(--coral), #ff9a8f);
-}
+.lm-card .field { margin-bottom: 20px; }
 
-.lm-cover-line {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--line);
-}
-
-.lm-cover-line.short { width: 60%; }
-
-.lm-cover-badge {
-  position: absolute;
-  bottom: -12px;
-  right: -12px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--lime);
-  color: var(--navy);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 6px 16px rgba(4,12,40,.3);
-}
-
-.lm-points {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 13px;
-  font-size: 15px;
-  font-weight: 500;
-  color: rgba(255,255,255,.92);
-}
-
-.lm-points li {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-
-.lm-point-tick {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--lime);
-  color: var(--navy);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ---------- right: the form ---------- */
-
-.lm-form-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 32px;
-  background: var(--paper);
-}
-
-.lm-form-card {
-  width: 100%;
-  max-width: 440px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  padding: 36px 32px 28px;
-}
-
-.lm-eyebrow {
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: .03em;
-  text-transform: uppercase;
-  color: var(--magnet-accent-dark, var(--blue-dark));
-  margin-bottom: 10px;
-}
-
-.lm-form-card h2 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 26px;
-  margin: 0 0 8px;
-}
-
-.lm-form-card .lm-sub {
-  color: var(--muted);
+.lm-card .field label,
+.lm-group-label {
+  display: block;
   font-size: 14.5px;
-  margin: 0 0 26px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 8px;
 }
 
-.lm-form-card .field input:focus,
-.lm-form-card .field select:focus {
-  outline: none;
-  border-color: var(--magnet-accent, var(--blue));
-  background: var(--surface);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--magnet-accent, var(--blue)) 16%, transparent);
+.lm-req {
+  color: #e5484d;
+  margin-left: 3px;
+  font-weight: 600;
+}
+.lm-opt {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 13px;
 }
 
-/* .btn-primary is shared with signup/login — override it only inside this
-   card, scoped, so a custom accent never leaks onto other pages. */
-.lm-form-card .btn {
+.lm-card .field input:not([type="checkbox"]):not([type="radio"]),
+.lm-card .field select {
   width: 100%;
-  margin-top: 6px;
-  padding: 14px 24px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  background-color: #eef0f4;
   font-family: inherit;
-  font-size: 15.5px;
+  font-size: 14.5px;
+  color: var(--ink);
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.lm-form-card .btn-primary {
-  background: var(--magnet-accent, var(--blue));
-}
-.lm-form-card .btn-primary:hover {
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--magnet-accent, var(--blue)) 40%, transparent);
+.lm-card .field input::placeholder { color: #98a2b3; }
+
+.lm-card .field input:focus,
+.lm-card .field select:focus {
+  outline: none;
+  border-color: var(--magnet-accent);
+  background-color: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--magnet-accent) 16%, transparent);
 }
 
-/* Extra questions can be a dropdown, a tick box or a list of choices —
-   auth.css only styles text inputs inside .field. */
-.lm-form-card .field select {
-  width: 100%;
-  padding: 12px 40px 12px 14px;
-  border-radius: 10px;
-  border: 1.5px solid var(--line);
-  background-color: var(--paper);
+.lm-card .field select {
+  padding-right: 40px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 13px center;
   background-size: 16px;
   -webkit-appearance: none;
   appearance: none;
-  font-family: inherit;
-  font-size: 14.5px;
-  color: var(--ink);
 }
-.lm-form-card .field .lm-check {
+
+/* Tick boxes and lists of choices. */
+.lm-card .field .lm-check {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   margin-bottom: 0;
   cursor: pointer;
 }
-/* Radio / checkbox groups: a heading styled like a field label, then one
-   .lm-check row per choice. */
-.lm-group-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  margin-bottom: 9px;
-}
 .lm-choices {
   display: flex;
   flex-direction: column;
   gap: 9px;
 }
-.lm-form-card .field .lm-choices .lm-check {
+.lm-card .field .lm-choices .lm-check {
   font-size: 14.5px;
   font-weight: 400;
-  color: var(--ink);
 }
-.lm-form-card .field .lm-check input {
+.lm-card .field .lm-check input {
   flex: none;
   width: 17px;
   height: 17px;
   padding: 0;
-  margin: 1px 0 0;
-  box-shadow: none;
-  accent-color: var(--magnet-accent, var(--blue));
+  margin: 2px 0 0;
+  accent-color: var(--magnet-accent);
 }
 
-.lm-privacy {
+/* .btn-primary is shared with signup/login — override it only inside the
+   card, so a custom accent never leaks onto other pages. */
+.lm-card .btn {
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px 24px;
+  font-family: inherit;
+  font-size: 15.5px;
+  text-decoration: none;
+}
+.lm-card .btn-primary { background: var(--magnet-accent); }
+.lm-card .btn-primary:hover {
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--magnet-accent) 40%, transparent);
+}
+
+.lm-card-foot {
   display: flex;
   align-items: flex-start;
   justify-content: center;
   gap: 7px;
-  font-size: 13px;
+  margin: 0;
+  padding: 13px 24px;
+  background: #f7f8fa;
+  border-top: 1px solid #eef0f4;
+  font-size: 12.5px;
+  line-height: 1.5;
   color: var(--muted);
-  margin-top: 18px;
+  text-align: center;
 }
-.lm-privacy svg {
-  flex: none;
-  margin-top: 3px;
-}
+.lm-card-foot svg { flex: none; margin-top: 2px; }
 
-/* ---------- responsive ---------- */
+/* ---------- corner credit ---------- */
 
-@media (max-width: 900px) {
-  .lm-wrap { grid-template-columns: 1fr; min-height: 0; }
-  .lm-visual { padding: 22px 24px 26px; }
-  .lm-visual::after { display: none; }
-  .lm-offer { padding: 36px 0 32px; gap: 18px; }
-  .lm-offer-row { gap: 30px; margin-top: 10px; }
-  .lm-cover { width: 104px; padding: 11px; gap: 7px; }
-  .lm-cover-bar { height: 18px; }
-  .lm-form-panel { padding: 28px 16px 56px; }
-  .lm-form-card { padding: 30px 22px 24px; }
+.lm-made-with {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px 7px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 18px rgba(16,24,40,.1);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  text-decoration: none;
 }
-
-@media (max-width: 460px) {
-  .lm-offer-row { flex-direction: column; align-items: flex-start; gap: 30px; }
-}
+.lm-made-with b { color: var(--ink); }
+.lm-made-with .logo-mark { width: 20px; height: 20px; border-radius: 6px; }
+.lm-made-with .logo-mark svg { width: 12px; height: 12px; }
 
 /* ---------- success screen ---------- */
 
-.lm-success-wrap {
-  min-height: calc(100vh - 68px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 24px 64px;
-  background: var(--paper);
-}
-
-.lm-success-card {
-  width: 100%;
-  max-width: 440px;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--line);
-}
-
-.lm-success-top {
-  padding: 40px 32px 34px;
-  text-align: center;
-  color: #fff;
-  background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255,255,255,.18), transparent 65%),
-              linear-gradient(160deg, var(--navy) 0%, var(--blue-dark) 60%, var(--blue) 100%);
-}
-
+.lm-card-success { margin-top: 34px; text-align: center; }
+.lm-banner-wrap { position: relative; }
+.lm-card-success .lm-banner { height: 150px; }
 .lm-success-icon {
-  width: 56px;
-  height: 56px;
+  position: absolute;
+  left: 50%;
+  bottom: -30px;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background: var(--lime);
   color: var(--navy);
+  border: 4px solid var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 18px;
+  box-shadow: 0 8px 20px rgba(7,19,79,.2);
 }
+.lm-card-success .lm-card-body { padding-top: 50px; }
+.lm-card-success .lm-desc { margin-bottom: 12px; }
 
-.lm-success-top h1 {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 27px;
-  margin: 0 0 8px;
-}
+/* ---------- responsive ---------- */
 
-.lm-success-top p {
-  font-size: 14.5px;
-  color: rgba(255,255,255,.82);
-  margin: 0;
-}
-
-.lm-success-body {
-  background: var(--surface);
-  padding: 30px 32px 32px;
-  text-align: center;
-}
-
-.lm-success-body .btn {
-  width: 100%;
-  text-decoration: none;
-  padding: 14px 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.lm-success-note {
-  font-size: 13.5px;
-  color: var(--muted);
-  margin: 18px 0 0;
+@media (max-width: 600px) {
+  .lm-shell { padding: 20px 12px 28px; }
+  .lm-head { margin-bottom: 18px; }
+  .lm-banner { height: 140px; }
+  .lm-card-body { padding: 26px 22px 24px; }
+  .lm-card h1 { font-size: 23px; }
+  /* Fixed in the corner it would sit on top of the submit button. */
+  .lm-made-with { position: static; margin-top: 22px; }
 }
