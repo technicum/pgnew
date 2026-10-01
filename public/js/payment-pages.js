@@ -1,18 +1,20 @@
 // Payment pages dashboard (views/payment-pages.ejs). Same pattern as
 // lead-magnets.js: data starts from window.__PZ_PAYMENT_PAGES__ /
 // __PZ_COUPONS__, every change is a fetch() to the JSON endpoints in
-// server.js, and the builder doubles as the editor (a card's Edit button
-// loads that page into it).
+// server.js, and the builder doubles as the editor (a page's Edit button
+// loads it back in).
 //
-// Prices are typed in rupees and sent as paise; the server re-checks
+// The builder holds a page's products as editable cards (Products tab).
+// Amounts are typed in rupees and sent as paise; the server re-checks
 // everything (lib/paymentPages.js), so the checks here are just for
-// friendlier messages.
+// friendlier messages on the right tab.
 (function () {
   let pages = window.__PZ_PAYMENT_PAGES__ || [];
   let coupons = window.__PZ_COUPONS__ || [];
   const storeUrl = window.__PZ_STORE_URL__ || '';
   const storeHost = storeUrl.replace(/^https?:\/\//, '');
   const DEFAULT_ACCENT = '#1261ef';
+  const MAX_PRODUCTS = 10;
 
   const $ = (id) => document.getElementById(id);
 
@@ -29,25 +31,37 @@
     const rupees = (Number(paise) || 0) / 100;
     return `₹${rupees.toLocaleString('en-IN', { minimumFractionDigits: Number.isInteger(rupees) ? 0 : 2, maximumFractionDigits: 2 })}`;
   }
-  // "499" / "1,499.50" → paise, or null if it isn't an amount.
+  // "499" / "1,499.50" → paise; null when blank, NaN when not an amount.
   function toPaise(raw) {
     const value = String(raw ?? '').replace(/[₹,\s]/g, '');
     if (value === '') return null;
     if (!/^\d+(\.\d{1,2})?$/.test(value)) return NaN;
     return Math.round(Number(value) * 100);
   }
-  function toRupeesText(paise) {
-    if (!paise) return '';
-    return String(paise / 100);
+  const rupeesText = (paise) => (paise ? String(paise / 100) : '');
+  // Whole numbers (stock, weight, max qty); null when blank, NaN when not.
+  function toCount(raw) {
+    const value = String(raw ?? '').trim();
+    if (value === '') return null;
+    return /^\d+$/.test(value) ? Number(value) : NaN;
+  }
+
+  const ICONS = {
+    digital: '<path d="M12 15V3"/><path d="m7 10 5 5 5-5"/>',
+    physical: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>',
+    coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>',
+  };
+  const icon = (type, size = 16) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[type]}</svg>`;
+
+  // What a stored product (paise) costs, as a short label for the list.
+  function productPriceLabel(p) {
+    if (p.pricing === 'pwyw') return p.minimum ? `from ${formatINR(p.minimum)}` : 'any amount';
+    if (p.type === 'coffee') return `${formatINR(p.price)} / coffee`;
+    if (p.pricing === 'qty') return `${formatINR(p.price)} each`;
+    return formatINR(p.price);
   }
   function publicUrl(page) {
     return `${storeUrl}/pay/${page.slug}`;
-  }
-  function priceLabel(page) {
-    if (page.price_type === 'flexible') {
-      return page.min_price ? `Pay what you want · min ${formatINR(page.min_price)}` : 'Pay what you want';
-    }
-    return formatINR(page.price);
   }
 
   // --- save status + fetch helper (same as the other dashboard pages) ---
@@ -99,29 +113,20 @@
     }
   }
 
-  // --- builder: tabs -------------------------------------------------------
+  // --- tabs -------------------------------------------------------------------
   function showTab(name) {
-    document.querySelectorAll('.pz-tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.btab === name));
-    document.querySelectorAll('.pz-btabpanel').forEach((p) => p.classList.toggle('active', p.id === `btab-${name}`));
+    document.querySelectorAll('.pb-tab').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    document.querySelectorAll('.pb-panel').forEach((p) => p.classList.toggle('active', p.id === `tab-${name}`));
   }
-  document.querySelectorAll('.pz-tab-btn').forEach((btn) => btn.addEventListener('click', () => showTab(btn.dataset.btab)));
+  document.querySelectorAll('.pb-tab').forEach((btn) => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
 
-  // --- builder: state --------------------------------------------------------
+  // --- builder state ----------------------------------------------------------
   const form = $('pageForm');
   const formError = $('pageFormError');
   const titleInput = $('ppTitle');
-  const ctaInput = $('ppCta');
   const descInput = $('ppDescription');
-  const deliveryInput = $('ppDeliveryUrl');
   const successInput = $('ppSuccessMessage');
-  const slugRow = $('ppSlugRow');
   const slugInput = $('ppSlug');
-  const priceInput = $('ppPrice');
-  const minInput = $('ppMinPrice');
-  const suggestedInput = $('ppSuggestedPrice');
-  const maxQtyInput = $('ppMaxQuantity');
-  const qtySwitch = $('ppAllowQuantity');
-  const phoneSwitch = $('ppCollectPhone');
   const coverImageInput = $('ppCoverImage');
   const coverVideoInput = $('ppCoverVideo');
   const coverColorInput = $('ppCoverColor');
@@ -129,35 +134,283 @@
   const previewFrame = $('ppPreviewFrame');
 
   let editingId = null;
-  let priceType = 'fixed';
   let accent = DEFAULT_ACCENT;
   let showCover = true;
   let coverType = 'art';
   let coverColor = '';
 
-  function setSwitch(btn, on) {
-    btn.classList.toggle('on', on);
-    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  // Products while editing: amounts as the rupee text typed, plus what the
+  // preview's pretend buyer has picked (previewQty / previewAmount).
+  let products = [];
+  let nextPid = 1;
+  function blankProduct(seed) {
+    return Object.assign({
+      id: nextPid++, title: '', type: 'digital', pricing: 'fixed',
+      price: '', compareAt: '', maxQty: '', suggested: '', minimum: '',
+      fileUrl: '', stock: '', weight: '', shipFee: '',
+      previewQty: 1, previewAmount: null,
+    }, seed || {});
   }
-  const switchOn = (btn) => btn.classList.contains('on');
-  [qtySwitch, phoneSwitch].forEach((btn) => btn.addEventListener('click', () => {
-    setSwitch(btn, !switchOn(btn));
-    syncPreview();
-  }));
+  // A stored product (paise) → an editable card.
+  function fromStored(p) {
+    return blankProduct({
+      id: p.id,
+      title: p.title || '',
+      type: p.type,
+      pricing: p.type === 'coffee' ? 'qty' : p.pricing,
+      price: rupeesText(p.price),
+      compareAt: rupeesText(p.compareAt),
+      maxQty: p.maxQty ? String(p.maxQty) : '',
+      suggested: rupeesText(p.suggested),
+      minimum: rupeesText(p.minimum),
+      fileUrl: p.fileUrl || '',
+      stock: p.stock === null || p.stock === undefined ? '' : String(p.stock),
+      weight: p.weight === null || p.weight === undefined ? '' : String(p.weight),
+      shipFee: rupeesText(p.shipFee),
+    });
+  }
 
-  function setPriceType(type) {
-    priceType = type === 'flexible' ? 'flexible' : 'fixed';
-    document.querySelectorAll('#ppPriceTypeChoice .cover-opt').forEach((b) => b.classList.toggle('active', b.dataset.priceType === priceType));
-    $('ppFixedRow').hidden = priceType !== 'fixed';
-    $('ppFlexibleRow').hidden = priceType !== 'flexible';
-    $('ppPriceHint').textContent = priceType === 'fixed'
-      ? 'Buyers pay exactly this.'
-      : 'Buyers type their own amount — at least the minimum. The suggested amount is pre-filled for them.';
+  // --- products tab: repeatable cards ------------------------------------------
+  const prodList = $('prodList');
+  const addProductBtn = $('addProductBtn');
+
+  function moneyInput(field, value, placeholder) {
+    return `<div class="pb-price"><i>₹</i><input type="text" inputmode="decimal" class="pz-field-input" data-field="${field}" placeholder="${placeholder}" value="${escapeHTML(value)}" /></div>`;
+  }
+  function pricingPanelHTML(p) {
+    if (p.pricing === 'qty') {
+      return `
+        <div class="pb-row">
+          ${moneyInput('price', p.price, 'Unit price')}
+          <input type="text" inputmode="numeric" class="pz-field-input" data-field="maxQty" placeholder="Max quantity (optional)" value="${escapeHTML(p.maxQty)}" />
+        </div>
+        <p class="pb-field-hint">Buyers pick how many at checkout — the price above is per unit.</p>`;
+    }
+    if (p.pricing === 'pwyw') {
+      return `
+        <div class="pb-row">
+          ${moneyInput('suggested', p.suggested, 'Suggested amount')}
+          ${moneyInput('minimum', p.minimum, 'Minimum (optional)')}
+        </div>
+        <p class="pb-field-hint">Buyers can enter their own amount at checkout — the suggested amount is pre-filled.</p>`;
+    }
+    return `
+      <div class="pb-row">
+        ${moneyInput('price', p.price, 'Price')}
+        ${moneyInput('compareAt', p.compareAt, 'Compare-at (optional)')}
+      </div>`;
+  }
+
+  function prodCardHTML(p, index) {
+    const typeToggle = `
+      <div class="pb-toggle pb-type-toggle" role="group" aria-label="Product type">
+        <button type="button" class="${p.type === 'digital' ? 'active' : ''}" data-settype="digital"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.digital}</svg>Digital</button>
+        <button type="button" class="${p.type === 'physical' ? 'active' : ''}" data-settype="physical"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.physical}</svg>Physical</button>
+        <button type="button" class="${p.type === 'coffee' ? 'active' : ''}" data-settype="coffee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.coffee}</svg>Buy me a coffee</button>
+      </div>`;
+    const head = `
+      <div class="pb-prod-head">
+        <span class="pb-prod-index">${index + 1}</span>
+        <input type="text" class="pz-field-input" data-field="title" maxlength="120" placeholder="${p.type === 'coffee' ? 'Buy me a coffee' : 'Product title'}" value="${escapeHTML(p.title)}" aria-label="Product ${index + 1} title" />
+        <button type="button" class="pb-prod-remove" data-remove aria-label="Remove product ${index + 1}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>`;
+
+    if (p.type === 'coffee') {
+      return `
+        <div class="pb-prod-card" data-pid="${p.id}">
+          ${head}
+          ${typeToggle}
+          <div class="pb-prod-body">
+            <div class="pb-row">${moneyInput('price', p.price, 'Price per coffee — e.g. 50')}</div>
+            <div class="pb-coffee-note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              <span>A quick-support button — buyers pick how many coffees (×1, ×3, ×5) or type their own number. No file or shipping needed.</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    return `
+      <div class="pb-prod-card" data-pid="${p.id}">
+        ${head}
+        ${typeToggle}
+        <div class="pb-toggle pb-pricing-toggle" role="group" aria-label="Pricing">
+          <button type="button" class="${p.pricing === 'fixed' ? 'active' : ''}" data-setpricing="fixed">Fixed price</button>
+          <button type="button" class="${p.pricing === 'qty' ? 'active' : ''}" data-setpricing="qty">Per quantity</button>
+          <button type="button" class="${p.pricing === 'pwyw' ? 'active' : ''}" data-setpricing="pwyw">Pay what you want</button>
+        </div>
+        <div class="pb-prod-body">
+          ${pricingPanelHTML(p)}
+          ${p.type === 'digital' ? `
+          <div class="pb-fulfil">
+            <input type="url" class="pz-field-input" data-field="fileUrl" maxlength="500" placeholder="Link to the file — unlocked on the receipt once paid" value="${escapeHTML(p.fileUrl)}" />
+          </div>` : `
+          <div class="pb-fulfil">
+            <div class="pb-row">
+              <input type="text" inputmode="numeric" class="pz-field-input" data-field="stock" placeholder="Stock qty (blank = unlimited)" value="${escapeHTML(p.stock)}" />
+              <input type="text" inputmode="numeric" class="pz-field-input" data-field="weight" placeholder="Weight (g)" value="${escapeHTML(p.weight)}" />
+            </div>
+            ${moneyInput('shipFee', p.shipFee, 'Shipping fee (blank = free)')}
+          </div>`}
+        </div>
+      </div>`;
+  }
+
+  function renderProducts() {
+    prodList.innerHTML = products.map(prodCardHTML).join('');
+    $('tabProductCount').textContent = products.length;
+    addProductBtn.disabled = products.length >= MAX_PRODUCTS;
+    prodList.querySelectorAll('.pb-prod-card').forEach((card) => {
+      const p = products.find((x) => x.id === Number(card.dataset.pid));
+      card.querySelectorAll('[data-field]').forEach((input) => input.addEventListener('input', () => {
+        p[input.dataset.field] = input.value;
+        syncPreview();
+      }));
+      card.querySelectorAll('[data-settype]').forEach((btn) => btn.addEventListener('click', () => {
+        p.type = btn.dataset.settype;
+        if (p.type === 'coffee') p.pricing = 'qty';
+        else if (p.pricing === 'qty' && !p.maxQty && card.querySelector('[data-settype].active')?.dataset.settype === 'coffee') p.pricing = 'fixed';
+        renderProducts();
+      }));
+      card.querySelectorAll('[data-setpricing]').forEach((btn) => btn.addEventListener('click', () => {
+        p.pricing = btn.dataset.setpricing;
+        renderProducts();
+      }));
+      card.querySelector('[data-remove]').addEventListener('click', () => {
+        products = products.filter((x) => x.id !== p.id);
+        // The builder never sits empty.
+        if (!products.length) products.push(blankProduct());
+        renderProducts();
+      });
+    });
     syncPreview();
   }
-  document.querySelectorAll('#ppPriceTypeChoice .cover-opt').forEach((b) => b.addEventListener('click', () => setPriceType(b.dataset.priceType)));
+  addProductBtn.addEventListener('click', () => {
+    if (products.length >= MAX_PRODUCTS) return;
+    products.push(blankProduct());
+    renderProducts();
+    const cards = prodList.querySelectorAll('.pb-prod-card');
+    cards[cards.length - 1].querySelector('[data-field="title"]').focus();
+  });
 
-  // --- builder: accent + cover (same controls as the lead magnet builder) ---
+  // --- live preview -------------------------------------------------------------
+  // What a product line costs right now, given its pricing and what the
+  // pretend buyer has chosen in the preview. Paise.
+  function lineAmount(p) {
+    if (p.pricing === 'pwyw') {
+      return p.previewAmount !== null ? p.previewAmount : (toPaise(p.suggested) || toPaise(p.minimum) || 0);
+    }
+    const qty = p.pricing === 'qty' ? (p.previewQty || 1) : 1;
+    return (toPaise(p.price) || 0) * qty;
+  }
+  function typeLabel(p) {
+    if (p.type === 'coffee') return 'Support';
+    return p.type === 'digital' ? 'Instant download' : 'Ships to you';
+  }
+  function previewControlHTML(p) {
+    if (p.type === 'coffee') {
+      return `<div class="pb-preview-coffee" data-coffee-for="${p.id}">
+        ${[1, 3, 5].map((n) => `<button type="button" class="${p.previewQty === n ? 'active' : ''}" data-qty="${n}">×${n}</button>`).join('')}
+      </div>`;
+    }
+    if (p.pricing === 'qty') {
+      return `<div class="pb-preview-stepper" data-qty-for="${p.id}">
+        <button type="button" data-qty-dec aria-label="Fewer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+        <span>${p.previewQty || 1}</span>
+        <button type="button" data-qty-inc aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
+      </div>`;
+    }
+    if (p.pricing === 'pwyw') {
+      const value = p.previewAmount !== null ? rupeesText(p.previewAmount) : (p.suggested || '');
+      const min = toPaise(p.minimum);
+      return `<div class="pb-preview-pwyw"><span>₹</span><input type="text" inputmode="decimal" data-pwyw-for="${p.id}" value="${escapeHTML(value)}" placeholder="0" aria-label="Amount" /></div>
+        ${min ? `<div class="pb-preview-pwyw-hint">Minimum ${formatINR(min)}</div>` : ''}`;
+    }
+    return '';
+  }
+
+  function syncPreview() {
+    const headline = titleInput.value.trim()
+      || (products.length === 1 && products[0].title.trim())
+      || 'Your payment page';
+    $('ppPreviewTitle').textContent = headline;
+    const desc = descInput.value.trim();
+    $('ppPreviewDesc').textContent = desc;
+    $('ppPreviewDesc').hidden = !desc;
+
+    const items = $('ppPreviewItems');
+    items.innerHTML = products.map((p) => {
+      const compare = p.pricing === 'fixed' && toPaise(p.compareAt) > toPaise(p.price) ? `<s>${formatINR(toPaise(p.compareAt))}</s>` : '';
+      return `
+        <div class="pb-preview-item" data-preview-pid="${p.id}">
+          <div class="pb-preview-thumb ${p.type}">${icon(p.type)}</div>
+          <div class="pb-preview-main">
+            <div class="pb-preview-title">${escapeHTML(p.title.trim() || (p.type === 'coffee' ? 'Buy me a coffee' : 'Untitled product'))}</div>
+            <div class="pb-preview-type">${typeLabel(p)}${p.pricing === 'pwyw' ? ' · name your price' : ''}</div>
+            ${previewControlHTML(p)}
+          </div>
+          <div class="pb-preview-price">${compare}<b>${formatINR(lineAmount(p))}</b></div>
+        </div>`;
+    }).join('') || '<div class="pb-preview-empty">Add a product to see it here.</div>';
+
+    items.querySelectorAll('[data-qty-for]').forEach((el) => {
+      const p = products.find((x) => x.id === Number(el.dataset.qtyFor));
+      el.querySelector('[data-qty-dec]').addEventListener('click', () => {
+        p.previewQty = Math.max(1, (p.previewQty || 1) - 1);
+        syncPreview();
+      });
+      el.querySelector('[data-qty-inc]').addEventListener('click', () => {
+        const max = toCount(p.maxQty) || 100;
+        p.previewQty = Math.min(max, (p.previewQty || 1) + 1);
+        syncPreview();
+      });
+    });
+    items.querySelectorAll('[data-pwyw-for]').forEach((input) => {
+      const p = products.find((x) => x.id === Number(input.dataset.pwywFor));
+      input.addEventListener('input', () => {
+        const v = toPaise(input.value);
+        p.previewAmount = Number.isNaN(v) ? null : v;
+        // Totals only — re-rendering the list would blur this input.
+        updateTotals();
+      });
+    });
+    items.querySelectorAll('[data-coffee-for]').forEach((row) => {
+      const p = products.find((x) => x.id === Number(row.dataset.coffeeFor));
+      row.querySelectorAll('[data-qty]').forEach((btn) => btn.addEventListener('click', () => {
+        p.previewQty = Number(btn.dataset.qty);
+        syncPreview();
+      }));
+    });
+
+    const editing = pages.find((pg) => pg.id === editingId);
+    const slug = editing ? (slugInput.value.trim() || editing.slug)
+      : (headline === 'Your payment page' ? '…' : headline.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40));
+    $('ppPreviewUrl').textContent = `${storeHost}/pay/${slug || '…'}`;
+
+    updateTotals();
+  }
+
+  function updateTotals() {
+    const subtotal = products.reduce((sum, p) => sum + lineAmount(p), 0);
+    const physical = products.filter((p) => p.type === 'physical');
+    const shipping = physical.reduce((sum, p) => sum + (toPaise(p.shipFee) || 0), 0);
+    $('ppPreviewShip').hidden = !physical.length;
+    $('ppPreviewShipRow').hidden = !physical.length;
+    $('ppPreviewSubtotal').textContent = formatINR(subtotal);
+    $('ppPreviewShipAmt').textContent = shipping ? formatINR(shipping) : 'Free';
+    $('ppPreviewTotal').textContent = formatINR(subtotal + shipping);
+    $('ppPreviewBtnText').textContent = `Pay ${formatINR(subtotal + shipping)}`;
+    // Each row's price follows live stepper / amount edits too.
+    products.forEach((p) => {
+      const row = document.querySelector(`[data-preview-pid="${p.id}"] .pb-preview-price b`);
+      if (row) row.textContent = formatINR(lineAmount(p));
+    });
+  }
+  [titleInput, descInput, slugInput].forEach((el) => el.addEventListener('input', syncPreview));
+
+  // --- design tab: accent + cover ------------------------------------------------
   function setAccent(color) {
     accent = /^#[0-9a-f]{6}$/i.test(color || '') ? color.toLowerCase() : DEFAULT_ACCENT;
     document.querySelectorAll('#ppSwatchRow .swatch').forEach((s) => s.classList.remove('active'));
@@ -188,21 +441,22 @@
       : 'Matches your accent color.';
     $('ppCoverColorReset').hidden = !coverColor;
 
-    const cover = $('ppPreviewCover');
+    // The preview's header stands in for the cover.
+    const top = $('ppPreviewTop');
     const image = coverImageInput.value.trim();
     const video = coverVideoInput.value.trim();
-    const shown = (coverType === 'image' && !isCoverUrl(image)) || (coverType === 'video' && !isCoverUrl(video)) ? 'art' : coverType;
-    cover.classList.toggle('is-off', !showCover);
-    cover.classList.toggle('is-plain', shown === 'image' || shown === 'video');
-    cover.classList.toggle('is-color', shown === 'color');
-    if (coverColor) cover.style.setProperty('--pv-cover-color', coverColor);
-    else cover.style.removeProperty('--pv-cover-color');
-    $('ppPreviewCoverArt').style.display = shown === 'art' ? '' : 'none';
+    const shown = !showCover ? 'none'
+      : (coverType === 'image' && !isCoverUrl(image)) || (coverType === 'video' && !isCoverUrl(video)) ? 'art' : coverType;
+    top.classList.toggle('is-off', shown === 'none');
+    top.classList.toggle('is-color', shown === 'color');
+    top.classList.toggle('is-media', shown === 'image' || shown === 'video');
+    if (coverColor) top.style.setProperty('--pv-cover-color', coverColor);
+    else top.style.removeProperty('--pv-cover-color');
     const img = $('ppPreviewCoverImage');
-    img.style.display = shown === 'image' ? '' : 'none';
+    img.hidden = shown !== 'image';
     if (shown === 'image' && img.getAttribute('src') !== image) img.src = image;
     const vid = $('ppPreviewCoverVideo');
-    vid.style.display = shown === 'video' ? '' : 'none';
+    vid.hidden = shown !== 'video';
     if (shown === 'video') {
       if (vid.getAttribute('src') !== video) vid.src = video;
       vid.play().catch(() => {});
@@ -228,7 +482,7 @@
     coverColor = '';
     syncCover();
   });
-  document.querySelectorAll('#btab-design .pz-cover-media .pz-cover-clear').forEach((btn) => btn.addEventListener('click', () => {
+  document.querySelectorAll('#tab-design .pz-cover-media .pz-cover-clear').forEach((btn) => btn.addEventListener('click', () => {
     (btn.dataset.clear === 'video' ? coverVideoInput : coverImageInput).value = '';
     syncCover();
   }));
@@ -267,60 +521,24 @@
   wireUpload($('ppCoverImageFile'), coverImageInput, 'image');
   wireUpload($('ppCoverVideoFile'), coverVideoInput, 'video');
 
-  // --- builder: live preview ---------------------------------------------
-  function syncPreview() {
-    const title = titleInput.value.trim();
-    $('ppPreviewTitle').textContent = title || 'Your payment page title';
-    const desc = descInput.value.trim();
-    $('ppPreviewDesc').textContent = desc;
-    $('ppPreviewDesc').hidden = !desc;
-
-    const flexible = priceType === 'flexible';
-    const price = toPaise(priceInput.value) || 0;
-    const min = toPaise(minInput.value) || 0;
-    const suggested = toPaise(suggestedInput.value) || 0;
-    const unit = flexible ? (suggested || min) : price;
-    $('ppPreviewPriceLabel').textContent = flexible
-      ? (min ? `Pay what you want · min ${formatINR(min)}` : 'Pay what you want')
-      : formatINR(price);
-    $('ppPreviewAmount').hidden = !flexible;
-    $('ppPreviewAmountValue').textContent = toRupeesText(unit) || '0';
-    $('ppPreviewQty').hidden = !switchOn(qtySwitch);
-    $('ppMaxQtyRow').hidden = !switchOn(qtySwitch);
-    $('ppPreviewPhone').hidden = !switchOn(phoneSwitch);
-    $('ppPreviewTotal').textContent = formatINR(unit);
-    $('ppPreviewCta').textContent = `${ctaInput.value.trim() || 'Pay now'} · ${formatINR(unit)}`;
-
-    const editing = pages.find((p) => p.id === editingId);
-    const slug = editing ? (slugInput.value.trim() || editing.slug)
-      : (title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || '…');
-    $('ppPreviewUrl').textContent = `${storeHost}/pay/${slug}`;
-  }
-  [titleInput, ctaInput, descInput, priceInput, minInput, suggestedInput, slugInput].forEach((el) => el.addEventListener('input', syncPreview));
-
-  // --- builder: create / edit ----------------------------------------------
+  // --- create / edit --------------------------------------------------------------
   function setBuilderMode() {
     const editing = editingId !== null;
     $('builderHeading').textContent = editing ? 'Edit payment page' : 'Create a payment page';
     $('builderSubmitLabel').textContent = editing ? 'Save changes' : 'Create payment page';
     $('builderSubmitIcon').style.display = editing ? 'none' : '';
     $('builderCancelBtn').hidden = !editing;
-    slugRow.hidden = !editing;
+    $('ppSlugRow').hidden = !editing;
   }
 
   function loadIntoBuilder(page) {
     titleInput.value = page ? page.title : '';
-    ctaInput.value = page && page.cta_text !== 'Pay now' ? page.cta_text : '';
     descInput.value = page ? page.description : '';
-    deliveryInput.value = page ? page.delivery_url : '';
     successInput.value = page ? page.success_message : '';
     slugInput.value = page ? page.slug : '';
-    priceInput.value = page ? toRupeesText(page.price) : '';
-    minInput.value = page ? toRupeesText(page.min_price) : '';
-    suggestedInput.value = page ? toRupeesText(page.suggested_price) : '';
-    maxQtyInput.value = page ? page.max_quantity : 10;
-    setSwitch(qtySwitch, !!(page && page.allow_quantity));
-    setSwitch(phoneSwitch, page ? !!page.collect_phone : true);
+    nextPid = 1;
+    products = page && page.products.length ? page.products.map(fromStored) : [blankProduct()];
+    nextPid = Math.max(...products.map((p) => p.id)) + 1;
     showCover = page ? !!page.show_cover : true;
     coverType = page && ['art', 'image', 'video', 'color'].includes(page.cover_type) ? page.cover_type : 'art';
     coverColor = page ? page.cover_color || '' : '';
@@ -328,11 +546,10 @@
     coverVideoInput.value = page ? page.cover_video_url : '';
     coverError.classList.remove('show');
     formError.classList.remove('show');
-    setPriceType(page ? page.price_type : 'fixed');
     setAccent(page ? page.accent_color : DEFAULT_ACCENT);
     setBuilderMode();
-    syncPreview();
-    showTab('content');
+    renderProducts();
+    showTab('page');
   }
 
   function startEdit(id) {
@@ -341,7 +558,7 @@
     editingId = id;
     loadIntoBuilder(page);
     renderPages();
-    document.querySelector('.pz-builder').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector('.pb-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     titleInput.focus({ preventScroll: true });
   }
   function resetBuilder() {
@@ -352,34 +569,77 @@
   }
   $('builderCancelBtn').addEventListener('click', resetBuilder);
 
-  function showFormError(message, tab, input) {
+  function showFormError(message, tab, focusEl) {
     if (tab) showTab(tab);
     formError.textContent = message;
     formError.classList.add('show');
-    if (input) input.focus();
+    if (focusEl) focusEl.focus();
+  }
+  // The input for one of a product card's fields, for focusing on an error.
+  const productInput = (p, field) => prodList.querySelector(`.pb-prod-card[data-pid="${p.id}"] [data-field="${field}"]`);
+
+  // Builder cards → what the server stores (paise), or an error to show.
+  function collectProducts() {
+    const out = [];
+    for (let i = 0; i < products.length; i += 1) {
+      const p = products[i];
+      const name = `product ${i + 1}`;
+      const bad = (message, field) => ({ error: message, product: p, field });
+      const title = p.title.trim();
+      if (!title && p.type !== 'coffee') return bad(`Give ${name} a title.`, 'title');
+      const item = { id: p.id, title: title || 'Buy me a coffee', type: p.type, pricing: p.type === 'coffee' ? 'qty' : p.pricing };
+
+      if (item.pricing === 'pwyw') {
+        const suggested = toPaise(p.suggested);
+        const minimum = toPaise(p.minimum);
+        if (Number.isNaN(suggested)) return bad(`The suggested amount for ${name} doesn’t look like an amount.`, 'suggested');
+        if (Number.isNaN(minimum)) return bad(`The minimum for ${name} doesn’t look like an amount.`, 'minimum');
+        if (suggested && minimum && suggested < minimum) return bad(`The suggested amount for ${name} can’t be below its minimum.`, 'suggested');
+        Object.assign(item, { suggested: suggested || 0, minimum: minimum || 0 });
+      } else {
+        const price = toPaise(p.price);
+        if (!(price >= 100)) return bad(p.type === 'coffee' ? `Set a price per coffee of at least ₹1 for ${name}.` : `Set a price of at least ₹1 for ${name}.`, 'price');
+        item.price = price;
+      }
+      if (item.pricing === 'fixed') {
+        const compareAt = toPaise(p.compareAt);
+        if (Number.isNaN(compareAt) || (compareAt !== null && compareAt <= item.price)) return bad(`The compare-at price for ${name} should be higher than its price — or leave it blank.`, 'compareAt');
+        item.compareAt = compareAt;
+      }
+      if (item.pricing === 'qty' && p.type !== 'coffee') {
+        const maxQty = toCount(p.maxQty);
+        if (Number.isNaN(maxQty) || (maxQty !== null && (maxQty < 1 || maxQty > 100))) return bad(`Max quantity for ${name} needs to be a whole number from 1 to 100.`, 'maxQty');
+        item.maxQty = maxQty;
+      }
+      if (p.type === 'digital') {
+        const fileUrl = p.fileUrl.trim();
+        if (fileUrl && !/^https?:\/\//i.test(fileUrl)) return bad(`The file link for ${name} needs to start with http:// or https://`, 'fileUrl');
+        item.fileUrl = fileUrl;
+      }
+      if (p.type === 'physical') {
+        const stock = toCount(p.stock);
+        const weight = toCount(p.weight);
+        const shipFee = toPaise(p.shipFee);
+        if (Number.isNaN(stock)) return bad(`Stock for ${name} needs to be a whole number — or blank for unlimited.`, 'stock');
+        if (Number.isNaN(weight)) return bad(`Weight for ${name} needs to be a whole number of grams.`, 'weight');
+        if (Number.isNaN(shipFee)) return bad(`The shipping fee for ${name} doesn’t look like an amount.`, 'shipFee');
+        Object.assign(item, { stock, weight, shipFee: shipFee || 0 });
+      }
+      out.push(item);
+    }
+    return { products: out };
   }
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     formError.classList.remove('show');
-    // Fields live on tabs that may be hidden — the form is novalidate and
-    // checked here so the message can switch to the right tab.
-    if (!titleInput.value.trim()) return showFormError('Give it a title, like “1:1 coaching session”.', 'content', titleInput);
-    const delivery = deliveryInput.value.trim();
-    if (delivery && !/^https?:\/\//i.test(delivery)) return showFormError('The delivery link needs to start with http:// or https://', 'content', deliveryInput);
-
-    const price = toPaise(priceInput.value);
-    const min = toPaise(minInput.value);
-    const suggested = toPaise(suggestedInput.value);
-    if (priceType === 'fixed' && !(price >= 100)) return showFormError('Set a price of at least ₹1 — or switch to “Pay what you want”.', 'pricing', priceInput);
-    if (priceType === 'flexible') {
-      if (Number.isNaN(min)) return showFormError('That minimum doesn’t look like an amount.', 'pricing', minInput);
-      if (Number.isNaN(suggested)) return showFormError('That suggested amount doesn’t look like an amount.', 'pricing', suggestedInput);
-      if (suggested && suggested < (min || 0)) return showFormError('The suggested amount can’t be below the minimum.', 'pricing', suggestedInput);
+    const collected = collectProducts();
+    if (collected.error) {
+      showTab('products');
+      return showFormError(collected.error, 'products', productInput(collected.product, collected.field));
     }
-    const maxQty = Number(maxQtyInput.value);
-    if (switchOn(qtySwitch) && !(Number.isInteger(maxQty) && maxQty >= 1 && maxQty <= 100)) {
-      return showFormError('Max per order needs to be between 1 and 100.', 'pricing', maxQtyInput);
+    if (!titleInput.value.trim() && collected.products.length > 1) {
+      return showFormError('Give the page a headline, like “Complete Starter Bundle”.', 'page', titleInput);
     }
     const coverImageUrl = coverImageInput.value.trim();
     const coverVideoUrl = coverVideoInput.value.trim();
@@ -389,17 +649,9 @@
 
     const payload = {
       title: titleInput.value,
-      ctaText: ctaInput.value,
       description: descInput.value,
-      deliveryUrl: delivery,
       successMessage: successInput.value,
-      priceType,
-      price: priceType === 'fixed' ? price : 0,
-      minPrice: priceType === 'flexible' ? (min || 0) : 0,
-      suggestedPrice: priceType === 'flexible' ? (suggested || 0) : 0,
-      allowQuantity: switchOn(qtySwitch),
-      maxQuantity: Number.isInteger(maxQty) && maxQty >= 1 ? maxQty : 10,
-      collectPhone: switchOn(phoneSwitch),
+      products: collected.products,
       accentColor: accent,
       showCover,
       coverType,
@@ -427,29 +679,35 @@
     }
   });
 
-  // --- pages list ------------------------------------------------------------
+  // --- pages list ------------------------------------------------------------------
   const pagesList = $('pagesList');
-  function pageCardHTML(page) {
-    const views = page.view_count || 0;
-    const paid = page.paid_count || 0;
-    const rate = views > 0 && paid <= views ? `${Math.round((paid / views) * 100)}%` : '—';
+  function pageRowHTML(page) {
     const url = publicUrl(page);
+    const count = page.products.length;
+    const visits = page.view_count || 0;
     return `
-      <div class="pp-page-card${page.visible ? '' : ' pp-hidden'}${page.id === editingId ? ' pz-editing' : ''}" data-id="${page.id}">
-        <div class="pp-page-top">
-          <div class="pp-page-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+      <div class="pb-page-row${page.visible ? '' : ' pp-hidden'}${page.id === editingId ? ' pz-editing' : ''}" data-id="${page.id}">
+        <div class="pb-page-row-top">
+          <span class="pb-page-row-title">${escapeHTML(page.title)}</span>
+          ${page.visible ? '' : '<span class="pb-chip off">Unpublished</span>'}
+          <span class="pb-chip">${count} ${count === 1 ? 'product' : 'products'}</span>
+        </div>
+        <div class="pb-page-items">
+          ${page.products.map((p) => `<span class="pb-item-pill"><span class="dot ${p.type}"></span>${escapeHTML(p.title)} <b>${escapeHTML(productPriceLabel(p))}</b></span>`).join('')}
+        </div>
+        <div class="pb-page-stats">
+          <span><strong>${visits}</strong> ${visits === 1 ? 'visit' : 'visits'}</span>
+          <span><strong>${page.paid_count || 0}</strong> paid</span>
+          <span><strong>${formatINR(page.revenue || 0)}</strong> revenue</span>
+          ${page.to_ship ? `<a class="pb-fulfil-pill" href="/dashboard/orders?ship=1">${page.to_ship} to ship</a>` : ''}
+        </div>
+        <div class="pb-page-bottom">
+          <div class="pz-copy-link">
+            <input type="text" readonly value="${escapeHTML(url.replace(/^https?:\/\//, ''))}" onclick="this.select()" aria-label="Page link" />
+            <button type="button" class="pz-copy-btn copy-link" data-url="${escapeHTML(url)}">Copy link</button>
+            <a class="pz-copy-btn" href="${escapeHTML(url)}" target="_blank" rel="noopener">Open</a>
           </div>
-          <div class="pp-page-main">
-            <div class="pp-page-title">${escapeHTML(page.title)}</div>
-            <div class="pp-page-meta">
-              <span>${escapeHTML(priceLabel(page))}</span>
-              ${page.allow_quantity ? `<span class="pp-tag">Up to ${page.max_quantity} per order</span>` : ''}
-              ${page.delivery_url ? '' : '<span class="pp-tag" title="Buyers get a receipt but nothing to open — add an “After payment” link.">No delivery link</span>'}
-              ${page.visible ? '' : '<span class="pp-tag off">Unpublished</span>'}
-            </div>
-          </div>
-          <div class="pp-page-actions">
+          <div class="pb-page-actions">
             <button type="button" class="pz-switch toggle-visible${page.visible ? ' on' : ''}" data-id="${page.id}"
               title="${page.visible ? 'Live — anyone with the link can buy' : 'Unpublished — the link shows a not-found page'}"
               aria-label="Published" aria-pressed="${page.visible ? 'true' : 'false'}"></button>
@@ -457,53 +715,56 @@
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
               Edit
             </button>
-            <button type="button" class="pz-card-btn danger remove-page" data-id="${page.id}">
+            <button type="button" class="pz-card-btn pb-delete" data-id="${page.id}">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
-              Delete
+              <span>Delete</span>
             </button>
           </div>
-        </div>
-        <div class="pp-page-bottom pz-magnet-stats">
-          <div class="pz-copy-link">
-            <input type="text" readonly value="${escapeHTML(url.replace(/^https?:\/\//, ''))}" onclick="this.select()" />
-            <button type="button" class="pz-copy-btn copy-link" data-url="${escapeHTML(url)}">Copy link</button>
-            <a class="pz-copy-btn" href="${escapeHTML(url)}" target="_blank" rel="noopener">Open</a>
-          </div>
-          <span class="pz-magnet-stat"><strong>${views}</strong> ${views === 1 ? 'view' : 'views'}</span>
-          <span class="pz-magnet-stat"><strong>${paid}</strong> paid ${paid === 1 ? 'order' : 'orders'}</span>
-          <span class="pz-magnet-stat"><strong>${formatINR(page.revenue || 0)}</strong> earned</span>
-          <span class="pz-magnet-stat"><strong>${rate}</strong> conversion</span>
         </div>
       </div>`;
   }
 
   function renderPages() {
-    pagesList.innerHTML = pages.map(pageCardHTML).join('');
+    pagesList.innerHTML = pages.map(pageRowHTML).join('');
     $('emptyPages').hidden = pages.length > 0;
     $('pageCountLine').textContent = `${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`;
 
     pagesList.querySelectorAll('.edit-page').forEach((btn) => btn.addEventListener('click', () => startEdit(Number(btn.dataset.id))));
-    pagesList.querySelectorAll('.remove-page').forEach((btn) => btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.id);
-      const page = pages.find((p) => p.id === id);
-      if (!page || !window.confirm(`Delete “${page.title}”? Its link stops working. Past orders stay in Orders.`)) return;
-      try {
-        await api(`/dashboard/payment-pages/${id}`, { method: 'DELETE' });
-        pages = pages.filter((p) => p.id !== id);
-        // Codes for just this page are deleted with it (lib/paymentPages.js).
-        coupons = coupons.filter((c) => c.page_id !== id);
-        if (editingId === id) resetBuilder();
-        renderPages();
-        renderCoupons();
-      } catch (err) { /* status shows the error */ }
-    }));
+    // Delete asks twice: the first click turns the button into "Delete?"
+    // for a few seconds, the second one deletes.
+    pagesList.querySelectorAll('.pb-delete').forEach((btn) => {
+      let timer = null;
+      btn.addEventListener('click', async () => {
+        const label = btn.querySelector('span');
+        if (!btn.classList.contains('is-confirming')) {
+          btn.classList.add('is-confirming');
+          label.textContent = 'Delete?';
+          timer = setTimeout(() => {
+            btn.classList.remove('is-confirming');
+            label.textContent = 'Delete';
+          }, 3000);
+          return;
+        }
+        clearTimeout(timer);
+        const id = Number(btn.dataset.id);
+        try {
+          await api(`/dashboard/payment-pages/${id}`, { method: 'DELETE' });
+          pages = pages.filter((p) => p.id !== id);
+          // Codes for just this page are deleted with it (lib/paymentPages.js).
+          coupons = coupons.filter((c) => c.page_id !== id);
+          if (editingId === id) resetBuilder();
+          renderPages();
+          renderCouponPageOptions();
+          renderCoupons();
+        } catch (err) { /* status shows the error */ }
+      });
+    });
     pagesList.querySelectorAll('.toggle-visible').forEach((btn) => btn.addEventListener('click', async () => {
       const id = Number(btn.dataset.id);
       const page = pages.find((p) => p.id === id);
       if (!page) return;
-      const visible = !page.visible;
       try {
-        const updated = await api(`/dashboard/payment-pages/${id}`, { method: 'PATCH', body: JSON.stringify({ visible }) });
+        const updated = await api(`/dashboard/payment-pages/${id}`, { method: 'PATCH', body: JSON.stringify({ visible: !page.visible }) });
         pages = pages.map((p) => (p.id === id ? updated : p));
         renderPages();
       } catch (err) { /* status shows the error */ }
@@ -520,7 +781,7 @@
     }));
   }
 
-  // --- coupons ---------------------------------------------------------------
+  // --- coupons -------------------------------------------------------------------
   const couponForm = $('couponForm');
   const couponError = $('couponFormError');
   const couponPageSelect = $('couponPage');

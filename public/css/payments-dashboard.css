@@ -74,7 +74,7 @@
 .pb-prod-remove svg { width: 14px; height: 14px; }
 .pb-prod-remove:hover { border-color: var(--destructive); color: var(--destructive); }
 
-.pb-toggle { display: inline-flex; flex-wrap: wrap; width: fit-content; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--card); }
+.pb-toggle { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; border: 1px solid var(--border); border-radius: 999px; padding: 2px; background: var(--card); }
 .pb-toggle button {
   border: none; background: none; cursor: pointer; padding: 5px 13px; border-radius: 999px;
   font-family: inherit; font-size: 12px; font-weight: 600; color: var(--muted-foreground);
@@ -322,6 +322,10 @@
 .pp-status-paid { background: var(--success-soft); color: var(--success); }
 .pp-status-pending { background: var(--warning-soft); color: var(--warning); }
 .pp-status-cancelled { background: var(--muted); color: var(--muted-foreground); }
+.pp-ship-todo { background: #ffe3de; color: #c0322a; }
+.pp-ship-done { background: #ece7ff; color: #5b3cc4; }
+.pp-order-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+.pp-order-address { color: #5b3cc4 !important; }
 .pp-order-actions { display: flex; gap: 6px; }
 .pp-order-row.pp-busy { opacity: .5; pointer-events: none; }
 @media (max-width: 760px) {

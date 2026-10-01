@@ -71,35 +71,50 @@
       + [...seen].map(([key, title]) => `<option value="${escapeHTML(key)}">${escapeHTML(title)}</option>`).join('');
   }
 
+  const addressText = (a) => (a ? [a.line, a.city, a.pincode].filter(Boolean).join(', ') : '');
+  const isToShip = (o) => o.status === 'paid' && o.fulfillment === 'unfulfilled';
+
   function orderRowHTML(o) {
-    const qty = o.quantity > 1 ? ` × ${o.quantity}` : '';
     const contact = [o.buyer_email, o.buyer_phone].filter(Boolean).map(escapeHTML).join(' · ');
+    const items = (o.items || []).map((i) => `${escapeHTML(i.title)}${i.qty > 1 ? ` × ${i.qty}` : ''}`).join(', ');
     const detail = [];
     if (o.discount) detail.push(`${escapeHTML(o.coupon_code)} −${formatINR(o.discount)}`);
+    if (o.shipping) detail.push(`shipping ${formatINR(o.shipping)}`);
     if (o.status === 'paid' && PROVIDER_LABEL[o.provider]) detail.push(PROVIDER_LABEL[o.provider]);
-    const actions = o.status === 'pending'
-      ? `<div class="pp-order-actions">
+    const address = addressText(o.ship_address);
+    let actions = '';
+    if (o.status === 'pending') {
+      actions = `<div class="pp-order-actions">
            <button type="button" class="pz-card-btn order-paid" data-id="${o.id}">Mark paid</button>
            <button type="button" class="pz-card-btn danger order-cancel" data-id="${o.id}">Cancel</button>
-         </div>`
+         </div>`;
+    } else if (isToShip(o)) {
+      actions = `<div class="pp-order-actions"><button type="button" class="pz-card-btn order-shipped" data-id="${o.id}">Mark shipped</button></div>`;
+    }
+    const fulfil = o.status === 'paid' && o.fulfillment
+      ? `<span class="pp-status pp-ship-${o.fulfillment === 'shipped' ? 'done' : 'todo'}">${o.fulfillment === 'shipped' ? 'Shipped' : 'To ship'}</span>`
       : '';
     return `
       <div class="pp-order-row" data-id="${o.id}"
-           data-search="${escapeHTML(`${o.buyer_name} ${o.buyer_email} ${o.buyer_phone} ${o.coupon_code}`.toLowerCase())}">
+           data-search="${escapeHTML(`${o.buyer_name} ${o.buyer_email} ${o.buyer_phone} ${o.coupon_code} ${(o.items || []).map((i) => i.title).join(' ')} ${address}`.toLowerCase())}">
         <div class="pp-order-buyer">
           <strong>${escapeHTML(o.buyer_name || o.buyer_email)}</strong>
           <span>${contact}</span>
         </div>
         <div class="pp-order-what">
-          ${escapeHTML(o.page_title)}${qty}
-          <span>#${o.id} · ${escapeHTML(formatDate(o.created_at))}${detail.length ? ` · ${detail.join(' · ')}` : ''}</span>
+          ${items || escapeHTML(o.page_title)}
+          <span>${escapeHTML(o.page_title)} · #${o.id} · ${escapeHTML(formatDate(o.created_at))}${detail.length ? ` · ${detail.join(' · ')}` : ''}</span>
+          ${address ? `<span class="pp-order-address">Ship to: ${escapeHTML(address)}</span>` : ''}
         </div>
         <div class="pp-order-amount">
           <strong>${formatINR(o.total)}</strong>
-          ${o.discount ? `<span><s>${formatINR(o.subtotal)}</s></span>` : ''}
+          ${o.discount ? `<span><s>${formatINR(o.subtotal + (o.shipping || 0))}</s></span>` : ''}
         </div>
         <div class="pp-order-side">
-          <span class="pp-status pp-status-${escapeHTML(o.status)}">${escapeHTML(STATUS_LABEL[o.status] || o.status)}</span>
+          <span class="pp-order-badges">
+            <span class="pp-status pp-status-${escapeHTML(o.status)}">${escapeHTML(STATUS_LABEL[o.status] || o.status)}</span>
+            ${fulfil}
+          </span>
           ${actions}
         </div>
       </div>`;
@@ -117,6 +132,7 @@
     renderStats();
     list.querySelectorAll('.order-paid').forEach((btn) => btn.addEventListener('click', () => settle(Number(btn.dataset.id), 'paid')));
     list.querySelectorAll('.order-cancel').forEach((btn) => btn.addEventListener('click', () => settle(Number(btn.dataset.id), 'cancelled')));
+    list.querySelectorAll('.order-shipped').forEach((btn) => btn.addEventListener('click', () => settle(Number(btn.dataset.id), 'shipped')));
     applyFilters();
   }
 
@@ -133,7 +149,8 @@
     list.querySelectorAll('.pp-order-row').forEach((row) => {
       const o = orders.find((x) => x.id === Number(row.dataset.id));
       const textMatch = !q || (orderNo ? String(o.id) === orderNo : row.dataset.search.includes(q));
-      const match = textMatch && (!status || o.status === status) && (!page || pageKey(o) === page);
+      const statusMatch = !status || (status === 'toship' ? isToShip(o) : o.status === status);
+      const match = textMatch && statusMatch && (!page || pageKey(o) === page);
       row.hidden = !match;
       if (match) shown += 1;
     });
@@ -160,13 +177,15 @@
     searchInput.focus();
   });
 
+  const QUESTIONS = {
+    paid: (o) => `Mark order #${o.id} (${formatINR(o.total)} from ${o.buyer_name}) as paid? Their purchase unlocks and they’re added to your Audience.`,
+    cancelled: (o) => `Cancel order #${o.id}? The buyer’s receipt will show it as cancelled.`,
+    shipped: (o) => `Mark order #${o.id} as shipped? The buyer’s receipt will say it’s on its way.`,
+  };
   async function settle(id, status) {
     const order = orders.find((o) => o.id === id);
     if (!order) return;
-    const question = status === 'paid'
-      ? `Mark order #${id} (${formatINR(order.total)} from ${order.buyer_name}) as paid? Their purchase unlocks and they’re added to your Audience.`
-      : `Cancel order #${id}? The buyer’s receipt will show it as cancelled.`;
-    if (!window.confirm(question)) return;
+    if (!window.confirm(QUESTIONS[status](order))) return;
     const row = list.querySelector(`.pp-order-row[data-id="${id}"]`);
     if (row) row.classList.add('pp-busy');
     setSaving();
@@ -191,6 +210,8 @@
     }
   }
 
+  // "N to ship" on a payment page links here with ?ship=1.
+  if (new URLSearchParams(window.location.search).get('ship')) statusFilter.value = 'toship';
   renderPageOptions();
   render();
 })();
