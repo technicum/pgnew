@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
+<%# The builder, tabs, swatches, cover controls and phone preview are the
+    lead magnet builder's — shared styles, payment-specific bits on top. %>
+<link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/payments-dashboard.css?v=<%= assetVersion %>" />
+</head>
+<body>
+<div class="min-h-screen bg-background">
+
+  <%- include('partials/dashboard-sidebar', { navActive: '/dashboard/payment-pages' }) %>
+
+  <main class="lg:ml-64">
+    <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <div>
+        <p class="text-sm font-semibold text-primary" style="line-height:1;">Payment pages</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
+        <div class="mx-1 h-7 w-px bg-border"></div>
+        <div class="flex items-center gap-2 rounded-md p-1.5">
+          <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+
+      <section class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm font-semibold text-primary">Get paid</p>
+          <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Payment pages</h1>
+          <p class="mt-2 text-sm text-muted-foreground">Sell anything from one link — a session, a course, a template. Buyers land in your <a href="/dashboard/audience" style="color:var(--primary); text-decoration:underline;">Audience</a>, and every sale shows up in <a href="/dashboard/orders" style="color:var(--primary); text-decoration:underline;">Orders</a>.</p>
+        </div>
+      </section>
+
+      <%- include('partials/payment-mode-note', { paymentMode: paymentMode }) %>
+
+      <section class="mt-6 pz-builder">
+        <div class="pz-builder-form rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+          <h2 class="text-lg font-bold" id="builderHeading">Create a payment page</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Set a price, add what buyers get after paying, and share the link.</p>
+
+          <div class="pz-tabs">
+            <button type="button" class="pz-tab-btn active" data-btab="content">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="11" height="4" rx="1"/></svg>
+              Content
+            </button>
+            <button type="button" class="pz-tab-btn" data-btab="pricing">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></svg>
+              Pricing
+            </button>
+            <button type="button" class="pz-tab-btn" data-btab="design">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              Design
+            </button>
+          </div>
+
+          <form id="pageForm" class="mt-4" novalidate>
+
+            <div class="pz-btabpanel active" id="btab-content">
+              <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <input type="text" id="ppTitle" class="pz-field-input" maxlength="200" placeholder="Title — e.g. 1:1 coaching session" style="flex:1.4; min-width:220px;" />
+                <input type="text" id="ppCta" class="pz-field-input" maxlength="60" placeholder="Button text (default: Pay now)" style="flex:1; min-width:160px;" />
+              </div>
+              <textarea id="ppDescription" class="pz-field-input" rows="3" maxlength="1000" placeholder="What are they buying? What’s included? (optional)" style="height:auto; padding:9px 11px; resize:vertical;"></textarea>
+              <div class="pz-builder-option">
+                <label for="ppDeliveryUrl">After payment <span class="pz-option-hint">(optional — a download, course or booking link they unlock)</span></label>
+                <input type="url" id="ppDeliveryUrl" class="pz-field-input" maxlength="500" placeholder="https://…" />
+              </div>
+              <div class="pz-builder-option">
+                <label for="ppSuccessMessage">Thank-you message <span class="pz-option-hint">(optional — shown on the receipt)</span></label>
+                <textarea id="ppSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default." style="height:auto; padding:9px 11px; resize:vertical;"></textarea>
+              </div>
+              <!-- Only while editing: new pages get a link from their title. -->
+              <div class="pz-builder-option" id="ppSlugRow" hidden>
+                <label for="ppSlug">Link</label>
+                <div class="pz-slug-field">
+                  <span><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/</span>
+                  <input type="text" id="ppSlug" maxlength="60" spellcheck="false" autocapitalize="off" />
+                </div>
+                <p class="pz-option-hint">Changing this breaks any link you’ve already shared.</p>
+              </div>
+            </div>
+
+            <div class="pz-btabpanel" id="btab-pricing">
+              <p class="pz-section-label">Price</p>
+              <div class="cover-choice" id="ppPriceTypeChoice">
+                <button type="button" class="cover-opt active" data-price-type="fixed">Fixed price</button>
+                <button type="button" class="cover-opt" data-price-type="flexible">Pay what you want</button>
+              </div>
+              <div class="pp-money-row" id="ppFixedRow">
+                <label class="pp-money">
+                  <span class="pp-money-label">Price</span>
+                  <span class="pp-money-input"><i>₹</i><input type="text" inputmode="decimal" id="ppPrice" class="pz-field-input" placeholder="499" /></span>
+                </label>
+              </div>
+              <div class="pp-money-row" id="ppFlexibleRow" hidden>
+                <label class="pp-money">
+                  <span class="pp-money-label">Minimum</span>
+                  <span class="pp-money-input"><i>₹</i><input type="text" inputmode="decimal" id="ppMinPrice" class="pz-field-input" placeholder="0" /></span>
+                </label>
+                <label class="pp-money">
+                  <span class="pp-money-label">Suggested</span>
+                  <span class="pp-money-input"><i>₹</i><input type="text" inputmode="decimal" id="ppSuggestedPrice" class="pz-field-input" placeholder="299" /></span>
+                </label>
+              </div>
+              <p class="pz-option-hint" id="ppPriceHint">Buyers pay exactly this.</p>
+
+              <div class="pz-divider"></div>
+              <p class="pz-section-label">Quantity</p>
+              <div class="pz-option-row">
+                <button type="button" class="pz-switch" id="ppAllowQuantity" aria-label="Let buyers choose a quantity" aria-pressed="false"></button>
+                <span>Let buyers choose how many <span class="pz-option-hint">(tickets, seats, copies)</span></span>
+              </div>
+              <div class="pp-money-row" id="ppMaxQtyRow" hidden>
+                <label class="pp-money">
+                  <span class="pp-money-label">Max per order</span>
+                  <input type="number" id="ppMaxQuantity" class="pz-field-input" min="1" max="100" value="10" />
+                </label>
+              </div>
+
+              <div class="pz-divider"></div>
+              <p class="pz-section-label">Checkout details</p>
+              <p class="pz-section-sub">Name and email are always asked for — the receipt goes to the email.</p>
+              <div class="pz-option-row">
+                <button type="button" class="pz-switch on" id="ppCollectPhone" aria-label="Ask for a phone number" aria-pressed="true"></button>
+                <span>Phone number</span>
+              </div>
+            </div>
+
+            <div class="pz-btabpanel" id="btab-design">
+              <p class="pz-section-label">Accent color</p>
+              <p class="pz-section-sub">Used for the button, badge and background on the page.</p>
+              <div class="swatch-row" id="ppSwatchRow">
+                <button type="button" class="swatch active" data-accent="#1261ef" style="background:#1261ef;" aria-label="Blue"></button>
+                <button type="button" class="swatch" data-accent="#c0322a" style="background:#ff6c62;" aria-label="Coral"></button>
+                <button type="button" class="swatch" data-accent="#12733f" style="background:#2fae6b;" aria-label="Green"></button>
+                <button type="button" class="swatch" data-accent="#7048e8" style="background:#7048e8;" aria-label="Violet"></button>
+                <button type="button" class="swatch" data-accent="#07134f" style="background:#07134f;" aria-label="Navy"></button>
+                <span class="swatch swatch-custom" title="Custom color">
+                  <input type="color" id="ppCustomColor" value="#1261ef" />
+                </span>
+              </div>
+              <div class="pz-divider"></div>
+              <p class="pz-section-label">Cover</p>
+              <p class="pz-section-sub">The banner across the top, with your title on it.</p>
+              <div class="cover-choice cover-choice-wrap" id="ppCoverChoice">
+                <button type="button" class="cover-opt active" data-cover="art">Artwork</button>
+                <button type="button" class="cover-opt" data-cover="image">Image</button>
+                <button type="button" class="cover-opt" data-cover="video">Video</button>
+                <button type="button" class="cover-opt" data-cover="color">Color</button>
+                <button type="button" class="cover-opt" data-cover="none">None</button>
+              </div>
+              <div class="pz-cover-media" id="ppCoverImagePanel" hidden>
+                <div class="pz-cover-upload">
+                  <label class="pz-card-btn pz-upload-btn">
+                    <input type="file" id="ppCoverImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M5 20h14"/></svg>
+                    <span>Upload image</span>
+                  </label>
+                  <button type="button" class="pz-cover-clear" data-clear="image">Remove</button>
+                </div>
+                <input type="text" id="ppCoverImage" class="pz-field-input pz-brand-input" maxlength="500" placeholder="…or paste an image link (https://…)" />
+                <p class="pz-option-hint">JPG, PNG, WebP or GIF, up to 5 MB. 1500 × 750 fits the banner exactly.</p>
+              </div>
+              <div class="pz-cover-media" id="ppCoverVideoPanel" hidden>
+                <div class="pz-cover-upload">
+                  <label class="pz-card-btn pz-upload-btn">
+                    <input type="file" id="ppCoverVideoFile" accept="video/mp4,video/webm" hidden />
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M5 20h14"/></svg>
+                    <span>Upload video</span>
+                  </label>
+                  <button type="button" class="pz-cover-clear" data-clear="video">Remove</button>
+                </div>
+                <input type="text" id="ppCoverVideo" class="pz-field-input pz-brand-input" maxlength="500" placeholder="…or paste a link to an .mp4 (https://…)" />
+                <p class="pz-option-hint">MP4 or WebM, up to 30 MB. Plays muted on a loop.</p>
+              </div>
+              <p class="pz-field-error" id="ppCoverError"></p>
+              <div class="pz-cover-color" id="ppCoverColorRow" hidden>
+                <span class="swatch swatch-custom" title="Banner background color">
+                  <input type="color" id="ppCoverColor" value="#0a2f9e" />
+                </span>
+                <div>
+                  <p class="pz-cover-color-label">Background color</p>
+                  <p class="pz-option-hint" id="ppCoverColorHint">Matches your accent color.</p>
+                </div>
+                <button type="button" class="pz-cover-clear" id="ppCoverColorReset" hidden>Use accent</button>
+              </div>
+            </div>
+
+            <div style="margin-top:16px; display:flex; align-items:center; gap:10px;">
+              <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4">
+                <svg id="builderSubmitIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                <span id="builderSubmitLabel">Create payment page</span>
+              </button>
+              <button type="button" class="pz-card-btn" id="builderCancelBtn" hidden style="height:40px; padding:0 14px; font-size:13.5px;">Cancel</button>
+            </div>
+          </form>
+          <p class="pz-field-error" id="pageFormError"></p>
+        </div>
+
+        <div class="pz-builder-preview">
+          <div style="position:sticky; top:104px;">
+            <div class="flex items-center justify-between" style="margin-bottom:14px;">
+              <h2 class="text-sm font-bold">Live preview</h2>
+            </div>
+            <div class="pz-magnet-preview-frame" id="ppPreviewFrame">
+              <div class="pz-magnet-preview-chrome">
+                <span></span><span></span><span></span>
+                <span class="pz-magnet-preview-url" id="ppPreviewUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/…</span>
+              </div>
+              <div class="pz-magnet-preview-screen">
+                <div class="pz-magnet-preview-visual">
+                  <div class="pz-magnet-preview-brand"><%= user.name %></div>
+                  <div class="pz-magnet-preview-card">
+                    <div class="pz-magnet-preview-cover" id="ppPreviewCover" aria-hidden="true">
+                      <img id="ppPreviewCoverImage" alt="" style="display:none;" />
+                      <video id="ppPreviewCoverVideo" muted loop autoplay playsinline style="display:none;"></video>
+                      <svg id="ppPreviewCoverArt" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M-40 60 C 140 230, 380 200, 640 -20 L 640 -40 L -40 -40 Z" fill="rgba(4,8,30,.86)"/>
+                        <path d="M-40 80 C 140 250, 390 215, 640 0 L 640 40 C 400 250, 120 290, -40 140 Z" fill="#fff" fill-opacity=".28"/>
+                        <path d="M-40 150 C 160 280, 420 250, 640 70 L 640 130 C 430 290, 170 300, -40 215 Z" fill="#fff" fill-opacity=".16"/>
+                        <path d="M70 215 C 100 130, 160 70, 240 30" stroke="#fff" stroke-opacity=".38" stroke-width="22" stroke-linecap="round" fill="none"/>
+                      </svg>
+                      <div class="pz-magnet-preview-head">
+                        <span class="pz-magnet-preview-kicker"><span></span><b id="ppPreviewPriceLabel">₹0</b></span>
+                        <h3 id="ppPreviewTitle">Your payment page title</h3>
+                      </div>
+                    </div>
+                    <div class="pz-magnet-preview-form">
+                      <p class="pp-preview-desc" id="ppPreviewDesc" hidden></p>
+                      <div class="pz-magnet-preview-field" id="ppPreviewAmount" hidden>
+                        <span class="pz-magnet-preview-field-label">Your amount<i>*</i></span>
+                        <div class="pz-magnet-preview-input pp-preview-amount">₹ <b id="ppPreviewAmountValue">0</b></div>
+                      </div>
+                      <div class="pz-magnet-preview-field" id="ppPreviewQty" hidden>
+                        <span class="pz-magnet-preview-field-label">Quantity</span>
+                        <div class="pp-preview-qty"><span>−</span><b>1</b><span>+</span></div>
+                      </div>
+                      <div class="pz-magnet-preview-field">
+                        <span class="pz-magnet-preview-field-label">Your name<i>*</i></span>
+                        <div class="pz-magnet-preview-input">Full name</div>
+                      </div>
+                      <div class="pz-magnet-preview-field">
+                        <span class="pz-magnet-preview-field-label">Your email<i>*</i></span>
+                        <div class="pz-magnet-preview-input">you@example.com</div>
+                      </div>
+                      <div class="pz-magnet-preview-field" id="ppPreviewPhone">
+                        <span class="pz-magnet-preview-field-label">Your phone number<i>*</i></span>
+                        <div class="pz-magnet-preview-input">Phone number</div>
+                      </div>
+                      <p class="pp-preview-coupon">+ Have a coupon code?</p>
+                      <div class="pp-preview-total"><span>Total</span><b id="ppPreviewTotal">₹0</b></div>
+                      <div class="pz-magnet-preview-btn" id="ppPreviewCta">Pay now · ₹0</div>
+                    </div>
+                    <div class="pz-magnet-preview-foot">Secure checkout. Your details go only to <%= user.name %>.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
+        <div class="flex items-center justify-between border-b border-border p-5 md:px-6">
+          <div>
+            <h2 class="text-lg font-bold">Your payment pages</h2>
+            <p class="mt-1 text-sm text-muted-foreground" id="pageCountLine"></p>
+          </div>
+        </div>
+        <div id="pagesList"><!-- injected --></div>
+        <div id="emptyPages" class="flex flex-col items-center justify-center gap-3 p-6" style="padding:56px 24px; text-align:center;" hidden>
+          <div class="grid size-10 place-items-center rounded-md bg-muted text-muted-foreground">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>
+          </div>
+          <p class="text-sm font-semibold">No payment pages yet</p>
+          <p class="text-sm text-muted-foreground" style="max-width:360px;">Create one above, then share the link anywhere — Instagram bio, WhatsApp, email.</p>
+        </div>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm" id="coupons">
+        <div class="border-b border-border p-5 md:px-6">
+          <h2 class="text-lg font-bold">Coupon codes</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Discounts buyers enter at checkout. A code counts as used once its order is paid.</p>
+          <form id="couponForm" class="pp-coupon-form" novalidate>
+            <input type="text" id="couponCode" class="pz-field-input" maxlength="30" placeholder="Code, e.g. LAUNCH20" autocapitalize="characters" spellcheck="false" />
+            <div class="pp-coupon-discount">
+              <input type="text" inputmode="decimal" id="couponValue" class="pz-field-input" placeholder="20" aria-label="Discount amount" />
+              <select id="couponType" class="pz-field-input" aria-label="Discount type">
+                <option value="percent">% off</option>
+                <option value="flat">₹ off</option>
+              </select>
+            </div>
+            <select id="couponPage" class="pz-field-input" aria-label="Applies to">
+              <option value="">All payment pages</option>
+            </select>
+            <input type="number" id="couponMaxUses" class="pz-field-input" min="1" placeholder="Max uses (optional)" />
+            <input type="date" id="couponExpires" class="pz-field-input" aria-label="Expiry date (optional)" title="Expiry date (optional)" />
+            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 px-4">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+              Add code
+            </button>
+          </form>
+          <p class="pz-field-error" id="couponFormError"></p>
+        </div>
+        <div id="couponsList"><!-- injected --></div>
+        <p class="pp-empty-line" id="emptyCoupons" hidden>No coupon codes yet.</p>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  window.__PZ_PAYMENT_PAGES__ = <%- JSON.stringify(pages).replace(/</g, '\\u003c') %>;
+  window.__PZ_COUPONS__ = <%- JSON.stringify(coupons).replace(/</g, '\\u003c') %>;
+  window.__PZ_STORE_URL__ = <%- JSON.stringify(storeUrlFor(user.handle)) %>;
+</script>
+<script src="/js/payment-pages.js?v=<%= assetVersion %>"></script>
+</body>
+</html>
