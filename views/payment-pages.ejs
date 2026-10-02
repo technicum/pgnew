@@ -67,7 +67,29 @@
             <!-- Page tab -->
             <div class="pb-panel active" id="tab-page">
               <input type="text" id="ppTitle" class="pz-field-input" maxlength="200" placeholder="Page headline — e.g. Complete Starter Bundle" />
-              <textarea id="ppDescription" class="pz-field-input" rows="2" maxlength="1000" placeholder="A line about what’s included (optional)"></textarea>
+              <textarea id="ppDescription" class="pz-field-input" rows="2" maxlength="1000" placeholder="Short description — a line or two under the headline (optional)"></textarea>
+              <div class="pb-option">
+                <label for="ppAbout" class="pb-label">Full description <span class="pz-option-hint">(optional — shown as an “About” section on the page)</span></label>
+                <div class="pb-rich-editor">
+                  <div class="pb-rich-toolbar" role="toolbar" aria-label="Formatting">
+                    <button type="button" data-format="heading" title="Heading">H</button>
+                    <button type="button" data-format="bold" title="Bold"><b>B</b></button>
+                    <button type="button" data-format="italic" title="Italic"><i>I</i></button>
+                    <span class="pb-rich-sep" aria-hidden="true"></span>
+                    <button type="button" data-format="bullet" title="Bullet list">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+                    </button>
+                    <button type="button" data-format="numbered" title="Numbered list">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M4 4h1v4M4 8h2"/><path d="M4 14h2l-2 4h2"/></svg>
+                    </button>
+                    <button type="button" data-format="link" title="Link">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    </button>
+                  </div>
+                  <textarea id="ppAbout" class="pz-field-input" rows="7" maxlength="5000" placeholder="What’s included, who it’s for, what happens after they pay…&#10;&#10;## What you’ll get&#10;- 8 modules, 12 lessons&#10;- **Lifetime** access"></textarea>
+                </div>
+                <p class="pz-option-hint">Use the buttons, or type <code>## Heading</code>, <code>- list item</code>, <code>**bold**</code>, <code>*italic*</code> and <code>[text](https://…)</code>.</p>
+              </div>
               <div class="pb-note">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 <span>Add your products in the <strong>Products</strong> tab. The shipping-address section only appears on the checkout page if at least one product there is Physical.</span>
@@ -190,6 +212,10 @@
               </div>
               <p class="pb-preview-desc" id="ppPreviewDesc" hidden></p>
               <div class="pb-preview-items" id="ppPreviewItems"></div>
+              <div class="pb-preview-about" id="ppPreviewAbout" hidden>
+                <span class="pb-preview-label">About</span>
+                <div class="pb-preview-rich" id="ppPreviewAboutBody"></div>
+              </div>
               <div class="pb-preview-body">
                 <span class="pb-preview-label">Buyer details</span>
                 <div class="pb-preview-input">Full name</div>

@@ -21,6 +21,57 @@
   function escapeHTML(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
+  // The full description's small format → safe HTML, for the live
+  // preview. A copy of renderRichText in lib/richText.js (which renders
+  // the real page) — keep the two in step.
+  function richInline(escaped) {
+    return escaped
+      .replace(/\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s()]+)\)/g, '<a href="$2" target="_blank" rel="nofollow noopener">$1</a>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>');
+  }
+  function renderRichText(raw) {
+    const text = String(raw || '').replace(/\r\n?/g, '\n').slice(0, 5000).trim();
+    if (!text) return '';
+    const out = [];
+    let list = null;
+    let para = [];
+    const flushPara = () => {
+      if (para.length) out.push(`<p>${para.map(richInline).join('<br>')}</p>`);
+      para = [];
+    };
+    const flushList = () => {
+      if (list) out.push(`<${list.tag}>${list.items.map((i) => `<li>${richInline(i)}</li>`).join('')}</${list.tag}>`);
+      list = null;
+    };
+    text.split('\n').forEach((rawLine) => {
+      const line = escapeHTML(rawLine.trimEnd());
+      const heading = line.match(/^#{2,3}\s+(.+)$/);
+      const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+      const numbered = line.match(/^\s*\d{1,3}[.)]\s+(.+)$/);
+      if (!line.trim()) {
+        flushPara();
+        flushList();
+      } else if (heading) {
+        flushPara();
+        flushList();
+        out.push(`<h3>${richInline(heading[1])}</h3>`);
+      } else if (bullet || numbered) {
+        flushPara();
+        const tag = bullet ? 'ul' : 'ol';
+        if (list && list.tag !== tag) flushList();
+        if (!list) list = { tag, items: [] };
+        list.items.push((bullet || numbered)[1]);
+      } else {
+        flushList();
+        para.push(line);
+      }
+    });
+    flushPara();
+    flushList();
+    return out.join('');
+  }
+
   function shadeHex(hex, amount) {
     const num = parseInt(hex.slice(1), 16);
     const clamp = (n) => Math.min(255, Math.max(0, n));
@@ -125,6 +176,7 @@
   const formError = $('pageFormError');
   const titleInput = $('ppTitle');
   const descInput = $('ppDescription');
+  const aboutInput = $('ppAbout');
   const successInput = $('ppSuccessMessage');
   const slugInput = $('ppSlug');
   const coverImageInput = $('ppCoverImage');
@@ -145,7 +197,7 @@
   let nextPid = 1;
   function blankProduct(seed) {
     return Object.assign({
-      id: nextPid++, title: '', type: 'digital', pricing: 'fixed',
+      id: nextPid++, title: '', description: '', type: 'digital', pricing: 'fixed',
       price: '', compareAt: '', maxQty: '', suggested: '', minimum: '',
       fileUrl: '', stock: '', weight: '', shipFee: '',
       previewQty: 1, previewAmount: null,
@@ -156,6 +208,7 @@
     return blankProduct({
       id: p.id,
       title: p.title || '',
+      description: p.description || '',
       type: p.type,
       pricing: p.type === 'coffee' ? 'qty' : p.pricing,
       price: rupeesText(p.price),
@@ -215,7 +268,8 @@
         <button type="button" class="pb-prod-remove" data-remove aria-label="Remove product ${index + 1}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
-      </div>`;
+      </div>
+      <textarea class="pz-field-input pb-prod-desc" data-field="description" rows="2" maxlength="300" placeholder="Short description (optional) — shown with this product on the page" aria-label="Product ${index + 1} description">${escapeHTML(p.description)}</textarea>`;
 
     if (p.type === 'coffee') {
       return `
@@ -339,6 +393,9 @@
     const desc = descInput.value.trim();
     $('ppPreviewDesc').textContent = desc;
     $('ppPreviewDesc').hidden = !desc;
+    const aboutHtml = renderRichText(aboutInput.value);
+    $('ppPreviewAboutBody').innerHTML = aboutHtml;
+    $('ppPreviewAbout').hidden = !aboutHtml;
 
     const items = $('ppPreviewItems');
     items.innerHTML = products.map((p) => {
@@ -349,6 +406,7 @@
           <div class="pb-preview-main">
             <div class="pb-preview-title">${escapeHTML(p.title.trim() || (p.type === 'coffee' ? 'Buy me a coffee' : 'Untitled product'))}</div>
             <div class="pb-preview-type">${typeLabel(p)}${p.pricing === 'pwyw' ? ' · name your price' : ''}</div>
+            ${p.description.trim() ? `<div class="pb-preview-pdesc">${escapeHTML(p.description.trim())}</div>` : ''}
             ${previewControlHTML(p)}
           </div>
           <div class="pb-preview-price">${compare}<b>${formatINR(lineAmount(p))}</b></div>
@@ -408,7 +466,64 @@
       if (row) row.textContent = formatINR(lineAmount(p));
     });
   }
-  [titleInput, descInput, slugInput].forEach((el) => el.addEventListener('input', syncPreview));
+  [titleInput, descInput, aboutInput, slugInput].forEach((el) => el.addEventListener('input', syncPreview));
+
+  // Full description toolbar: each button wraps the selection (or the
+  // current line) in the small format lib/richText.js understands.
+  function editAbout(format) {
+    const el = aboutInput;
+    const { selectionStart: start, selectionEnd: end, value } = el;
+    const selected = value.slice(start, end);
+    let before = value.slice(0, start);
+    let after = value.slice(end);
+    let insert;
+    let selFrom;
+    let selTo;
+    const wrap = (mark, fallback) => {
+      const inner = selected || fallback;
+      insert = `${mark}${inner}${mark}`;
+      selFrom = before.length + mark.length;
+      selTo = selFrom + inner.length;
+    };
+    // Line formats apply to every selected line, from the start of the first.
+    const prefixLines = (makePrefix, fallback) => {
+      // Whole lines: from the start of the first selected line to the end
+      // of the last, so a bare cursor formats the line it's on.
+      const lineStart = before.lastIndexOf('\n') + 1;
+      const lead = before.slice(lineStart);
+      before = before.slice(0, lineStart);
+      const nl = after.indexOf('\n');
+      const tail = nl === -1 ? after : after.slice(0, nl);
+      after = after.slice(tail.length);
+      const lines = `${lead}${selected}${tail}`.split('\n');
+      const body = lines.map((l, i) => `${makePrefix(i)}${l.replace(/^(#{2,3}\s+|\s*[-*]\s+|\s*\d{1,3}[.)]\s+)/, '') || (lines.length === 1 ? fallback : '')}`).join('\n');
+      insert = body;
+      selFrom = before.length;
+      selTo = selFrom + body.length;
+    };
+    if (format === 'bold') wrap('**', 'bold text');
+    else if (format === 'italic') wrap('*', 'italic text');
+    else if (format === 'heading') prefixLines(() => '## ', 'Heading');
+    else if (format === 'bullet') prefixLines(() => '- ', 'List item');
+    else if (format === 'numbered') prefixLines((i) => `${i + 1}. `, 'List item');
+    else if (format === 'link') {
+      const url = window.prompt('Link address (https://…)', 'https://');
+      if (!url || !/^(https?:\/\/|mailto:)\S+$/i.test(url.trim())) return;
+      const label = selected || 'link text';
+      insert = `[${label}](${url.trim()})`;
+      selFrom = before.length + 1;
+      selTo = selFrom + label.length;
+    } else return;
+    el.value = before + insert + after;
+    el.focus();
+    el.setSelectionRange(selFrom, selTo);
+    syncPreview();
+  }
+  document.querySelectorAll('.pb-rich-toolbar [data-format]').forEach((btn) => {
+    // mousedown keeps the textarea's selection while the button is pressed.
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', () => editAbout(btn.dataset.format));
+  });
 
   // --- design tab: accent + cover ------------------------------------------------
   function setAccent(color) {
@@ -534,6 +649,7 @@
   function loadIntoBuilder(page) {
     titleInput.value = page ? page.title : '';
     descInput.value = page ? page.description : '';
+    aboutInput.value = page ? page.about || '' : '';
     successInput.value = page ? page.success_message : '';
     slugInput.value = page ? page.slug : '';
     nextPid = 1;
@@ -588,6 +704,7 @@
       const title = p.title.trim();
       if (!title && p.type !== 'coffee') return bad(`Give ${name} a title.`, 'title');
       const item = { id: p.id, title: title || 'Buy me a coffee', type: p.type, pricing: p.type === 'coffee' ? 'qty' : p.pricing };
+      if (p.description.trim()) item.description = p.description.trim();
 
       if (item.pricing === 'pwyw') {
         const suggested = toPaise(p.suggested);
@@ -650,6 +767,7 @@
     const payload = {
       title: titleInput.value,
       description: descInput.value,
+      about: aboutInput.value,
       successMessage: successInput.value,
       products: collected.products,
       accentColor: accent,

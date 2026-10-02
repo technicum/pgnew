@@ -105,6 +105,7 @@
           ${items || escapeHTML(o.page_title)}
           <span>${escapeHTML(o.page_title)} · #${o.id} · ${escapeHTML(formatDate(o.created_at))}${detail.length ? ` · ${detail.join(' · ')}` : ''}</span>
           ${address ? `<span class="pp-order-address">Ship to: ${escapeHTML(address)}</span>` : ''}
+          ${o.buyer_note ? `<span class="pp-order-note">“${escapeHTML(o.buyer_note)}”</span>` : ''}
         </div>
         <div class="pp-order-amount">
           <strong>${formatINR(o.total)}</strong>

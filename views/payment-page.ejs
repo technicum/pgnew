@@ -9,174 +9,338 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/css/style.css" />
-<link rel="stylesheet" href="/css/auth.css" />
-<link rel="stylesheet" href="/css/lead-magnet.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/payment-page.css?v=<%= assetVersion %>" />
 </head>
 <%
-// Icons for each product type, shared with the receipt.
-var ppIcons = {
-  digital: '<path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+// Three designs (lib/paymentStorefront.js layoutFor), all inside one
+// bounded shell: 'single' and 'bundle' are a product card with a checkout
+// card beside it, 'coffee' a single support card.
+var ICONS = {
+  digital: '<path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/>',
   physical: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>',
   coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>',
+  card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  warn: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
 };
-var ppTypeLabel = { digital: 'Instant download', physical: 'Ships to you', coffee: 'Support' };
-var ppLine = {};
-q.lines.forEach(function (l) { ppLine[l.id] = l; });
-var ppKicker = 'Secure checkout';
+var svg = function (name, size) {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="' + (size || 16) + '" height="' + (size || 16) + '" aria-hidden="true">' + ICONS[name] + '</svg>';
+};
+var TYPE_LABEL = { digital: 'Instant download', physical: 'Ships to you', coffee: 'Support' };
+var line = {};
+q.lines.forEach(function (l) { line[l.id] = l; });
+var initials = owner.name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '?';
+var physical = page.products.filter(function (p) { return p.type === 'physical'; });
+var product = page.products[0];
+var stockOf = function (p) { return p.type === 'physical' && p.stock !== null && p.stock !== undefined ? p.stock : null; };
+var isSoldOut = function (p) { var s = stockOf(p); return s !== null && s < 1; };
+var listNames = function (names) { return names.length < 2 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]; };
+var hasMedia = page.show_cover && ['image', 'video', 'color'].indexOf(page.cover_type) !== -1
+  && (page.cover_type === 'color' || (page.cover_type === 'image' ? page.cover_image_url : page.cover_video_url));
+
+// Pills under the title — only things that are true of these products.
+var tags = [];
+var saving = page.products.reduce(function (sum, p) { return sum + (p.pricing === 'fixed' && p.compareAt ? p.compareAt - p.price : 0); }, 0);
+if (layout === 'single') {
+  if (product.type === 'digital') tags.push('Instant access');
+  if (product.type === 'physical') tags.push(product.shipFee ? 'Ships to you' : 'Free shipping');
+  if (product.pricing === 'pwyw') tags.push('Name your price');
+  if (product.pricing === 'qty' && product.maxQty) tags.push('Up to ' + product.maxQty + ' per order');
+  if (saving) tags.push('Save ' + formatINR(saving));
+  if (stockOf(product) !== null && stockOf(product) > 0 && stockOf(product) <= 10) tags.push('Only ' + stockOf(product) + ' left');
+} else {
+  if (saving) tags.push('Save ' + formatINR(saving));
+  tags.push('One checkout');
+  if (physical.length) tags.push(physical.length === page.products.length ? 'Ships to you' : 'Includes delivery');
+  else tags.push('Instant access');
+}
+var TAG_TONES = ['', 'lime', 'coral'];
 %>
-<body class="lm-page" style="<%= lmThemeStyle(page) %>">
+<body class="pl-page" style="<%= lmThemeStyle(page) %>">
 
-<main class="lm-shell">
-
-  <div class="lm-head">
-    <a href="/" class="logo lm-brand"><%= owner.name %></a>
+<%# ---------- pieces shared by the layouts ---------- %>
+<% var shellTop = function () { %>
+  <div class="pl-shell-top">
+    <a href="/" class="pl-logo"><span class="pl-logo-mark"><svg viewBox="0 0 24 24" fill="none" width="13" height="13" aria-hidden="true"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span><%= siteName %></a>
+    <span class="pl-shell-secure"><%- svg('lock', 12) %>Secure checkout</span>
   </div>
+<% }; %>
+<% var notices = function () { %>
+  <% if (mode === 'test') { %>
+  <p class="pl-test-note"><%- svg('warn', 14) %>Test mode — no real payment is taken.</p>
+  <% } %>
+  <% if (error) { %><div class="pl-error" role="alert"><%= error %></div><% } %>
+<% }; %>
+<% var buyerFields = function () { %>
+  <div class="pl-field">
+    <label for="name">Your name</label>
+    <input type="text" id="name" name="name" value="<%= values.name %>" placeholder="Full name" autocomplete="name" required />
+  </div>
+  <div class="pl-field">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" value="<%= values.email %>" placeholder="you@example.com" autocomplete="email" required />
+  </div>
+<% }; %>
+<% var qtyStepper = function (p, compact) {
+     var max = maxQtyFor(p); var chosen = values.items[p.id] || {}; %>
+  <div class="pp-qty<%= compact ? ' pp-qty-sm' : '' %>" data-max="<%= Math.max(1, max) %>">
+    <button type="button" class="pp-qty-btn" data-step="-1" aria-label="One fewer <%= p.title %>">−</button>
+    <input type="number" name="qty_<%= p.id %>" value="<%= chosen.qty || 1 %>" min="1" max="<%= Math.max(1, max) %>" inputmode="numeric" aria-label="Quantity of <%= p.title %>"<%= isSoldOut(p) ? ' disabled' : '' %> />
+    <button type="button" class="pp-qty-btn" data-step="1" aria-label="One more <%= p.title %>">+</button>
+  </div>
+<% }; %>
+<% var amountInput = function (p, compact) { var chosen = values.items[p.id] || {}; %>
+  <div class="pp-amount<%= compact ? ' pp-amount-sm' : '' %>">
+    <span aria-hidden="true">₹</span>
+    <input type="text" inputmode="decimal" name="amount_<%= p.id %>" value="<%= chosen.amount === undefined ? '' : chosen.amount %>" autocomplete="off" aria-label="Your amount for <%= p.title %>" />
+  </div>
+  <p class="pl-hint"><%= p.minimum ? 'Min ' + formatINR(p.minimum) : 'Any amount' %></p>
+<% }; %>
+<% var shippingFields = function () { %>
+  <div class="pl-ship-note">
+    <%- svg('info', 14) %>
+    <span><%= physical.length === page.products.length
+      ? (page.products.length === 1 ? 'This ships to you — add your address below.' : 'Everything here ships to you — add your address below.')
+      : (physical.length === 1 ? 'The ' + physical[0].title + ' ships to you — add your address below.' : listNames(physical.map(function (p) { return p.title; })) + ' ship to you — add your address below.') %></span>
+  </div>
+  <div class="pl-field">
+    <label for="address">Address line</label>
+    <input type="text" id="address" name="address" value="<%= values.address %>" placeholder="House no, street, area" autocomplete="street-address" required />
+  </div>
+  <div class="pl-field-row">
+    <div class="pl-field">
+      <label for="city">City</label>
+      <input type="text" id="city" name="city" value="<%= values.city %>" placeholder="City" autocomplete="address-level2" required />
+    </div>
+    <div class="pl-field">
+      <label for="pincode">Pincode</label>
+      <input type="text" id="pincode" name="pincode" value="<%= values.pincode %>" placeholder="Pincode" inputmode="numeric" maxlength="6" autocomplete="postal-code" required />
+    </div>
+  </div>
+  <div class="pl-field">
+    <label for="phone">Phone <span class="pl-optional">(optional, for delivery updates)</span></label>
+    <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="Phone number" autocomplete="tel" />
+  </div>
+<% }; %>
+<% var couponBox = function () { %>
+  <details class="pp-coupon"<%= values.coupon ? ' open' : '' %>>
+    <summary>Have a coupon code?</summary>
+    <div class="pp-coupon-row">
+      <input type="text" id="coupon" name="coupon" value="<%= values.coupon %>" placeholder="Enter code" autocomplete="off" autocapitalize="characters" aria-label="Coupon code" />
+      <button type="button" class="pp-coupon-apply" id="couponApply">Apply</button>
+    </div>
+    <p class="pp-coupon-msg" id="couponMsg" aria-live="polite"><% if (q.coupon) { %><%= q.coupon.code %> applied — <%= q.coupon.label %><% } %></p>
+  </details>
+<% }; %>
+<% var summaryBox = function (alwaysShow) {
+     var needed = alwaysShow || q.discount > 0 || q.hasPhysical; %>
+  <div class="pl-summary" id="paySummary" data-always="<%= alwaysShow ? 1 : 0 %>"<%= needed ? '' : ' hidden' %> aria-live="polite">
+    <div class="pl-summary-line"><span>Subtotal</span><span id="sumSubtotal"><%= q.display.subtotal %></span></div>
+    <div class="pl-summary-line" id="sumDiscountRow"<%= q.discount ? '' : ' hidden' %>><span>Discount <b id="sumCoupon"><%= q.coupon ? q.coupon.code : '' %></b></span><span id="sumDiscount">−<%= q.display.discount %></span></div>
+    <% if (q.hasPhysical) { %><div class="pl-summary-line"><span>Shipping</span><span id="sumShipping"><%= q.display.shipping %></span></div><% } %>
+    <div class="pl-summary-line pl-total"><span>Total</span><span id="sumTotal"><%= q.display.total %></span></div>
+  </div>
+<% }; %>
+<% var aboutCard = function (heading) { %>
+  <% if (aboutHtml) { %>
+  <%# The page's long description — lib/richText.js has already escaped it and allows only a few safe tags. %>
+  <section class="pl-card pl-about" aria-label="<%= heading %>">
+    <div class="pl-card-pad">
+      <h2><%= heading %></h2>
+      <div class="pl-rich"><%- aboutHtml %></div>
+    </div>
+  </section>
+  <% } %>
+<% }; %>
+<% var payButton = function (label, extraClass) { %>
+  <%# Problems with the amounts chosen (below a minimum, over stock) as you type — the server says the same again on submit. %>
+  <p class="pl-live-error" id="liveError" role="status" hidden></p>
+  <button type="submit" class="pl-btn<%= extraClass ? ' ' + extraClass : '' %>" id="payButton" data-label="<%= label %>">
+    <%- svg('card', 16) %>
+    <span id="payButtonText"><%= label %> <%= q.display.total %></span>
+  </button>
+  <p class="pl-secure"><%- svg('lock', 13) %>Secure checkout</p>
+<% }; %>
 
-  <article class="lm-card">
-    <% if (page.show_cover) { %>
-    <header class="lm-hero">
-      <%- include('partials/lm-banner', { magnet: page }) %>
-      <div class="lm-hero-text">
-        <span class="lm-kicker"><span class="dot"></span><%= ppKicker %></span>
-        <h1><%= page.title %></h1>
+<form method="POST" action="/pay/<%= page.slug %>" id="payForm" novalidate data-quote-url="/pay/<%= page.slug %>/quote">
+
+<% if (layout === 'coffee') {
+     var coffee = product; var chosenCoffee = values.items[coffee.id] || {};
+     var custom = chosenCoffee.amount !== undefined && chosenCoffee.amount !== '';
+     var qtyNow = Number(chosenCoffee.qty) || 3; %>
+  <%# ---------- buy me a coffee ---------- %>
+  <main class="pl-shell pl-shell-coffee">
+    <% shellTop(); %>
+    <div class="pl-card">
+      <div class="pl-card-pad pl-coffee-pad">
+        <div class="pl-creator">
+          <span class="pl-avatar" aria-hidden="true"><%= initials %></span>
+          <span><strong><%= owner.name %></strong> · @<%= owner.handle %></span>
+        </div>
+        <div class="pl-coffee-icon"><%- svg('coffee', 24) %></div>
+        <h1 class="pl-coffee-title"><%= page.title %></h1>
+        <p class="pl-coffee-desc"><%= page.description || 'Optional, always appreciated.' %></p>
+        <% notices(); %>
+
+        <div class="pl-coffee-presets" data-coffee="<%= coffee.id %>">
+          <% [1, 3, 5].forEach(function (n) { %>
+          <button type="button" class="pl-coffee-preset<%= n === 3 ? ' popular' : '' %><%= !custom && qtyNow === n ? ' active' : '' %>" data-qty="<%= n %>" aria-pressed="<%= !custom && qtyNow === n ? 'true' : 'false' %>">
+            <span class="cups" aria-hidden="true"><%= '☕'.repeat(n) %></span>
+            <span class="amt"><%= formatINR(coffee.price * n) %></span>
+            <span class="pl-sr"><%= n %> <%= n === 1 ? 'coffee' : 'coffees' %></span>
+          </button>
+          <% }) %>
+          <button type="button" class="pl-coffee-custom<%= custom ? ' active' : '' %>" data-custom aria-pressed="<%= custom ? 'true' : 'false' %>"><span aria-hidden="true">✏️</span>Custom</button>
+        </div>
+        <input type="hidden" name="qty_<%= coffee.id %>" value="<%= qtyNow %>" />
+        <div class="pl-coffee-amount"<%= custom ? '' : ' hidden' %>>
+          <span>₹</span>
+          <input type="text" inputmode="decimal" name="amount_<%= coffee.id %>" value="<%= custom ? chosenCoffee.amount : '' %>" placeholder="Enter an amount" aria-label="Your amount"<%= custom ? '' : ' disabled' %> />
+        </div>
+
+        <% buyerFields(); %>
+        <% payButton('Support with', 'pl-btn-dark'); %>
       </div>
-    </header>
-    <% } %>
+    </div>
+    <% aboutCard('More about this'); %>
+  </main>
 
-    <form method="POST" action="/pay/<%= page.slug %>" id="payForm" novalidate data-quote-url="/pay/<%= page.slug %>/quote">
-      <div class="lm-card-body pp-body">
-        <% if (!page.show_cover) { %>
-        <span class="lm-kicker"><span class="dot"></span><%= ppKicker %></span>
-        <h1><%= page.title %></h1>
-        <% } %>
-        <% if (page.description) { %><p class="pp-desc"><%= page.description %></p><% } %>
-
-        <% if (mode === 'test') { %>
-        <p class="pp-test-note">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-          Test mode — no real payment is taken.
-        </p>
-        <% } %>
-
-        <% if (error) { %>
-          <div class="auth-error" role="alert"><%= error %></div>
-        <% } %>
-
-        <ul class="pp-items" aria-label="What you’re buying">
-          <% page.products.forEach(function (p) {
-               var chosen = values.items[p.id] || {};
-               var line = ppLine[p.id];
-               var max = maxQtyFor(p);
-               var soldOut = p.type === 'physical' && p.stock !== null && p.stock !== undefined && p.stock < 1; %>
-          <li class="pp-item" data-pid="<%= p.id %>">
-            <span class="pp-item-thumb pp-thumb-<%= p.type %>" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><%- ppIcons[p.type] %></svg>
-            </span>
-            <div class="pp-item-main">
-              <p class="pp-item-title"><%= p.title %></p>
-              <p class="pp-item-type">
-                <%= ppTypeLabel[p.type] %><% if (p.pricing === 'pwyw') { %> · name your price<% } %>
-                <% if (p.pricing === 'qty' && p.type !== 'coffee') { %> · <%= formatINR(p.price) %> each<% } %>
-                <% if (p.type === 'coffee') { %> · <%= formatINR(p.price) %> a coffee<% } %>
-                <% if (p.type === 'physical' && p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= 10) { %> · <span class="pp-stock-low">only <%= p.stock %> left</span><% } %>
-                <% if (soldOut) { %> · <span class="pp-stock-low">sold out</span><% } %>
-              </p>
-
-              <% if (p.type === 'coffee') { %>
-              <div class="pp-coffee" data-qty-for="<%= p.id %>">
-                <% [1, 3, 5].forEach(function (n) { %>
-                <button type="button" class="pp-coffee-pill<%= Number(chosen.qty || 1) === n ? ' active' : '' %>" data-set-qty="<%= n %>">×<%= n %></button>
-                <% }) %>
-                <label class="pp-coffee-custom">
-                  <span>or</span>
-                  <input type="number" name="qty_<%= p.id %>" value="<%= chosen.qty || 1 %>" min="1" max="<%= max %>" inputmode="numeric" aria-label="How many coffees" />
-                </label>
-              </div>
-              <% } else if (p.pricing === 'qty') { %>
-              <div class="pp-qty" data-qty-for="<%= p.id %>" data-max="<%= max %>">
-                <button type="button" class="pp-qty-btn" data-step="-1" aria-label="One fewer <%= p.title %>">−</button>
-                <input type="number" name="qty_<%= p.id %>" value="<%= chosen.qty || 1 %>" min="1" max="<%= Math.max(1, max) %>" inputmode="numeric" aria-label="Quantity of <%= p.title %>"<%= soldOut || max < 1 ? ' disabled' : '' %> />
-                <button type="button" class="pp-qty-btn" data-step="1" aria-label="One more <%= p.title %>">+</button>
-              </div>
-              <% } else if (p.pricing === 'pwyw') { %>
-              <div class="pp-amount">
-                <span aria-hidden="true">₹</span>
-                <input type="text" inputmode="decimal" name="amount_<%= p.id %>" value="<%= chosen.amount === undefined ? '' : chosen.amount %>" autocomplete="off" aria-label="Your amount for <%= p.title %>" />
-              </div>
-              <% if (p.minimum) { %><p class="pp-hint">Minimum <%= formatINR(p.minimum) %></p><% } %>
+<% } else { %>
+  <%# ---------- one product, or a bundle ---------- %>
+  <main class="pl-shell pl-shell-split<%= layout === 'bundle' ? ' pl-shell-bundle' : '' %>">
+    <% shellTop(); %>
+    <div class="pl-grid">
+      <section class="pl-product-col">
+        <div class="pl-card">
+          <div class="pl-banner">
+            <% if (hasMedia) { %>
+              <%# The merchant's own cover image / video / colour. %>
+              <%- include('partials/lm-banner', { magnet: page }) %>
+            <% } else { %>
+              <% (layout === 'single' ? [product] : page.products.slice(0, 4)).forEach(function (p, i) { %>
+              <div class="pl-banner-tile pl-tile-<%= p.type %><%= i % 2 ? ' pl-tile-alt' : '' %>"><%- svg(p.type, 26) %></div>
+              <% }) %>
+            <% } %>
+            <div class="pl-banner-caption">
+              <% if (layout === 'bundle') { %>
+                <span>Bundle · <%= page.products.length %> items</span>
+              <% } else { %>
+                <span><%= TYPE_LABEL[product.type] %></span>
+                <% if (product.pricing === 'qty' && product.type !== 'coffee') { %><span>·</span><span><%= formatINR(product.price) %> each</span><% } %>
               <% } %>
             </div>
-            <div class="pp-item-price">
-              <% if (p.pricing === 'fixed' && p.compareAt) { %><s><%= formatINR(p.compareAt) %></s><% } %>
-              <strong data-line-for="<%= p.id %>"><%= formatINR(line.amount) %></strong>
+          </div>
+          <div class="pl-card-pad">
+            <div class="pl-creator">
+              <span class="pl-avatar" aria-hidden="true"><%= initials %></span>
+              <span>Sold by <strong><%= owner.name %></strong></span>
             </div>
-          </li>
-          <% }) %>
-        </ul>
+            <h1><%= page.title %></h1>
+            <% if (page.description) { %><p class="pl-desc"><%= page.description %></p><% } %>
 
-        <p class="pp-section-label">Your details</p>
-        <div class="field">
-          <label for="name">Your name<span class="lm-req" aria-hidden="true">*</span></label>
-          <input type="text" id="name" name="name" value="<%= values.name %>" placeholder="Full name" autocomplete="name" required />
-        </div>
-        <div class="field">
-          <label for="email">Your email<span class="lm-req" aria-hidden="true">*</span></label>
-          <input type="email" id="email" name="email" value="<%= values.email %>" placeholder="you@example.com" autocomplete="email" required />
-        </div>
+            <% if (layout === 'single') { %>
+            <div class="pl-price-row">
+              <% if (product.pricing === 'pwyw') { %>
+                <span class="pl-price-now pl-price-text">Pay what you want</span>
+                <% if (product.minimum) { %><span class="pl-price-plain">from <%= formatINR(product.minimum) %></span><% } %>
+              <% } else { %>
+                <span class="pl-price-now"><%= formatINR(product.price) %></span>
+                <% if (product.pricing === 'qty') { %><span class="pl-price-plain">each</span><% } %>
+                <% if (product.pricing === 'fixed' && product.compareAt) { %>
+                  <span class="pl-price-was"><%= formatINR(product.compareAt) %></span>
+                  <span class="pl-price-badge"><%= Math.round((1 - product.price / product.compareAt) * 100) %>% off</span>
+                <% } %>
+              <% } %>
+            </div>
+            <% } %>
 
-        <% if (page.has_physical) { %>
-        <p class="pp-section-label">Shipping address</p>
-        <div class="field">
-          <label for="address">Address<span class="lm-req" aria-hidden="true">*</span></label>
-          <input type="text" id="address" name="address" value="<%= values.address %>" placeholder="House, street, area" autocomplete="street-address" required />
-        </div>
-        <div class="pp-field-row">
-          <div class="field">
-            <label for="city">City<span class="lm-req" aria-hidden="true">*</span></label>
-            <input type="text" id="city" name="city" value="<%= values.city %>" autocomplete="address-level2" required />
+            <% if (tags.length) { %>
+            <div class="pl-tags">
+              <% tags.forEach(function (t, i) { %><span class="pl-tag <%= TAG_TONES[i % 3] %>"><%= t %></span><% }) %>
+            </div>
+            <% } %>
+
+            <% if (layout === 'bundle') { %>
+            <ul class="pl-tiles" aria-label="What’s included">
+              <% page.products.forEach(function (p) {
+                   var l = line[p.id]; var chosen = values.items[p.id] || {}; var s = stockOf(p); %>
+              <li class="pl-tile" data-pid="<%= p.id %>">
+                <div class="pl-tile-art pl-tile-<%= p.type %>"><%- svg(p.type, 20) %></div>
+                <div class="pl-tile-body">
+                  <p class="pl-tile-title"><%= p.title %></p>
+                  <% if (p.description) { %><p class="pl-tile-desc" title="<%= p.description %>"><%= p.description %></p><% } %>
+                  <p class="pl-tile-price">
+                    <% if (p.pricing === 'fixed' && p.compareAt) { %><s><%= formatINR(p.compareAt) %></s><% } %>
+                    <span data-line-for="<%= p.id %>"><%= formatINR(l.amount) %></span>
+                  </p>
+                  <% if (p.pricing === 'qty') { %><p class="pl-tile-note"><%= formatINR(p.price) %> <%= p.type === 'coffee' ? 'a coffee' : 'each' %></p><% } %>
+                  <% if (s !== null && s <= 10) { %><p class="pl-tile-note pl-low"><%= s < 1 ? 'Sold out' : 'Only ' + s + ' left' %></p><% } %>
+                  <% if (p.type === 'coffee') { %>
+                    <div class="pl-mini-pills" data-pills-for="<%= p.id %>">
+                      <% [1, 3, 5].forEach(function (n) { %>
+                      <button type="button" class="<%= Number(chosen.qty || 1) === n ? 'active' : '' %>" data-qty="<%= n %>">×<%= n %></button>
+                      <% }) %>
+                    </div>
+                    <input type="hidden" name="qty_<%= p.id %>" value="<%= chosen.qty || 1 %>" />
+                  <% } else if (p.pricing === 'qty') { %>
+                    <% qtyStepper(p, true); %>
+                  <% } else if (p.pricing === 'pwyw') { %>
+                    <% amountInput(p, true); %>
+                  <% } %>
+                </div>
+              </li>
+              <% }) %>
+            </ul>
+            <% } %>
           </div>
-          <div class="field">
-            <label for="pincode">Pincode<span class="lm-req" aria-hidden="true">*</span></label>
-            <input type="text" id="pincode" name="pincode" value="<%= values.pincode %>" inputmode="numeric" maxlength="6" autocomplete="postal-code" required />
+        </div>
+        <% aboutCard(layout === 'bundle' ? 'About this bundle' : 'About this ' + (product.type === 'physical' ? 'product' : 'purchase')); %>
+      </section>
+
+      <aside class="pl-sidebar-col">
+        <div class="pl-card pl-checkout-card">
+          <div class="pl-sidebar-pad">
+            <p class="pl-eyebrow">
+              <%= layout === 'bundle'
+                ? 'You’re getting ' + page.products.length + ' things'
+                : (product.type === 'physical' ? 'Delivered to your door' : 'Get instant access') %>
+            </p>
+            <h2>Complete your purchase</h2>
+            <% notices(); %>
+
+            <% if (layout === 'single') { var l1 = line[product.id]; %>
+            <div class="pl-order-line">
+              <span><%= product.title %><% if (product.pricing === 'qty') { %> <span class="pl-order-qty" data-qty-label-for="<%= product.id %>">× <%= l1.qty %></span><% } %>
+                <% if (product.description) { %><small class="pl-order-desc"><%= product.description %></small><% } %></span>
+              <b data-line-for="<%= product.id %>"><%= formatINR(l1.amount) %></b>
+            </div>
+            <% if (product.pricing === 'qty') { %>
+            <div class="pl-field pl-control">
+              <span class="pl-label">Quantity</span>
+              <% qtyStepper(product, false); %>
+            </div>
+            <% } else if (product.pricing === 'pwyw') { %>
+            <div class="pl-field pl-control">
+              <span class="pl-label">Your amount</span>
+              <% amountInput(product, false); %>
+            </div>
+            <% } %>
+            <% } %>
+
+            <% buyerFields(); %>
+            <% if (page.has_physical) { shippingFields(); } %>
+            <% couponBox(); %>
+            <% summaryBox(layout === 'bundle'); %>
+            <% payButton('Pay'); %>
           </div>
         </div>
-        <div class="field">
-          <label for="phone">Phone number<span class="lm-req" aria-hidden="true">*</span></label>
-          <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="For the delivery" autocomplete="tel" required />
-        </div>
-        <% } %>
+      </aside>
+    </div>
+  </main>
+<% } %>
 
-        <details class="pp-coupon"<%= values.coupon ? ' open' : '' %>>
-          <summary>Have a coupon code?</summary>
-          <div class="pp-coupon-row">
-            <input type="text" id="coupon" name="coupon" value="<%= values.coupon %>" placeholder="Enter code" autocomplete="off" autocapitalize="characters" aria-label="Coupon code" />
-            <button type="button" class="pp-coupon-apply" id="couponApply">Apply</button>
-          </div>
-          <p class="pp-coupon-msg" id="couponMsg" aria-live="polite"><% if (q.coupon) { %><%= q.coupon.code %> applied — <%= q.coupon.label %><% } %></p>
-        </details>
-
-        <dl class="pp-summary" id="paySummary" aria-live="polite">
-          <div><dt>Subtotal</dt><dd id="sumSubtotal"><%= q.display.subtotal %></dd></div>
-          <div id="sumDiscountRow"<%= q.discount ? '' : ' hidden' %>><dt>Discount <span id="sumCoupon"><%= q.coupon ? q.coupon.code : '' %></span></dt><dd id="sumDiscount">−<%= q.display.discount %></dd></div>
-          <% if (page.has_physical) { %><div><dt>Shipping</dt><dd id="sumShipping"><%= q.display.shipping %></dd></div><% } %>
-          <div class="pp-summary-total"><dt>Total</dt><dd id="sumTotal"><%= q.display.total %></dd></div>
-        </dl>
-
-        <button type="submit" class="btn btn-primary pp-pay-btn" id="payButton">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="17" height="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-          <span id="payButtonText">Pay <%= q.display.total %></span>
-        </button>
-      </div>
-    </form>
-
-    <p class="lm-card-foot">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-      <span>Secure checkout. Your details go only to <%= owner.name %>.</span>
-    </p>
-  </article>
-
-</main>
+</form>
 
 <script src="/js/payment-page.js?v=<%= assetVersion %>"></script>
 </body>
