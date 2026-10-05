@@ -153,6 +153,18 @@ var TAG_TONES = ['', 'lime', 'coral'];
   </section>
   <% } %>
 <% }; %>
+<% var mediaBlock = function (p, extraClass) { var m = productMedia(p); if (!m) return; %>
+  <%# A product's own picture or video (builder → Products tab). Embeds are YouTube / Vimeo players rebuilt from the video id in lib/paymentPages.js. %>
+  <div class="pl-media pl-media-<%= m.kind %><%= extraClass ? ' ' + extraClass : '' %>">
+    <% if (m.kind === 'image') { %>
+    <img src="<%= m.src %>" alt="<%= p.title %>" loading="lazy" />
+    <% } else if (m.kind === 'video') { %>
+    <video src="<%= m.src %>" controls playsinline preload="metadata" aria-label="<%= p.title %>"></video>
+    <% } else { %>
+    <iframe src="<%= m.src %>" title="<%= p.title %>" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    <% } %>
+  </div>
+<% }; %>
 <% var payButton = function (label, extraClass) { %>
   <%# Problems with the amounts chosen (below a minimum, over stock) as you type — the server says the same again on submit. %>
   <p class="pl-live-error" id="liveError" role="status" hidden></p>
@@ -173,6 +185,7 @@ var TAG_TONES = ['', 'lime', 'coral'];
   <main class="pl-shell pl-shell-coffee">
     <% shellTop(); %>
     <div class="pl-card">
+      <% mediaBlock(coffee); %>
       <div class="pl-card-pad pl-coffee-pad">
         <div class="pl-creator">
           <span class="pl-avatar" aria-hidden="true"><%= initials %></span>
@@ -213,6 +226,10 @@ var TAG_TONES = ['', 'lime', 'coral'];
     <div class="pl-grid">
       <section class="pl-product-col">
         <div class="pl-card">
+          <% if (layout === 'single' && productMedia(product)) { %>
+          <%# A one-product page leads with that product's own picture / video, in place of the banner. %>
+          <% mediaBlock(product); %>
+          <% } else { %>
           <div class="pl-banner">
             <% if (hasMedia) { %>
               <%# The merchant's own cover image / video / colour. %>
@@ -231,6 +248,7 @@ var TAG_TONES = ['', 'lime', 'coral'];
               <% } %>
             </div>
           </div>
+          <% } %>
           <div class="pl-card-pad">
             <div class="pl-creator">
               <span class="pl-avatar" aria-hidden="true"><%= initials %></span>
@@ -266,7 +284,9 @@ var TAG_TONES = ['', 'lime', 'coral'];
               <% page.products.forEach(function (p) {
                    var l = line[p.id]; var chosen = values.items[p.id] || {}; var s = stockOf(p); %>
               <li class="pl-tile" data-pid="<%= p.id %>">
+                <% if (productMedia(p)) { mediaBlock(p, 'pl-tile-media'); } else { %>
                 <div class="pl-tile-art pl-tile-<%= p.type %>"><%- svg(p.type, 20) %></div>
+                <% } %>
                 <div class="pl-tile-body">
                   <p class="pl-tile-title"><%= p.title %></p>
                   <% if (p.description) { %><p class="pl-tile-desc" title="<%= p.description %>"><%= p.description %></p><% } %>

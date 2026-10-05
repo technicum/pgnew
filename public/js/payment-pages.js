@@ -200,6 +200,7 @@
       id: nextPid++, title: '', description: '', type: 'digital', pricing: 'fixed',
       price: '', compareAt: '', maxQty: '', suggested: '', minimum: '',
       fileUrl: '', stock: '', weight: '', shipFee: '',
+      mediaType: '', mediaUrl: '',
       previewQty: 1, previewAmount: null,
     }, seed || {});
   }
@@ -220,6 +221,8 @@
       stock: p.stock === null || p.stock === undefined ? '' : String(p.stock),
       weight: p.weight === null || p.weight === undefined ? '' : String(p.weight),
       shipFee: rupeesText(p.shipFee),
+      mediaType: p.mediaType || '',
+      mediaUrl: p.mediaUrl || '',
     });
   }
 
@@ -254,6 +257,31 @@
       </div>`;
   }
 
+  // An optional image or video across the top of the product's card on the
+  // page: uploaded, or a link (a video link can be YouTube / Vimeo).
+  const UPLOAD_ICON = '<svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M5 20h14"/></svg>';
+  function mediaFieldHTML(p) {
+    const video = p.mediaType === 'video';
+    return `
+      <div class="pb-media">
+        <div class="pb-toggle pb-media-toggle" role="group" aria-label="Product image or video">
+          <button type="button" class="${!p.mediaType ? 'active' : ''}" data-setmedia="">No media</button>
+          <button type="button" class="${p.mediaType === 'image' ? 'active' : ''}" data-setmedia="image">Image</button>
+          <button type="button" class="${video ? 'active' : ''}" data-setmedia="video">Video</button>
+        </div>
+        ${p.mediaType ? `
+        <div class="pb-media-row">
+          <label class="pz-card-btn pz-upload-btn">
+            <input type="file" data-media-file accept="${video ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp,image/gif'}" hidden />
+            ${UPLOAD_ICON}<span>Upload ${video ? 'video' : 'image'}</span>
+          </label>
+          <input type="text" class="pz-field-input" data-field="mediaUrl" maxlength="500" placeholder="${video ? '…or paste a YouTube / Vimeo / .mp4 link' : '…or paste an image link (https://…)'}" value="${escapeHTML(p.mediaUrl)}" />
+        </div>
+        <p class="pb-field-hint">${video ? 'MP4 or WebM up to 30 MB, or a YouTube / Vimeo link — embedded with its own player.' : 'JPG, PNG, WebP or GIF up to 5 MB. Shown at the top of this product’s card.'}</p>
+        <p class="pz-field-error" data-media-error></p>` : ''}
+      </div>`;
+  }
+
   function prodCardHTML(p, index) {
     const typeToggle = `
       <div class="pb-toggle pb-type-toggle" role="group" aria-label="Product type">
@@ -269,7 +297,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
-      <textarea class="pz-field-input pb-prod-desc" data-field="description" rows="2" maxlength="300" placeholder="Short description (optional) — shown with this product on the page" aria-label="Product ${index + 1} description">${escapeHTML(p.description)}</textarea>`;
+      <textarea class="pz-field-input pb-prod-desc" data-field="description" rows="2" maxlength="300" placeholder="Short description (optional) — shown with this product on the page" aria-label="Product ${index + 1} description">${escapeHTML(p.description)}</textarea>
+      ${mediaFieldHTML(p)}`;
 
     if (p.type === 'coffee') {
       return `
@@ -332,6 +361,22 @@
         p.pricing = btn.dataset.setpricing;
         renderProducts();
       }));
+      card.querySelectorAll('[data-setmedia]').forEach((btn) => btn.addEventListener('click', () => {
+        if (p.mediaType === btn.dataset.setmedia) return;
+        // An image link makes no sense as a video and vice versa.
+        p.mediaType = btn.dataset.setmedia;
+        p.mediaUrl = '';
+        renderProducts();
+      }));
+      const mediaFile = card.querySelector('[data-media-file]');
+      if (mediaFile) {
+        const mediaError = card.querySelector('[data-media-error]');
+        wireUpload(mediaFile, card.querySelector('[data-field="mediaUrl"]'), p.mediaType, mediaError, (url) => {
+          p.mediaUrl = url;
+          syncPreview();
+        });
+        card.querySelector('[data-field="mediaUrl"]').addEventListener('input', () => mediaError.classList.remove('show'));
+      }
       card.querySelector('[data-remove]').addEventListener('click', () => {
         products = products.filter((x) => x.id !== p.id);
         // The builder never sits empty.
@@ -385,6 +430,17 @@
     return '';
   }
 
+  // The product's own image as its thumbnail; a play badge for a video.
+  const PLAY_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+  function previewThumbHTML(p) {
+    const url = p.mediaUrl.trim();
+    if (p.mediaType === 'image' && isCoverUrl(url)) {
+      return `<div class="pb-preview-thumb has-image"><img src="${escapeHTML(url)}" alt="" /></div>`;
+    }
+    if (p.mediaType === 'video' && isCoverUrl(url)) return `<div class="pb-preview-thumb is-video">${PLAY_ICON}</div>`;
+    return `<div class="pb-preview-thumb ${p.type}">${icon(p.type)}</div>`;
+  }
+
   function syncPreview() {
     const headline = titleInput.value.trim()
       || (products.length === 1 && products[0].title.trim())
@@ -402,7 +458,7 @@
       const compare = p.pricing === 'fixed' && toPaise(p.compareAt) > toPaise(p.price) ? `<s>${formatINR(toPaise(p.compareAt))}</s>` : '';
       return `
         <div class="pb-preview-item" data-preview-pid="${p.id}">
-          <div class="pb-preview-thumb ${p.type}">${icon(p.type)}</div>
+          ${previewThumbHTML(p)}
           <div class="pb-preview-main">
             <div class="pb-preview-title">${escapeHTML(p.title.trim() || (p.type === 'coffee' ? 'Buy me a coffee' : 'Untitled product'))}</div>
             <div class="pb-preview-type">${typeLabel(p)}${p.pricing === 'pwyw' ? ' · name your price' : ''}</div>
@@ -603,8 +659,9 @@
   }));
 
   // Uploads: same endpoint as the lead magnet builder (lib/uploads.js).
+  // Used by the cover and by each product's image / video.
   const UPLOAD_LIMITS = { image: 5, video: 30 };
-  function wireUpload(fileInput, urlInput, kind) {
+  function wireUpload(fileInput, urlInput, kind, errorEl, onDone) {
     const button = fileInput.closest('.pz-upload-btn');
     const label = button.querySelector('span');
     const idle = label.textContent;
@@ -613,10 +670,10 @@
       fileInput.value = '';
       if (!file) return;
       const fail = (message) => {
-        coverError.textContent = message;
-        coverError.classList.add('show');
+        errorEl.textContent = message;
+        errorEl.classList.add('show');
       };
-      coverError.classList.remove('show');
+      errorEl.classList.remove('show');
       if (!file.type.startsWith(`${kind}/`)) return fail(kind === 'video' ? 'Choose an MP4 or WebM video.' : 'Choose a JPG, PNG, WebP or GIF image.');
       if (file.size > UPLOAD_LIMITS[kind] * 1024 * 1024) return fail(`That file is too big — keep ${kind}s under ${UPLOAD_LIMITS[kind]} MB.`);
       button.classList.add('is-busy');
@@ -624,7 +681,7 @@
       try {
         const { url } = await api('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
         urlInput.value = url;
-        syncCover();
+        onDone(url);
       } catch (err) {
         fail(err.message || 'Could not upload that file. Please try again.');
       } finally {
@@ -633,8 +690,8 @@
       }
     });
   }
-  wireUpload($('ppCoverImageFile'), coverImageInput, 'image');
-  wireUpload($('ppCoverVideoFile'), coverVideoInput, 'video');
+  wireUpload($('ppCoverImageFile'), coverImageInput, 'image', coverError, syncCover);
+  wireUpload($('ppCoverVideoFile'), coverVideoInput, 'video', coverError, syncCover);
 
   // --- create / edit --------------------------------------------------------------
   function setBuilderMode() {
@@ -705,6 +762,11 @@
       if (!title && p.type !== 'coffee') return bad(`Give ${name} a title.`, 'title');
       const item = { id: p.id, title: title || 'Buy me a coffee', type: p.type, pricing: p.type === 'coffee' ? 'qty' : p.pricing };
       if (p.description.trim()) item.description = p.description.trim();
+      const mediaUrl = p.mediaUrl.trim();
+      if (p.mediaType && mediaUrl) {
+        if (!isCoverUrl(mediaUrl)) return bad(`The ${p.mediaType} link for ${name} needs to start with http:// or https://`, 'mediaUrl');
+        Object.assign(item, { mediaType: p.mediaType, mediaUrl });
+      }
 
       if (item.pricing === 'pwyw') {
         const suggested = toPaise(p.suggested);

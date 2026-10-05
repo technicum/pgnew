@@ -151,6 +151,15 @@
 }
 .pl-mini-pills button.active { background: var(--magnet-accent); border-color: transparent; color: #fff; }
 
+/* a product's own image / video, across the top of its card or tile */
+.pl-media { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--magnet-accent-dark); }
+.pl-media img,
+.pl-media video,
+.pl-media iframe { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border: 0; }
+.pl-media img { object-fit: cover; }
+.pl-media video { object-fit: contain; background: #000; }
+.pl-media.pl-tile-media { aspect-ratio: 4 / 3; }
+
 /* product descriptions */
 .pl-tile-desc {
   margin: 3px 0 0; font-size: 10.5px; line-height: 1.4; color: var(--muted);
