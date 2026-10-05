@@ -55,7 +55,7 @@
 .pb-kind-text strong { font-size: 14px; font-weight: 700; }
 .pb-kind-text span { font-size: 12.5px; color: var(--muted-foreground); }
 
-/* builder header: back link, then the page-type switch */
+/* builder header: back link to the list */
 .pb-builder-top { margin: -4px 0 10px; }
 .pb-back {
   display: inline-flex; align-items: center; gap: 4px; padding: 0; border: none; background: none; cursor: pointer;
@@ -63,18 +63,6 @@
 }
 .pb-back svg { width: 14px; height: 14px; }
 .pb-back:hover { color: var(--primary); }
-.pb-kind {
-  display: flex; flex-wrap: wrap; gap: 2px; width: fit-content; max-width: 100%; margin-top: 12px;
-  padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--background);
-}
-.pb-kind-opt {
-  appearance: none; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 13px; border: none; border-radius: 999px; background: none;
-  font-size: 12.5px; font-weight: 600; color: var(--muted-foreground);
-}
-.pb-kind-opt svg { width: 14px; height: 14px; }
-.pb-kind-opt:hover { color: var(--foreground); }
-.pb-kind-opt.active { background: var(--primary); color: #fff; }
 
 /* Details tab: grouped sections */
 .pb-section { display: flex; flex-direction: column; gap: 10px; padding: 16px 0; border-top: 1px solid var(--border); }

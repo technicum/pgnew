@@ -283,7 +283,8 @@
       </div>`;
   }
 
-  // What kind of page this is — picked at the top of the builder:
+  // What kind of page this is — picked in the "Create payment page" popup
+  // (or, when editing, read off its products):
   //   'single'   — one digital or physical product
   //   'multiple' — up to MAX_PRODUCTS, any mix (a coffee can ride along)
   //   'coffee'   — just a buy-me-a-coffee button
@@ -298,36 +299,8 @@
     if (kind === 'coffee') return [];
     return kind === 'single' ? ['digital', 'physical'] : ['digital', 'physical', 'coffee'];
   }
-  // Whether a card has anything typed in it worth asking before throwing away.
-  const hasContent = (p) => !!(p.title.trim() || p.description.trim() || p.price || p.suggested || p.fileUrl || p.mediaUrl);
 
-  function setKind(kind) {
-    if (kind === pageKind) return;
-    if (kind === 'coffee') {
-      const keep = products.find((p) => p.type === 'coffee');
-      const dropping = products.filter((p) => p !== keep && hasContent(p));
-      if (dropping.length && !window.confirm(`Switching to Buy me a coffee removes the ${dropping.length === 1 ? 'product' : `${dropping.length} products`} you’ve added. Continue?`)) return;
-      products = [keep || blankProduct({ type: 'coffee', pricing: 'qty' })];
-    } else if (kind === 'single') {
-      const keep = products.find((p) => p.type !== 'coffee');
-      const dropping = products.filter((p) => p !== keep && hasContent(p));
-      if (dropping.length && !window.confirm(`A single-product page keeps only ${keep && keep.title.trim() ? `“${keep.title.trim()}”` : 'the first product'}. Remove the other${dropping.length === 1 ? '' : 's'}?`)) return;
-      products = [keep || blankProduct()];
-    } else if (products.length === 1 && products[0].type === 'coffee' && !hasContent(products[0])) {
-      products = [blankProduct()];
-    }
-    // On a one-product page the product's name is the headline.
-    if (kind !== 'multiple' && pageKind === 'multiple' && products[0].title.trim()) titleInput.value = products[0].title;
-    pageKind = kind;
-    renderKind();
-    renderProducts();
-  }
   function renderKind() {
-    document.querySelectorAll('#ppKind .pb-kind-opt').forEach((btn) => {
-      const on = btn.dataset.kind === pageKind;
-      btn.classList.toggle('active', on);
-      btn.setAttribute('aria-checked', on ? 'true' : 'false');
-    });
     // Only a multi-product page has a Products tab; otherwise the one
     // product is edited inline in Details.
     const multiple = pageKind === 'multiple';
@@ -346,7 +319,6 @@
     titleInput.placeholder = BASICS[2];
     setBuilderMode();
   }
-  document.querySelectorAll('#ppKind .pb-kind-opt').forEach((btn) => btn.addEventListener('click', () => setKind(btn.dataset.kind)));
 
   // The pieces of a product editor, shared by the multi-product cards and
   // the inline "solo" editor of a single-product / coffee page.
