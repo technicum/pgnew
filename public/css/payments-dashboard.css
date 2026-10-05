@@ -34,6 +34,27 @@
 .pb-form { padding: 22px 24px; }
 .pb-hint { margin: 5px 0 0; font-size: 13px; color: var(--muted-foreground); }
 
+.pb-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.pb-create-btn { flex: none; }
+
+/* "Create payment page" popup: one tile per page type */
+.pb-kind-modal { display: flex; flex-direction: column; gap: 8px; }
+.pb-kind-tile {
+  display: flex; align-items: center; gap: 12px; text-align: left; padding: 13px 14px; width: 100%;
+  border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); background: var(--card);
+  cursor: pointer; font-family: inherit; color: var(--foreground);
+}
+.pb-kind-tile:hover { border-color: var(--primary); background: var(--secondary); }
+.pb-kind-tile:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent); }
+.pb-kind-icon {
+  flex: none; width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  background: var(--secondary); color: var(--primary);
+}
+.pb-kind-icon svg { width: 18px; height: 18px; }
+.pb-kind-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pb-kind-text strong { font-size: 14px; font-weight: 700; }
+.pb-kind-text span { font-size: 12.5px; color: var(--muted-foreground); }
+
 .pb-kind { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
 @media (max-width: 520px) { .pb-kind { grid-template-columns: 1fr; } }
 .pb-kind-opt {

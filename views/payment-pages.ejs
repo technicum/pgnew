@@ -35,18 +35,25 @@
 
     <div class="mx-auto max-w-[1120px] px-4 py-7 md:px-8 md:py-9">
 
-      <section>
-        <p class="text-sm font-semibold text-primary">Get paid</p>
-        <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Payment pages</h1>
-        <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">One checkout link that can hold one product or several — a course plus a physical workbook, a bundle of downloads, anything. Mix digital and physical freely; the page only asks for a shipping address when it needs one.</p>
+      <section class="pb-page-head">
+        <div>
+          <p class="text-sm font-semibold text-primary">Get paid</p>
+          <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Payment pages</h1>
+          <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">One checkout link that can hold one product or several — a course plus a physical workbook, a bundle of downloads, anything. Mix digital and physical freely; the page only asks for a shipping address when it needs one.</p>
+        </div>
+        <button type="button" class="pb-primary pb-create-btn" data-open-create>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+          <span>Create payment page</span>
+        </button>
       </section>
 
       <%- include('partials/payment-mode-note', { paymentMode: paymentMode }) %>
 
-      <section class="pb-grid">
+      <!-- Builder: hidden until "Create payment page" (after the type popup) or a page's Edit -->
+      <section class="pb-grid" id="builderSection" hidden>
         <div class="pb-form rounded-lg border border-border bg-card shadow-sm">
           <h2 class="text-lg font-bold" id="builderHeading">Create a payment page</h2>
-          <p class="pb-hint">First, pick what this page is for.</p>
+          <p class="pb-hint">Page type — you can change it here any time.</p>
 
           <!-- What kind of page: sets which product options the builder offers (payment-pages.js) -->
           <div class="pb-kind" id="ppKind" role="radiogroup" aria-label="What are you selling?">
@@ -203,7 +210,7 @@
                 <svg id="builderSubmitIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
                 <span id="builderSubmitLabel">Create payment page</span>
               </button>
-              <button type="button" class="pz-card-btn" id="builderCancelBtn" hidden style="height:40px; padding:0 14px; font-size:13.5px;">Cancel</button>
+              <button type="button" class="pz-card-btn" id="builderCancelBtn" style="height:40px; padding:0 14px; font-size:13.5px;">Cancel</button>
             </div>
           </form>
           <p class="pz-field-error" id="pageFormError"></p>
@@ -279,7 +286,11 @@
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>
           </div>
           <p class="text-sm font-semibold">No payment pages yet</p>
-          <p class="text-sm text-muted-foreground" style="max-width:360px;">Create one above, then share the link anywhere — Instagram bio, WhatsApp, email.</p>
+          <p class="text-sm text-muted-foreground" style="max-width:360px;">Create one, then share the link anywhere — Instagram bio, WhatsApp, email.</p>
+          <button type="button" class="pb-primary" data-open-create>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+            <span>Create payment page</span>
+          </button>
         </div>
       </section>
 
@@ -314,6 +325,35 @@
 
     </div>
   </main>
+</div>
+
+<!-- "Create payment page" popup: what kind of page, before the builder opens (payment-pages.js) -->
+<div class="pz-modal-backdrop" id="kindModal" aria-hidden="true">
+  <div class="pz-modal" role="dialog" aria-modal="true" aria-labelledby="kindModalTitle">
+    <div class="pz-modal-head">
+      <div>
+        <h3 id="kindModalTitle">Create a payment page</h3>
+        <p>What do you want to sell on this page?</p>
+      </div>
+      <button type="button" class="pz-modal-close" id="kindModalClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="pb-kind-modal">
+      <button type="button" class="pb-kind-tile" data-pick-kind="single">
+        <span class="pb-kind-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3V5a3 3 0 0 0-6 0v2H8a1 1 0 0 0-1 .89L5.6 19.78A2 2 0 0 0 7.59 22h8.82a2 2 0 0 0 2-2.22L17 7.89A1 1 0 0 0 16 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg></span>
+        <span class="pb-kind-text"><strong>Single product</strong><span>One digital download or physical item.</span></span>
+      </button>
+      <button type="button" class="pb-kind-tile" data-pick-kind="multiple">
+        <span class="pb-kind-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+        <span class="pb-kind-text"><strong>Multiple products</strong><span>A bundle or a mix — up to 10 products on one checkout.</span></span>
+      </button>
+      <button type="button" class="pb-kind-tile" data-pick-kind="coffee">
+        <span class="pb-kind-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg></span>
+        <span class="pb-kind-text"><strong>Buy me a coffee</strong><span>Let supporters pay per coffee — no product needed.</span></span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>

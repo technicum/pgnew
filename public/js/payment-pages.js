@@ -746,20 +746,21 @@
     $('builderHeading').textContent = editing ? 'Edit payment page' : 'Create a payment page';
     $('builderSubmitLabel').textContent = editing ? 'Save changes' : 'Create payment page';
     $('builderSubmitIcon').style.display = editing ? 'none' : '';
-    $('builderCancelBtn').hidden = !editing;
     $('ppSlugRow').hidden = !editing;
   }
 
-  function loadIntoBuilder(page) {
+  // kind: for a new page, the type picked in the "Create" popup.
+  function loadIntoBuilder(page, kind) {
     titleInput.value = page ? page.title : '';
     descInput.value = page ? page.description : '';
     aboutInput.value = page ? page.about || '' : '';
     successInput.value = page ? page.success_message : '';
     slugInput.value = page ? page.slug : '';
     nextPid = 1;
-    products = page && page.products.length ? page.products.map(fromStored) : [blankProduct()];
+    if (page && page.products.length) products = page.products.map(fromStored);
+    else products = [kind === 'coffee' ? blankProduct({ type: 'coffee', pricing: 'qty' }) : blankProduct()];
     nextPid = Math.max(...products.map((p) => p.id)) + 1;
-    pageKind = kindOf(products);
+    pageKind = !page && kind ? kind : kindOf(products);
     renderKind();
     showCover = page ? !!page.show_cover : true;
     coverType = page && ['art', 'image', 'video', 'color'].includes(page.cover_type) ? page.cover_type : 'art';
@@ -774,22 +775,64 @@
     showTab('page');
   }
 
+  // The builder stays hidden until a page is being created or edited.
+  const builderSection = $('builderSection');
+  function openBuilder() {
+    builderSection.hidden = false;
+    builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    titleInput.focus({ preventScroll: true });
+  }
+
   function startEdit(id) {
     const page = pages.find((p) => p.id === id);
     if (!page) return;
     editingId = id;
     loadIntoBuilder(page);
     renderPages();
-    document.querySelector('.pb-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    titleInput.focus({ preventScroll: true });
+    openBuilder();
+  }
+  function startCreate(kind) {
+    const wasEditing = editingId !== null;
+    editingId = null;
+    loadIntoBuilder(null, kind);
+    if (wasEditing) renderPages();
+    openBuilder();
   }
   function resetBuilder() {
     const wasEditing = editingId !== null;
     editingId = null;
     loadIntoBuilder(null);
+    builderSection.hidden = true;
     if (wasEditing) renderPages();
   }
   $('builderCancelBtn').addEventListener('click', resetBuilder);
+
+  // "Create payment page" → a popup asking what kind of page, then the builder.
+  const kindModal = $('kindModal');
+  let kindModalOpener = null;
+  function openKindModal() {
+    kindModalOpener = document.activeElement;
+    kindModal.classList.add('open');
+    kindModal.setAttribute('aria-hidden', 'false');
+    kindModal.querySelector('.pb-kind-tile').focus();
+  }
+  function closeKindModal() {
+    kindModal.classList.remove('open');
+    kindModal.setAttribute('aria-hidden', 'true');
+    if (kindModalOpener && document.contains(kindModalOpener)) kindModalOpener.focus();
+    kindModalOpener = null;
+  }
+  document.querySelectorAll('[data-open-create]').forEach((btn) => btn.addEventListener('click', openKindModal));
+  kindModal.querySelectorAll('[data-pick-kind]').forEach((tile) => tile.addEventListener('click', () => {
+    kindModalOpener = null;
+    closeKindModal();
+    startCreate(tile.dataset.pickKind);
+  }));
+  $('kindModalClose').addEventListener('click', closeKindModal);
+  kindModal.addEventListener('click', (e) => { if (e.target === kindModal) closeKindModal(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && kindModal.classList.contains('open')) closeKindModal();
+  });
 
   function showFormError(message, tab, focusEl) {
     if (tab) showTab(tab);
