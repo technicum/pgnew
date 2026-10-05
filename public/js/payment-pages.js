@@ -229,6 +229,7 @@
   // --- products tab: repeatable cards ------------------------------------------
   const prodList = $('prodList');
   const addProductBtn = $('addProductBtn');
+  const soloSlot = $('soloProduct');
 
   function moneyInput(field, value, placeholder) {
     return `<div class="pb-price"><i>₹</i><input type="text" inputmode="decimal" class="pz-field-input" data-field="${field}" placeholder="${placeholder}" value="${escapeHTML(value)}" /></div>`;
@@ -315,6 +316,8 @@
     } else if (products.length === 1 && products[0].type === 'coffee' && !hasContent(products[0])) {
       products = [blankProduct()];
     }
+    // On a one-product page the product's name is the headline.
+    if (kind !== 'multiple' && pageKind === 'multiple' && products[0].title.trim()) titleInput.value = products[0].title;
     pageKind = kind;
     renderKind();
     renderProducts();
@@ -325,74 +328,126 @@
       btn.classList.toggle('active', on);
       btn.setAttribute('aria-checked', on ? 'true' : 'false');
     });
+    // Only a multi-product page has a Products tab; otherwise the one
+    // product is edited inline in Details.
+    const multiple = pageKind === 'multiple';
+    $('tabProductsBtn').hidden = !multiple;
+    if (!multiple && $('tab-products').classList.contains('active')) showTab('page');
+    $('tabPageLabel').textContent = multiple ? 'Page' : 'Details';
+    $('ppProductsNote').hidden = !multiple;
+    addProductBtn.hidden = !multiple;
+    const BASICS = {
+      single: ['Product', 'Product name', 'e.g. Notion Budget Planner'],
+      multiple: ['Page', 'Page headline', 'e.g. Complete Starter Bundle'],
+      coffee: ['Your page', 'Headline', 'Buy me a coffee'],
+    }[pageKind];
+    $('ppBasicsTitle').textContent = BASICS[0];
+    $('ppTitleLabel').textContent = BASICS[1];
+    titleInput.placeholder = BASICS[2];
+    setBuilderMode();
   }
   document.querySelectorAll('#ppKind .pb-kind-opt').forEach((btn) => btn.addEventListener('click', () => setKind(btn.dataset.kind)));
 
-  function prodCardHTML(p, index) {
+  // The pieces of a product editor, shared by the multi-product cards and
+  // the inline "solo" editor of a single-product / coffee page.
+  function typeToggleHTML(p) {
     const types = typesFor(pageKind);
-    const typeToggle = types.length ? `
+    if (!types.length) return '';
+    return `
       <div class="pb-toggle pb-type-toggle" role="group" aria-label="Product type">
         ${types.map((t) => `<button type="button" class="${p.type === t ? 'active' : ''}" data-settype="${t}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[t]}</svg>${TYPE_LABELS[t]}</button>`).join('')}
-      </div>` : '';
-    const multiple = pageKind === 'multiple';
+      </div>`;
+  }
+  function pricingToggleHTML(p) {
+    return `
+      <div class="pb-toggle pb-pricing-toggle" role="group" aria-label="Pricing">
+        <button type="button" class="${p.pricing === 'fixed' ? 'active' : ''}" data-setpricing="fixed">Fixed price</button>
+        <button type="button" class="${p.pricing === 'qty' ? 'active' : ''}" data-setpricing="qty">Per quantity</button>
+        <button type="button" class="${p.pricing === 'pwyw' ? 'active' : ''}" data-setpricing="pwyw">Pay what you want</button>
+      </div>`;
+  }
+  function coffeePriceHTML(p) {
+    return `
+      <div class="pb-row">${moneyInput('price', p.price, 'Price per coffee — e.g. 50')}</div>
+      <div class="pb-coffee-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <span>A quick-support button — buyers pick how many coffees (×1, ×3, ×5) or type their own number. No file or shipping needed.</span>
+      </div>`;
+  }
+  function fulfilHTML(p) {
+    if (p.type === 'digital') {
+      return `
+        <div class="pb-fulfil">
+          <input type="url" class="pz-field-input" data-field="fileUrl" maxlength="500" placeholder="Link to the file — unlocked on the receipt once paid" value="${escapeHTML(p.fileUrl)}" />
+        </div>`;
+    }
+    return `
+      <div class="pb-fulfil">
+        <div class="pb-row">
+          <input type="text" inputmode="numeric" class="pz-field-input" data-field="stock" placeholder="Stock qty (blank = unlimited)" value="${escapeHTML(p.stock)}" />
+          <input type="text" inputmode="numeric" class="pz-field-input" data-field="weight" placeholder="Weight (g)" value="${escapeHTML(p.weight)}" />
+        </div>
+        ${moneyInput('shipFee', p.shipFee, 'Shipping fee (blank = free)')}
+      </div>`;
+  }
+
+  // One card in the Products tab of a multi-product page.
+  function prodCardHTML(p, index) {
     const head = `
       <div class="pb-prod-head">
-        ${multiple ? `<span class="pb-prod-index">${index + 1}</span>` : ''}
+        <span class="pb-prod-index">${index + 1}</span>
         <input type="text" class="pz-field-input" data-field="title" maxlength="120" placeholder="${p.type === 'coffee' ? 'Buy me a coffee' : 'Product title'}" value="${escapeHTML(p.title)}" aria-label="Product ${index + 1} title" />
-        ${multiple ? `<button type="button" class="pb-prod-remove" data-remove aria-label="Remove product ${index + 1}">
+        <button type="button" class="pb-prod-remove" data-remove aria-label="Remove product ${index + 1}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>` : ''}
+        </button>
       </div>
       <textarea class="pz-field-input pb-prod-desc" data-field="description" rows="2" maxlength="300" placeholder="Short description (optional) — shown with this product on the page" aria-label="Product ${index + 1} description">${escapeHTML(p.description)}</textarea>
       ${mediaFieldHTML(p)}`;
-
     if (p.type === 'coffee') {
       return `
         <div class="pb-prod-card" data-pid="${p.id}">
           ${head}
-          ${typeToggle}
-          <div class="pb-prod-body">
-            <div class="pb-row">${moneyInput('price', p.price, 'Price per coffee — e.g. 50')}</div>
-            <div class="pb-coffee-note">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              <span>A quick-support button — buyers pick how many coffees (×1, ×3, ×5) or type their own number. No file or shipping needed.</span>
-            </div>
-          </div>
+          ${typeToggleHTML(p)}
+          <div class="pb-prod-body">${coffeePriceHTML(p)}</div>
         </div>`;
     }
-
     return `
       <div class="pb-prod-card" data-pid="${p.id}">
         ${head}
-        ${typeToggle}
-        <div class="pb-toggle pb-pricing-toggle" role="group" aria-label="Pricing">
-          <button type="button" class="${p.pricing === 'fixed' ? 'active' : ''}" data-setpricing="fixed">Fixed price</button>
-          <button type="button" class="${p.pricing === 'qty' ? 'active' : ''}" data-setpricing="qty">Per quantity</button>
-          <button type="button" class="${p.pricing === 'pwyw' ? 'active' : ''}" data-setpricing="pwyw">Pay what you want</button>
-        </div>
+        ${typeToggleHTML(p)}
+        ${pricingToggleHTML(p)}
         <div class="pb-prod-body">
           ${pricingPanelHTML(p)}
-          ${p.type === 'digital' ? `
-          <div class="pb-fulfil">
-            <input type="url" class="pz-field-input" data-field="fileUrl" maxlength="500" placeholder="Link to the file — unlocked on the receipt once paid" value="${escapeHTML(p.fileUrl)}" />
-          </div>` : `
-          <div class="pb-fulfil">
-            <div class="pb-row">
-              <input type="text" inputmode="numeric" class="pz-field-input" data-field="stock" placeholder="Stock qty (blank = unlimited)" value="${escapeHTML(p.stock)}" />
-              <input type="text" inputmode="numeric" class="pz-field-input" data-field="weight" placeholder="Weight (g)" value="${escapeHTML(p.weight)}" />
-            </div>
-            ${moneyInput('shipFee', p.shipFee, 'Shipping fee (blank = free)')}
-          </div>`}
+          ${fulfilHTML(p)}
         </div>
       </div>`;
   }
 
+  // A single-product or coffee page has no product cards: the one product's
+  // settings sit right in the Details tab, and its name is the page's own
+  // headline (see syncPreview).
+  function soloEditorHTML(p) {
+    const section = (title, body) => `<div class="pb-section"><p class="pb-section-title">${title}</p>${body}</div>`;
+    const media = section('Image or video', mediaFieldHTML(p));
+    if (p.type === 'coffee') {
+      return `<div data-pid="${p.id}">${section('Price', coffeePriceHTML(p))}${media}</div>`;
+    }
+    return `<div data-pid="${p.id}">
+      ${section('Product type', `${typeToggleHTML(p)}<p class="pb-field-hint">${p.type === 'digital' ? 'Buyers get a download link on their receipt.' : 'Checkout asks for a shipping address.'}</p>`)}
+      ${section('Price', `${pricingToggleHTML(p)}${pricingPanelHTML(p)}`)}
+      ${section(p.type === 'digital' ? 'Delivery' : 'Stock &amp; shipping', fulfilHTML(p))}
+      ${media}
+    </div>`;
+  }
+
   function renderProducts() {
-    prodList.innerHTML = products.map(prodCardHTML).join('');
+    const solo = pageKind !== 'multiple';
+    prodList.innerHTML = solo ? '' : products.map(prodCardHTML).join('');
+    soloSlot.innerHTML = solo ? soloEditorHTML(products[0]) : '';
     $('tabProductCount').textContent = products.length;
-    addProductBtn.hidden = pageKind !== 'multiple';
     addProductBtn.disabled = products.length >= MAX_PRODUCTS;
-    prodList.querySelectorAll('.pb-prod-card').forEach((card) => {
+    const editors = solo ? [soloSlot.firstElementChild] : prodList.querySelectorAll('.pb-prod-card');
+    editors.forEach((card) => {
       const p = products.find((x) => x.id === Number(card.dataset.pid));
       card.querySelectorAll('[data-field]').forEach((input) => input.addEventListener('input', () => {
         p[input.dataset.field] = input.value;
@@ -489,6 +544,8 @@
   }
 
   function syncPreview() {
+    // One-product pages: the product goes by the page's headline.
+    if (pageKind !== 'multiple' && products[0]) products[0].title = titleInput.value;
     const headline = titleInput.value.trim()
       || (products.length === 1 && products[0].title.trim())
       || 'Your payment page';
@@ -509,7 +566,7 @@
           <div class="pb-preview-main">
             <div class="pb-preview-title">${escapeHTML(p.title.trim() || (p.type === 'coffee' ? 'Buy me a coffee' : 'Untitled product'))}</div>
             <div class="pb-preview-type">${typeLabel(p)}${p.pricing === 'pwyw' ? ' · name your price' : ''}</div>
-            ${p.description.trim() ? `<div class="pb-preview-pdesc">${escapeHTML(p.description.trim())}</div>` : ''}
+            ${pageKind === 'multiple' && p.description.trim() ? `<div class="pb-preview-pdesc">${escapeHTML(p.description.trim())}</div>` : ''}
             ${previewControlHTML(p)}
           </div>
           <div class="pb-preview-price">${compare}<b>${formatINR(lineAmount(p))}</b></div>
@@ -743,7 +800,8 @@
   // --- create / edit --------------------------------------------------------------
   function setBuilderMode() {
     const editing = editingId !== null;
-    $('builderHeading').textContent = editing ? 'Edit payment page' : 'Create a payment page';
+    const NEW_HEADINGS = { single: 'New single-product page', multiple: 'New multi-product page', coffee: 'New buy-me-a-coffee page' };
+    $('builderHeading').textContent = editing ? 'Edit payment page' : NEW_HEADINGS[pageKind];
     $('builderSubmitLabel').textContent = editing ? 'Save changes' : 'Create payment page';
     $('builderSubmitIcon').style.display = editing ? 'none' : '';
     $('ppSlugRow').hidden = !editing;
@@ -761,6 +819,8 @@
     else products = [kind === 'coffee' ? blankProduct({ type: 'coffee', pricing: 'qty' }) : blankProduct()];
     nextPid = Math.max(...products.map((p) => p.id)) + 1;
     pageKind = !page && kind ? kind : kindOf(products);
+    // Older single-product pages may have left the headline to the product.
+    if (pageKind !== 'multiple' && !titleInput.value.trim()) titleInput.value = products[0].title;
     renderKind();
     showCover = page ? !!page.show_cover : true;
     coverType = page && ['art', 'image', 'video', 'color'].includes(page.cover_type) ? page.cover_type : 'art';
@@ -806,6 +866,7 @@
     if (wasEditing) renderPages();
   }
   $('builderCancelBtn').addEventListener('click', resetBuilder);
+  $('builderBackBtn').addEventListener('click', resetBuilder);
 
   // "Create payment page" → a popup asking what kind of page, then the builder.
   const kindModal = $('kindModal');
@@ -841,14 +902,15 @@
     if (focusEl) focusEl.focus();
   }
   // The input for one of a product card's fields, for focusing on an error.
-  const productInput = (p, field) => prodList.querySelector(`.pb-prod-card[data-pid="${p.id}"] [data-field="${field}"]`);
+  const productInput = (p, field) => (pageKind !== 'multiple' && field === 'title' ? titleInput
+    : form.querySelector(`[data-pid="${p.id}"] [data-field="${field}"]`));
 
   // Builder cards → what the server stores (paise), or an error to show.
   function collectProducts() {
     const out = [];
     for (let i = 0; i < products.length; i += 1) {
       const p = products[i];
-      const name = `product ${i + 1}`;
+      const name = pageKind === 'multiple' ? `product ${i + 1}` : 'your product';
       const bad = (message, field) => ({ error: message, product: p, field });
       const title = p.title.trim();
       if (!title && p.type !== 'coffee') return bad(`Give ${name} a title.`, 'title');
@@ -904,10 +966,13 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     formError.classList.remove('show');
+    if (pageKind === 'single' && !titleInput.value.trim()) {
+      return showFormError('Give your product a name.', 'page', titleInput);
+    }
     const collected = collectProducts();
     if (collected.error) {
-      showTab('products');
-      return showFormError(collected.error, 'products', productInput(collected.product, collected.field));
+      const tab = pageKind === 'multiple' ? 'products' : 'page';
+      return showFormError(collected.error, tab, productInput(collected.product, collected.field));
     }
     if (!titleInput.value.trim() && collected.products.length > 1) {
       return showFormError('Give the page a headline, like “Complete Starter Bundle”.', 'page', titleInput);

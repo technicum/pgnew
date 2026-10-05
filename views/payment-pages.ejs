@@ -52,34 +52,37 @@
       <!-- Builder: hidden until "Create payment page" (after the type popup) or a page's Edit -->
       <section class="pb-grid" id="builderSection" hidden>
         <div class="pb-form rounded-lg border border-border bg-card shadow-sm">
+          <div class="pb-builder-top">
+            <button type="button" class="pb-back" id="builderBackBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              All payment pages
+            </button>
+          </div>
           <h2 class="text-lg font-bold" id="builderHeading">Create a payment page</h2>
-          <p class="pb-hint">Page type — you can change it here any time.</p>
 
-          <!-- What kind of page: sets which product options the builder offers (payment-pages.js) -->
-          <div class="pb-kind" id="ppKind" role="radiogroup" aria-label="What are you selling?">
+          <!-- Page type: sets which product options the builder offers (payment-pages.js) -->
+          <div class="pb-kind" id="ppKind" role="radiogroup" aria-label="Page type">
             <button type="button" class="pb-kind-opt active" data-kind="single" role="radio" aria-checked="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3V5a3 3 0 0 0-6 0v2H8a1 1 0 0 0-1 .89L5.6 19.78A2 2 0 0 0 7.59 22h8.82a2 2 0 0 0 2-2.22L17 7.89A1 1 0 0 0 16 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
-              <strong>Single product</strong>
-              <span>Sell one thing</span>
+              Single product
             </button>
             <button type="button" class="pb-kind-opt" data-kind="multiple" role="radio" aria-checked="false">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-              <strong>Multiple products</strong>
-              <span>A bundle or a mix</span>
+              Multiple products
             </button>
             <button type="button" class="pb-kind-opt" data-kind="coffee" role="radio" aria-checked="false">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>
-              <strong>Buy me a coffee</strong>
-              <span>Accept support</span>
+              Buy me a coffee
             </button>
           </div>
 
           <div class="pb-tabs" role="tablist">
             <button type="button" class="pb-tab active" data-tab="page" role="tab">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="11" height="4" rx="1"/></svg>
-              Page
+              <span id="tabPageLabel">Details</span>
             </button>
-            <button type="button" class="pb-tab" data-tab="products" role="tab">
+            <!-- Only on multi-product pages: a single product is edited right in Details. -->
+            <button type="button" class="pb-tab" data-tab="products" role="tab" id="tabProductsBtn" hidden>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-3V5a3 3 0 0 0-6 0v2H8a1 1 0 0 0-1 .89L5.6 19.78A2 2 0 0 0 7.59 22h8.82a2 2 0 0 0 2-2.22L17 7.89A1 1 0 0 0 16 7Z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
               Products <span class="pb-count" id="tabProductCount">1</span>
             </button>
@@ -90,13 +93,33 @@
           </div>
 
           <form id="pageForm" novalidate>
-            <!-- Page tab -->
+            <!-- Details tab. On a single-product or coffee page the product's own
+                 settings (type, price, delivery, media) render into #soloProduct. -->
             <div class="pb-panel active" id="tab-page">
-              <input type="text" id="ppTitle" class="pz-field-input" maxlength="200" placeholder="Page headline — e.g. Complete Starter Bundle" />
-              <textarea id="ppDescription" class="pz-field-input" rows="2" maxlength="1000" placeholder="Short description — a line or two under the headline (optional)"></textarea>
-              <div class="pb-option">
-                <label for="ppAbout" class="pb-label">Full description <span class="pz-option-hint">(optional — shown as an “About” section on the page)</span></label>
-                <div class="pb-rich-editor">
+              <div class="pb-section">
+                <p class="pb-section-title" id="ppBasicsTitle">Product</p>
+                <div class="pb-option">
+                  <label for="ppTitle" class="pb-label" id="ppTitleLabel">Product name</label>
+                  <input type="text" id="ppTitle" class="pz-field-input" maxlength="200" placeholder="e.g. Notion Budget Planner" />
+                </div>
+                <div class="pb-option">
+                  <label for="ppDescription" class="pb-label">Short description <span class="pz-option-hint">(optional)</span></label>
+                  <textarea id="ppDescription" class="pz-field-input" rows="2" maxlength="1000" placeholder="A line or two under the name"></textarea>
+                </div>
+              </div>
+
+              <div id="soloProduct"></div>
+
+              <div class="pb-note" id="ppProductsNote" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                <span>Add your products in the <strong>Products</strong> tab. The shipping-address section only appears on the checkout page if at least one product there is Physical.</span>
+              </div>
+
+              <div class="pb-section">
+                <p class="pb-section-title">Page content</p>
+                <div class="pb-option">
+                  <label for="ppAbout" class="pb-label">Full description <span class="pz-option-hint">(optional — shown as an “About” section on the page)</span></label>
+                  <div class="pb-rich-editor">
                   <div class="pb-rich-toolbar" role="toolbar" aria-label="Formatting">
                     <button type="button" data-format="heading" title="Heading">H</button>
                     <button type="button" data-format="bold" title="Bold"><b>B</b></button>
@@ -114,24 +137,21 @@
                   </div>
                   <textarea id="ppAbout" class="pz-field-input" rows="7" maxlength="5000" placeholder="What’s included, who it’s for, what happens after they pay…&#10;&#10;## What you’ll get&#10;- 8 modules, 12 lessons&#10;- **Lifetime** access"></textarea>
                 </div>
-                <p class="pz-option-hint">Use the buttons, or type <code>## Heading</code>, <code>- list item</code>, <code>**bold**</code>, <code>*italic*</code> and <code>[text](https://…)</code>.</p>
-              </div>
-              <div class="pb-note">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                <span>Add your products in the <strong>Products</strong> tab. The shipping-address section only appears on the checkout page if at least one product there is Physical.</span>
-              </div>
-              <div class="pb-option">
-                <label for="ppSuccessMessage" class="pb-label">Thank-you message <span class="pz-option-hint">(optional — shown on the receipt)</span></label>
-                <textarea id="ppSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default."></textarea>
-              </div>
-              <!-- Only while editing: new pages get a link from their headline. -->
-              <div class="pb-option" id="ppSlugRow" hidden>
-                <label for="ppSlug" class="pb-label">Link</label>
-                <div class="pz-slug-field">
-                  <span><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/</span>
-                  <input type="text" id="ppSlug" maxlength="60" spellcheck="false" autocapitalize="off" />
+                  <p class="pz-option-hint">Use the buttons, or type <code>## Heading</code>, <code>- list item</code>, <code>**bold**</code>, <code>*italic*</code> and <code>[text](https://…)</code>.</p>
                 </div>
-                <p class="pz-option-hint">Changing this breaks any link you’ve already shared.</p>
+                <div class="pb-option">
+                  <label for="ppSuccessMessage" class="pb-label">Thank-you message <span class="pz-option-hint">(optional — shown on the receipt)</span></label>
+                  <textarea id="ppSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default."></textarea>
+                </div>
+                <!-- Only while editing: new pages get a link from their headline. -->
+                <div class="pb-option" id="ppSlugRow" hidden>
+                  <label for="ppSlug" class="pb-label">Link</label>
+                  <div class="pz-slug-field">
+                    <span><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/</span>
+                    <input type="text" id="ppSlug" maxlength="60" spellcheck="false" autocapitalize="off" />
+                  </div>
+                  <p class="pz-option-hint">Changing this breaks any link you’ve already shared.</p>
+                </div>
               </div>
             </div>
 
