@@ -282,20 +282,66 @@
       </div>`;
   }
 
+  // What kind of page this is — picked at the top of the builder:
+  //   'single'   — one digital or physical product
+  //   'multiple' — up to MAX_PRODUCTS, any mix (a coffee can ride along)
+  //   'coffee'   — just a buy-me-a-coffee button
+  // It only shapes the builder; the server sees a plain product list.
+  let pageKind = 'single';
+  function kindOf(list) {
+    if (list.length > 1) return 'multiple';
+    return list[0] && list[0].type === 'coffee' ? 'coffee' : 'single';
+  }
+  const TYPE_LABELS = { digital: 'Digital', physical: 'Physical', coffee: 'Buy me a coffee' };
+  function typesFor(kind) {
+    if (kind === 'coffee') return [];
+    return kind === 'single' ? ['digital', 'physical'] : ['digital', 'physical', 'coffee'];
+  }
+  // Whether a card has anything typed in it worth asking before throwing away.
+  const hasContent = (p) => !!(p.title.trim() || p.description.trim() || p.price || p.suggested || p.fileUrl || p.mediaUrl);
+
+  function setKind(kind) {
+    if (kind === pageKind) return;
+    if (kind === 'coffee') {
+      const keep = products.find((p) => p.type === 'coffee');
+      const dropping = products.filter((p) => p !== keep && hasContent(p));
+      if (dropping.length && !window.confirm(`Switching to Buy me a coffee removes the ${dropping.length === 1 ? 'product' : `${dropping.length} products`} you’ve added. Continue?`)) return;
+      products = [keep || blankProduct({ type: 'coffee', pricing: 'qty' })];
+    } else if (kind === 'single') {
+      const keep = products.find((p) => p.type !== 'coffee');
+      const dropping = products.filter((p) => p !== keep && hasContent(p));
+      if (dropping.length && !window.confirm(`A single-product page keeps only ${keep && keep.title.trim() ? `“${keep.title.trim()}”` : 'the first product'}. Remove the other${dropping.length === 1 ? '' : 's'}?`)) return;
+      products = [keep || blankProduct()];
+    } else if (products.length === 1 && products[0].type === 'coffee' && !hasContent(products[0])) {
+      products = [blankProduct()];
+    }
+    pageKind = kind;
+    renderKind();
+    renderProducts();
+  }
+  function renderKind() {
+    document.querySelectorAll('#ppKind .pb-kind-opt').forEach((btn) => {
+      const on = btn.dataset.kind === pageKind;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('#ppKind .pb-kind-opt').forEach((btn) => btn.addEventListener('click', () => setKind(btn.dataset.kind)));
+
   function prodCardHTML(p, index) {
-    const typeToggle = `
+    const types = typesFor(pageKind);
+    const typeToggle = types.length ? `
       <div class="pb-toggle pb-type-toggle" role="group" aria-label="Product type">
-        <button type="button" class="${p.type === 'digital' ? 'active' : ''}" data-settype="digital"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.digital}</svg>Digital</button>
-        <button type="button" class="${p.type === 'physical' ? 'active' : ''}" data-settype="physical"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.physical}</svg>Physical</button>
-        <button type="button" class="${p.type === 'coffee' ? 'active' : ''}" data-settype="coffee"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS.coffee}</svg>Buy me a coffee</button>
-      </div>`;
+        ${types.map((t) => `<button type="button" class="${p.type === t ? 'active' : ''}" data-settype="${t}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[t]}</svg>${TYPE_LABELS[t]}</button>`).join('')}
+      </div>` : '';
+    const multiple = pageKind === 'multiple';
     const head = `
       <div class="pb-prod-head">
-        <span class="pb-prod-index">${index + 1}</span>
+        ${multiple ? `<span class="pb-prod-index">${index + 1}</span>` : ''}
         <input type="text" class="pz-field-input" data-field="title" maxlength="120" placeholder="${p.type === 'coffee' ? 'Buy me a coffee' : 'Product title'}" value="${escapeHTML(p.title)}" aria-label="Product ${index + 1} title" />
-        <button type="button" class="pb-prod-remove" data-remove aria-label="Remove product ${index + 1}">
+        ${multiple ? `<button type="button" class="pb-prod-remove" data-remove aria-label="Remove product ${index + 1}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
+        </button>` : ''}
       </div>
       <textarea class="pz-field-input pb-prod-desc" data-field="description" rows="2" maxlength="300" placeholder="Short description (optional) — shown with this product on the page" aria-label="Product ${index + 1} description">${escapeHTML(p.description)}</textarea>
       ${mediaFieldHTML(p)}`;
@@ -344,6 +390,7 @@
   function renderProducts() {
     prodList.innerHTML = products.map(prodCardHTML).join('');
     $('tabProductCount').textContent = products.length;
+    addProductBtn.hidden = pageKind !== 'multiple';
     addProductBtn.disabled = products.length >= MAX_PRODUCTS;
     prodList.querySelectorAll('.pb-prod-card').forEach((card) => {
       const p = products.find((x) => x.id === Number(card.dataset.pid));
@@ -377,7 +424,7 @@
         });
         card.querySelector('[data-field="mediaUrl"]').addEventListener('input', () => mediaError.classList.remove('show'));
       }
-      card.querySelector('[data-remove]').addEventListener('click', () => {
+      card.querySelector('[data-remove]')?.addEventListener('click', () => {
         products = products.filter((x) => x.id !== p.id);
         // The builder never sits empty.
         if (!products.length) products.push(blankProduct());
@@ -712,6 +759,8 @@
     nextPid = 1;
     products = page && page.products.length ? page.products.map(fromStored) : [blankProduct()];
     nextPid = Math.max(...products.map((p) => p.id)) + 1;
+    pageKind = kindOf(products);
+    renderKind();
     showCover = page ? !!page.show_cover : true;
     coverType = page && ['art', 'image', 'video', 'color'].includes(page.cover_type) ? page.cover_type : 'art';
     coverColor = page ? page.cover_color || '' : '';
