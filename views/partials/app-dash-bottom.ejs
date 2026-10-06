@@ -37,24 +37,57 @@
     });
   });
 
-  // Weekly hours (partials/ax-hours): reveal the next hidden range, or
-  // hide (and clear) one.
-  document.querySelectorAll('[data-range-add]').forEach(function (btn) {
-    var update = function () { btn.hidden = !btn.parentNode.querySelector('.ax-range[hidden]'); };
-    btn.addEventListener('click', function () {
-      var next = btn.parentNode.querySelector('.ax-range[hidden]');
-      if (next) next.hidden = false;
-      update();
+  // Weekly hours (partials/ax-hours). Times are 'HH:MM', so they compare
+  // as strings. Within a day: each "to" must be after its "from", and each
+  // extra range must start at or after the previous one ends — options that
+  // would break that are disabled, and a choice that's become invalid moves
+  // to the nearest valid one. The server checks the same (hoursFromForm).
+  document.querySelectorAll('.ax-ranges').forEach(function (box) {
+    var add = box.querySelector('[data-range-add]');
+    var ranges = Array.prototype.slice.call(box.querySelectorAll('.ax-range'));
+    var firstAllowed = function (select, test) {
+      var opt = Array.prototype.find.call(select.options, function (o) { return o.value && test(o.value); });
+      return opt ? opt.value : '';
+    };
+    var sync = function () {
+      var floor = '';
+      ranges.forEach(function (range) {
+        var start = range.querySelector('[data-start]');
+        var end = range.querySelector('[data-end]');
+        if (range.hidden) return;
+        // 11:45 pm can't start a range — there'd be no "to" after it.
+        var okStart = function (v) { return v >= floor && v < '23:45'; };
+        Array.prototype.forEach.call(start.options, function (o) { o.disabled = !!o.value && !okStart(o.value); });
+        if (start.value && !okStart(start.value)) start.value = firstAllowed(start, okStart);
+        var from = start.value;
+        Array.prototype.forEach.call(end.options, function (o) { o.disabled = !!o.value && !!from && o.value <= from; });
+        if (from && (!end.value || end.value <= from)) end.value = firstAllowed(end, function (v) { return v > from; });
+        if (end.value) floor = end.value;
+      });
+      add.hidden = !box.querySelector('.ax-range[hidden]') || !floor || floor >= '23:30';
+    };
+    box.addEventListener('change', sync);
+    add.addEventListener('click', function () {
+      var next = box.querySelector('.ax-range[hidden]');
+      if (!next) return;
+      // Start the new range an hour after the last one ends.
+      var prevEnd = ranges.filter(function (r) { return !r.hidden; }).map(function (r) { return r.querySelector('[data-end]').value; }).pop() || '09:00';
+      var h = Math.min(23, Number(prevEnd.slice(0, 2)) + 1);
+      var start = next.querySelector('[data-start]');
+      start.value = firstAllowed(start, function (v) { return v >= String(h).padStart(2, '0') + prevEnd.slice(2); }) || firstAllowed(start, function (v) { return v >= prevEnd; });
+      next.querySelector('[data-end]').value = '';
+      next.hidden = false;
+      sync();
     });
-    btn.parentNode.querySelectorAll('[data-range-remove]').forEach(function (x) {
+    box.querySelectorAll('[data-range-remove]').forEach(function (x) {
       x.addEventListener('click', function () {
         var range = x.parentNode;
-        range.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+        range.querySelectorAll('select').forEach(function (s) { s.value = ''; });
         range.hidden = true;
-        update();
+        sync();
       });
     });
-    update();
+    sync();
   });
 
   // Copy buttons for public links, and a second click to confirm deletes.

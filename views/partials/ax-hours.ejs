@@ -1,4 +1,15 @@
-<%# Weekly hours editor — Settings → Availability, and a service's own hours. Posts open_<day> plus start_<day>_<n> / end_<day>_<n> (lib/bookings.js hoursFromForm). Pass hours (seven lists of ['09:00', '17:00'] ranges, Sunday first), weekdays and maxRanges. "+ Add hours" / × are wired in app-dash-bottom. %>
+<%# Weekly hours editor — Settings → Availability, and a service's own hours. Posts open_<day> plus start_<day>_<n> / end_<day>_<n> (lib/bookings.js hoursFromForm). Pass hours (seven lists of ['09:00', '17:00'] ranges, Sunday first), weekdays and maxRanges. Times are dropdowns in 15-minute steps; the script in app-dash-bottom keeps each "to" after its "from" and each extra range after the one before, and wires "+ Add hours" / ×. %>
+<%
+var times = [];
+for (var m = 0; m < 24 * 60; m += 15) times.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
+// A stored time off the 15-minute grid (from before the dropdowns) still shows.
+var timeOptions = function (value, blank) {
+  var list = value && times.indexOf(value) === -1 ? times.concat([value]).sort() : times;
+  return (blank ? '<option value="">—</option>' : '') + list.map(function (t) {
+    return '<option value="' + t + '"' + (t === value ? ' selected' : '') + '>' + fmt.time(t) + '</option>';
+  }).join('');
+};
+%>
 <div class="ax-hours">
   <% weekdays.forEach(function (day, d) { var ranges = hours[d]; %>
   <div class="ax-hours-row">
@@ -6,9 +17,9 @@
     <div class="ax-ranges">
       <% for (var n = 0; n < maxRanges; n++) { var r = ranges[n]; var shown = n === 0 || !!r; %>
       <div class="ax-range"<%= shown ? '' : ' hidden' %>>
-        <input class="ax-input" type="time" name="start_<%= d %>_<%= n %>" value="<%= r ? r[0] : (n === 0 ? '09:00' : '') %>" aria-label="<%= day %> from" />
+        <select class="ax-input" name="start_<%= d %>_<%= n %>" aria-label="<%= day %> from" data-start><%- timeOptions(r ? r[0] : (n === 0 ? '09:00' : ''), n > 0) %></select>
         <span class="ax-sub">to</span>
-        <input class="ax-input" type="time" name="end_<%= d %>_<%= n %>" value="<%= r ? r[1] : (n === 0 ? '17:00' : '') %>" aria-label="<%= day %> until" />
+        <select class="ax-input" name="end_<%= d %>_<%= n %>" aria-label="<%= day %> until" data-end><%- timeOptions(r ? r[1] : (n === 0 ? '17:00' : ''), n > 0) %></select>
         <% if (n > 0) { %><button type="button" class="ax-btn ax-btn-quiet" data-range-remove aria-label="Remove these hours">×</button><% } %>
       </div>
       <% } %>
