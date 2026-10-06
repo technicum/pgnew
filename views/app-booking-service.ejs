@@ -23,7 +23,7 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
     </div>
     <p class="ax-hint ax-pad">
       <% if (paymentMode === 'test') { %><b>Paid sessions run in test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged.
-      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid under Upcoming bookings or in Orders. Tell bookers how to pay (UPI ID, bank details) in <a href="/dashboard/bookings/settings">Settings</a>.<% } %>
+      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid under Upcoming bookings or in Orders. Tell bookers how to pay (UPI ID, bank details) in <a href="/dashboard/bookings/settings/payments">Settings</a>.<% } %>
     </p>
   </section>
 
@@ -38,7 +38,7 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
   <section class="ax-panel" id="hours">
     <div class="ax-panel-head"><h2>When it can be booked</h2><span class="ax-count">IST</span></div>
     <div class="ax-pad ax-pad-top ax-hours-choice">
-      <label class="ax-check"><input type="radio" name="custom_hours" value="0"<%= service.custom_hours ? '' : ' checked' %> data-hours-mode /> <span>My availability <small class="ax-sub">— <%= fmt.hours(bookingSettings.hours) %> ·<a href="/dashboard/bookings/settings#availability">change in Settings</a></small></span></label>
+      <label class="ax-check"><input type="radio" name="custom_hours" value="0"<%= service.custom_hours ? '' : ' checked' %> data-hours-mode /> <span>My availability <small class="ax-sub">— <%= fmt.hours(bookingSettings.hours) %> ·<a href="/dashboard/bookings/settings">change in Settings</a></small></span></label>
       <label class="ax-check"><input type="radio" name="custom_hours" value="1"<%= service.custom_hours ? ' checked' : '' %> data-hours-mode /> <span>Different hours for this service</span></label>
     </div>
     <div data-custom-hours<%= service.custom_hours ? '' : ' hidden' %>>
