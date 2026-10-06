@@ -1,6 +1,6 @@
-<%# Bookings app → Bookings tab (lib/appDashboard.js → /dashboard/bookings): upcoming and past bookings. Paid ones waiting for payment can be marked paid. %>
+<%# Bookings app → Upcoming bookings tab (lib/appDashboard.js → /dashboard/bookings/upcoming): upcoming and past bookings. Paid ones waiting for payment can be marked paid. %>
 <%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: 'Bookings' }) %>
-<%- include('partials/booking-tabs', { tab: 'bookings' }) %>
+<%- include('partials/booking-tabs', { tab: 'upcoming' }) %>
 <% var live = upcoming.filter(function (b) { return b.status === 'confirmed' || b.status === 'pending'; });
 var unpaid = upcoming.filter(function (b) { return b.status === 'pending'; }).length;
 function bookingRow(b, past) { %>
@@ -38,7 +38,7 @@ function bookingRow(b, past) { %>
   <% } else { %>
   <div class="ax-empty">
     <p>Set up what people can book — a call, a consultation, a coaching session.</p>
-    <a class="ax-btn ax-btn-primary" href="/dashboard/bookings/services">Create your first service</a>
+    <a class="ax-btn ax-btn-primary" href="/dashboard/bookings#services">Create your first service</a>
   </div>
   <% } %>
 </section>

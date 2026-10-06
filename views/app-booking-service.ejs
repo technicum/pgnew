@@ -1,5 +1,5 @@
 <%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id). Field names match lib/bookings.js: hours as open_<day> + start_<day>_<n> / end_<day>_<n>, questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. Images upload through /dashboard/uploads (the small script below) or take a pasted link. %>
-<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings/services', label: 'All services' } }) %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings#services', label: 'Booking page' } }) %>
 <% var link = storeUrlFor(user.handle) + '/book/' + service.slug;
 var priceRupees = service.price ? String(service.price / 100) : '0'; %>
 
@@ -23,7 +23,7 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
     </div>
     <p class="ax-hint ax-pad">
       <% if (paymentMode === 'test') { %><b>Paid sessions run in test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged.
-      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid on the Bookings tab or in Orders. Tell bookers how to pay (UPI ID, bank details) in <a href="/dashboard/bookings/settings">Settings</a>.<% } %>
+      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid under Upcoming bookings or in Orders. Tell bookers how to pay (UPI ID, bank details) in <a href="/dashboard/bookings/settings">Settings</a>.<% } %>
     </p>
   </section>
 

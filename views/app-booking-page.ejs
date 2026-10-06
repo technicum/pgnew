@@ -1,0 +1,58 @@
+<%# Bookings app → Booking page tab (lib/appDashboard.js → /dashboard/bookings): how the creator's /book page looks (on/off, headline, intro, photo, cover) and the services on it, with the form to add one. %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: 'Bookings' }) %>
+<%- include('partials/booking-tabs', { tab: 'page' }) %>
+<% var s = bookingSettings; var storeUrl = storeUrlFor(user.handle); %>
+
+<section class="ax-panel" id="services">
+  <div class="ax-panel-head"><h2>Services</h2><span class="ax-count">What people can book · shown oldest first</span></div>
+  <% if (services.length) { %>
+  <ul class="ax-list">
+    <% services.slice().reverse().forEach(function (sv) { var link = storeUrl + '/book/' + sv.slug; %>
+    <li class="ax-row<%= sv.visible ? '' : ' is-off' %>">
+      <div class="ax-main">
+        <a class="ax-title" href="/dashboard/bookings/services/<%= sv.id %>"><%= sv.title %></a>
+        <span class="ax-sub ax-block"><%= sv.duration_min %> min · <%= sv.priceLabel %> · <%= sv.upcoming %> upcoming<%= sv.visible ? '' : ' · Hidden' %></span>
+        <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
+      </div>
+      <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
+      <a class="ax-btn" href="/dashboard/bookings/services/<%= sv.id %>">Edit</a>
+    </li>
+    <% }) %>
+  </ul>
+  <% } else { %>
+  <p class="ax-empty">No services yet. Add one below — it goes live on your booking page straight away.</p>
+  <% } %>
+  <form method="POST" action="/dashboard/bookings/services" class="ax-new">
+    <h3><%= services.length ? 'Add another service' : 'Create your first service' %></h3>
+    <div class="ax-grid">
+      <label class="ax-field"><span>Name</span><input class="ax-input" name="title" placeholder="30-minute intro call" required maxlength="200" /></label>
+      <label class="ax-field"><span>Length (minutes)</span><input class="ax-input" type="number" name="duration_min" value="30" min="5" max="480" step="5" /></label>
+      <label class="ax-field"><span>Price (₹) <small>0 = free</small></span><input class="ax-input" name="price" value="0" inputmode="decimal" /></label>
+    </div>
+    <p class="ax-hint">You’ll set its hours (Mon–Fri, 9–5 to start), questions and photos on the next screen.</p>
+    <button class="ax-btn ax-btn-primary">Create service</button>
+  </form>
+</section>
+
+<form method="POST" action="/dashboard/bookings/page">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Page design</h2><span class="ax-count">The top of your booking page</span></div>
+    <div class="ax-pad ax-pad-top">
+      <label class="ax-check"><input type="checkbox" name="listing_visible" value="1"<%= s.listing_visible ? ' checked' : '' %> /> <span>Show my booking page</span></label>
+      <p class="ax-hint" style="margin-top:6px;">When it’s off, each service’s own link still works, and “Booking” blocks on your store don’t link anywhere.</p>
+    </div>
+    <div class="ax-grid">
+      <label class="ax-field ax-span-3"><span>Headline</span><input class="ax-input" name="headline" value="<%= s.headline %>" maxlength="120" placeholder="Book time with <%= user.name %>" /></label>
+      <label class="ax-field ax-span-3"><span>Intro</span><textarea class="ax-input" name="intro" rows="3" maxlength="1000" placeholder="Who you help and what a session gets them. Blank shows your store bio."><%= s.intro %></textarea>
+        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
+      <%- include('partials/ax-image-field', { name: 'photo_url', label: 'Your photo', value: s.photo_url, hint: 'Also used on any service without its own photo.', round: true }) %>
+      <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: s.cover_url, hint: 'Wide image across the top — about 1500 × 700. Also the default for services.' }) %>
+    </div>
+  </section>
+  <section class="ax-panel ax-savebar">
+    <span class="ax-sub">Changes show on your booking page straight away.</span>
+    <button class="ax-btn ax-btn-primary">Save page</button>
+  </section>
+</form>
+
+<%- include('partials/app-dash-bottom') %>

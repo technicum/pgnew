@@ -1,24 +1,9 @@
-<%# Bookings app → Settings tab (lib/appDashboard.js → /dashboard/bookings/settings): the booking page (/book — every service on one link), how bookers pay, and days off. %>
+<%# Bookings app → Settings tab (lib/appDashboard.js → /dashboard/bookings/settings): how bookers pay, and days off. How /book looks is on the Booking page tab. %>
 <%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: 'Bookings' }) %>
 <%- include('partials/booking-tabs', { tab: 'settings' }) %>
 <% var s = bookingSettings; %>
 
 <form method="POST" action="/dashboard/bookings/settings">
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Booking page</h2><span class="ax-count">All your services on one link</span></div>
-    <div class="ax-pad ax-pad-top">
-      <label class="ax-check"><input type="checkbox" name="listing_visible" value="1"<%= s.listing_visible ? ' checked' : '' %> /> <span>Show my booking page</span></label>
-      <p class="ax-hint" style="margin-top:6px;">When it’s off, each service’s own link still works, and “Booking” blocks on your store don’t link anywhere.</p>
-    </div>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-3"><span>Headline</span><input class="ax-input" name="headline" value="<%= s.headline %>" maxlength="120" placeholder="Book time with <%= user.name %>" /></label>
-      <label class="ax-field ax-span-3"><span>Intro</span><textarea class="ax-input" name="intro" rows="3" maxlength="1000" placeholder="Who you help and what a session gets them. Blank shows your store bio."><%= s.intro %></textarea>
-        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
-      <%- include('partials/ax-image-field', { name: 'photo_url', label: 'Your photo', value: s.photo_url, hint: 'Also used on any service without its own photo.', round: true }) %>
-      <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: s.cover_url, hint: 'Wide image across the top — about 1500 × 700. Also the default for services.' }) %>
-    </div>
-  </section>
-
   <section class="ax-panel">
     <div class="ax-panel-head"><h2>Payments</h2><span class="ax-count">For paid services</span></div>
     <div class="ax-grid">
@@ -27,13 +12,13 @@
     </div>
     <p class="ax-hint ax-pad">
       <% if (paymentMode === 'test') { %><b>Test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged. Unpaid holds free up after 30 minutes.
-      <% } else { %><b>Manual payments</b> — a paid booking holds its slot as “awaiting payment” until you mark it paid on the Bookings tab (or in Orders).<% } %>
+      <% } else { %><b>Manual payments</b> — a paid booking holds its slot as “awaiting payment” until you mark it paid under Upcoming bookings (or in Orders).<% } %>
     </p>
   </section>
 
   <section class="ax-panel ax-savebar">
-    <span class="ax-sub">Changes show on your booking page straight away.</span>
-    <button class="ax-btn ax-btn-primary">Save settings</button>
+    <span class="ax-sub">Shown on paid bookings straight away.</span>
+    <button class="ax-btn ax-btn-primary">Save payments</button>
   </section>
 </form>
 
@@ -53,7 +38,7 @@
       <label class="ax-field"><span>Until <small>(optional)</small></span><input class="ax-input" type="date" name="to" min="<%= today %>" /></label>
       <label class="ax-field"><span>Note <small>(only you see it)</small></span><input class="ax-input" name="note" maxlength="100" placeholder="Diwali, travelling…" /></label>
     </div>
-    <p class="ax-hint">Bookings already made on those days aren’t cancelled — cancel them on the Bookings tab if you need to.</p>
+    <p class="ax-hint">Bookings already made on those days aren’t cancelled — cancel them under Upcoming bookings if you need to.</p>
     <button class="ax-btn ax-btn-primary">Add days off</button>
   </form>
 </section>
