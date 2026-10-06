@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/apps.css?v=<%= assetVersion %>" />
+</head>
+<%# Explore apps (server.js → /dashboard/apps, catalog in lib/apps.js): the Store is built in; the rest are added / removed here. %>
+<body>
+<div class="min-h-screen bg-background">
+
+  <%- include('partials/dashboard-sidebar', { navActive: '/dashboard/apps' }) %>
+
+  <main class="lg:ml-64">
+    <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <p class="text-sm font-semibold text-primary" style="line-height:1;">Explore apps</p>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+      <section>
+        <p class="text-sm font-semibold text-primary">Apps</p>
+        <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Explore apps</h1>
+        <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">Your store is always on. Add the apps you need — each one shows up in your sidebar, and you can remove it any time without losing anything.</p>
+      </section>
+
+      <% if (justRemoved) { %>
+      <div class="ap-flash" role="status"><b><%= justRemoved.name %></b> removed from your dashboard. Pages it published stay live — add it back any time and everything is where you left it.</div>
+      <% } %>
+      <% if (highlight && installed.indexOf(highlight) === -1) { %>
+      <div class="ap-flash ap-flash-info" role="status">Add the <b><%= apps.find(function (a) { return a.id === highlight; }).name %></b> app to open that page.</div>
+      <% } %>
+
+      <% var core = apps.filter(function (a) { return a.core; }); var addable = apps.filter(function (a) { return !a.core; }); %>
+      <h2 class="ap-group">Built in</h2>
+      <div class="ap-grid">
+        <% core.forEach(function (a) { %>
+        <article class="ap-card ap-on">
+          <div class="ap-card-top">
+            <span class="ap-icon" style="--app:<%= a.color %>"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- a.icon %></svg></span>
+            <span class="ap-badge">Always on</span>
+          </div>
+          <h3><%= a.name %></h3>
+          <p class="ap-tagline"><%= a.tagline %></p>
+          <p class="ap-desc"><%= a.description %></p>
+          <ul class="ap-features"><% a.features.forEach(function (f) { %><li><%= f %></li><% }) %></ul>
+          <div class="ap-actions"><a class="ap-btn ap-btn-primary" href="<%= a.href %>">Open</a></div>
+        </article>
+        <% }) %>
+      </div>
+
+      <h2 class="ap-group">Apps</h2>
+      <div class="ap-grid">
+        <% addable.forEach(function (a) { var on = installed.indexOf(a.id) !== -1; %>
+        <article class="ap-card<%= on ? ' ap-on' : '' %><%= highlight === a.id ? ' ap-highlight' : '' %>" id="<%= a.id %>">
+          <div class="ap-card-top">
+            <span class="ap-icon" style="--app:<%= a.color %>"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- a.icon %></svg></span>
+            <% if (on) { %><span class="ap-badge">✓ Added</span><% } else { %><span class="ap-badge ap-badge-free">Free</span><% } %>
+          </div>
+          <h3><%= a.name %></h3>
+          <p class="ap-tagline"><%= a.tagline %></p>
+          <p class="ap-desc"><%= a.description %></p>
+          <ul class="ap-features"><% a.features.forEach(function (f) { %><li><%= f %></li><% }) %></ul>
+          <div class="ap-actions">
+            <% if (on) { %>
+            <a class="ap-btn ap-btn-primary" href="<%= a.href %>">Open</a>
+            <form method="POST" action="/dashboard/apps/<%= a.id %>" class="ap-remove">
+              <input type="hidden" name="action" value="remove" />
+              <button type="submit" class="ap-btn ap-btn-ghost">Remove</button>
+            </form>
+            <% } else { %>
+            <form method="POST" action="/dashboard/apps/<%= a.id %>">
+              <input type="hidden" name="action" value="add" />
+              <button type="submit" class="ap-btn ap-btn-primary">+ Add app</button>
+            </form>
+            <% } %>
+          </div>
+        </article>
+        <% }) %>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+  // Remove asks once more before taking the app out of the sidebar.
+  document.querySelectorAll('.ap-remove').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      var btn = form.querySelector('button');
+      if (btn.dataset.confirm) return;
+      e.preventDefault();
+      btn.dataset.confirm = '1';
+      btn.textContent = 'Click again to remove';
+      btn.classList.add('ap-btn-danger');
+      setTimeout(function () {
+        delete btn.dataset.confirm;
+        btn.textContent = 'Remove';
+        btn.classList.remove('ap-btn-danger');
+      }, 3000);
+    });
+  });
+</script>
+</body>
+</html>

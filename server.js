@@ -55,6 +55,7 @@ const {
   deleteCoupon,
 } = require('./lib/paymentPages');
 const { listAbandoned, dismissDraft } = require('./lib/checkoutDrafts');
+const { APPS, APP_BY_ID, installedApps, setAppInstalled, appForPath } = require('./lib/apps');
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode } = require('./lib/payments');
 const { installStorefront } = require('./lib/storefront');
@@ -103,6 +104,24 @@ app.use((req, res, next) => {
   res.locals.siteDomain = SITE_DOMAIN;
   res.locals.currentUser = req.session.user || null;
   next();
+});
+
+// Apps (lib/apps.js): every dashboard page knows which apps are added (the
+// sidebar lists them), and an app's own routes only open once it's added —
+// otherwise the page sends you to Explore apps to add it.
+app.use('/dashboard', async (req, res, next) => {
+  if (!req.session.user) return next();
+  try {
+    const installed = await installedApps(req.session.user.id);
+    res.locals.installedApps = installed;
+    res.locals.appNav = APPS.filter((a) => installed.includes(a.id)).flatMap((a) => a.nav);
+    const needs = appForPath(req.baseUrl + req.path);
+    if (!needs || needs.core || installed.includes(needs.id)) return next();
+    if (req.method === 'GET') return res.redirect(`/dashboard/apps?add=${needs.id}`);
+    return res.status(403).json({ error: `Add the ${needs.name} app first (Explore apps).` });
+  } catch (err) {
+    next(err);
+  }
 });
 
 function redirectIfLoggedIn(req, res, next) {
@@ -216,6 +235,32 @@ app.get('/dashboard', requireAuth, (req, res) => {
 // a full page reload. Every endpoint re-checks requireAuth and scopes its
 // query to req.session.user.id, so one merchant can never touch another
 // merchant's blocks or profile even by guessing an id.
+
+// Explore apps: the Store (always on) and the apps a creator can add.
+app.get('/dashboard/apps', requireAuth, (req, res) => {
+  res.render('apps', {
+    title: `Explore apps — ${SITE_NAME}`,
+    user: req.session.user,
+    apps: APPS,
+    installed: res.locals.installedApps || [],
+    // Arriving from an app's page before adding it: that app is highlighted.
+    highlight: APP_BY_ID.has(req.query.add) ? req.query.add : null,
+    justRemoved: APP_BY_ID.has(req.query.removed) ? APP_BY_ID.get(req.query.removed) : null,
+  });
+});
+
+// Add or remove an app (a plain form post from Explore apps).
+app.post('/dashboard/apps/:id', requireAuth, async (req, res, next) => {
+  const app_ = APP_BY_ID.get(req.params.id);
+  if (!app_ || app_.core) return res.redirect(303, '/dashboard/apps');
+  try {
+    const add = req.body.action !== 'remove';
+    await setAppInstalled(req.session.user.id, app_.id, add);
+    res.redirect(303, add ? `${app_.href}` : `/dashboard/apps?removed=${app_.id}`);
+  } catch (err) {
+    next(err);
+  }
+});
 
 app.get('/dashboard/builder', requireAuth, async (req, res, next) => {
   try {
