@@ -1,0 +1,76 @@
+<%- include('partials/customer-head') %>
+<%# A signed-in buyer's account: their saved delivery addresses (lib/customers.js) — add, make default, remove. %>
+<main class="cx-acct-wrap cx-acct-wide">
+  <div class="cx-card cx-acct-card">
+    <div class="cx-acct-head">
+      <div>
+        <h1 class="cx-acct-title">Your account</h1>
+        <p class="cx-acct-sub"><b><%= customer.name %></b> · <%= customer.email %></p>
+      </div>
+      <form method="POST" action="/account/logout"><button type="submit" class="cx-acct-link">Sign out</button></form>
+    </div>
+
+    <h2 class="cx-acct-h2">Delivery addresses <small><%= addresses.length %> / <%= maxAddresses %></small></h2>
+    <% if (!addresses.length) { %>
+    <p class="cx-muted cx-small">No saved addresses yet — add one below and it’s ready at checkout.</p>
+    <% } %>
+    <ul class="cx-acct-list">
+      <% addresses.forEach(function (a) { %>
+      <li class="cx-address<%= a.is_default ? ' active' : '' %>">
+        <span>
+          <b><%= a.label || a.name || 'Address' %><% if (a.is_default) { %> <em>Default</em><% } %></b>
+          <small><% if (a.label && a.name) { %><%= a.name %> · <% } %><%= a.line %>, <%= a.city %> <%= a.pincode %><%= a.phone ? ' · ' + a.phone : '' %></small>
+        </span>
+        <span class="cx-acct-actions">
+          <% if (!a.is_default) { %>
+          <form method="POST" action="/account/addresses/<%= a.id %>/default"><button type="submit" class="cx-acct-link">Make default</button></form>
+          <% } %>
+          <form method="POST" action="/account/addresses/<%= a.id %>/delete"><button type="submit" class="cx-acct-link cx-danger">Remove</button></form>
+        </span>
+      </li>
+      <% }) %>
+    </ul>
+
+    <% if (addresses.length < maxAddresses) { %>
+    <h2 class="cx-acct-h2" id="add">Add an address</h2>
+    <% if (error) { %><div class="cx-error" role="alert"><%= error %></div><% } %>
+    <form method="POST" action="/account/addresses" novalidate>
+      <div class="cx-field-row">
+        <div class="cx-field">
+          <label for="label">Label <span class="cx-optional">(optional)</span></label>
+          <input type="text" id="label" name="label" value="<%= values.label || '' %>" placeholder="Home, Work…" maxlength="40" />
+        </div>
+        <div class="cx-field">
+          <label for="name">Recipient name</label>
+          <input type="text" id="name" name="name" value="<%= values.name || '' %>" placeholder="Full name" autocomplete="name" />
+        </div>
+      </div>
+      <div class="cx-field">
+        <label for="address">Address line</label>
+        <input type="text" id="address" name="address" value="<%= values.line || '' %>" placeholder="House no, street, area" autocomplete="street-address" />
+      </div>
+      <div class="cx-field-row">
+        <div class="cx-field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" value="<%= values.city || '' %>" placeholder="City" autocomplete="address-level2" />
+        </div>
+        <div class="cx-field">
+          <label for="pincode">Pincode</label>
+          <input type="text" id="pincode" name="pincode" value="<%= values.pincode || '' %>" placeholder="Pincode" inputmode="numeric" maxlength="6" autocomplete="postal-code" />
+        </div>
+      </div>
+      <div class="cx-field">
+        <label for="phone">Phone <span class="cx-optional">(optional)</span></label>
+        <input type="tel" id="phone" name="phone" value="<%= values.phone || '' %>" placeholder="+91 98765 43210" autocomplete="tel" />
+      </div>
+      <% if (addresses.length) { %>
+      <label class="cx-check"><input type="checkbox" name="make_default" value="1" /> Make this my default address</label>
+      <% } %>
+      <button type="submit" class="cx-pay-btn">Save address</button>
+    </form>
+    <% } %>
+  </div>
+</main>
+<div class="cx-foot-note">Powered by <b><%= siteName %></b></div>
+</body>
+</html>

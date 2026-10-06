@@ -1,0 +1,24 @@
+<%# Shared <head> + store header for the buyer account pages (customer-auth, customer-account) — same look as the payment page. %>
+<%
+var acctAccent = /^#[0-9a-f]{6}$/i.test(owner.accent_color || '') ? owner.accent_color : '#ff5c39';
+var acctInitials = owner.name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '?';
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+<link rel="stylesheet" href="/css/payment-page.css?v=<%= assetVersion %>" />
+</head>
+<body class="cx-page" style="--magnet-accent:<%= acctAccent %>; --magnet-accent-dark:<%= acctAccent %>;">
+<header class="cx-acct-top">
+  <a class="cx-acct-brand" href="<%= next && next.indexOf('/pay/') === 0 ? next : '/' %>">
+    <span class="cx-brand-mark"><%= acctInitials %></span>
+    <span><b><%= owner.name %></b><small><%= next && next.indexOf('/pay/') === 0 ? '← Back to checkout' : siteName + ' store' %></small></span>
+  </a>
+</header>

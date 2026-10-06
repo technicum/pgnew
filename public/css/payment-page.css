@@ -596,3 +596,30 @@ html:not(.js) .cx-product .qty .n { border: 1.5px solid var(--line); background:
 }
 .pp-ship-note svg { flex: none; margin-top: 2px; }
 
+
+/* Buyer account pages (views/customer-auth.ejs, customer-account.ejs) —
+   on the payment page's cx- tokens. */
+.cx-acct-top { max-width: 1080px; margin: 0 auto; padding: 22px 20px 0; }
+.cx-acct-brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; }
+.cx-acct-brand b { display: block; font-family: var(--font-head); font-size: 17px; }
+.cx-acct-brand small { display: block; font-size: 12px; font-weight: 600; color: var(--ink-faint); }
+.cx-acct-brand .cx-brand-mark { color: #fff; }
+.cx-acct-wrap { max-width: 440px; margin: 0 auto; padding: 40px 20px 40px; animation: cxFadeUp .35s ease; }
+.cx-acct-wide { max-width: 620px; }
+.cx-acct-card { padding: 28px 26px; }
+.cx-acct-title { font-family: var(--font-head); font-size: 28px; letter-spacing: -.01em; }
+.cx-acct-sub { margin-top: 6px !important; font-size: 14px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.cx-acct-switch { margin-top: 16px !important; text-align: center; font-size: 13px; color: var(--ink-soft); }
+.cx-acct-switch a { color: var(--accent-deep); font-weight: 800; }
+.cx-acct-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.cx-acct-h2 { font-family: var(--font-head); font-size: 17px; margin-top: 26px !important; margin-bottom: 10px !important; }
+.cx-acct-h2 small { font-family: var(--font-body); font-size: 12px; font-weight: 600; color: var(--ink-faint); margin-left: 6px; }
+.cx-acct-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cx-acct-list .cx-address { cursor: default; align-items: center; }
+.cx-acct-list .cx-address > span:first-child { flex: 1; }
+.cx-acct-actions { display: flex; gap: 12px; flex: none; }
+.cx-acct-actions form { margin: 0; }
+.cx-acct-link { border: 0; background: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 800; color: var(--accent-deep); cursor: pointer; }
+.cx-acct-link.cx-danger { color: var(--danger); }
+.cx-acct-card .cx-error { margin-top: 16px; }
+@media (max-width: 480px) { .cx-acct-list .cx-address { flex-wrap: wrap; } }

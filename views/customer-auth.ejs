@@ -1,0 +1,43 @@
+<%- include('partials/customer-head') %>
+<%# Buyer sign in / create account (lib/customerAccount.js). ?next= brings them back to the checkout they came from. %>
+<% var isSignup = mode === 'signup'; var nextQs = '?next=' + encodeURIComponent(next); %>
+<main class="cx-acct-wrap">
+  <div class="cx-card cx-acct-card">
+    <h1 class="cx-acct-title"><%= isSignup ? 'Create your account' : 'Welcome back' %></h1>
+    <p class="cx-acct-sub"><%= isSignup
+      ? 'Save your delivery addresses and check out faster next time.'
+      : 'Sign in to fill in your details and saved addresses at checkout.' %></p>
+
+    <% if (error) { %><div class="cx-error" role="alert"><%= error %></div><% } %>
+
+    <form method="POST" action="/account/<%= mode %><%= nextQs %>" novalidate>
+      <input type="hidden" name="next" value="<%= next %>" />
+      <% if (isSignup) { %>
+      <div class="cx-field">
+        <label for="name">Full name</label>
+        <input type="text" id="name" name="name" value="<%= values.name %>" placeholder="Your name" autocomplete="name" required />
+      </div>
+      <% } %>
+      <div class="cx-field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="<%= values.email %>" placeholder="you@email.com" autocomplete="email" required />
+      </div>
+      <div class="cx-field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="<%= isSignup ? 'At least 8 characters' : 'Your password' %>" autocomplete="<%= isSignup ? 'new-password' : 'current-password' %>" required />
+      </div>
+      <button type="submit" class="cx-pay-btn"><%= isSignup ? 'Create account' : 'Sign in' %> →</button>
+    </form>
+
+    <p class="cx-acct-switch">
+      <% if (isSignup) { %>Already have an account? <a href="/account/login<%= nextQs %>">Sign in</a>
+      <% } else { %>New here? <a href="/account/signup<%= nextQs %>">Create an account</a><% } %>
+    </p>
+    <% if (next.indexOf('/pay/') === 0) { %>
+    <p class="cx-acct-switch"><a href="<%= next %>">Continue as a guest</a></p>
+    <% } %>
+  </div>
+</main>
+<div class="cx-foot-note">Powered by <b><%= siteName %></b> · Secure checkout</div>
+</body>
+</html>
