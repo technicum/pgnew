@@ -19,16 +19,65 @@
   background: #f3f4f7; color: var(--ink-soft); font-size: 14.5px;
 }
 
-/* Day strip: scrolls sideways on a phone rather than wrapping into a wall. */
-.ax-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-.ax-day {
-  flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 84px;
-  padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface);
-  color: var(--ink); text-decoration: none; font-size: 13.5px;
+/* ---------- Booking page (app-booking.ejs): service beside the picker ---------- */
+.bk { width: 100%; max-width: 1040px; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; align-items: start; }
+.bk .lm-card { max-width: none; }
+.bk .lm-card-body { padding: 28px 30px; }
+.bk-about { position: sticky; top: 20px; }
+.bk-cover { aspect-ratio: 3 / 1.4; background: var(--magnet-accent-dark); }
+.bk-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bk-host { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; font-size: 14px; color: var(--ink); }
+.bk-host small { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+.bk-avatar {
+  flex: none; width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
+  display: grid; place-items: center; background: var(--magnet-accent); color: #fff; font-weight: 700; font-size: 16px;
 }
-.ax-day small { color: var(--muted); font-size: 11.5px; }
-.ax-day:hover { border-color: var(--magnet-accent); }
-.ax-day.is-on { border-color: var(--magnet-accent); background: color-mix(in srgb, var(--magnet-accent) 10%, var(--surface)); }
+.bk-cover + .lm-card-body .bk-avatar { margin-top: -52px; width: 64px; height: 64px; border: 4px solid var(--surface); font-size: 20px; }
+.bk-cover + .lm-card-body .bk-host { align-items: flex-end; }
+.bk-facts { list-style: none; margin: 10px 0 16px; padding: 0; display: grid; gap: 7px; font-size: 14.5px; color: var(--ink-soft); }
+.bk-facts li { display: flex; align-items: flex-start; gap: 9px; overflow-wrap: anywhere; }
+.bk-facts svg { flex: none; margin-top: 2px; color: var(--magnet-accent-dark); }
+.bk-facts b { color: var(--ink); }
+.bk-h { font-family: inherit; font-size: 16px; font-weight: 600; color: var(--ink); margin: 0 0 12px; }
+.bk-h small { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 4px; }
+form .bk-h { margin-top: 26px; }
+.lm-card form#times { margin-top: 24px; }
+.bk-hint { margin: 14px 0 0; font-size: 13.5px; color: var(--muted); }
+
+.bk-cal { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; }
+.bk-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }
+.bk-cal-head a, .bk-cal-head span {
+  width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; font-size: 20px; text-decoration: none; color: var(--ink);
+}
+.bk-cal-head a:hover { background: #f3f4f7; }
+.bk-cal-head span { color: var(--line); }
+.bk-cal table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.bk-cal th { padding: 6px 0; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.bk-cal td { padding: 2px; text-align: center; }
+.bk-day {
+  display: grid; place-items: center; width: 100%; max-width: 44px; aspect-ratio: 1; margin: 0 auto; border-radius: 50%;
+  font-size: 14px; color: #b3b9c6; text-decoration: none; font-variant-numeric: tabular-nums;
+}
+.bk-day.is-open { color: var(--magnet-accent-dark); background: color-mix(in srgb, var(--magnet-accent) 12%, var(--surface)); font-weight: 600; }
+.bk-day.is-open:hover { background: color-mix(in srgb, var(--magnet-accent) 24%, var(--surface)); }
+.bk-day.is-on, .bk-day.is-on:hover { background: var(--magnet-accent); color: #fff; }
+.bk-day.is-today { box-shadow: inset 0 0 0 1.5px currentColor; }
+
+.bk-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.lm-card form.bk-actions { margin-top: 16px; }
+.bk-actions .btn { flex: 1 1 200px; }
+.bk-btn-ghost { background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); }
+.bk-btn-ghost:hover { border-color: var(--magnet-accent); }
+.bk-test { margin-top: 18px; padding: 12px 14px; border-radius: 10px; background: #fff7e6; color: #7a4d00; font-size: 13.5px; line-height: 1.5; }
+
+@media (max-width: 860px) {
+  .bk { grid-template-columns: 1fr; }
+  .bk-about { position: static; }
+}
+@media (max-width: 560px) {
+  .bk .lm-card-body { padding: 22px 18px; }
+  .bk-cal { padding: 8px 4px; }
+}
 
 .ax-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .ax-slot { position: relative; }

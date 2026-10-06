@@ -1,0 +1,53 @@
+<%# A booking's own page (lib/appStorefront.js → /book/:slug/booking/:token) — where the form lands. Confirmed: details plus add-to-calendar. Pending (paid service, unpaid): the test checkout or, in manual mode, "awaiting payment". Cancelled / expired: a way to book again. %>
+<%- include('partials/app-public-top') %>
+<% var st = booking.status; %>
+
+  <article class="lm-card">
+    <div class="lm-card-body">
+      <% if (st === 'confirmed') { %>
+      <div class="ax-done-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" width="24" height="24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5L10 17L19 7"/></svg></div>
+      <h1>You’re booked</h1>
+      <p class="lm-desc"><%= booking.service_title %> with <%= owner.name %></p>
+      <% } else if (st === 'pending') { %>
+      <span class="lm-kicker"><span class="dot"></span><%= paymentMode === 'test' ? 'One step left' : 'Awaiting payment' %></span>
+      <h1><%= paymentMode === 'test' ? 'Pay to confirm your booking' : 'Your slot is held' %></h1>
+      <p class="lm-desc"><%= booking.service_title %> with <%= owner.name %></p>
+      <% } else { %>
+      <h1><%= st === 'expired' ? 'This hold ran out' : 'This booking was cancelled' %></h1>
+      <p class="lm-desc"><%= st === 'expired' ? 'The slot was held for ' + holdMinutes + ' minutes but wasn’t paid for, so it’s been released.' : 'The slot is free again.' %></p>
+      <% } %>
+
+      <dl class="ax-facts">
+        <div><dt>When</dt><dd><%= when %> (IST)</dd></div>
+        <% if (booking.location) { %><div><dt>Where</dt><dd><%= booking.location %></dd></div><% } %>
+        <div><dt>Booked for</dt><dd><%= booking.name %> · <%= booking.email %></dd></div>
+        <% if (booking.amount) { %><div><dt><%= st === 'confirmed' ? 'Paid' : 'Price' %></dt><dd><%= booking.amountLabel %></dd></div><% } %>
+        <% booking.answers.filter(function (a) { return a.value; }).forEach(function (a) { %><div><dt><%= a.label %></dt><dd><%= a.value %></dd></div><% }) %>
+      </dl>
+
+      <% if (st === 'confirmed') { %>
+      <div class="bk-actions">
+        <a class="btn btn-primary" href="<%= googleUrl %>" target="_blank" rel="noopener">Add to Google Calendar</a>
+        <a class="btn bk-btn-ghost" href="<%= self %>.ics">Apple / Outlook (.ics)</a>
+      </div>
+      <p class="ax-note">Bookmark this page to find your booking again. Need to change it? Get in touch with <%= owner.name %>.</p>
+      <% } else if (st === 'pending' && paymentMode === 'test') { %>
+      <div class="bk-test">
+        <b>Test mode</b> — no payment gateway is connected yet, so nothing is charged. Your slot is held for <%= holdMinutes %> minutes.
+      </div>
+      <form method="POST" action="<%= self %>" class="bk-actions">
+        <button class="btn btn-primary" name="action" value="pay">Complete test payment · <%= booking.amountLabel %></button>
+        <button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button>
+      </form>
+      <% } else if (st === 'pending') { %>
+      <div class="bk-test">
+        Pay <b><%= booking.amountLabel %></b> to <%= owner.name %> the way they’ve shared with you (UPI or bank transfer). They’ll confirm your booking once it’s received — this page updates when they do.
+      </div>
+      <p class="ax-note">Bookmark this page to check on your booking.</p>
+      <% } else { %>
+      <a class="btn btn-primary" href="<%= bookAgain %>">Pick another time</a>
+      <% } %>
+    </div>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

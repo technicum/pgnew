@@ -1,6 +1,7 @@
-<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id): details, weekly hours (open_<day>/start_<day>/end_<day>), booking window, visibility, delete. %>
+<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id). Field names match lib/bookings.js: hours as open_<day> + start_<day>_<n> / end_<day>_<n>, questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. Images upload through /dashboard/uploads (the small script below) or take a pasted link. %>
 <%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings', label: 'All bookings' } }) %>
-<% var link = storeUrlFor(user.handle) + '/book/' + service.slug; %>
+<% var link = storeUrlFor(user.handle) + '/book/' + service.slug;
+var priceRupees = service.price ? String(service.price / 100) : '0'; %>
 
 <div class="ax-linkbar">
   <span>Booking link</span>
@@ -13,29 +14,85 @@
     <div class="ax-panel-head"><h2>Details</h2></div>
     <div class="ax-grid">
       <label class="ax-field ax-span-2"><span>Name</span><input class="ax-input" name="title" value="<%= service.title %>" required maxlength="200" /></label>
+      <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= service.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
       <label class="ax-field"><span>Length (minutes)</span><input class="ax-input" type="number" name="duration_min" value="<%= service.duration_min %>" min="5" max="480" step="5" /></label>
+      <label class="ax-field"><span>Price (₹) <small>0 = free</small></span><input class="ax-input" name="price" value="<%= priceRupees %>" inputmode="decimal" /></label>
+      <label class="ax-field"><span>Where</span><input class="ax-input" name="location" value="<%= service.location %>" maxlength="300" placeholder="Google Meet — link sent by email" /></label>
       <label class="ax-field ax-span-3"><span>Description</span><textarea class="ax-input" name="description" rows="4" maxlength="2000" placeholder="What you’ll cover, who it’s for…"><%= service.description %></textarea>
         <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
-      <label class="ax-field ax-span-2"><span>Where</span><input class="ax-input" name="location" value="<%= service.location %>" maxlength="300" placeholder="Google Meet — link sent by email" /></label>
-      <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= service.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
+    </div>
+    <p class="ax-hint ax-pad">
+      <% if (paymentMode === 'test') { %><b>Paid sessions run in test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged.
+      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid here or in Orders (after a UPI or bank transfer).<% } %>
+    </p>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Photos</h2><span class="ax-count">Optional</span></div>
+    <div class="ax-grid">
+      <% [['cover_url', 'Cover image', 'Wide image across the top — about 1500 × 700'], ['photo_url', 'Your photo', 'Shown beside your name; otherwise your initials']].forEach(function (f) { var v = service[f[0]]; %>
+      <div class="ax-field ax-upload" data-upload>
+        <span><%= f[1] %></span>
+        <div class="ax-upload-preview<%= f[0] === 'photo_url' ? ' is-round' : '' %>"><% if (v) { %><img src="<%= v %>" alt="" /><% } %></div>
+        <input class="ax-input" name="<%= f[0] %>" value="<%= v %>" placeholder="Paste an image link, or upload" maxlength="500" />
+        <div class="ax-actions">
+          <label class="ax-btn">Upload<input type="file" accept="image/jpeg,image/png,image/webp" hidden /></label>
+          <button type="button" class="ax-btn ax-btn-quiet" data-clear>Remove</button>
+        </div>
+        <small><%= f[2] %></small>
+      </div>
+      <% }) %>
     </div>
   </section>
 
   <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Weekly hours</h2><span class="ax-count">IST</span></div>
+    <div class="ax-panel-head"><h2>Weekly hours</h2><span class="ax-count">IST · add a second range for a break</span></div>
     <div class="ax-hours">
-      <% weekdays.forEach(function (day, i) { var h = service.hours[i]; %>
+      <% weekdays.forEach(function (day, d) { var ranges = service.hours[d]; %>
       <div class="ax-hours-row">
-        <label class="ax-check"><input type="checkbox" name="open_<%= i %>" value="1"<%= h ? ' checked' : '' %> /> <span><%= day %></span></label>
-        <input class="ax-input" type="time" name="start_<%= i %>" value="<%= h ? h[0] : '09:00' %>" aria-label="<%= day %> from" />
-        <span class="ax-sub">to</span>
-        <input class="ax-input" type="time" name="end_<%= i %>" value="<%= h ? h[1] : '17:00' %>" aria-label="<%= day %> until" />
+        <label class="ax-check"><input type="checkbox" name="open_<%= d %>" value="1"<%= ranges.length ? ' checked' : '' %> /> <span><%= day %></span></label>
+        <div class="ax-ranges">
+          <% for (var n = 0; n < maxRanges; n++) { var r = ranges[n]; var shown = n === 0 || !!r; %>
+          <div class="ax-range"<%= shown ? '' : ' hidden' %>>
+            <input class="ax-input" type="time" name="start_<%= d %>_<%= n %>" value="<%= r ? r[0] : (n === 0 ? '09:00' : '') %>" aria-label="<%= day %> from" />
+            <span class="ax-sub">to</span>
+            <input class="ax-input" type="time" name="end_<%= d %>_<%= n %>" value="<%= r ? r[1] : (n === 0 ? '17:00' : '') %>" aria-label="<%= day %> until" />
+            <% if (n > 0) { %><button type="button" class="ax-btn ax-btn-quiet" data-range-remove aria-label="Remove these hours">×</button><% } %>
+          </div>
+          <% } %>
+          <button type="button" class="ax-addrange" data-range-add>+ Add hours</button>
+        </div>
       </div>
       <% }) %>
     </div>
-    <div class="ax-grid" style="margin-top:16px;">
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Scheduling</h2></div>
+    <div class="ax-grid">
+      <label class="ax-field"><span>Gap between sessions (minutes)</span><input class="ax-input" type="number" name="buffer_min" value="<%= service.buffer_min %>" min="0" max="240" step="5" /></label>
+      <label class="ax-field"><span>Most bookings a day <small>(0 = no limit)</small></span><input class="ax-input" type="number" name="max_per_day" value="<%= service.max_per_day %>" min="0" max="100" /></label>
+      <span></span>
       <label class="ax-field"><span>Minimum notice (hours)</span><input class="ax-input" type="number" name="min_notice_hours" value="<%= service.min_notice_hours %>" min="0" max="720" /></label>
       <label class="ax-field"><span>Bookable up to (days ahead)</span><input class="ax-input" type="number" name="days_ahead" value="<%= service.days_ahead %>" min="1" max="180" /></label>
+    </div>
+    <p class="ax-hint ax-pad">Days off (holidays, travel) apply to every service — set them on the <a href="/dashboard/bookings#days-off">Bookings page</a>.</p>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Booking questions</h2><span class="ax-count">Asked after name, email and phone</span></div>
+    <div class="ax-questions">
+      <% for (var n = 0; n < maxQuestions; n++) { var q = service.questions[n] || {}; var shown = n === 0 || !!q.label || !!service.questions[n - 1]; %>
+      <div class="ax-question"<%= shown ? '' : ' hidden' %>>
+        <input class="ax-input" name="q_label_<%= n %>" value="<%= q.label || '' %>" placeholder="<%= n === 0 ? 'e.g. What would you like to talk about?' : 'Another question' %>" maxlength="120" aria-label="Question <%= n + 1 %>" />
+        <select class="ax-input" name="q_type_<%= n %>" aria-label="Answer type">
+          <% Object.keys(questionTypes).forEach(function (t) { %><option value="<%= t %>"<%= q.type === t ? ' selected' : '' %>><%= questionTypes[t] %></option><% }) %>
+        </select>
+        <input class="ax-input ax-q-options" name="q_options_<%= n %>" value="<%= (q.options || []).join(', ') %>" placeholder="Choices, separated by commas" maxlength="400" aria-label="Choices" />
+        <label class="ax-check"><input type="checkbox" name="q_required_<%= n %>" value="1"<%= q.required ? ' checked' : '' %> /> <span>Required</span></label>
+      </div>
+      <% } %>
+      <p class="ax-hint">Leave a question blank to remove it. Answers show on each booking.</p>
     </div>
   </section>
 
@@ -49,5 +106,71 @@
   <span>Deleting the service takes its page down. Bookings already made stay in your list.</span>
   <button class="ax-btn ax-btn-danger" data-confirm="Click again to delete">Delete service</button>
 </form>
+
+<script>
+  (function () {
+    // Image fields: upload the file as the request body (lib/uploads.js),
+    // then put the returned link in the text field.
+    document.querySelectorAll('[data-upload]').forEach(function (box) {
+      var input = box.querySelector('input[name]');
+      var file = box.querySelector('input[type=file]');
+      var preview = box.querySelector('.ax-upload-preview');
+      var show = function () { preview.innerHTML = input.value ? '<img alt="" />' : ''; if (input.value) preview.firstChild.src = input.value; };
+      input.addEventListener('change', show);
+      box.querySelector('[data-clear]').addEventListener('click', function () { input.value = ''; show(); });
+      file.addEventListener('change', async function () {
+        var f = file.files[0];
+        if (!f) return;
+        var label = file.parentNode;
+        label.firstChild.textContent = 'Uploading…';
+        try {
+          var res = await fetch('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': f.type }, body: f });
+          var data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Upload failed');
+          input.value = data.url;
+          show();
+          label.firstChild.textContent = 'Upload';
+        } catch (err) {
+          label.firstChild.textContent = 'Upload';
+          alert(err.message);
+        }
+        file.value = '';
+      });
+    });
+
+    // Hours: reveal the next hidden range / hide (and clear) one.
+    document.querySelectorAll('[data-range-add]').forEach(function (btn) {
+      var update = function () { btn.hidden = !btn.parentNode.querySelector('.ax-range[hidden]'); };
+      btn.addEventListener('click', function () {
+        var next = btn.parentNode.querySelector('.ax-range[hidden]');
+        if (next) next.hidden = false;
+        update();
+      });
+      btn.parentNode.querySelectorAll('[data-range-remove]').forEach(function (x) {
+        x.addEventListener('click', function () {
+          var range = x.parentNode;
+          range.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+          range.hidden = true;
+          update();
+        });
+      });
+      update();
+    });
+
+    // Questions: choices only for dropdown / choose-one; typing in the last
+    // shown question reveals the next row.
+    document.querySelectorAll('.ax-question').forEach(function (row) {
+      var type = row.querySelector('select');
+      var opts = row.querySelector('.ax-q-options');
+      var sync = function () { opts.hidden = type.value !== 'dropdown' && type.value !== 'radio'; };
+      type.addEventListener('change', sync);
+      sync();
+      row.querySelector('input[name^=q_label]').addEventListener('input', function () {
+        var next = row.nextElementSibling;
+        if (next && next.classList.contains('ax-question')) next.hidden = false;
+      });
+    });
+  })();
+</script>
 
 <%- include('partials/app-dash-bottom') %>

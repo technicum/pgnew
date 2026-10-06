@@ -1,32 +1,40 @@
-<%# Bookings app home (lib/appDashboard.js → /dashboard/bookings): upcoming and past bookings, the creator's services, and a form to add one. %>
+<%# Bookings app home (lib/appDashboard.js → /dashboard/bookings): upcoming and past bookings (paid ones waiting for payment can be marked paid), services, days off. %>
 <%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: 'Bookings', intro: 'Set up a service with your weekly hours, share its link, and people book an open slot. Every booking also lands in your Audience.' }) %>
-<% var storeUrl = storeUrlFor(user.handle); %>
+<% var storeUrl = storeUrlFor(user.handle);
+var live = upcoming.filter(function (b) { return b.status === 'confirmed' || b.status === 'pending'; });
+var unpaid = upcoming.filter(function (b) { return b.status === 'pending'; }).length;
+function bookingRow(b, past) { %>
+    <li class="ax-row<%= b.status === 'cancelled' ? ' is-off' : '' %>">
+      <div class="ax-when"><b><%= fmt.date(b.date) %></b><span><%= fmt.time(b.start_time) %><%= past ? '' : ' – ' + fmt.time(b.end_time) %></span></div>
+      <div class="ax-main">
+        <b><%= b.name %></b> <span class="ax-sub">· <%= b.service_title %><%= b.amount ? ' · ' + b.amountLabel : '' %></span>
+        <span class="ax-sub ax-block"><a href="mailto:<%= b.email %>"><%= b.email %></a><%= b.phone ? ' · ' + b.phone : '' %></span>
+        <% if (!past) { b.answers.filter(function (a) { return a.value; }).forEach(function (a) { %><span class="ax-answer"><span><%= a.label %>:</span> <%= a.value %></span><% }); } %>
+        <% if (b.note && !past) { %><span class="ax-quote">“<%= b.note %>”</span><% } %>
+      </div>
+      <% if (b.status === 'cancelled') { %>
+      <span class="ax-pill">Cancelled</span>
+      <% } else if (b.status === 'pending') { %>
+      <span class="ax-pill ax-pill-warn">Awaiting payment</span>
+      <% if (!past) { %>
+      <form method="POST" action="/dashboard/bookings/<%= b.id %>/paid"><button class="ax-btn" data-confirm="Paid? Confirm">Mark paid</button></form>
+      <form method="POST" action="/dashboard/bookings/<%= b.id %>/cancel"><button class="ax-btn ax-btn-quiet" data-confirm="Cancel it?">Cancel</button></form>
+      <% } %>
+      <% } else if (!past) { %>
+      <form method="POST" action="/dashboard/bookings/<%= b.id %>/cancel"><button class="ax-btn ax-btn-quiet" data-confirm="Cancel it?">Cancel</button></form>
+      <% } %>
+    </li>
+<% } %>
 
 <section class="ax-panel">
   <div class="ax-panel-head">
     <h2>Upcoming</h2>
-    <span class="ax-count"><%= upcoming.filter(function (b) { return b.status === 'confirmed'; }).length %> booked</span>
+    <span class="ax-count"><%= live.length %> booked<%= unpaid ? ' · ' + unpaid + ' awaiting payment' : '' %></span>
   </div>
   <% if (!upcoming.length) { %>
   <p class="ax-empty">No bookings coming up yet. Share a service’s link to get your first one.</p>
   <% } else { %>
-  <ul class="ax-list">
-    <% upcoming.forEach(function (b) { var off = b.status !== 'confirmed'; %>
-    <li class="ax-row<%= off ? ' is-off' : '' %>">
-      <div class="ax-when"><b><%= fmt.date(b.date) %></b><span><%= fmt.time(b.start_time) %> – <%= fmt.time(b.end_time) %></span></div>
-      <div class="ax-main">
-        <b><%= b.name %></b> <span class="ax-sub">· <%= b.service_title %></span>
-        <span class="ax-sub ax-block"><a href="mailto:<%= b.email %>"><%= b.email %></a><%= b.phone ? ' · ' + b.phone : '' %></span>
-        <% if (b.note) { %><span class="ax-quote">“<%= b.note %>”</span><% } %>
-      </div>
-      <% if (off) { %>
-      <span class="ax-pill">Cancelled</span>
-      <% } else { %>
-      <form method="POST" action="/dashboard/bookings/<%= b.id %>/cancel"><button class="ax-btn ax-btn-quiet" data-confirm="Cancel it?">Cancel</button></form>
-      <% } %>
-    </li>
-    <% }) %>
-  </ul>
+  <ul class="ax-list"><% upcoming.forEach(function (b) { bookingRow(b, false); }) %></ul>
   <% } %>
 </section>
 
@@ -38,7 +46,7 @@
     <li class="ax-row<%= s.visible ? '' : ' is-off' %>">
       <div class="ax-main">
         <a class="ax-title" href="/dashboard/bookings/services/<%= s.id %>"><%= s.title %></a>
-        <span class="ax-sub ax-block"><%= s.duration_min %> min · <%= s.upcoming %> upcoming<%= s.visible ? '' : ' · Hidden' %></span>
+        <span class="ax-sub ax-block"><%= s.duration_min %> min · <%= s.priceLabel %> · <%= s.upcoming %> upcoming<%= s.visible ? '' : ' · Hidden' %></span>
         <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
       </div>
       <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
@@ -50,11 +58,33 @@
   <form method="POST" action="/dashboard/bookings/services" class="ax-new">
     <h3><%= services.length ? 'Add another service' : 'Create your first service' %></h3>
     <div class="ax-grid">
-      <label class="ax-field ax-span-2"><span>Name</span><input class="ax-input" name="title" placeholder="30-minute intro call" required maxlength="200" /></label>
+      <label class="ax-field"><span>Name</span><input class="ax-input" name="title" placeholder="30-minute intro call" required maxlength="200" /></label>
       <label class="ax-field"><span>Length (minutes)</span><input class="ax-input" type="number" name="duration_min" value="30" min="5" max="480" step="5" /></label>
+      <label class="ax-field"><span>Price (₹) <small>0 = free</small></span><input class="ax-input" name="price" value="0" inputmode="decimal" /></label>
     </div>
-    <p class="ax-hint">You’ll set its hours (Mon–Fri, 9–5 to start) on the next screen.</p>
+    <p class="ax-hint">You’ll set its hours (Mon–Fri, 9–5 to start), questions and photos on the next screen.</p>
     <button class="ax-btn ax-btn-primary">Create service</button>
+  </form>
+</section>
+
+<section class="ax-panel" id="days-off">
+  <div class="ax-panel-head"><h2>Days off</h2><span class="ax-count">No bookings on these days, for any service</span></div>
+  <% if (daysOff.length) { %>
+  <ul class="ax-chips">
+    <% daysOff.forEach(function (d) { %>
+    <li><span><b><%= fmt.date(d.date) %></b><%= d.note ? ' · ' + d.note : '' %></span>
+      <form method="POST" action="/dashboard/bookings/days-off/<%= d.id %>/delete"><button aria-label="Remove <%= fmt.date(d.date) %>">×</button></form></li>
+    <% }) %>
+  </ul>
+  <% } %>
+  <form method="POST" action="/dashboard/bookings/days-off" class="ax-new">
+    <div class="ax-grid">
+      <label class="ax-field"><span>From</span><input class="ax-input" type="date" name="from" min="<%= today %>" required /></label>
+      <label class="ax-field"><span>Until <small>(optional)</small></span><input class="ax-input" type="date" name="to" min="<%= today %>" /></label>
+      <label class="ax-field"><span>Note <small>(only you see it)</small></span><input class="ax-input" name="note" maxlength="100" placeholder="Diwali, travelling…" /></label>
+    </div>
+    <p class="ax-hint">Bookings already made on those days aren’t cancelled — cancel them above if you need to.</p>
+    <button class="ax-btn ax-btn-primary">Add days off</button>
   </form>
 </section>
 
@@ -62,15 +92,7 @@
 <section class="ax-panel">
   <details>
     <summary class="ax-panel-head"><h2>Past bookings</h2><span class="ax-count"><%= past.length %> most recent</span></summary>
-    <ul class="ax-list">
-      <% past.forEach(function (b) { %>
-      <li class="ax-row<%= b.status !== 'confirmed' ? ' is-off' : '' %>">
-        <div class="ax-when"><b><%= fmt.date(b.date) %></b><span><%= fmt.time(b.start_time) %></span></div>
-        <div class="ax-main"><b><%= b.name %></b> <span class="ax-sub">· <%= b.service_title %> · <%= b.email %></span></div>
-        <% if (b.status !== 'confirmed') { %><span class="ax-pill">Cancelled</span><% } %>
-      </li>
-      <% }) %>
-    </ul>
+    <ul class="ax-list"><% past.forEach(function (b) { bookingRow(b, true); }) %></ul>
   </details>
 </section>
 <% } %>

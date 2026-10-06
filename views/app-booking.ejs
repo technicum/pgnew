@@ -1,64 +1,118 @@
-<%# Public booking page (lib/appStorefront.js → /book/:slug): pick a day, pick a time, add your details. Works without JavaScript — days are links (?date=), times are radio buttons. %>
-<%- include('partials/app-public-top') %>
+<%# Public booking page (lib/appStorefront.js → /book/:slug). Left: the service — cover, host, price, length, description. Right: a month calendar (open days are links, ?date= / ?month=), the times on the picked day, then the details form with the creator's own questions. Works without JavaScript. %>
+<%- include('partials/app-public-top', { wide: true }) %>
+<%
+var initials = String(owner.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '•';
+var dayHref = function (d) { return '?date=' + d + '#times'; };
+%>
 
-  <article class="lm-card">
-    <div class="lm-card-body">
-      <span class="lm-kicker"><span class="dot"></span>Book a session</span>
-      <h1><%= service.title %></h1>
-      <p class="ax-meta">
-        <span><%= service.duration_min %> min</span>
-        <% if (service.location) { %><span><%= service.location %></span><% } %>
-      </p>
-      <% if (service.description) { %><div class="lm-desc ax-rich"><%- descriptionHtml %></div><% } %>
+  <div class="bk">
+    <aside class="lm-card bk-about">
+      <% if (service.cover_url) { %><div class="bk-cover"><img src="<%= service.cover_url %>" alt="" /></div><% } %>
+      <div class="lm-card-body">
+        <div class="bk-host">
+          <% if (service.photo_url) { %><img class="bk-avatar" src="<%= service.photo_url %>" alt="" /><% } else { %><span class="bk-avatar"><%= initials %></span><% } %>
+          <div>
+            <b><%= owner.name %></b>
+            <% if (owner.bio) { %><small><%= owner.bio %></small><% } %>
+          </div>
+        </div>
+        <h1><%= service.title %></h1>
+        <ul class="bk-facts">
+          <li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><%= service.duration_min %> minutes</li>
+          <li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg><b><%= service.priceLabel %></b></li>
+          <% if (service.location) { %><li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><%= service.location %></li><% } %>
+        </ul>
+        <% if (service.description) { %><div class="lm-desc ax-rich"><%- descriptionHtml %></div><% } %>
+      </div>
+    </aside>
 
-      <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
+    <article class="lm-card bk-pick">
+      <div class="lm-card-body">
+        <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
 
-      <% if (!days.length) { %>
-      <div class="ax-empty">No open times right now — check back soon.</div>
-      <% } else { %>
-      <h2 class="ax-step">1. Pick a day</h2>
-      <nav class="ax-days" aria-label="Days with open times">
-        <% days.forEach(function (d) { %>
-        <a href="?date=<%= d.date %>" class="ax-day<%= d.date === date ? ' is-on' : '' %>"<%= d.date === date ? ' aria-current="date"' : '' %>>
-          <b><%= d.label %></b><small><%= d.count %> open</small>
-        </a>
-        <% }) %>
-      </nav>
+        <% if (!hasSlots) { %>
+        <h2 class="bk-h">No open times right now</h2>
+        <p class="lm-desc"><%= owner.name %> isn’t taking bookings for the next few weeks. Check back soon.</p>
+        <% } else { %>
+        <h2 class="bk-h">Pick a day</h2>
+        <div class="bk-cal">
+          <div class="bk-cal-head">
+            <% if (calendar.prev) { %><a href="?month=<%= calendar.prev %>" aria-label="Previous month">‹</a><% } else { %><span aria-hidden="true">‹</span><% } %>
+            <b><%= calendar.label %></b>
+            <% if (calendar.next) { %><a href="?month=<%= calendar.next %>" aria-label="Next month">›</a><% } else { %><span aria-hidden="true">›</span><% } %>
+          </div>
+          <table>
+            <thead><tr><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th><th>Su</th></tr></thead>
+            <tbody>
+              <% calendar.weeks.forEach(function (week) { %><tr>
+                <% week.forEach(function (c) { %><td><% if (!c) { %><% } else if (c.open) { %><a href="<%= dayHref(c.date) %>" class="bk-day is-open<%= c.date === date ? ' is-on' : '' %><%= c.today ? ' is-today' : '' %>"<%= c.date === date ? ' aria-current="date"' : '' %>><%= c.day %></a><% } else { %><span class="bk-day<%= c.today ? ' is-today' : '' %>"><%= c.day %></span><% } %></td><% }) %>
+              </tr><% }) %>
+            </tbody>
+          </table>
+        </div>
 
-      <form method="POST" action="/book/<%= service.slug %>" novalidate>
-        <input type="hidden" name="date" value="<%= date %>" />
-        <h2 class="ax-step">2. Pick a time <small><%= dateLabel %> · IST</small></h2>
-        <div class="ax-slots">
-          <% slots.forEach(function (s) { %>
-          <label class="ax-slot">
-            <input type="radio" name="start" value="<%= s.time %>"<%= values.start === s.time && values.date === date ? ' checked' : '' %> required />
-            <span><%= s.label %></span>
-          </label>
+        <% if (!date) { %>
+        <p class="bk-hint">Days in colour have open times. Times are in IST.</p>
+        <% } else { %>
+        <form method="POST" action="/book/<%= service.slug %>" novalidate id="times">
+          <input type="hidden" name="date" value="<%= date %>" />
+          <h2 class="bk-h"><%= dateLabel %> <small>IST</small></h2>
+          <div class="ax-slots">
+            <% slots.forEach(function (s) { %>
+            <label class="ax-slot">
+              <input type="radio" name="start" value="<%= s.time %>"<%= values.start === s.time && values.date === date ? ' checked' : '' %> required />
+              <span><%= s.label %></span>
+            </label>
+            <% }) %>
+          </div>
+
+          <h2 class="bk-h">Your details</h2>
+          <div class="field">
+            <label for="name">Your name</label>
+            <input type="text" id="name" name="name" value="<%= values.name || '' %>" autocomplete="name" required />
+          </div>
+          <div class="field">
+            <label for="email">Your email</label>
+            <input type="email" id="email" name="email" value="<%= values.email || '' %>" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="phone">Phone <span class="lm-opt">(optional)</span></label>
+            <input type="tel" id="phone" name="phone" value="<%= values.phone || '' %>" autocomplete="tel" />
+          </div>
+          <% service.questions.forEach(function (q) {
+            var v = (values.answers && values.answers[q.id]) || '';
+            var opt = q.required ? '' : ' <span class="lm-opt">(optional)</span>'; %>
+          <div class="field">
+            <% if (q.type === 'checkbox') { %>
+            <label class="lm-check"><input type="checkbox" name="a_<%= q.id %>" value="Yes"<%= v ? ' checked' : '' %> /> <span><%= q.label %><%- opt %></span></label>
+            <% } else if (q.type === 'radio') { %>
+            <span class="lm-group-label"><%= q.label %><%- opt %></span>
+            <div class="lm-choices">
+              <% q.options.forEach(function (o, i) { %><label class="lm-check"><input type="radio" name="a_<%= q.id %>" value="<%= o %>"<%= v === o ? ' checked' : '' %> /> <span><%= o %></span></label><% }) %>
+            </div>
+            <% } else { %>
+            <label for="a_<%= q.id %>"><%= q.label %><%- opt %></label>
+            <% if (q.type === 'dropdown') { %>
+            <select id="a_<%= q.id %>" name="a_<%= q.id %>"><option value="">Choose…</option><% q.options.forEach(function (o) { %><option<%= v === o ? ' selected' : '' %>><%= o %></option><% }) %></select>
+            <% } else if (q.type === 'textarea') { %>
+            <textarea id="a_<%= q.id %>" name="a_<%= q.id %>" rows="3" maxlength="1000"><%= v %></textarea>
+            <% } else { %>
+            <input type="<%= q.type === 'phone' ? 'tel' : 'text' %>" id="a_<%= q.id %>" name="a_<%= q.id %>" value="<%= v %>" maxlength="200" />
+            <% } %>
+            <% } %>
+          </div>
           <% }) %>
-        </div>
-
-        <h2 class="ax-step">3. Your details</h2>
-        <div class="field">
-          <label for="name">Your name</label>
-          <input type="text" id="name" name="name" value="<%= values.name || '' %>" autocomplete="name" required />
-        </div>
-        <div class="field">
-          <label for="email">Your email</label>
-          <input type="email" id="email" name="email" value="<%= values.email || '' %>" autocomplete="email" required />
-        </div>
-        <div class="field">
-          <label for="phone">Phone <span class="lm-opt">(optional)</span></label>
-          <input type="tel" id="phone" name="phone" value="<%= values.phone || '' %>" autocomplete="tel" />
-        </div>
-        <div class="field">
-          <label for="note">Anything to share beforehand? <span class="lm-opt">(optional)</span></label>
-          <textarea id="note" name="note" rows="3" maxlength="500"><%= values.note || '' %></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary">Confirm booking</button>
-      </form>
-      <% } %>
-    </div>
-    <p class="lm-card-foot"><span>Your details go to <%= owner.name %> only, to arrange this session.</span></p>
-  </article>
+          <div class="field">
+            <label for="note">Anything to share beforehand? <span class="lm-opt">(optional)</span></label>
+            <textarea id="note" name="note" rows="3" maxlength="500"><%= values.note || '' %></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary"><%= service.price ? 'Continue to pay ' + service.priceLabel : 'Confirm booking' %></button>
+        </form>
+        <% } %>
+        <% } %>
+      </div>
+      <p class="lm-card-foot"><span>Your details go to <%= owner.name %> only, to arrange this session.</span></p>
+    </article>
+  </div>
 
 <%- include('partials/app-public-bottom') %>
