@@ -1,0 +1,19 @@
+<%# Weekly hours editor — Settings → Availability, and a service's own hours. Posts open_<day> plus start_<day>_<n> / end_<day>_<n> (lib/bookings.js hoursFromForm). Pass hours (seven lists of ['09:00', '17:00'] ranges, Sunday first), weekdays and maxRanges. "+ Add hours" / × are wired in app-dash-bottom. %>
+<div class="ax-hours">
+  <% weekdays.forEach(function (day, d) { var ranges = hours[d]; %>
+  <div class="ax-hours-row">
+    <label class="ax-check"><input type="checkbox" name="open_<%= d %>" value="1"<%= ranges.length ? ' checked' : '' %> /> <span><%= day %></span></label>
+    <div class="ax-ranges">
+      <% for (var n = 0; n < maxRanges; n++) { var r = ranges[n]; var shown = n === 0 || !!r; %>
+      <div class="ax-range"<%= shown ? '' : ' hidden' %>>
+        <input class="ax-input" type="time" name="start_<%= d %>_<%= n %>" value="<%= r ? r[0] : (n === 0 ? '09:00' : '') %>" aria-label="<%= day %> from" />
+        <span class="ax-sub">to</span>
+        <input class="ax-input" type="time" name="end_<%= d %>_<%= n %>" value="<%= r ? r[1] : (n === 0 ? '17:00' : '') %>" aria-label="<%= day %> until" />
+        <% if (n > 0) { %><button type="button" class="ax-btn ax-btn-quiet" data-range-remove aria-label="Remove these hours">×</button><% } %>
+      </div>
+      <% } %>
+      <button type="button" class="ax-addrange" data-range-add>+ Add hours</button>
+    </div>
+  </div>
+  <% }) %>
+</div>

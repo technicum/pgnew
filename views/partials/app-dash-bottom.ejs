@@ -37,6 +37,26 @@
     });
   });
 
+  // Weekly hours (partials/ax-hours): reveal the next hidden range, or
+  // hide (and clear) one.
+  document.querySelectorAll('[data-range-add]').forEach(function (btn) {
+    var update = function () { btn.hidden = !btn.parentNode.querySelector('.ax-range[hidden]'); };
+    btn.addEventListener('click', function () {
+      var next = btn.parentNode.querySelector('.ax-range[hidden]');
+      if (next) next.hidden = false;
+      update();
+    });
+    btn.parentNode.querySelectorAll('[data-range-remove]').forEach(function (x) {
+      x.addEventListener('click', function () {
+        var range = x.parentNode;
+        range.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+        range.hidden = true;
+        update();
+      });
+    });
+    update();
+  });
+
   // Copy buttons for public links, and a second click to confirm deletes.
   document.addEventListener('click', function (e) {
     var copy = e.target.closest('[data-copy]');

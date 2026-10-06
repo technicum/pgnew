@@ -1,4 +1,4 @@
-<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id). Field names match lib/bookings.js: hours as open_<day> + start_<day>_<n> / end_<day>_<n>, questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. Images upload through /dashboard/uploads (the small script below) or take a pasted link. %>
+<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id). Field names match lib/bookings.js: hours (partials/ax-hours, used when custom_hours is 1), questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. Images upload through /dashboard/uploads (the small script below) or take a pasted link. %>
 <%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings#services', label: 'Booking page' } }) %>
 <% var link = storeUrlFor(user.handle) + '/book/' + service.slug;
 var priceRupees = service.price ? String(service.price / 100) : '0'; %>
@@ -35,26 +35,16 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
     </div>
   </section>
 
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Weekly hours</h2><span class="ax-count">IST · add a second range for a break</span></div>
-    <div class="ax-hours">
-      <% weekdays.forEach(function (day, d) { var ranges = service.hours[d]; %>
-      <div class="ax-hours-row">
-        <label class="ax-check"><input type="checkbox" name="open_<%= d %>" value="1"<%= ranges.length ? ' checked' : '' %> /> <span><%= day %></span></label>
-        <div class="ax-ranges">
-          <% for (var n = 0; n < maxRanges; n++) { var r = ranges[n]; var shown = n === 0 || !!r; %>
-          <div class="ax-range"<%= shown ? '' : ' hidden' %>>
-            <input class="ax-input" type="time" name="start_<%= d %>_<%= n %>" value="<%= r ? r[0] : (n === 0 ? '09:00' : '') %>" aria-label="<%= day %> from" />
-            <span class="ax-sub">to</span>
-            <input class="ax-input" type="time" name="end_<%= d %>_<%= n %>" value="<%= r ? r[1] : (n === 0 ? '17:00' : '') %>" aria-label="<%= day %> until" />
-            <% if (n > 0) { %><button type="button" class="ax-btn ax-btn-quiet" data-range-remove aria-label="Remove these hours">×</button><% } %>
-          </div>
-          <% } %>
-          <button type="button" class="ax-addrange" data-range-add>+ Add hours</button>
-        </div>
-      </div>
-      <% }) %>
+  <section class="ax-panel" id="hours">
+    <div class="ax-panel-head"><h2>When it can be booked</h2><span class="ax-count">IST</span></div>
+    <div class="ax-pad ax-pad-top ax-hours-choice">
+      <label class="ax-check"><input type="radio" name="custom_hours" value="0"<%= service.custom_hours ? '' : ' checked' %> data-hours-mode /> <span>My availability <small class="ax-sub">— <%= fmt.hours(bookingSettings.hours) %> ·<a href="/dashboard/bookings/settings#availability">change in Settings</a></small></span></label>
+      <label class="ax-check"><input type="radio" name="custom_hours" value="1"<%= service.custom_hours ? ' checked' : '' %> data-hours-mode /> <span>Different hours for this service</span></label>
     </div>
+    <div data-custom-hours<%= service.custom_hours ? '' : ' hidden' %>>
+      <%- include('partials/ax-hours', { hours: service.hours, weekdays: weekdays, maxRanges: maxRanges }) %>
+    </div>
+    <p class="ax-hint ax-pad">Whichever hours it uses, a time is only offered if no other booking — for any of your services — is already in it.</p>
   </section>
 
   <section class="ax-panel">
@@ -99,23 +89,10 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
 
 <script>
   (function () {
-    // Hours: reveal the next hidden range / hide (and clear) one.
-    document.querySelectorAll('[data-range-add]').forEach(function (btn) {
-      var update = function () { btn.hidden = !btn.parentNode.querySelector('.ax-range[hidden]'); };
-      btn.addEventListener('click', function () {
-        var next = btn.parentNode.querySelector('.ax-range[hidden]');
-        if (next) next.hidden = false;
-        update();
-      });
-      btn.parentNode.querySelectorAll('[data-range-remove]').forEach(function (x) {
-        x.addEventListener('click', function () {
-          var range = x.parentNode;
-          range.querySelectorAll('input').forEach(function (i) { i.value = ''; });
-          range.hidden = true;
-          update();
-        });
-      });
-      update();
+    // Hours: the weekly editor only shows for "different hours".
+    var custom = document.querySelector('[data-custom-hours]');
+    document.querySelectorAll('[data-hours-mode]').forEach(function (radio) {
+      radio.addEventListener('change', function () { custom.hidden = radio.value !== '1'; });
     });
 
     // Questions: choices only for dropdown / choose-one; typing in the last

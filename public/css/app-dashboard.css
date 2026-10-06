@@ -88,6 +88,10 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 
 .ax-pad { padding: 0 20px 16px; margin: 0; }
 .ax-pad-top { padding-top: 16px; padding-bottom: 0; }
+.ax-hours-choice { display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; }
+.ax-hours-choice small a { color: var(--primary); }
+[data-custom-hours] > .ax-hours { padding: 4px 20px 4px; }
+[data-custom-hours][hidden] { display: none; }
 
 .ax-tabs { margin-top: 18px; display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
 .ax-tabs a {

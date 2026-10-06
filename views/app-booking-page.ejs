@@ -1,7 +1,7 @@
-<%# Bookings app → Booking page tab (lib/appDashboard.js → /dashboard/bookings): how the creator's /book page looks (on/off, headline, intro, photo, cover) and the services on it, with the form to add one. %>
+<%# Bookings app → Booking page tab (lib/appDashboard.js → /dashboard/bookings): the services on the creator's /book page, with the form to add one. How the page looks is under Settings. %>
 <%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: 'Bookings' }) %>
 <%- include('partials/booking-tabs', { tab: 'page' }) %>
-<% var s = bookingSettings; var storeUrl = storeUrlFor(user.handle); %>
+<% var storeUrl = storeUrlFor(user.handle); %>
 
 <section class="ax-panel" id="services">
   <div class="ax-panel-head"><h2>Services</h2><span class="ax-count">What people can book · shown oldest first</span></div>
@@ -33,26 +33,5 @@
     <button class="ax-btn ax-btn-primary">Create service</button>
   </form>
 </section>
-
-<form method="POST" action="/dashboard/bookings/page">
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Page design</h2><span class="ax-count">The top of your booking page</span></div>
-    <div class="ax-pad ax-pad-top">
-      <label class="ax-check"><input type="checkbox" name="listing_visible" value="1"<%= s.listing_visible ? ' checked' : '' %> /> <span>Show my booking page</span></label>
-      <p class="ax-hint" style="margin-top:6px;">When it’s off, each service’s own link still works, and “Booking” blocks on your store don’t link anywhere.</p>
-    </div>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-3"><span>Headline</span><input class="ax-input" name="headline" value="<%= s.headline %>" maxlength="120" placeholder="Book time with <%= user.name %>" /></label>
-      <label class="ax-field ax-span-3"><span>Intro</span><textarea class="ax-input" name="intro" rows="3" maxlength="1000" placeholder="Who you help and what a session gets them. Blank shows your store bio."><%= s.intro %></textarea>
-        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
-      <%- include('partials/ax-image-field', { name: 'photo_url', label: 'Your photo', value: s.photo_url, hint: 'Also used on any service without its own photo.', round: true }) %>
-      <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: s.cover_url, hint: 'Wide image across the top — about 1500 × 700. Also the default for services.' }) %>
-    </div>
-  </section>
-  <section class="ax-panel ax-savebar">
-    <span class="ax-sub">Changes show on your booking page straight away.</span>
-    <button class="ax-btn ax-btn-primary">Save page</button>
-  </section>
-</form>
 
 <%- include('partials/app-dash-bottom') %>
