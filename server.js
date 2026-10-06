@@ -45,6 +45,7 @@ const { saveUpload, UPLOAD_TYPES, MAX_UPLOAD_BYTES } = require('./lib/uploads');
 const {
   listPaymentPages,
   getPaymentPage,
+  formatINR,
   createPaymentPage,
   updatePaymentPage,
   deletePaymentPage,
@@ -53,6 +54,7 @@ const {
   setCouponActive,
   deleteCoupon,
 } = require('./lib/paymentPages');
+const { listAbandoned, dismissDraft } = require('./lib/checkoutDrafts');
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode } = require('./lib/payments');
 const { installStorefront } = require('./lib/storefront');
@@ -560,24 +562,57 @@ app.get('/dashboard/payment-pages', requireAuth, async (req, res, next) => {
   }
 });
 
-// The Analytics panel for one page: visits from the page row, the rest from its orders.
-app.get('/dashboard/payment-pages/:id/analytics', requireAuth, async (req, res) => {
+// One page's Analytics (Payment pages → ⋯ → Analytics): Overview,
+// Customers and Abandoned carts tabs (?tab=), all from its orders and
+// checkout drafts (lib/orders.js pageAnalytics, lib/checkoutDrafts.js).
+const ANALYTICS_TABS = new Set(['overview', 'customers', 'abandoned']);
+app.get('/dashboard/payment-pages/:id/analytics', requireAuth, async (req, res, next) => {
   const id = idParam(req);
-  if (id === null) return res.status(400).json({ error: 'Invalid payment page id.' });
   try {
-    const page = await getPaymentPage(req.session.user.id, id);
-    if (!page) return res.status(404).json({ error: 'That payment page doesn’t exist.' });
-    const stats = await pageAnalytics(req.session.user.id, id);
+    const userId = req.session.user.id;
+    const page = id === null ? null : await getPaymentPage(userId, id);
+    if (!page) {
+      return res.status(404).render('error', {
+        title: `Not found — ${SITE_NAME}`,
+        heading: 'Payment page not found',
+        message: 'That payment page doesn’t exist, or it was deleted.',
+      });
+    }
+    const tab = ANALYTICS_TABS.has(req.query.tab) ? req.query.tab : 'overview';
+    const mode = paymentMode();
+    const [stats, abandoned] = await Promise.all([
+      pageAnalytics(userId, id),
+      listAbandoned(userId, id, { testMode: mode === 'test' }),
+    ]);
     const visits = page.view_count || 0;
-    res.json({
-      ...stats,
+    res.render('payment-page-analytics', {
+      title: `Analytics — ${page.title} — ${SITE_NAME}`,
+      user: req.session.user,
+      page,
+      tab,
+      stats,
+      abandoned,
       visits,
       // Paid orders per visit — capped, since a page's views started being
       // counted after some of its orders may already have been placed.
       conversion: visits ? Math.min(100, Math.round((stats.orders.paid / visits) * 1000) / 10) : null,
+      formatINR,
+      paymentMode: mode,
     });
   } catch (err) {
-    sendPaymentError(res, err, 'Could not load analytics for that page.');
+    next(err);
+  }
+});
+
+// "Dismiss" on an abandoned cart — it leaves the list for good.
+app.post('/dashboard/payment-pages/:id/abandoned/:draftId/dismiss', requireAuth, async (req, res, next) => {
+  const id = idParam(req);
+  const draftId = Number(req.params.draftId);
+  try {
+    if (id !== null && Number.isInteger(draftId)) await dismissDraft(req.session.user.id, id, draftId);
+    res.redirect(303, `/dashboard/payment-pages/${id}/analytics?tab=abandoned`);
+  } catch (err) {
+    next(err);
   }
 });
 

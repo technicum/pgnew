@@ -91,6 +91,8 @@
       if (shipFields && isCart) shipFields.hidden = !q.hasShipping;
       $('payButtonText').textContent = `${payButton.dataset.label} ${q.display.total}`;
       if (isCart) payButton.disabled = !q.lines.length;
+      cartCount = q.lines.length;
+      saveDraft(cartCount);
       // An amount below its minimum, more than is in stock… shown now
       // rather than only after submitting. (An empty cart says so itself.)
       const liveError = $('liveError');
@@ -111,6 +113,30 @@
       if (mine === seq && summary) summary.classList.remove('is-updating');
     }
   }
+
+  // Checkout in progress, for the creator's abandoned-carts list: saved
+  // once there's a valid email and something in the cart, and again when
+  // either changes. The server prices the cart itself.
+  const draftKey = form.querySelector('input[name="draft_key"]');
+  let lastDraft = '';
+  function saveDraft(cartCount) {
+    const email = ($('email') || {}).value || '';
+    if (!draftKey || !cartCount || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return;
+    const body = JSON.stringify({
+      key: draftKey.value,
+      name: ($('name') || {}).value || '',
+      email: email.trim(),
+      phone: ($('phone') || {}).value || '',
+      items: readItems(),
+      coupon: appliedCoupon,
+    });
+    if (body === lastDraft) return;
+    lastDraft = body;
+    fetch(form.dataset.draftUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+      .catch(() => { lastDraft = ''; });
+  }
+  let cartCount = isCart ? form.querySelectorAll('.cx-product.added').length : 1;
+  ['email', 'name', 'phone'].forEach((id) => { if ($(id)) $(id).addEventListener('change', () => saveDraft(cartCount)); });
 
   let timer = null;
   function refreshSoon() {

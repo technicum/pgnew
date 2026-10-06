@@ -250,7 +250,8 @@ else stats.push(['Instant', physical.length ? 'access to downloads' : 'access'])
   </div>
 </header>
 
-<form method="POST" action="/pay/<%= page.slug %>" id="payForm" novalidate data-quote-url="/pay/<%= page.slug %>/quote" data-layout="<%= layout %>">
+<form method="POST" action="/pay/<%= page.slug %>" id="payForm" novalidate data-quote-url="/pay/<%= page.slug %>/quote" data-layout="<%= layout %>" data-draft-url="/pay/<%= page.slug %>/draft">
+<input type="hidden" name="draft_key" value="<%= values.draftKey %>" />
 
 <% if (layout === 'single') {
      var l1 = line[product.id]; var m1 = productMedia(product); var off = percentOff(product);

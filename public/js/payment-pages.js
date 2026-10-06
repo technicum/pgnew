@@ -1034,7 +1034,7 @@
             <button type="button" class="pb-more" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ${escapeHTML(page.title)}">${MENU_ICONS.more}</button>
             <div class="pb-menu" role="menu" hidden>
               <button type="button" role="menuitem" class="edit-page" data-id="${page.id}">${MENU_ICONS.edit}Edit</button>
-              <button type="button" role="menuitem" class="analytics-page" data-id="${page.id}">${MENU_ICONS.chart}Analytics</button>
+              <a role="menuitem" href="/dashboard/payment-pages/${page.id}/analytics">${MENU_ICONS.chart}Analytics</a>
               <a role="menuitem" href="${escapeHTML(url)}" target="_blank" rel="noopener">${MENU_ICONS.open}View page</a>
               <button type="button" role="menuitem" class="copy-link" data-url="${escapeHTML(url)}">${MENU_ICONS.copy}<span>Copy link</span></button>
               <div class="pb-menu-sep"></div>
@@ -1080,10 +1080,6 @@
       closeMenus();
       startEdit(Number(btn.dataset.id));
     }));
-    pagesList.querySelectorAll('.analytics-page').forEach((btn) => btn.addEventListener('click', () => {
-      closeMenus();
-      openAnalytics(Number(btn.dataset.id));
-    }));
     // Delete asks twice: the first click turns the item into "Click again
     // to delete", the second one deletes (closing the menu cancels).
     pagesList.querySelectorAll('.pb-delete').forEach((btn) => {
@@ -1127,92 +1123,6 @@
       }
       setTimeout(() => { label.textContent = 'Copy link'; }, 1600);
     }));
-  }
-
-  // --- analytics -----------------------------------------------------------------
-  // One page's numbers in a popup: GET /dashboard/payment-pages/:id/analytics
-  // (lib/orders.js pageAnalytics).
-  const analyticsModal = $('analyticsModal');
-  const analyticsBody = $('analyticsBody');
-  let analyticsOpener = null;
-  let analyticsSeq = 0;
-
-  function closeAnalytics() {
-    analyticsModal.classList.remove('open');
-    analyticsModal.setAttribute('aria-hidden', 'true');
-    if (analyticsOpener && document.contains(analyticsOpener)) analyticsOpener.focus();
-  }
-  $('analyticsClose').addEventListener('click', closeAnalytics);
-  analyticsModal.addEventListener('click', (e) => { if (e.target === analyticsModal) closeAnalytics(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && analyticsModal.classList.contains('open')) closeAnalytics(); });
-
-  const STATUS_LABEL = { paid: 'Paid', pending: 'Pending', cancelled: 'Cancelled' };
-  const shortDate = (value) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-
-  // Revenue per day as bars; hovering a bar shows its day, orders and amount.
-  function chartHTML(daily) {
-    const max = Math.max(...daily.map((d) => d.revenue), 0);
-    if (!max) return '<p class="pb-an-empty">No paid orders in the last 30 days yet.</p>';
-    const w = 100 / daily.length;
-    const bars = daily.map((d, i) => {
-      const h = d.revenue ? Math.max(2, (d.revenue / max) * 100) : 0;
-      const tip = `${shortDate(d.date)} — ${d.orders} ${d.orders === 1 ? 'sale' : 'sales'}, ${formatINR(d.revenue)}`;
-      return `<rect x="${(i * w + w * 0.15).toFixed(2)}" y="${(100 - h).toFixed(2)}" width="${(w * 0.7).toFixed(2)}" height="${h.toFixed(2)}"><title>${escapeHTML(tip)}</title></rect>`;
-    }).join('');
-    return `
-      <svg class="pb-an-chart" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Revenue per day, last 30 days">${bars}</svg>
-      <div class="pb-an-axis"><span>${shortDate(daily[0].date)}</span><span>Best day ${formatINR(max)}</span><span>Today</span></div>`;
-  }
-
-  function analyticsHTML(a) {
-    const tile = (label, value, sub) => `<div class="pb-an-tile"><span>${label}</span><strong>${value}</strong><small>${sub}</small></div>`;
-    const table = (rows, head) => `<table class="pb-an-table">${head || ''}<tbody>${rows}</tbody></table>`;
-    return `
-      <div class="pb-an-tiles">
-        ${tile('Revenue', formatINR(a.revenue), a.discount ? `after ${formatINR(a.discount)} in coupons` : 'from paid orders')}
-        ${tile('Sales', a.orders.paid, `${a.orders.pending} pending · ${a.orders.cancelled} cancelled`)}
-        ${tile('Visits', a.visits, a.conversion === null ? 'no visits yet' : `${a.conversion}% bought`)}
-        ${tile('Avg. order', formatINR(a.averageOrder), 'per paid order')}
-      </div>
-      <div class="pb-an-section">
-        <div class="pb-an-section-head"><h4>Last 30 days</h4><span>${a.lastDays.orders} ${a.lastDays.orders === 1 ? 'sale' : 'sales'} · ${formatINR(a.lastDays.revenue)}</span></div>
-        ${chartHTML(a.daily)}
-      </div>
-      <div class="pb-an-section">
-        <div class="pb-an-section-head"><h4>What sold</h4></div>
-        ${a.products.length
-          ? table(a.products.map((p) => `<tr><td>${escapeHTML(p.title)}</td><td class="pb-num">× ${p.qty}</td><td class="pb-num">${formatINR(p.revenue)}</td></tr>`).join(''),
-            '<thead><tr><th>Product</th><th class="pb-num">Sold</th><th class="pb-num">Revenue</th></tr></thead>')
-          : '<p class="pb-an-empty">Nothing sold yet.</p>'}
-      </div>
-      <div class="pb-an-section">
-        <div class="pb-an-section-head"><h4>Recent orders</h4><a href="/dashboard/orders">All orders →</a></div>
-        ${a.recent.length
-          ? table(a.recent.map((o) => `<tr><td>${escapeHTML(o.buyer || '—')}</td><td>${shortDate(o.created_at)}</td><td><span class="pb-an-status ${escapeHTML(o.status)}">${STATUS_LABEL[o.status] || escapeHTML(o.status)}</span></td><td class="pb-num">${formatINR(o.total)}</td></tr>`).join(''))
-          : '<p class="pb-an-empty">No orders yet — share the link to get your first sale.</p>'}
-      </div>`;
-  }
-
-  async function openAnalytics(id) {
-    const page = pages.find((p) => p.id === id);
-    if (!page) return;
-    const mine = ++analyticsSeq;
-    analyticsOpener = document.activeElement;
-    $('analyticsTitle').textContent = page.title;
-    $('analyticsSub').textContent = publicUrl(page).replace(/^https?:\/\//, '');
-    analyticsBody.innerHTML = '<p class="pb-an-empty">Loading…</p>';
-    analyticsModal.classList.add('open');
-    analyticsModal.setAttribute('aria-hidden', 'false');
-    $('analyticsClose').focus();
-    try {
-      const res = await fetch(`/dashboard/payment-pages/${id}/analytics`, { headers: { Accept: 'application/json' } });
-      const data = await res.json();
-      if (mine !== analyticsSeq) return;
-      if (!res.ok) throw new Error(data.error || 'Could not load analytics.');
-      analyticsBody.innerHTML = analyticsHTML(data);
-    } catch (err) {
-      if (mine === analyticsSeq) analyticsBody.innerHTML = `<p class="pb-an-empty">${escapeHTML(err.message || 'Could not load analytics.')}</p>`;
-    }
   }
 
   // --- coupons -------------------------------------------------------------------
@@ -1318,4 +1228,10 @@
   renderPages();
   renderCouponPageOptions();
   renderCoupons();
+  // "Edit page" on a page's Analytics links back here as #edit-<id>.
+  const editHash = location.hash.match(/^#edit-(\d+)$/);
+  if (editHash) {
+    history.replaceState(null, '', location.pathname);
+    startEdit(Number(editHash[1]));
+  }
 })();
