@@ -5,6 +5,7 @@ var initials = String(owner.name || '').split(/\s+/).filter(Boolean).slice(0, 2)
 var dayHref = function (d) { return '?date=' + d + '#times'; };
 %>
 
+  <% if (listingUrl) { %><a class="bk-back" href="<%= listingUrl %>">← All sessions</a><% } %>
   <div class="bk">
     <aside class="lm-card bk-about">
       <% if (service.cover_url) { %><div class="bk-cover"><img src="<%= service.cover_url %>" alt="" /></div><% } %>

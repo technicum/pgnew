@@ -41,12 +41,19 @@
       </form>
       <% } else if (st === 'pending') { %>
       <div class="bk-test">
+        <% if (paymentNote) { %>
+        Pay <b><%= booking.amountLabel %></b> to <%= owner.name %>:
+        <span class="bk-paynote"><%= paymentNote %></span>
+        They’ll confirm your booking once it’s received — this page updates when they do.
+        <% } else { %>
         Pay <b><%= booking.amountLabel %></b> to <%= owner.name %> the way they’ve shared with you (UPI or bank transfer). They’ll confirm your booking once it’s received — this page updates when they do.
+        <% } %>
       </div>
       <p class="ax-note">Bookmark this page to check on your booking.</p>
       <% } else { %>
       <a class="btn btn-primary" href="<%= bookAgain %>">Pick another time</a>
       <% } %>
+      <% if (listingUrl && st === 'confirmed') { %><p class="ax-note"><a href="<%= listingUrl %>">See everything else you can book →</a></p><% } %>
     </div>
   </article>
 

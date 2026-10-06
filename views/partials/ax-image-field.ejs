@@ -1,0 +1,11 @@
+<%# An image field on the Bookings dashboard pages: preview, a link box, Upload (to /dashboard/uploads — the script is in app-dash-bottom) and Remove. Pass name, label, value, hint, and round for a profile photo. %>
+<div class="ax-field ax-upload" data-upload>
+  <span><%= label %></span>
+  <div class="ax-upload-preview<%= typeof round !== 'undefined' && round ? ' is-round' : '' %>"><% if (value) { %><img src="<%= value %>" alt="" /><% } %></div>
+  <input class="ax-input" name="<%= name %>" value="<%= value %>" placeholder="Paste an image link, or upload" maxlength="500" />
+  <div class="ax-actions">
+    <label class="ax-btn">Upload<input type="file" accept="image/jpeg,image/png,image/webp" hidden /></label>
+    <button type="button" class="ax-btn ax-btn-quiet" data-clear>Remove</button>
+  </div>
+  <small><%= hint %></small>
+</div>

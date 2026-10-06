@@ -1,0 +1,17 @@
+<%# Tab bar across the Bookings app (lib/appDashboard.js), plus the link to the creator's booking page (/book) — the one to put in a bio. Pass tab: 'bookings' | 'services' | 'settings'. %>
+<% var bookUrl = storeUrlFor(user.handle) + '/book'; %>
+<nav class="ax-tabs" aria-label="Bookings">
+  <a href="/dashboard/bookings"<%- tab === 'bookings' ? ' aria-current="page"' : '' %>>Bookings</a>
+  <a href="/dashboard/bookings/services"<%- tab === 'services' ? ' aria-current="page"' : '' %>>Services</a>
+  <a href="/dashboard/bookings/settings"<%- tab === 'settings' ? ' aria-current="page"' : '' %>>Settings</a>
+</nav>
+<div class="ax-linkbar">
+  <span>Your booking page</span>
+  <% if (bookingSettings.listing_visible) { %>
+  <a href="<%= bookUrl %>" target="_blank" rel="noopener"><%= bookUrl.replace(/^https?:\/\//, '') %></a>
+  <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= bookUrl %>">Copy</button>
+  <span class="ax-linkbar-hint">Every service on one link — put it in your bio.</span>
+  <% } else { %>
+  <span class="ax-linkbar-hint">Switched off — <a href="/dashboard/bookings/settings">turn it on in Settings</a> to share every service on one link.</span>
+  <% } %>
+</div>

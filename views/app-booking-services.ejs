@@ -1,0 +1,37 @@
+<%# Bookings app → Services tab (lib/appDashboard.js → /dashboard/bookings/services): every service with its own link, and a form to add one. %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: 'Bookings' }) %>
+<%- include('partials/booking-tabs', { tab: 'services' }) %>
+<% var storeUrl = storeUrlFor(user.handle); %>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Services</h2><span class="ax-count"><%= services.length %> · shown on your booking page in this order, oldest first</span></div>
+  <% if (services.length) { %>
+  <ul class="ax-list">
+    <% services.slice().reverse().forEach(function (s) { var link = storeUrl + '/book/' + s.slug; %>
+    <li class="ax-row<%= s.visible ? '' : ' is-off' %>">
+      <div class="ax-main">
+        <a class="ax-title" href="/dashboard/bookings/services/<%= s.id %>"><%= s.title %></a>
+        <span class="ax-sub ax-block"><%= s.duration_min %> min · <%= s.priceLabel %> · <%= s.upcoming %> upcoming<%= s.visible ? '' : ' · Hidden' %></span>
+        <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
+      </div>
+      <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
+      <a class="ax-btn" href="/dashboard/bookings/services/<%= s.id %>">Edit</a>
+    </li>
+    <% }) %>
+  </ul>
+  <% } else { %>
+  <p class="ax-empty">No services yet. Add one below — it goes live on your booking page straight away.</p>
+  <% } %>
+  <form method="POST" action="/dashboard/bookings/services" class="ax-new">
+    <h3><%= services.length ? 'Add another service' : 'Create your first service' %></h3>
+    <div class="ax-grid">
+      <label class="ax-field"><span>Name</span><input class="ax-input" name="title" placeholder="30-minute intro call" required maxlength="200" /></label>
+      <label class="ax-field"><span>Length (minutes)</span><input class="ax-input" type="number" name="duration_min" value="30" min="5" max="480" step="5" /></label>
+      <label class="ax-field"><span>Price (₹) <small>0 = free</small></span><input class="ax-input" name="price" value="0" inputmode="decimal" /></label>
+    </div>
+    <p class="ax-hint">You’ll set its hours (Mon–Fri, 9–5 to start), questions and photos on the next screen.</p>
+    <button class="ax-btn ax-btn-primary">Create service</button>
+  </form>
+</section>
+
+<%- include('partials/app-dash-bottom') %>

@@ -70,12 +70,40 @@ form .bk-h { margin-top: 26px; }
 .bk-btn-ghost:hover { border-color: var(--magnet-accent); }
 .bk-test { margin-top: 18px; padding: 12px 14px; border-radius: 10px; background: #fff7e6; color: #7a4d00; font-size: 13.5px; line-height: 1.5; }
 
+.bk-back { align-self: center; width: 100%; max-width: 1040px; margin: -8px 0 12px; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; opacity: .9; }
+.bk-back:hover { opacity: 1; text-decoration: underline; }
+.bk-paynote { display: block; margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.7); color: var(--ink); font-weight: 600; white-space: pre-line; overflow-wrap: anywhere; }
+.ax-note a { color: var(--magnet-accent-dark); font-weight: 600; text-decoration: none; }
+
+/* ---------- Booking page: all services (app-booking-list.ejs) ---------- */
+.bk-list .lm-card-body { padding: 30px 32px; }
+.bk-list-head { text-align: center; margin-bottom: 24px; }
+.bk-list-head .bk-avatar { width: 76px; height: 76px; font-size: 24px; margin: 0 auto 14px; }
+.bk-list .bk-cover + .lm-card-body .bk-list-head .bk-avatar { margin-top: -70px; border: 4px solid var(--surface); }
+.bk-list-head .lm-desc { max-width: 46ch; margin: 6px auto 0; }
+.bk-services { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.bk-service {
+  display: flex; align-items: center; gap: 16px; padding: 16px 18px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none;
+  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.bk-service:hover { border-color: var(--magnet-accent); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16,24,40,.08); }
+.bk-service-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.bk-service-main b { font-size: 16px; }
+.bk-service-meta { font-size: 13px; color: var(--muted); }
+.bk-service-desc { font-size: 13.5px; color: var(--ink-soft); line-height: 1.45; margin-top: 2px; }
+.bk-service-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.bk-price { font-weight: 700; font-size: 15px; }
+.bk-go { padding: 6px 12px; border-radius: 999px; background: var(--magnet-accent); color: #fff; font-size: 13px; font-weight: 600; }
+
 @media (max-width: 860px) {
   .bk { grid-template-columns: 1fr; }
   .bk-about { position: static; }
 }
 @media (max-width: 560px) {
-  .bk .lm-card-body { padding: 22px 18px; }
+  .bk .lm-card-body, .bk-list .lm-card-body { padding: 22px 18px; }
+  .bk-service { flex-direction: column; align-items: stretch; gap: 10px; }
+  .bk-service-side { flex-direction: row; justify-content: space-between; align-items: center; }
   .bk-cal { padding: 8px 4px; }
 }
 

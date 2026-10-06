@@ -1,5 +1,5 @@
 <%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id). Field names match lib/bookings.js: hours as open_<day> + start_<day>_<n> / end_<day>_<n>, questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. Images upload through /dashboard/uploads (the small script below) or take a pasted link. %>
-<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings', label: 'All bookings' } }) %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings/services', label: 'All services' } }) %>
 <% var link = storeUrlFor(user.handle) + '/book/' + service.slug;
 var priceRupees = service.price ? String(service.price / 100) : '0'; %>
 
@@ -23,25 +23,15 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
     </div>
     <p class="ax-hint ax-pad">
       <% if (paymentMode === 'test') { %><b>Paid sessions run in test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged.
-      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid here or in Orders (after a UPI or bank transfer).<% } %>
+      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid on the Bookings tab or in Orders. Tell bookers how to pay (UPI ID, bank details) in <a href="/dashboard/bookings/settings">Settings</a>.<% } %>
     </p>
   </section>
 
   <section class="ax-panel">
     <div class="ax-panel-head"><h2>Photos</h2><span class="ax-count">Optional</span></div>
     <div class="ax-grid">
-      <% [['cover_url', 'Cover image', 'Wide image across the top — about 1500 × 700'], ['photo_url', 'Your photo', 'Shown beside your name; otherwise your initials']].forEach(function (f) { var v = service[f[0]]; %>
-      <div class="ax-field ax-upload" data-upload>
-        <span><%= f[1] %></span>
-        <div class="ax-upload-preview<%= f[0] === 'photo_url' ? ' is-round' : '' %>"><% if (v) { %><img src="<%= v %>" alt="" /><% } %></div>
-        <input class="ax-input" name="<%= f[0] %>" value="<%= v %>" placeholder="Paste an image link, or upload" maxlength="500" />
-        <div class="ax-actions">
-          <label class="ax-btn">Upload<input type="file" accept="image/jpeg,image/png,image/webp" hidden /></label>
-          <button type="button" class="ax-btn ax-btn-quiet" data-clear>Remove</button>
-        </div>
-        <small><%= f[2] %></small>
-      </div>
-      <% }) %>
+      <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: service.cover_url, hint: 'Wide image across the top — about 1500 × 700. Blank uses the one in Settings.' }) %>
+      <%- include('partials/ax-image-field', { name: 'photo_url', label: 'Your photo', value: service.photo_url, hint: 'Blank uses the one in Settings, else your initials.', round: true }) %>
     </div>
   </section>
 
@@ -76,7 +66,7 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
       <label class="ax-field"><span>Minimum notice (hours)</span><input class="ax-input" type="number" name="min_notice_hours" value="<%= service.min_notice_hours %>" min="0" max="720" /></label>
       <label class="ax-field"><span>Bookable up to (days ahead)</span><input class="ax-input" type="number" name="days_ahead" value="<%= service.days_ahead %>" min="1" max="180" /></label>
     </div>
-    <p class="ax-hint ax-pad">Days off (holidays, travel) apply to every service — set them on the <a href="/dashboard/bookings#days-off">Bookings page</a>.</p>
+    <p class="ax-hint ax-pad">Days off (holidays, travel) apply to every service — set them in <a href="/dashboard/bookings/settings#days-off">Settings</a>.</p>
   </section>
 
   <section class="ax-panel">
@@ -109,35 +99,6 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
 
 <script>
   (function () {
-    // Image fields: upload the file as the request body (lib/uploads.js),
-    // then put the returned link in the text field.
-    document.querySelectorAll('[data-upload]').forEach(function (box) {
-      var input = box.querySelector('input[name]');
-      var file = box.querySelector('input[type=file]');
-      var preview = box.querySelector('.ax-upload-preview');
-      var show = function () { preview.innerHTML = input.value ? '<img alt="" />' : ''; if (input.value) preview.firstChild.src = input.value; };
-      input.addEventListener('change', show);
-      box.querySelector('[data-clear]').addEventListener('click', function () { input.value = ''; show(); });
-      file.addEventListener('change', async function () {
-        var f = file.files[0];
-        if (!f) return;
-        var label = file.parentNode;
-        label.firstChild.textContent = 'Uploading…';
-        try {
-          var res = await fetch('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': f.type }, body: f });
-          var data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Upload failed');
-          input.value = data.url;
-          show();
-          label.firstChild.textContent = 'Upload';
-        } catch (err) {
-          label.firstChild.textContent = 'Upload';
-          alert(err.message);
-        }
-        file.value = '';
-      });
-    });
-
     // Hours: reveal the next hidden range / hide (and clear) one.
     document.querySelectorAll('[data-range-add]').forEach(function (btn) {
       var update = function () { btn.hidden = !btn.parentNode.querySelector('.ax-range[hidden]'); };

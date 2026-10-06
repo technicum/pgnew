@@ -36,7 +36,8 @@
           <% if (block.sub) { %><figcaption><%= block.sub %></figcaption><% } %>
         </figure>
       <% } else if (block.href) { %>
-        <a class="store-block store-block-link" href="<%= block.href %>" target="_blank" rel="noopener noreferrer nofollow">
+        <%# Links off the store open in a new tab; the store's own pages (a booking block → /book) don't. %>
+        <a class="store-block store-block-link" href="<%= block.href %>"<% if (/^https?:/.test(block.href)) { %> target="_blank" rel="noopener noreferrer nofollow"<% } %>>
           <span class="store-block-body">
             <span class="store-block-title"><%= block.title %></span>
             <span class="store-block-sub"><%= block.sub %></span>

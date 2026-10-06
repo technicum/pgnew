@@ -1,0 +1,38 @@
+<%# The creator's booking page (lib/appStorefront.js → /book): who they are and every visible service as a card linking to its own booking page. The one link to put in a bio. Headline, intro, photo and cover come from Bookings → Settings. %>
+<%- include('partials/app-public-top') %>
+<% var initials = String(owner.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '•'; %>
+
+  <article class="lm-card bk-list">
+    <% if (settings.cover_url) { %><div class="bk-cover"><img src="<%= settings.cover_url %>" alt="" /></div><% } %>
+    <div class="lm-card-body">
+      <div class="bk-list-head">
+        <% if (settings.photo_url) { %><img class="bk-avatar" src="<%= settings.photo_url %>" alt="" /><% } else { %><span class="bk-avatar"><%= initials %></span><% } %>
+        <h1><%= settings.headline || 'Book time with ' + owner.name %></h1>
+        <% if (settings.intro) { %><div class="lm-desc ax-rich"><%- introHtml %></div><% } else if (owner.bio) { %><p class="lm-desc"><%= owner.bio %></p><% } %>
+      </div>
+
+      <% if (!services.length) { %>
+      <div class="ax-empty">Nothing to book right now — check back soon.</div>
+      <% } else { %>
+      <ul class="bk-services">
+        <% services.forEach(function (s) { %>
+        <li>
+          <a href="/book/<%= s.slug %>" class="bk-service">
+            <span class="bk-service-main">
+              <b><%= s.title %></b>
+              <span class="bk-service-meta"><%= s.duration_min %> min<%= s.location ? ' · ' + s.location : '' %></span>
+              <% if (s.summary) { %><span class="bk-service-desc"><%= s.summary %></span><% } %>
+            </span>
+            <span class="bk-service-side">
+              <span class="bk-price"><%= s.priceLabel %></span>
+              <span class="bk-go">Book <span aria-hidden="true">→</span></span>
+            </span>
+          </a>
+        </li>
+        <% }) %>
+      </ul>
+      <% } %>
+    </div>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

@@ -87,6 +87,19 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .ax-addrange[hidden] { display: none; }
 
 .ax-pad { padding: 0 20px 16px; margin: 0; }
+.ax-pad-top { padding-top: 16px; padding-bottom: 0; }
+
+.ax-tabs { margin-top: 18px; display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.ax-tabs a {
+  padding: 10px 14px; margin-bottom: -1px; border-bottom: 2px solid transparent;
+  font-size: 14px; font-weight: 600; color: var(--muted-foreground); text-decoration: none;
+}
+.ax-tabs a:hover { color: var(--foreground); }
+.ax-tabs a[aria-current] { color: var(--primary); border-bottom-color: var(--primary); }
+.ax-linkbar-hint { color: var(--muted-foreground); font-size: 12.5px; }
+.ax-linkbar-hint a { color: var(--primary); }
+.ax-empty .ax-btn { margin-top: 12px; }
+.ax-empty p { margin: 0; }
 .ax-hint a { color: var(--primary); }
 .ax-pill-warn { background: var(--warning-soft); color: var(--warning); }
 .ax-answer { display: block; margin-top: 3px; font-size: 13px; }
