@@ -83,6 +83,26 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .ax-ranges { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .ax-range { display: grid; grid-template-columns: 130px auto 130px 32px; align-items: center; gap: 8px; }
 .ax-range[hidden] { display: none; }
+/* Time dropdown (app-dash-bottom): a button that looks like the field, and
+   a list that always opens below it. */
+.ax-pick { position: relative; min-width: 0; }
+.ax-pick-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; cursor: pointer;
+  white-space: nowrap; overflow: hidden;
+}
+.ax-pick-btn::after { content: ''; flex: none; width: 7px; height: 7px; margin-top: -3px; border: solid var(--muted-foreground); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.ax-pick-btn[aria-expanded="true"] { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent); }
+.ax-pick-list {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 100%; max-height: 232px; overflow-y: auto;
+  margin: 0; padding: 4px; list-style: none; background: var(--card); border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px); box-shadow: 0 12px 28px rgba(16,24,40,.14);
+}
+.ax-pick-list[hidden] { display: none; }
+.ax-pick-list li { padding: 7px 10px; border-radius: calc(var(--radius) - 4px); font-size: 13.5px; white-space: nowrap; cursor: pointer; }
+.ax-pick-list li:hover, .ax-pick-list li.is-active { background: var(--muted); }
+.ax-pick-list li[aria-selected] { background: var(--secondary); color: var(--secondary-foreground); font-weight: 600; }
+.ax-pick-list li[aria-disabled] { color: var(--muted-foreground); opacity: .4; cursor: default; background: none; }
+
 .ax-addrange { border: none; background: none; padding: 2px 0; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--primary); cursor: pointer; }
 .ax-addrange[hidden] { display: none; }
 

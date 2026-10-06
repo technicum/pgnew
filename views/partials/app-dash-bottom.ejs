@@ -37,6 +37,97 @@
     });
   });
 
+  // Time dropdowns (select[data-start] / [data-end]): the browser's own
+  // list opens wherever it likes — on Windows often upward, centred on the
+  // chosen time — so each gets a small list of ours that always opens
+  // below. The <select> stays as the value the form posts (hidden); the
+  // button and list just mirror it, and picking writes back to it with a
+  // change event, so the hours rules below run exactly as before.
+  var pickers = [];
+  var closePickers = function (except) { pickers.forEach(function (p) { if (p !== except) p.close(); }); };
+  document.querySelectorAll('select[data-start], select[data-end]').forEach(function (select) {
+    var wrap = document.createElement('div');
+    wrap.className = 'ax-pick';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ax-input ax-pick-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-label', select.getAttribute('aria-label') || '');
+    var list = document.createElement('ul');
+    list.className = 'ax-pick-list';
+    list.setAttribute('role', 'listbox');
+    list.hidden = true;
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    wrap.appendChild(btn);
+    wrap.appendChild(list);
+    select.hidden = true;
+    select.tabIndex = -1;
+
+    var active = -1;
+    var items = function () { return Array.prototype.slice.call(list.children); };
+    var label = function () { var o = select.options[select.selectedIndex]; btn.textContent = o ? o.textContent : '—'; };
+    var highlight = function (i) {
+      items().forEach(function (li, k) { li.classList.toggle('is-active', k === i); });
+      active = i;
+      if (list.children[i]) list.children[i].scrollIntoView({ block: 'nearest' });
+    };
+    var choose = function (value) {
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      label();
+      picker.close();
+      btn.focus();
+    };
+    var picker = {
+      refresh: label,
+      close: function () { list.hidden = true; btn.setAttribute('aria-expanded', 'false'); },
+      open: function () {
+        closePickers(picker);
+        list.innerHTML = '';
+        Array.prototype.forEach.call(select.options, function (o) {
+          var li = document.createElement('li');
+          li.setAttribute('role', 'option');
+          li.textContent = o.textContent;
+          li.dataset.value = o.value;
+          if (o.disabled) li.setAttribute('aria-disabled', 'true');
+          if (o.value === select.value) li.setAttribute('aria-selected', 'true');
+          list.appendChild(li);
+        });
+        list.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        // Show the chosen time near the top of the list, not at its start.
+        var sel = list.querySelector('[aria-selected]');
+        list.scrollTop = sel ? Math.max(0, sel.offsetTop - list.clientHeight / 3) : 0;
+        highlight(sel ? items().indexOf(sel) : -1);
+      },
+    };
+    pickers.push(picker);
+    label();
+
+    btn.addEventListener('click', function () { if (list.hidden) picker.open(); else picker.close(); });
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); }); // keep focus on the button
+    list.addEventListener('click', function (e) {
+      var li = e.target.closest('li');
+      if (li && !li.hasAttribute('aria-disabled')) choose(li.dataset.value);
+    });
+    btn.addEventListener('keydown', function (e) {
+      var all = items();
+      var step = function (dir) {
+        if (list.hidden) return picker.open();
+        for (var i = active + dir; i >= 0 && i < all.length; i += dir) {
+          if (!all[i].hasAttribute('aria-disabled')) return highlight(i);
+        }
+      };
+      if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+      else if ((e.key === 'Enter' || e.key === ' ') && !list.hidden && all[active]) { e.preventDefault(); choose(all[active].dataset.value); }
+      else if (e.key === 'Escape' || e.key === 'Tab') picker.close();
+    });
+  });
+  document.addEventListener('click', function (e) { if (!e.target.closest('.ax-pick')) closePickers(); });
+  var refreshPickers = function () { pickers.forEach(function (p) { p.refresh(); }); };
+
   // Weekly hours (partials/ax-hours). Times are 'HH:MM', so they compare
   // as strings. Within a day: each "to" must be after its "from", and each
   // extra range must start at or after the previous one ends — options that
@@ -65,6 +156,7 @@
         if (end.value) floor = end.value;
       });
       add.hidden = !box.querySelector('.ax-range[hidden]') || !floor || floor >= '23:30';
+      refreshPickers();
     };
     box.addEventListener('change', sync);
     add.addEventListener('click', function () {
