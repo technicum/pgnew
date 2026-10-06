@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/apps.css?v=<%= assetVersion %>" />
 </head>
-<%# Explore apps (server.js → /dashboard/apps, catalog in lib/apps.js): the Store is built in; the rest are added / removed here. %>
+<%# Explore apps (server.js → /dashboard/apps, catalog in lib/apps.js): a small card per app with an on/off switch. The Store is built in and always on. %>
 <body>
 <div class="min-h-screen bg-background">
 
@@ -28,59 +28,34 @@
       <section>
         <p class="text-sm font-semibold text-primary">Apps</p>
         <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Explore apps</h1>
-        <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">Your store is always on. Add the apps you need — each one shows up in your sidebar, and you can remove it any time without losing anything.</p>
+        <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">Switch on the apps you need and they appear in your sidebar. Switching one off only hides it — anything it published stays live.</p>
       </section>
 
-      <% if (justRemoved) { %>
-      <div class="ap-flash" role="status"><b><%= justRemoved.name %></b> removed from your dashboard. Pages it published stay live — add it back any time and everything is where you left it.</div>
-      <% } %>
       <% if (highlight && installed.indexOf(highlight) === -1) { %>
-      <div class="ap-flash ap-flash-info" role="status">Add the <b><%= apps.find(function (a) { return a.id === highlight; }).name %></b> app to open that page.</div>
+      <div class="ap-flash" role="status">Switch on <b><%= apps.find(function (a) { return a.id === highlight; }).name %></b> to open that page.</div>
       <% } %>
 
-      <% var core = apps.filter(function (a) { return a.core; }); var addable = apps.filter(function (a) { return !a.core; }); %>
-      <h2 class="ap-group">Built in</h2>
       <div class="ap-grid">
-        <% core.forEach(function (a) { %>
-        <article class="ap-card ap-on">
-          <div class="ap-card-top">
-            <span class="ap-icon" style="--app:<%= a.color %>"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- a.icon %></svg></span>
-            <span class="ap-badge">Always on</span>
-          </div>
-          <h3><%= a.name %></h3>
-          <p class="ap-tagline"><%= a.tagline %></p>
-          <p class="ap-desc"><%= a.description %></p>
-          <ul class="ap-features"><% a.features.forEach(function (f) { %><li><%= f %></li><% }) %></ul>
-          <div class="ap-actions"><a class="ap-btn ap-btn-primary" href="<%= a.href %>">Open</a></div>
-        </article>
-        <% }) %>
-      </div>
-
-      <h2 class="ap-group">Apps</h2>
-      <div class="ap-grid">
-        <% addable.forEach(function (a) { var on = installed.indexOf(a.id) !== -1; %>
-        <article class="ap-card<%= on ? ' ap-on' : '' %><%= highlight === a.id ? ' ap-highlight' : '' %>" id="<%= a.id %>">
-          <div class="ap-card-top">
-            <span class="ap-icon" style="--app:<%= a.color %>"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- a.icon %></svg></span>
-            <% if (on) { %><span class="ap-badge">✓ Added</span><% } else { %><span class="ap-badge ap-badge-free">Free</span><% } %>
-          </div>
-          <h3><%= a.name %></h3>
-          <p class="ap-tagline"><%= a.tagline %></p>
-          <p class="ap-desc"><%= a.description %></p>
-          <ul class="ap-features"><% a.features.forEach(function (f) { %><li><%= f %></li><% }) %></ul>
-          <div class="ap-actions">
-            <% if (on) { %>
-            <a class="ap-btn ap-btn-primary" href="<%= a.href %>">Open</a>
-            <form method="POST" action="/dashboard/apps/<%= a.id %>" class="ap-remove">
-              <input type="hidden" name="action" value="remove" />
-              <button type="submit" class="ap-btn ap-btn-ghost">Remove</button>
-            </form>
+        <% apps.forEach(function (a) { var on = a.core || installed.indexOf(a.id) !== -1; %>
+        <article class="ap-card<%= on ? ' ap-on' : '' %><%= highlight === a.id ? ' ap-highlight' : '' %>" id="<%= a.id %>" data-app="<%= a.id %>">
+          <div class="ap-card-row">
+            <span class="ap-icon" style="--app:<%= a.color %>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- a.icon %></svg></span>
+            <span class="ap-text">
+              <h2><%= a.name %></h2>
+              <p><%= a.tagline %></p>
+            </span>
+            <% if (a.core) { %>
+            <span class="ap-switch is-on is-locked" role="switch" aria-checked="true" aria-disabled="true" title="Built in — always on"><span class="ap-sr"><%= a.name %> is always on</span></span>
             <% } else { %>
-            <form method="POST" action="/dashboard/apps/<%= a.id %>">
-              <input type="hidden" name="action" value="add" />
-              <button type="submit" class="ap-btn ap-btn-primary">+ Add app</button>
+            <form method="POST" action="/dashboard/apps/<%= a.id %>" class="ap-toggle">
+              <input type="hidden" name="action" value="<%= on ? 'remove' : 'add' %>" />
+              <button type="submit" class="ap-switch<%= on ? ' is-on' : '' %>" role="switch" aria-checked="<%= on ? 'true' : 'false' %>" aria-label="<%= a.name %>"></button>
             </form>
             <% } %>
+          </div>
+          <div class="ap-card-foot">
+            <span class="ap-state"><%= a.core ? 'Built in' : (on ? 'On' : 'Off') %></span>
+            <a class="ap-open" href="<%= a.href %>"<%= on ? '' : ' hidden' %>>Open →</a>
           </div>
         </article>
         <% }) %>
@@ -89,22 +64,47 @@
   </main>
 </div>
 <script>
-  // Remove asks once more before taking the app out of the sidebar.
-  document.querySelectorAll('.ap-remove').forEach(function (form) {
-    form.addEventListener('submit', function (e) {
-      var btn = form.querySelector('button');
-      if (btn.dataset.confirm) return;
-      e.preventDefault();
-      btn.dataset.confirm = '1';
-      btn.textContent = 'Click again to remove';
-      btn.classList.add('ap-btn-danger');
-      setTimeout(function () {
-        delete btn.dataset.confirm;
-        btn.textContent = 'Remove';
-        btn.classList.remove('ap-btn-danger');
-      }, 3000);
+  // The switches save without a page load, then swap in the new sidebar
+  // (fetched from this same page) so the app appears / disappears there.
+  (function () {
+    document.querySelectorAll('.ap-toggle').forEach(function (form) {
+      var btn = form.querySelector('.ap-switch');
+      var action = form.querySelector('input[name="action"]');
+      var card = form.closest('.ap-card');
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        if (btn.disabled) return;
+        var turningOn = action.value === 'add';
+        btn.disabled = true;
+        try {
+          var res = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+            body: 'action=' + action.value,
+          });
+          if (!res.ok) throw new Error('Could not save');
+          action.value = turningOn ? 'remove' : 'add';
+          btn.classList.toggle('is-on', turningOn);
+          btn.setAttribute('aria-checked', turningOn ? 'true' : 'false');
+          card.classList.toggle('ap-on', turningOn);
+          card.classList.remove('ap-highlight');
+          card.querySelector('.ap-state').textContent = turningOn ? 'On' : 'Off';
+          card.querySelector('.ap-open').hidden = !turningOn;
+          var flash = document.querySelector('.ap-flash');
+          if (flash) flash.remove();
+          var page = await (await fetch('/dashboard/apps', { headers: { Accept: 'text/html' } })).text();
+          var fresh = new DOMParser().parseFromString(page, 'text/html').querySelector('nav[aria-label="Dashboard navigation"]');
+          var nav = document.querySelector('nav[aria-label="Dashboard navigation"]');
+          if (fresh && nav) nav.replaceWith(fresh);
+        } catch (err) {
+          card.classList.add('ap-error');
+          setTimeout(function () { card.classList.remove('ap-error'); }, 1500);
+        } finally {
+          btn.disabled = false;
+        }
+      });
     });
-  });
+  })();
 </script>
 </body>
 </html>

@@ -245,18 +245,20 @@ app.get('/dashboard/apps', requireAuth, (req, res) => {
     installed: res.locals.installedApps || [],
     // Arriving from an app's page before adding it: that app is highlighted.
     highlight: APP_BY_ID.has(req.query.add) ? req.query.add : null,
-    justRemoved: APP_BY_ID.has(req.query.removed) ? APP_BY_ID.get(req.query.removed) : null,
   });
 });
 
-// Add or remove an app (a plain form post from Explore apps).
+// Turn an app on or off — the switch on its Explore apps card. The page's
+// script sends it with fetch() and gets JSON back; without the script it's
+// a plain form post that comes back to Explore apps.
 app.post('/dashboard/apps/:id', requireAuth, async (req, res, next) => {
   const app_ = APP_BY_ID.get(req.params.id);
   if (!app_ || app_.core) return res.redirect(303, '/dashboard/apps');
   try {
     const add = req.body.action !== 'remove';
     await setAppInstalled(req.session.user.id, app_.id, add);
-    res.redirect(303, add ? `${app_.href}` : `/dashboard/apps?removed=${app_.id}`);
+    if (req.accepts(['html', 'json']) === 'json') return res.json({ ok: true, id: app_.id, on: add });
+    res.redirect(303, '/dashboard/apps');
   } catch (err) {
     next(err);
   }
