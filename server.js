@@ -59,6 +59,7 @@ const { APPS, APP_BY_ID, installedApps, setAppInstalled, appForPath } = require(
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode } = require('./lib/payments');
 const { installStorefront } = require('./lib/storefront');
+const { installAppDashboards } = require('./lib/appDashboard');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 
 const app = express();
@@ -767,6 +768,9 @@ app.patch('/dashboard/orders/:id', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Could not update that order. Please try again.' });
   }
 });
+
+// --- Bookings, Events, Courses (lib/appDashboard.js) ----------------------
+installAppDashboards(app, { requireAuth, siteName: SITE_NAME });
 
 // Public side: the link a merchant shares lives on their store subdomain
 // (meera.pagezaper.com/free-checklist) — see lib/storefront.js.

@@ -120,6 +120,8 @@
     { source: 'form', kind: 'Lead magnet', fallback: 'Lead magnet signups' },
     { source: 'order', kind: 'Order', fallback: 'Orders' },
     { source: 'booking', kind: 'Booking', fallback: 'Bookings' },
+    { source: 'event', kind: 'Event', fallback: 'Event RSVPs' },
+    { source: 'course', kind: 'Course', fallback: 'Course students' },
     { source: 'manual', kind: '', fallback: 'Added by hand' },
   ];
   function sourceOf(contact) {

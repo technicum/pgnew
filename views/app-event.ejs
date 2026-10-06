@@ -1,0 +1,42 @@
+<%# Public event page (lib/appStorefront.js → /event/:slug): details and the RSVP form. An online event's link isn't shown here — only after registering (app-done.ejs). %>
+<%- include('partials/app-public-top') %>
+
+  <article class="lm-card">
+    <div class="lm-card-body">
+      <span class="lm-kicker"><span class="dot"></span><%= event.mode === 'online' ? 'Online event' : 'Event' %></span>
+      <h1><%= event.title %></h1>
+      <dl class="ax-facts">
+        <div><dt>When</dt><dd><%= when %></dd></div>
+        <div><dt>Where</dt><dd><%= event.mode === 'online' ? 'Online — the link is shared once you register' : (event.location || 'Venue to be announced') %></dd></div>
+        <% if (event.capacity) { %><div><dt>Seats</dt><dd><%= seatsLeft > 0 ? seatsLeft + ' of ' + event.capacity + ' left' : 'Full' %></dd></div><% } %>
+      </dl>
+      <% if (event.description) { %><div class="lm-desc ax-rich"><%- descriptionHtml %></div><% } %>
+
+      <% if (error && !ended && seatsLeft > 0) { %><div class="auth-error"><%= error %></div><% } %>
+
+      <% if (ended) { %>
+      <div class="ax-empty">This event has already happened.</div>
+      <% } else if (seatsLeft <= 0) { %>
+      <div class="ax-empty">This event is full.</div>
+      <% } else { %>
+      <form method="POST" action="/event/<%= event.slug %>" novalidate>
+        <div class="field">
+          <label for="name">Your name</label>
+          <input type="text" id="name" name="name" value="<%= values.name || '' %>" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for="email">Your email</label>
+          <input type="email" id="email" name="email" value="<%= values.email || '' %>" autocomplete="email" required />
+        </div>
+        <div class="field">
+          <label for="phone">Phone <span class="lm-opt">(optional)</span></label>
+          <input type="tel" id="phone" name="phone" value="<%= values.phone || '' %>" autocomplete="tel" />
+        </div>
+        <button type="submit" class="btn btn-primary">Register — it’s free</button>
+      </form>
+      <% } %>
+    </div>
+    <p class="lm-card-foot"><span>Your details go to <%= owner.name %> only.</span></p>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

@@ -1,0 +1,21 @@
+<%# Confirmation after booking a slot or RSVPing to an event (lib/appStorefront.js): heading, a few label/value facts, an optional button (an online event's join link) and a closing note. %>
+<%- include('partials/app-public-top') %>
+
+  <article class="lm-card">
+    <div class="lm-card-body">
+      <div class="ax-done-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" width="24" height="24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5L10 17L19 7"/></svg>
+      </div>
+      <h1><%= heading %></h1>
+      <p class="lm-desc"><%= lead %></p>
+      <dl class="ax-facts">
+        <% facts.forEach(function (f) { %><div><dt><%= f[0] %></dt><dd><%= f[1] %></dd></div><% }) %>
+      </dl>
+      <% if (typeof action !== 'undefined' && action) { %>
+      <a href="<%= action.href %>" class="btn btn-primary" target="_blank" rel="noopener"><%= action.label %></a>
+      <% } %>
+      <p class="ax-note"><%= note %></p>
+    </div>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

@@ -1,0 +1,29 @@
+    </div>
+  </main>
+</div>
+<script>
+  // Copy buttons for public links, and a second click to confirm deletes.
+  document.addEventListener('click', function (e) {
+    var copy = e.target.closest('[data-copy]');
+    if (copy) {
+      navigator.clipboard.writeText(copy.getAttribute('data-copy')).then(function () {
+        var was = copy.textContent;
+        copy.textContent = 'Copied';
+        setTimeout(function () { copy.textContent = was; }, 1200);
+      });
+    }
+    var confirmBtn = e.target.closest('[data-confirm]');
+    if (confirmBtn && !confirmBtn.classList.contains('is-armed')) {
+      e.preventDefault();
+      confirmBtn.classList.add('is-armed');
+      confirmBtn.dataset.label = confirmBtn.textContent;
+      confirmBtn.textContent = confirmBtn.getAttribute('data-confirm');
+      setTimeout(function () {
+        confirmBtn.classList.remove('is-armed');
+        confirmBtn.textContent = confirmBtn.dataset.label;
+      }, 3000);
+    }
+  });
+</script>
+</body>
+</html>

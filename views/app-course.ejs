@@ -1,0 +1,35 @@
+<%# Public course page (lib/appStorefront.js → /course/:slug): description, lesson outline and the enrol form. Enrolling redirects to the student's private /learn/ link. %>
+<%- include('partials/app-public-top') %>
+
+  <article class="lm-card">
+    <div class="lm-card-body">
+      <span class="lm-kicker"><span class="dot"></span>Free course</span>
+      <h1><%= course.title %></h1>
+      <% if (course.description) { %><div class="lm-desc ax-rich"><%- descriptionHtml %></div><% } %>
+
+      <% if (lessons.length) { %>
+      <h2 class="ax-step"><%= lessons.length %> lesson<%= lessons.length === 1 ? '' : 's' %></h2>
+      <ol class="ax-outline">
+        <% lessons.forEach(function (l) { %><li><%= l.title %><% if (l.video_url) { %> <small>· video</small><% } %></li><% }) %>
+      </ol>
+      <% } %>
+
+      <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
+
+      <h2 class="ax-step">Enrol</h2>
+      <form method="POST" action="/course/<%= course.slug %>" novalidate>
+        <div class="field">
+          <label for="name">Your name</label>
+          <input type="text" id="name" name="name" value="<%= values.name || '' %>" autocomplete="name" required />
+        </div>
+        <div class="field">
+          <label for="email">Your email</label>
+          <input type="email" id="email" name="email" value="<%= values.email || '' %>" autocomplete="email" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Start learning</button>
+      </form>
+    </div>
+    <p class="lm-card-foot"><span>Already enrolled? Use the same email to get back to your lessons.</span></p>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

@@ -1,0 +1,91 @@
+/* Public Bookings / Events / Courses pages (views/app-*.ejs). Builds on
+   lead-magnet.css (the card, kicker, fields, button) and only adds what
+   those pages need: day strip, time slots, fact list, lesson player. */
+
+.ax-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 12px; color: var(--muted); font-size: 14px; }
+.ax-meta span + span::before { content: '·'; margin-right: 14px; }
+
+.ax-rich p { margin: 0 0 10px; }
+.ax-rich ul, .ax-rich ol { margin: 0 0 10px; padding-left: 20px; }
+.ax-rich h2, .ax-rich h3 { font-family: inherit; font-size: 16px; color: var(--ink); margin: 16px 0 6px; }
+.ax-rich a { color: var(--magnet-accent-dark); }
+
+.ax-step { font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ink); margin: 26px 0 10px; }
+.ax-step small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.lm-card .ax-step + form, .ax-days + form { margin-top: 0; }
+
+.ax-empty {
+  margin-top: 22px; padding: 18px; border-radius: 10px; text-align: center;
+  background: #f3f4f7; color: var(--ink-soft); font-size: 14.5px;
+}
+
+/* Day strip: scrolls sideways on a phone rather than wrapping into a wall. */
+.ax-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+.ax-day {
+  flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 84px;
+  padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface);
+  color: var(--ink); text-decoration: none; font-size: 13.5px;
+}
+.ax-day small { color: var(--muted); font-size: 11.5px; }
+.ax-day:hover { border-color: var(--magnet-accent); }
+.ax-day.is-on { border-color: var(--magnet-accent); background: color-mix(in srgb, var(--magnet-accent) 10%, var(--surface)); }
+
+.ax-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.ax-slot { position: relative; }
+.ax-slot input { position: absolute; opacity: 0; inset: 0; }
+.ax-slot span {
+  display: block; padding: 10px 6px; border-radius: 8px; border: 1.5px solid var(--line);
+  text-align: center; font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer;
+}
+.ax-slot input:focus-visible + span { outline: 2px solid var(--magnet-accent); outline-offset: 2px; }
+.ax-slot input:checked + span { background: var(--magnet-accent); border-color: var(--magnet-accent); color: #fff; }
+
+.lm-card .field textarea {
+  width: 100%; padding: 12px 14px; border-radius: 8px; border: 1.5px solid transparent;
+  background-color: #eef0f4; font: inherit; font-size: 15px; color: var(--ink); resize: vertical;
+}
+.lm-card .field textarea:focus { outline: none; border-color: var(--magnet-accent); background: var(--surface); }
+
+.ax-facts { margin: 16px 0; display: grid; gap: 8px; }
+.ax-facts > div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; font-size: 14.5px; }
+.ax-facts dt { color: var(--muted); }
+.ax-facts dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+
+.ax-outline { margin: 0; padding-left: 22px; color: var(--ink-soft); font-size: 14.5px; line-height: 1.9; }
+.ax-outline small { color: var(--muted); }
+
+.ax-done-icon {
+  width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 14px;
+  background: var(--magnet-accent); color: #fff;
+}
+.ax-note { margin: 18px 0 0; font-size: 13.5px; color: var(--muted); }
+
+/* Course player */
+.ax-wide .lm-head, .ax-learn { max-width: 1040px; }
+.ax-learn { width: 100%; display: grid; grid-template-columns: 290px 1fr; gap: 18px; align-items: start; }
+.ax-learn .lm-card { max-width: none; }
+.ax-learn .lm-card-body { padding: 26px 28px; }
+.ax-learn-title { font-family: inherit; font-size: 17px; color: var(--ink); margin: 0 0 12px; }
+.ax-lessons { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ax-lessons a {
+  display: flex; gap: 10px; padding: 8px 10px; border-radius: 8px;
+  color: var(--ink-soft); text-decoration: none; font-size: 14px; line-height: 1.35;
+}
+.ax-lessons a span { flex: none; width: 20px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ax-lessons a:hover { background: #f3f4f7; }
+.ax-lessons a[aria-current] { background: color-mix(in srgb, var(--magnet-accent) 12%, var(--surface)); color: var(--ink); font-weight: 600; }
+.ax-bookmark { margin: 16px 0 0; font-size: 12.5px; color: var(--muted); }
+.ax-video { position: relative; aspect-ratio: 16 / 9; margin: 16px 0; border-radius: 10px; overflow: hidden; background: #000; }
+.ax-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.ax-lesson-body { margin-top: 14px; font-size: 15.5px; line-height: 1.7; color: var(--ink-soft); }
+.ax-pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; }
+.ax-pager a { color: var(--magnet-accent-dark); text-decoration: none; font-weight: 600; }
+.ax-pager .is-next { margin-left: auto; text-align: right; }
+
+@media (max-width: 760px) {
+  .ax-learn { grid-template-columns: 1fr; }
+  .ax-learn-main { order: -1; }
+}
+@media (max-width: 560px) {
+  .ax-learn .lm-card-body { padding: 22px 18px; }
+}

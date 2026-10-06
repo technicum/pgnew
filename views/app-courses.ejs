@@ -1,0 +1,33 @@
+<%# Courses app home (lib/appDashboard.js → /dashboard/courses): the creator's courses with lesson and student counts, and a form to add one. %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/courses', section: 'Courses', heading: 'Courses', intro: 'Build a course from text and video lessons. Students enrol with their email and get their own link to the lessons — and land in your Audience.' }) %>
+<% var storeUrl = storeUrlFor(user.handle); %>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Your courses</h2><span class="ax-count"><%= courses.length %></span></div>
+  <% if (!courses.length) { %>
+  <p class="ax-empty">No courses yet. Name your first one below, then add lessons.</p>
+  <% } else { %>
+  <ul class="ax-list">
+    <% courses.forEach(function (c) { var link = storeUrl + '/course/' + c.slug; %>
+    <li class="ax-row<%= c.visible ? '' : ' is-off' %>">
+      <div class="ax-main">
+        <a class="ax-title" href="/dashboard/courses/<%= c.id %>"><%= c.title %></a>
+        <span class="ax-sub ax-block"><%= c.lesson_count %> lesson<%= c.lesson_count === 1 ? '' : 's' %> · <%= c.student_count %> student<%= c.student_count === 1 ? '' : 's' %><%= c.visible ? '' : ' · Hidden' %></span>
+        <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
+      </div>
+      <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
+      <a class="ax-btn" href="/dashboard/courses/<%= c.id %>">Edit</a>
+    </li>
+    <% }) %>
+  </ul>
+  <% } %>
+  <form method="POST" action="/dashboard/courses" class="ax-new">
+    <h3>New course</h3>
+    <div class="ax-grid">
+      <label class="ax-field ax-span-3"><span>Name</span><input class="ax-input" name="title" placeholder="Instagram growth in 7 days" required maxlength="200" /></label>
+    </div>
+    <button class="ax-btn ax-btn-primary">Create course</button>
+  </form>
+</section>
+
+<%- include('partials/app-dash-bottom') %>

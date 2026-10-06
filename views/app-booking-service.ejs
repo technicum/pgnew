@@ -1,0 +1,53 @@
+<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id): details, weekly hours (open_<day>/start_<day>/end_<day>), booking window, visibility, delete. %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings', label: 'All bookings' } }) %>
+<% var link = storeUrlFor(user.handle) + '/book/' + service.slug; %>
+
+<div class="ax-linkbar">
+  <span>Booking link</span>
+  <a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a>
+  <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy</button>
+</div>
+
+<form method="POST" action="/dashboard/bookings/services/<%= service.id %>">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Details</h2></div>
+    <div class="ax-grid">
+      <label class="ax-field ax-span-2"><span>Name</span><input class="ax-input" name="title" value="<%= service.title %>" required maxlength="200" /></label>
+      <label class="ax-field"><span>Length (minutes)</span><input class="ax-input" type="number" name="duration_min" value="<%= service.duration_min %>" min="5" max="480" step="5" /></label>
+      <label class="ax-field ax-span-3"><span>Description</span><textarea class="ax-input" name="description" rows="4" maxlength="2000" placeholder="What you’ll cover, who it’s for…"><%= service.description %></textarea>
+        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
+      <label class="ax-field ax-span-2"><span>Where</span><input class="ax-input" name="location" value="<%= service.location %>" maxlength="300" placeholder="Google Meet — link sent by email" /></label>
+      <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= service.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
+    </div>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Weekly hours</h2><span class="ax-count">IST</span></div>
+    <div class="ax-hours">
+      <% weekdays.forEach(function (day, i) { var h = service.hours[i]; %>
+      <div class="ax-hours-row">
+        <label class="ax-check"><input type="checkbox" name="open_<%= i %>" value="1"<%= h ? ' checked' : '' %> /> <span><%= day %></span></label>
+        <input class="ax-input" type="time" name="start_<%= i %>" value="<%= h ? h[0] : '09:00' %>" aria-label="<%= day %> from" />
+        <span class="ax-sub">to</span>
+        <input class="ax-input" type="time" name="end_<%= i %>" value="<%= h ? h[1] : '17:00' %>" aria-label="<%= day %> until" />
+      </div>
+      <% }) %>
+    </div>
+    <div class="ax-grid" style="margin-top:16px;">
+      <label class="ax-field"><span>Minimum notice (hours)</span><input class="ax-input" type="number" name="min_notice_hours" value="<%= service.min_notice_hours %>" min="0" max="720" /></label>
+      <label class="ax-field"><span>Bookable up to (days ahead)</span><input class="ax-input" type="number" name="days_ahead" value="<%= service.days_ahead %>" min="1" max="180" /></label>
+    </div>
+  </section>
+
+  <section class="ax-panel ax-savebar">
+    <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= service.visible ? ' checked' : '' %> /> <span>Taking bookings (page is live)</span></label>
+    <button class="ax-btn ax-btn-primary">Save changes</button>
+  </section>
+</form>
+
+<form method="POST" action="/dashboard/bookings/services/<%= service.id %>/delete" class="ax-danger">
+  <span>Deleting the service takes its page down. Bookings already made stay in your list.</span>
+  <button class="ax-btn ax-btn-danger" data-confirm="Click again to delete">Delete service</button>
+</form>
+
+<%- include('partials/app-dash-bottom') %>

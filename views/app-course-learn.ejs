@@ -1,0 +1,42 @@
+<%# A student's view of a course (lib/appStorefront.js → /course/:slug/learn/:token[/:lessonId]): lesson list beside the current lesson. The token in the URL is their access, so the page reminds them to bookmark it. %>
+<%- include('partials/app-public-top', { wide: true }) %>
+
+  <div class="ax-learn">
+    <aside class="lm-card ax-learn-nav">
+      <div class="lm-card-body">
+        <span class="lm-kicker"><span class="dot"></span>Hi <%= student.name.split(' ')[0] %></span>
+        <h2 class="ax-learn-title"><%= course.title %></h2>
+        <% if (lessons.length) { %>
+        <ol class="ax-lessons">
+          <% lessons.forEach(function (l, i) { %>
+          <li><a href="<%= base %>/<%= l.id %>"<%= lesson && l.id === lesson.id ? ' aria-current="page"' : '' %>><span><%= i + 1 %></span><%= l.title %></a></li>
+          <% }) %>
+        </ol>
+        <% } %>
+        <p class="ax-bookmark">Bookmark this page — this link is your way back in.</p>
+      </div>
+    </aside>
+
+    <article class="lm-card ax-learn-main">
+      <div class="lm-card-body">
+        <% if (!lesson) { %>
+        <h1>Lessons are on the way</h1>
+        <p class="lm-desc"><%= owner.name %> hasn’t added any lessons yet. Keep this link — they’ll appear here.</p>
+        <% } else { %>
+        <h1><%= lesson.title %></h1>
+        <% if (embedUrl) { %>
+        <div class="ax-video"><iframe src="<%= embedUrl %>" title="<%= lesson.title %>" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>
+        <% } else if (lesson.video_url) { %>
+        <p><a class="btn btn-primary" href="<%= lesson.video_url %>" target="_blank" rel="noopener">Watch the video</a></p>
+        <% } %>
+        <% if (lessonHtml) { %><div class="ax-rich ax-lesson-body"><%- lessonHtml %></div><% } %>
+        <nav class="ax-pager">
+          <% if (prev) { %><a href="<%= base %>/<%= prev.id %>">← <%= prev.title %></a><% } else { %><span></span><% } %>
+          <% if (next) { %><a class="is-next" href="<%= base %>/<%= next.id %>"><%= next.title %> →</a><% } %>
+        </nav>
+        <% } %>
+      </div>
+    </article>
+  </div>
+
+<%- include('partials/app-public-bottom') %>

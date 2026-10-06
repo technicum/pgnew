@@ -1,0 +1,94 @@
+<%# Edit one course (lib/appDashboard.js → /dashboard/courses/:id): details, lessons (add / edit / reorder / delete — ?lesson=<id> opens one for editing), students, delete. %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/courses', section: 'Courses', heading: course.title, back: { href: '/dashboard/courses', label: 'All courses' } }) %>
+<% var link = storeUrlFor(user.handle) + '/course/' + course.slug; var base = '/dashboard/courses/' + course.id; %>
+
+<div class="ax-linkbar">
+  <span>Course link</span>
+  <a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a>
+  <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy</button>
+</div>
+
+<form method="POST" action="<%= base %>">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Details</h2></div>
+    <div class="ax-grid">
+      <label class="ax-field ax-span-2"><span>Name</span><input class="ax-input" name="title" value="<%= course.title %>" required maxlength="200" /></label>
+      <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= course.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
+      <label class="ax-field ax-span-3"><span>Description</span><textarea class="ax-input" name="description" rows="4" maxlength="2000" placeholder="What students will learn"><%= course.description %></textarea>
+        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
+    </div>
+  </section>
+  <section class="ax-panel ax-savebar">
+    <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= course.visible ? ' checked' : '' %> /> <span>Open for enrolment (page is live)</span></label>
+    <button class="ax-btn ax-btn-primary">Save changes</button>
+  </section>
+</form>
+
+<section class="ax-panel" id="lessons">
+  <div class="ax-panel-head"><h2>Lessons</h2><span class="ax-count"><%= lessons.length %></span></div>
+  <% if (lessons.length) { %>
+  <ol class="ax-list ax-lesson-list">
+    <% lessons.forEach(function (l, i) { %>
+    <li class="ax-row">
+      <span class="ax-num"><%= i + 1 %></span>
+      <div class="ax-main">
+        <a class="ax-title" href="?lesson=<%= l.id %>#lesson-<%= l.id %>"><%= l.title %></a>
+        <span class="ax-sub ax-block"><%= l.video_url ? 'Video' : '' %><%= l.video_url && l.body ? ' + ' : '' %><%= l.body ? 'text' : '' %></span>
+      </div>
+      <form method="POST" action="<%= base %>/lessons/<%= l.id %>/move"><input type="hidden" name="dir" value="up" /><button class="ax-btn ax-btn-quiet" aria-label="Move up"<%= i === 0 ? ' disabled' : '' %>>↑</button></form>
+      <form method="POST" action="<%= base %>/lessons/<%= l.id %>/move"><input type="hidden" name="dir" value="down" /><button class="ax-btn ax-btn-quiet" aria-label="Move down"<%= i === lessons.length - 1 ? ' disabled' : '' %>>↓</button></form>
+      <a class="ax-btn" href="?lesson=<%= l.id %>#lesson-<%= l.id %>">Edit</a>
+    </li>
+    <% if (editing === l.id) { %>
+    <li class="ax-edit" id="lesson-<%= l.id %>">
+      <form method="POST" action="<%= base %>/lessons/<%= l.id %>">
+        <div class="ax-grid">
+          <label class="ax-field ax-span-2"><span>Title</span><input class="ax-input" name="title" value="<%= l.title %>" required maxlength="200" /></label>
+          <label class="ax-field"><span>Video link <small>(optional)</small></span><input class="ax-input" name="video_url" value="<%= l.video_url %>" placeholder="YouTube or Vimeo link" maxlength="500" /></label>
+          <label class="ax-field ax-span-3"><span>Lesson text</span><textarea class="ax-input" name="body" rows="10" maxlength="20000"><%= l.body %></textarea></label>
+        </div>
+        <div class="ax-actions">
+          <button class="ax-btn ax-btn-primary">Save lesson</button>
+          <a class="ax-btn ax-btn-quiet" href="<%= base %>#lessons">Close</a>
+          <button class="ax-btn ax-btn-danger" formaction="<%= base %>/lessons/<%= l.id %>/delete" data-confirm="Click again to delete">Delete lesson</button>
+        </div>
+      </form>
+    </li>
+    <% } %>
+    <% }) %>
+  </ol>
+  <% } %>
+  <form method="POST" action="<%= base %>/lessons" class="ax-new">
+    <h3>Add a lesson</h3>
+    <div class="ax-grid">
+      <label class="ax-field ax-span-2"><span>Title</span><input class="ax-input" name="title" placeholder="Lesson <%= lessons.length + 1 %>: …" required maxlength="200" /></label>
+      <label class="ax-field"><span>Video link <small>(optional)</small></span><input class="ax-input" name="video_url" placeholder="YouTube or Vimeo link" maxlength="500" /></label>
+      <label class="ax-field ax-span-3"><span>Lesson text <small>(optional)</small></span><textarea class="ax-input" name="body" rows="5" maxlength="20000"></textarea>
+        <small>“## ” for a heading, **bold**, *italic*, “- ” for bullets, [text](https://…) for links.</small></label>
+    </div>
+    <button class="ax-btn ax-btn-primary">Add lesson</button>
+  </form>
+</section>
+
+<section class="ax-panel" id="students">
+  <div class="ax-panel-head"><h2>Students</h2><span class="ax-count"><%= students.length %></span></div>
+  <% if (!students.length) { %>
+  <p class="ax-empty">No one has enrolled yet.</p>
+  <% } else { %>
+  <ul class="ax-list">
+    <% students.forEach(function (s) { %>
+    <li class="ax-row">
+      <div class="ax-main"><b><%= s.name %></b> <span class="ax-sub">· <a href="mailto:<%= s.email %>"><%= s.email %></a> · enrolled <%= new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></span></div>
+      <form method="POST" action="<%= base %>/students/<%= s.id %>/remove"><button class="ax-btn ax-btn-quiet" data-confirm="Remove access?">Remove</button></form>
+    </li>
+    <% }) %>
+  </ul>
+  <% } %>
+</section>
+
+<form method="POST" action="<%= base %>/delete" class="ax-danger">
+  <span>Deleting the course removes its page, lessons and students’ access. Students stay in your Audience.</span>
+  <button class="ax-btn ax-btn-danger" data-confirm="Click again to delete">Delete course</button>
+</form>
+
+<%- include('partials/app-dash-bottom') %>
