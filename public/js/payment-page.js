@@ -188,6 +188,17 @@
     });
   });
 
+  // A signed-in buyer's saved addresses: picking one hides the new-address
+  // fields, "new address" shows them.
+  const newAddress = $('newAddress');
+  form.querySelectorAll('input[name="address_id"]').forEach((radio) => radio.addEventListener('change', () => {
+    form.querySelectorAll('.cx-address').forEach((label) => {
+      label.classList.toggle('active', label.querySelector('input').checked);
+    });
+    newAddress.hidden = radio.value !== 'new';
+    if (radio.value === 'new') $('address').focus();
+  }));
+
   // Pay-what-you-want amounts.
   form.querySelectorAll('.cx-amount input').forEach((input) => input.addEventListener('input', refreshSoon));
 

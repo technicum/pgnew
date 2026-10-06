@@ -109,31 +109,72 @@ else stats.push(['Instant', physical.length ? 'access to downloads' : 'access'])
 <% var shippingFields = function () {
      // On a multi-product page the address is only asked for once the cart
      // holds something that ships (the script shows / hides it).
-     var needed = layout !== 'multi' || q.hasPhysical; %>
+     var needed = layout !== 'multi' || q.hasPhysical;
+     var useNew = values.addressId === 'new'; %>
   <div class="cx-ship" id="shipFields"<%= needed ? '' : ' hidden' %>>
     <div class="cx-ship-note">
       <%- svg('info', 14) %>
-      <span><%= layout === 'multi' ? 'Some of your order ships to you — add your address.' : 'This ships to you — add your address below.' %></span>
+      <span><%= addresses.length ? 'Deliver to' : (layout === 'multi' ? 'Some of your order ships to you — add your address.' : 'This ships to you — add your address below.') %></span>
     </div>
-    <div class="cx-field">
-      <label for="address">Address line</label>
-      <input type="text" id="address" name="address" value="<%= values.address %>" placeholder="House no, street, area" autocomplete="street-address" />
+    <% if (addresses.length) { %>
+    <%# A signed-in buyer's saved addresses (lib/customers.js), the default first. %>
+    <div class="cx-addresses" role="radiogroup" aria-label="Delivery address">
+      <% addresses.forEach(function (a) { var on = values.addressId === String(a.id); %>
+      <label class="cx-address<%= on ? ' active' : '' %>">
+        <input type="radio" name="address_id" value="<%= a.id %>"<%= on ? ' checked' : '' %> />
+        <span>
+          <b><%= a.label || a.name || 'Address' %><% if (a.is_default) { %> <em>Default</em><% } %></b>
+          <small><%= a.line %>, <%= a.city %> <%= a.pincode %><%= a.phone ? ' · ' + a.phone : '' %></small>
+        </span>
+      </label>
+      <% }) %>
+      <label class="cx-address cx-address-new<%= useNew ? ' active' : '' %>">
+        <input type="radio" name="address_id" value="new"<%= useNew ? ' checked' : '' %> />
+        <span><b>+ Deliver to a new address</b></span>
+      </label>
     </div>
-    <div class="cx-field-row">
+    <% } %>
+    <div class="cx-new-address" id="newAddress"<%= useNew ? '' : ' hidden' %>>
       <div class="cx-field">
-        <label for="city">City</label>
-        <input type="text" id="city" name="city" value="<%= values.city %>" placeholder="City" autocomplete="address-level2" />
+        <label for="address">Address line</label>
+        <input type="text" id="address" name="address" value="<%= values.address %>" placeholder="House no, street, area" autocomplete="street-address" />
+      </div>
+      <div class="cx-field-row">
+        <div class="cx-field">
+          <label for="city">City</label>
+          <input type="text" id="city" name="city" value="<%= values.city %>" placeholder="City" autocomplete="address-level2" />
+        </div>
+        <div class="cx-field">
+          <label for="pincode">Pincode</label>
+          <input type="text" id="pincode" name="pincode" value="<%= values.pincode %>" placeholder="Pincode" inputmode="numeric" maxlength="6" autocomplete="postal-code" />
+        </div>
       </div>
       <div class="cx-field">
-        <label for="pincode">Pincode</label>
-        <input type="text" id="pincode" name="pincode" value="<%= values.pincode %>" placeholder="Pincode" inputmode="numeric" maxlength="6" autocomplete="postal-code" />
+        <label for="phone">Phone <span class="cx-optional">(optional, for delivery updates)</span></label>
+        <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="+91 98765 43210" autocomplete="tel" />
       </div>
-    </div>
-    <div class="cx-field">
-      <label for="phone">Phone <span class="cx-optional">(optional, for delivery updates)</span></label>
-      <input type="tel" id="phone" name="phone" value="<%= values.phone %>" placeholder="+91 98765 43210" autocomplete="tel" />
+      <% if (customer) { %>
+      <label class="cx-check"><input type="checkbox" name="save_address" value="1"<%= values.saveAddress ? ' checked' : '' %> /> Save this address to my account</label>
+      <% } else { %>
+      <p class="cx-hint"><a href="/account/login?next=/pay/<%= page.slug %>">Sign in</a> to save addresses for next time.</p>
+      <% } %>
     </div>
   </div>
+<% }; %>
+<% var accountBar = function () { %>
+  <%# Buyer sign-in (lib/customerAccount.js) — prefills checkout and saved addresses. %>
+  <% if (customer) { %>
+  <div class="cx-account is-in">
+    <span class="cx-account-pfp" aria-hidden="true"><%= (customer.name || '?').trim().charAt(0).toUpperCase() %></span>
+    <span class="cx-account-who">Signed in as <b><%= customer.name %></b><small><%= customer.email %></small></span>
+    <span class="cx-account-links"><a href="/account">Addresses</a><button type="submit" form="logoutForm">Sign out</button></span>
+  </div>
+  <% } else { %>
+  <div class="cx-account">
+    <span aria-hidden="true">👤</span>
+    <span>Have an account? <a href="/account/login?next=/pay/<%= page.slug %>">Sign in</a> for faster checkout<% if (page.has_physical) { %> with saved addresses<% } %>.</span>
+  </div>
+  <% } %>
 <% }; %>
 <% var couponBox = function () { %>
   <div class="cx-coupon">
@@ -259,6 +300,7 @@ else stats.push(['Instant', physical.length ? 'access to downloads' : 'access'])
       <% } %>
     </div>
     <% notices(); %>
+    <% accountBar(); %>
     <% if (product.pricing === 'qty') { %>
     <div class="cx-field"><span class="cx-label">Quantity</span><% qtyStepper(product); %></div>
     <% } else if (product.pricing === 'pwyw') { %>
@@ -328,6 +370,7 @@ else stats.push(['Instant', physical.length ? 'access to downloads' : 'access'])
   <aside class="cx-card cx-summary-card">
     <% summaryHead('Your order'); %>
     <% notices(); %>
+    <% accountBar(); %>
     <div class="cx-cart-lines" id="cartLines">
       <% if (!q.lines.length) { %>
       <p class="cx-muted cx-small">Your cart is empty — add products to continue.</p>
@@ -359,6 +402,7 @@ else stats.push(['Instant', physical.length ? 'access to downloads' : 'access'])
     <% if (mc) { mediaBlock(mc, coffee.title, 'cx-coffee-media'); } %>
     <% creatorRow(); %>
     <% notices(); %>
+    <% accountBar(); %>
     <div class="cx-amounts" data-coffee="<%= coffee.id %>">
       <% [1, 2, 3, 5].forEach(function (n) { var on = !custom && qtyNow === n; %>
       <button type="button" class="<%= on ? 'active' : '' %>" data-qty="<%= n %>" aria-pressed="<%= on ? 'true' : 'false' %>">
@@ -390,6 +434,9 @@ else stats.push(['Instant', physical.length ? 'access to downloads' : 'access'])
 <% } %>
 
 </form>
+<% if (customer) { %>
+<form id="logoutForm" method="POST" action="/account/logout" hidden><input type="hidden" name="next" value="/pay/<%= page.slug %>" /></form>
+<% } %>
 
 <div class="cx-foot-note">Powered by <b><%= siteName %></b> · Secure checkout</div>
 
