@@ -77,7 +77,8 @@
         var turningOn = action.value === 'add';
         btn.disabled = true;
         try {
-          var res = await fetch(form.action, {
+          // getAttribute: the hidden input named "action" shadows form.action.
+          var res = await fetch(form.getAttribute('action'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
             body: 'action=' + action.value,
