@@ -286,7 +286,7 @@
   // What kind of page this is — picked in the "Create payment page" popup
   // (or, when editing, read off its products):
   //   'single'   — one digital or physical product
-  //   'multiple' — up to MAX_PRODUCTS, any mix (a coffee can ride along)
+  //   'multiple' — up to MAX_PRODUCTS, digital and physical in any mix
   //   'coffee'   — just a buy-me-a-coffee button
   // It only shapes the builder; the server sees a plain product list.
   let pageKind = 'single';
@@ -295,9 +295,12 @@
     return list[0] && list[0].type === 'coffee' ? 'coffee' : 'single';
   }
   const TYPE_LABELS = { digital: 'Digital', physical: 'Physical', coffee: 'Buy me a coffee' };
-  function typesFor(kind) {
+  // "Buy me a coffee" is its own kind of page, not a product type — only a
+  // product saved as a coffee before that change keeps the option, so it
+  // can still be edited (or switched away from).
+  function typesFor(kind, p) {
     if (kind === 'coffee') return [];
-    return kind === 'single' ? ['digital', 'physical'] : ['digital', 'physical', 'coffee'];
+    return p && p.type === 'coffee' && kind === 'multiple' ? ['digital', 'physical', 'coffee'] : ['digital', 'physical'];
   }
 
   function renderKind() {
@@ -323,7 +326,7 @@
   // The pieces of a product editor, shared by the multi-product cards and
   // the inline "solo" editor of a single-product / coffee page.
   function typeToggleHTML(p) {
-    const types = typesFor(pageKind);
+    const types = typesFor(pageKind, p);
     if (!types.length) return '';
     return `
       <div class="pb-toggle pb-type-toggle" role="group" aria-label="Product type">
@@ -989,72 +992,108 @@
   });
 
   // --- pages list ------------------------------------------------------------------
+  // A plain table — one row per page — with its numbers, the publish
+  // switch, and a ⋯ menu for Edit / Analytics / Delete (plus the link).
   const pagesList = $('pagesList');
+  const MENU_ICONS = {
+    more: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+    chart: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V8"/><path d="M18 17v-9"/></svg>',
+    open: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>',
+  };
+  function pageKindLabel(page) {
+    if (page.products.length > 1) return `${page.products.length} products`;
+    const p = page.products[0];
+    if (!p) return '';
+    return p.type === 'coffee' ? 'Buy me a coffee' : (p.type === 'physical' ? 'Physical' : 'Digital');
+  }
   function pageRowHTML(page) {
     const url = publicUrl(page);
-    const count = page.products.length;
     const visits = page.view_count || 0;
     return `
-      <div class="pb-page-row${page.visible ? '' : ' pp-hidden'}${page.id === editingId ? ' pz-editing' : ''}" data-id="${page.id}">
-        <div class="pb-page-row-top">
-          <span class="pb-page-row-title">${escapeHTML(page.title)}</span>
-          ${page.visible ? '' : '<span class="pb-chip off">Unpublished</span>'}
-          <span class="pb-chip">${count} ${count === 1 ? 'product' : 'products'}</span>
-        </div>
-        <div class="pb-page-items">
-          ${page.products.map((p) => `<span class="pb-item-pill"><span class="dot ${p.type}"></span>${escapeHTML(p.title)} <b>${escapeHTML(productPriceLabel(p))}</b></span>`).join('')}
-        </div>
-        <div class="pb-page-stats">
-          <span><strong>${visits}</strong> ${visits === 1 ? 'visit' : 'visits'}</span>
-          <span><strong>${page.paid_count || 0}</strong> paid</span>
-          <span><strong>${formatINR(page.revenue || 0)}</strong> revenue</span>
-          ${page.to_ship ? `<a class="pb-fulfil-pill" href="/dashboard/orders?ship=1">${page.to_ship} to ship</a>` : ''}
-        </div>
-        <div class="pb-page-bottom">
-          <div class="pz-copy-link">
-            <input type="text" readonly value="${escapeHTML(url.replace(/^https?:\/\//, ''))}" onclick="this.select()" aria-label="Page link" />
-            <button type="button" class="pz-copy-btn copy-link" data-url="${escapeHTML(url)}">Copy link</button>
-            <a class="pz-copy-btn" href="${escapeHTML(url)}" target="_blank" rel="noopener">Open</a>
-          </div>
-          <div class="pb-page-actions">
+      <tr class="pb-trow${page.visible ? '' : ' pp-hidden'}${page.id === editingId ? ' pz-editing' : ''}" data-id="${page.id}">
+        <td class="pb-cell-page">
+          <button type="button" class="pb-row-title edit-page" data-id="${page.id}">${escapeHTML(page.title)}</button>
+          <span class="pb-row-sub">${escapeHTML(pageKindLabel(page))} · /pay/${escapeHTML(page.slug)}${page.to_ship ? ` · <a class="pb-fulfil-pill" href="/dashboard/orders?ship=1">${page.to_ship} to ship</a>` : ''}</span>
+        </td>
+        <td class="pb-num" data-label="Visits">${visits}</td>
+        <td class="pb-num" data-label="Sales">${page.paid_count || 0}</td>
+        <td class="pb-num" data-label="Revenue">${formatINR(page.revenue || 0)}</td>
+        <td data-label="Status">
+          <span class="pb-status">
             <button type="button" class="pz-switch toggle-visible${page.visible ? ' on' : ''}" data-id="${page.id}"
               title="${page.visible ? 'Live — anyone with the link can buy' : 'Unpublished — the link shows a not-found page'}"
               aria-label="Published" aria-pressed="${page.visible ? 'true' : 'false'}"></button>
-            <button type="button" class="pz-card-btn edit-page" data-id="${page.id}">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-              Edit
-            </button>
-            <button type="button" class="pz-card-btn pb-delete" data-id="${page.id}">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
-              <span>Delete</span>
-            </button>
+            <span>${page.visible ? 'Live' : 'Draft'}</span>
+          </span>
+        </td>
+        <td class="pb-cell-actions">
+          <div class="pb-menu-wrap">
+            <button type="button" class="pb-more" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ${escapeHTML(page.title)}">${MENU_ICONS.more}</button>
+            <div class="pb-menu" role="menu" hidden>
+              <button type="button" role="menuitem" class="edit-page" data-id="${page.id}">${MENU_ICONS.edit}Edit</button>
+              <button type="button" role="menuitem" class="analytics-page" data-id="${page.id}">${MENU_ICONS.chart}Analytics</button>
+              <a role="menuitem" href="${escapeHTML(url)}" target="_blank" rel="noopener">${MENU_ICONS.open}View page</a>
+              <button type="button" role="menuitem" class="copy-link" data-url="${escapeHTML(url)}">${MENU_ICONS.copy}<span>Copy link</span></button>
+              <div class="pb-menu-sep"></div>
+              <button type="button" role="menuitem" class="pb-delete danger" data-id="${page.id}">${MENU_ICONS.trash}<span>Delete</span></button>
+            </div>
           </div>
-        </div>
-      </div>`;
+        </td>
+      </tr>`;
   }
 
+  function closeMenus(except) {
+    pagesList.querySelectorAll('.pb-menu').forEach((menu) => {
+      if (menu === except) return;
+      menu.hidden = true;
+      menu.previousElementSibling.setAttribute('aria-expanded', 'false');
+      // An unanswered "Delete?" goes back to "Delete".
+      const del = menu.querySelector('.pb-delete');
+      del.classList.remove('is-confirming');
+      del.querySelector('span').textContent = 'Delete';
+    });
+  }
+  document.addEventListener('click', (e) => { if (!e.target.closest('.pb-menu-wrap')) closeMenus(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+
   function renderPages() {
-    pagesList.innerHTML = pages.map(pageRowHTML).join('');
+    pagesList.innerHTML = pages.length ? `
+      <table class="pb-table">
+        <thead><tr><th>Page</th><th class="pb-num">Visits</th><th class="pb-num">Sales</th><th class="pb-num">Revenue</th><th>Status</th><th><span class="pb-sr">Actions</span></th></tr></thead>
+        <tbody>${pages.map(pageRowHTML).join('')}</tbody>
+      </table>` : '';
     $('emptyPages').hidden = pages.length > 0;
     $('pageCountLine').textContent = `${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`;
 
-    pagesList.querySelectorAll('.edit-page').forEach((btn) => btn.addEventListener('click', () => startEdit(Number(btn.dataset.id))));
-    // Delete asks twice: the first click turns the button into "Delete?"
-    // for a few seconds, the second one deletes.
+    pagesList.querySelectorAll('.pb-more').forEach((btn) => btn.addEventListener('click', () => {
+      const menu = btn.nextElementSibling;
+      const open = menu.hidden;
+      closeMenus(menu);
+      menu.hidden = !open;
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) menu.querySelector('[role="menuitem"]').focus();
+    }));
+    pagesList.querySelectorAll('.edit-page').forEach((btn) => btn.addEventListener('click', () => {
+      closeMenus();
+      startEdit(Number(btn.dataset.id));
+    }));
+    pagesList.querySelectorAll('.analytics-page').forEach((btn) => btn.addEventListener('click', () => {
+      closeMenus();
+      openAnalytics(Number(btn.dataset.id));
+    }));
+    // Delete asks twice: the first click turns the item into "Click again
+    // to delete", the second one deletes (closing the menu cancels).
     pagesList.querySelectorAll('.pb-delete').forEach((btn) => {
-      let timer = null;
       btn.addEventListener('click', async () => {
         const label = btn.querySelector('span');
         if (!btn.classList.contains('is-confirming')) {
           btn.classList.add('is-confirming');
-          label.textContent = 'Delete?';
-          timer = setTimeout(() => {
-            btn.classList.remove('is-confirming');
-            label.textContent = 'Delete';
-          }, 3000);
+          label.textContent = 'Click again to delete';
           return;
         }
-        clearTimeout(timer);
         const id = Number(btn.dataset.id);
         try {
           await api(`/dashboard/payment-pages/${id}`, { method: 'DELETE' });
@@ -1079,15 +1118,101 @@
       } catch (err) { /* status shows the error */ }
     }));
     pagesList.querySelectorAll('.copy-link').forEach((btn) => btn.addEventListener('click', async () => {
+      const label = btn.querySelector('span');
       try {
         await navigator.clipboard.writeText(btn.dataset.url);
-        btn.textContent = 'Copied';
+        label.textContent = 'Copied!';
       } catch (err) {
-        btn.previousElementSibling.select();
-        btn.textContent = 'Press Ctrl+C';
+        label.textContent = 'Couldn’t copy — use View page';
       }
-      setTimeout(() => { btn.textContent = 'Copy link'; }, 1600);
+      setTimeout(() => { label.textContent = 'Copy link'; }, 1600);
     }));
+  }
+
+  // --- analytics -----------------------------------------------------------------
+  // One page's numbers in a popup: GET /dashboard/payment-pages/:id/analytics
+  // (lib/orders.js pageAnalytics).
+  const analyticsModal = $('analyticsModal');
+  const analyticsBody = $('analyticsBody');
+  let analyticsOpener = null;
+  let analyticsSeq = 0;
+
+  function closeAnalytics() {
+    analyticsModal.classList.remove('open');
+    analyticsModal.setAttribute('aria-hidden', 'true');
+    if (analyticsOpener && document.contains(analyticsOpener)) analyticsOpener.focus();
+  }
+  $('analyticsClose').addEventListener('click', closeAnalytics);
+  analyticsModal.addEventListener('click', (e) => { if (e.target === analyticsModal) closeAnalytics(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && analyticsModal.classList.contains('open')) closeAnalytics(); });
+
+  const STATUS_LABEL = { paid: 'Paid', pending: 'Pending', cancelled: 'Cancelled' };
+  const shortDate = (value) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+  // Revenue per day as bars; hovering a bar shows its day, orders and amount.
+  function chartHTML(daily) {
+    const max = Math.max(...daily.map((d) => d.revenue), 0);
+    if (!max) return '<p class="pb-an-empty">No paid orders in the last 30 days yet.</p>';
+    const w = 100 / daily.length;
+    const bars = daily.map((d, i) => {
+      const h = d.revenue ? Math.max(2, (d.revenue / max) * 100) : 0;
+      const tip = `${shortDate(d.date)} — ${d.orders} ${d.orders === 1 ? 'sale' : 'sales'}, ${formatINR(d.revenue)}`;
+      return `<rect x="${(i * w + w * 0.15).toFixed(2)}" y="${(100 - h).toFixed(2)}" width="${(w * 0.7).toFixed(2)}" height="${h.toFixed(2)}"><title>${escapeHTML(tip)}</title></rect>`;
+    }).join('');
+    return `
+      <svg class="pb-an-chart" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Revenue per day, last 30 days">${bars}</svg>
+      <div class="pb-an-axis"><span>${shortDate(daily[0].date)}</span><span>Best day ${formatINR(max)}</span><span>Today</span></div>`;
+  }
+
+  function analyticsHTML(a) {
+    const tile = (label, value, sub) => `<div class="pb-an-tile"><span>${label}</span><strong>${value}</strong><small>${sub}</small></div>`;
+    const table = (rows, head) => `<table class="pb-an-table">${head || ''}<tbody>${rows}</tbody></table>`;
+    return `
+      <div class="pb-an-tiles">
+        ${tile('Revenue', formatINR(a.revenue), a.discount ? `after ${formatINR(a.discount)} in coupons` : 'from paid orders')}
+        ${tile('Sales', a.orders.paid, `${a.orders.pending} pending · ${a.orders.cancelled} cancelled`)}
+        ${tile('Visits', a.visits, a.conversion === null ? 'no visits yet' : `${a.conversion}% bought`)}
+        ${tile('Avg. order', formatINR(a.averageOrder), 'per paid order')}
+      </div>
+      <div class="pb-an-section">
+        <div class="pb-an-section-head"><h4>Last 30 days</h4><span>${a.lastDays.orders} ${a.lastDays.orders === 1 ? 'sale' : 'sales'} · ${formatINR(a.lastDays.revenue)}</span></div>
+        ${chartHTML(a.daily)}
+      </div>
+      <div class="pb-an-section">
+        <div class="pb-an-section-head"><h4>What sold</h4></div>
+        ${a.products.length
+          ? table(a.products.map((p) => `<tr><td>${escapeHTML(p.title)}</td><td class="pb-num">× ${p.qty}</td><td class="pb-num">${formatINR(p.revenue)}</td></tr>`).join(''),
+            '<thead><tr><th>Product</th><th class="pb-num">Sold</th><th class="pb-num">Revenue</th></tr></thead>')
+          : '<p class="pb-an-empty">Nothing sold yet.</p>'}
+      </div>
+      <div class="pb-an-section">
+        <div class="pb-an-section-head"><h4>Recent orders</h4><a href="/dashboard/orders">All orders →</a></div>
+        ${a.recent.length
+          ? table(a.recent.map((o) => `<tr><td>${escapeHTML(o.buyer || '—')}</td><td>${shortDate(o.created_at)}</td><td><span class="pb-an-status ${escapeHTML(o.status)}">${STATUS_LABEL[o.status] || escapeHTML(o.status)}</span></td><td class="pb-num">${formatINR(o.total)}</td></tr>`).join(''))
+          : '<p class="pb-an-empty">No orders yet — share the link to get your first sale.</p>'}
+      </div>`;
+  }
+
+  async function openAnalytics(id) {
+    const page = pages.find((p) => p.id === id);
+    if (!page) return;
+    const mine = ++analyticsSeq;
+    analyticsOpener = document.activeElement;
+    $('analyticsTitle').textContent = page.title;
+    $('analyticsSub').textContent = publicUrl(page).replace(/^https?:\/\//, '');
+    analyticsBody.innerHTML = '<p class="pb-an-empty">Loading…</p>';
+    analyticsModal.classList.add('open');
+    analyticsModal.setAttribute('aria-hidden', 'false');
+    $('analyticsClose').focus();
+    try {
+      const res = await fetch(`/dashboard/payment-pages/${id}/analytics`, { headers: { Accept: 'application/json' } });
+      const data = await res.json();
+      if (mine !== analyticsSeq) return;
+      if (!res.ok) throw new Error(data.error || 'Could not load analytics.');
+      analyticsBody.innerHTML = analyticsHTML(data);
+    } catch (err) {
+      if (mine === analyticsSeq) analyticsBody.innerHTML = `<p class="pb-an-empty">${escapeHTML(err.message || 'Could not load analytics.')}</p>`;
+    }
   }
 
   // --- coupons -------------------------------------------------------------------

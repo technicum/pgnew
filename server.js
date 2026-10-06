@@ -44,6 +44,7 @@ const {
 const { saveUpload, UPLOAD_TYPES, MAX_UPLOAD_BYTES } = require('./lib/uploads');
 const {
   listPaymentPages,
+  getPaymentPage,
   createPaymentPage,
   updatePaymentPage,
   deletePaymentPage,
@@ -52,7 +53,7 @@ const {
   setCouponActive,
   deleteCoupon,
 } = require('./lib/paymentPages');
-const { listOrders, orderStatsByPage, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
+const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode } = require('./lib/payments');
 const { installStorefront } = require('./lib/storefront');
 const { MySQLSessionStore } = require('./lib/sessionStore');
@@ -556,6 +557,27 @@ app.get('/dashboard/payment-pages', requireAuth, async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+});
+
+// The Analytics panel for one page: visits from the page row, the rest from its orders.
+app.get('/dashboard/payment-pages/:id/analytics', requireAuth, async (req, res) => {
+  const id = idParam(req);
+  if (id === null) return res.status(400).json({ error: 'Invalid payment page id.' });
+  try {
+    const page = await getPaymentPage(req.session.user.id, id);
+    if (!page) return res.status(404).json({ error: 'That payment page doesn’t exist.' });
+    const stats = await pageAnalytics(req.session.user.id, id);
+    const visits = page.view_count || 0;
+    res.json({
+      ...stats,
+      visits,
+      // Paid orders per visit — capped, since a page's views started being
+      // counted after some of its orders may already have been placed.
+      conversion: visits ? Math.min(100, Math.round((stats.orders.paid / visits) * 1000) / 10) : null,
+    });
+  } catch (err) {
+    sendPaymentError(res, err, 'Could not load analytics for that page.');
   }
 });
 

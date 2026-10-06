@@ -331,6 +331,22 @@
   </main>
 </div>
 
+<!-- A page's Analytics (⋯ menu in the list) — filled by payment-pages.js -->
+<div class="pz-modal-backdrop" id="analyticsModal" aria-hidden="true">
+  <div class="pz-modal pb-an-modal" role="dialog" aria-modal="true" aria-labelledby="analyticsTitle">
+    <div class="pz-modal-head">
+      <div>
+        <h3 id="analyticsTitle">Analytics</h3>
+        <p id="analyticsSub"></p>
+      </div>
+      <button type="button" class="pz-modal-close" id="analyticsClose" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div id="analyticsBody"></div>
+  </div>
+</div>
+
 <!-- "Create payment page" popup: what kind of page, before the builder opens (payment-pages.js) -->
 <div class="pz-modal-backdrop" id="kindModal" aria-hidden="true">
   <div class="pz-modal" role="dialog" aria-modal="true" aria-labelledby="kindModalTitle">
