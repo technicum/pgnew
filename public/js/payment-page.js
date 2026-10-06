@@ -1,9 +1,10 @@
-// Public payment page (views/payment-page.ejs) — live totals, quantity
-// steppers, coffee presets / custom amount, and the inline coupon check.
-// Every number shown comes back from the server's own quote()
-// (POST /pay/:slug/quote), the same one that prices the real order, so
-// the page never does money maths itself. Without this script the form
-// still works: the total is simply worked out on submit.
+// Public payment page (views/payment-page.ejs) — live totals, the cart on
+// a multi-product page, quantity steppers, coffee presets / custom
+// amount, and the inline coupon check. Every number shown comes back from
+// the server's own quote() (POST /pay/:slug/quote), the same one that
+// prices the real order, so the page never does money maths itself.
+// Without this script the form still works: the total is simply worked
+// out on submit.
 (function () {
   const form = document.getElementById('payForm');
   if (!form) return;
@@ -14,9 +15,11 @@
   const couponMsg = $('couponMsg');
   const summary = $('paySummary');
   const payButton = $('payButton');
+  const cartLines = $('cartLines');
+  const shipFields = $('shipFields');
+  const isCart = form.dataset.layout === 'multi';
 
-  // Each product's current choice, from the inputs that will be posted
-  // (a disabled input — a coffee's hidden custom amount — doesn't count).
+  // Each product's current choice, from the inputs that will be posted.
   function readItems() {
     const items = {};
     form.querySelectorAll('input[name^="qty_"], input[name^="amount_"]').forEach((input) => {
@@ -27,6 +30,35 @@
       items[id][kind] = input.value;
     });
     return items;
+  }
+
+  function setText(id, text) {
+    const el = $(id);
+    if (el) el.textContent = text;
+  }
+
+  function renderCart(q) {
+    cartLines.replaceChildren();
+    if (!q.lines.length) {
+      const empty = document.createElement('p');
+      empty.className = 'cx-muted cx-small';
+      empty.textContent = 'Your cart is empty — add products to continue.';
+      cartLines.append(empty);
+    }
+    q.lines.forEach((l) => {
+      const row = document.createElement('div');
+      row.className = 'cx-cart-line';
+      const name = document.createElement('span');
+      const qty = document.createElement('span');
+      qty.className = 'cx-muted';
+      qty.textContent = `× ${l.qty}`;
+      name.append(`${l.title} `, qty);
+      const amount = document.createElement('b');
+      amount.textContent = q.display.lines[l.id];
+      row.append(name, amount);
+      cartLines.append(row);
+    });
+    setText('cartCount', String(q.lines.reduce((n, l) => n + l.qty, 0)));
   }
 
   // Only the latest request's answer is applied, however they arrive.
@@ -44,34 +76,32 @@
       });
       const q = await res.json();
       if (mine !== seq || !res.ok) return;
-      Object.entries(q.display.lines).forEach(([id, text]) => {
-        form.querySelectorAll(`[data-line-for="${id}"]`).forEach((el) => { el.textContent = text; });
-      });
       q.lines.forEach((l) => {
         form.querySelectorAll(`[data-qty-label-for="${l.id}"]`).forEach((el) => { el.textContent = `× ${l.qty}`; });
       });
-      if (summary) {
-        $('sumSubtotal').textContent = q.display.subtotal;
-        $('sumDiscountRow').hidden = !q.hasDiscount;
-        $('sumCoupon').textContent = q.coupon ? q.coupon.code : '';
-        $('sumDiscount').textContent = `−${q.display.discount}`;
-        if ($('sumShipping')) $('sumShipping').textContent = q.display.shipping;
-        $('sumTotal').textContent = q.display.total;
-        // A one-product page only needs the breakdown once there's
-        // something to break down.
-        summary.hidden = !(summary.dataset.always === '1' || q.hasDiscount || q.hasShipping);
-      }
+      if (cartLines) renderCart(q);
+      setText('sumSubtotal', q.display.subtotal);
+      if ($('sumDiscountRow')) $('sumDiscountRow').hidden = !q.hasDiscount;
+      setText('sumCoupon', q.coupon ? q.coupon.code : '');
+      setText('sumDiscount', `−${q.display.discount}`);
+      if ($('sumShippingRow')) $('sumShippingRow').hidden = !q.hasShipping;
+      setText('sumShipping', q.display.shipping);
+      setText('sumTotal', q.display.total);
+      // The address is only asked for while the cart holds something to post.
+      if (shipFields && isCart) shipFields.hidden = !q.hasShipping;
       $('payButtonText').textContent = `${payButton.dataset.label} ${q.display.total}`;
+      if (isCart) payButton.disabled = !q.lines.length;
       // An amount below its minimum, more than is in stock… shown now
-      // rather than only after submitting.
+      // rather than only after submitting. (An empty cart says so itself.)
       const liveError = $('liveError');
       if (liveError) {
-        liveError.textContent = q.error || '';
-        liveError.hidden = !q.error;
+        const shown = q.lines.length ? q.error : null;
+        liveError.textContent = shown || '';
+        liveError.hidden = !shown;
       }
       if (couponMsg && (showCouponResult || q.couponError)) {
         couponMsg.classList.toggle('is-error', !!q.couponError);
-        couponMsg.textContent = q.couponError || (q.coupon ? `${q.coupon.code} applied — ${q.coupon.label}` : '');
+        couponMsg.textContent = q.couponError || (q.coupon ? `🎉 ${q.coupon.code} applied — ${q.coupon.label}` : '');
       }
       // A code that stopped working (or was never valid) isn't kept.
       if (q.couponError) appliedCoupon = '';
@@ -88,7 +118,7 @@
     timer = setTimeout(refresh, 250);
   }
 
-  // Quantity steppers.
+  // Quantity stepper (single product).
   form.querySelectorAll('.pp-qty').forEach((stepper) => {
     const input = stepper.querySelector('input');
     const max = Number(stepper.dataset.max) || 1;
@@ -108,48 +138,58 @@
     clamp();
   });
 
-  // A coffee inside a bundle: ×1 / ×3 / ×5.
-  form.querySelectorAll('[data-pills-for]').forEach((row) => {
-    const input = form.querySelector(`input[name="qty_${row.dataset.pillsFor}"]`);
-    row.querySelectorAll('button').forEach((pill) => pill.addEventListener('click', () => {
-      input.value = pill.dataset.qty;
-      row.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === pill));
+  // Multi-product cart: "+ Add to cart" puts one in, the stepper changes
+  // how many, and taking the last one out empties that card again.
+  form.querySelectorAll('.cx-product').forEach((card) => {
+    const input = card.querySelector('input.n');
+    if (!input) return; // sold out
+    const max = Number(input.max) || 1;
+    const plus = card.querySelector('.plus');
+    const set = (n) => {
+      n = Math.min(max, Math.max(0, Math.round(Number(n) || 0)));
+      input.value = n;
+      card.classList.toggle('added', n > 0);
+      plus.disabled = n >= max;
       refresh();
+    };
+    card.querySelector('[data-add]').addEventListener('click', () => set(1));
+    card.querySelectorAll('.qty button').forEach((btn) => btn.addEventListener('click', () => {
+      set((Number(input.value) || 0) + Number(btn.dataset.step));
     }));
+    input.addEventListener('change', () => set(input.value));
   });
 
-  // A "buy me a coffee" page: presets set the number of coffees; Custom
-  // swaps that for a typed amount (the amount input is only enabled — and
-  // so only posted — while Custom is picked).
+  // A "buy me a coffee" page: presets set the number of coffees; typing
+  // your own amount takes over from them (an empty amount means "use the
+  // preset", so clearing the box goes back to it).
   form.querySelectorAll('[data-coffee]').forEach((presets) => {
     const id = presets.dataset.coffee;
     const qtyInput = form.querySelector(`input[name="qty_${id}"]`);
     const amountInput = form.querySelector(`input[name="amount_${id}"]`);
-    const amountBox = amountInput.closest('.pl-coffee-amount');
+    const amountBox = amountInput.closest('.cx-custom-amt');
     const buttons = presets.querySelectorAll('button');
     const pick = (btn) => buttons.forEach((b) => {
       b.classList.toggle('active', b === btn);
       b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
     });
-    presets.querySelectorAll('[data-qty]').forEach((btn) => btn.addEventListener('click', () => {
+    buttons.forEach((btn) => btn.addEventListener('click', () => {
       pick(btn);
       qtyInput.value = btn.dataset.qty;
-      amountInput.disabled = true;
-      amountBox.hidden = true;
+      amountInput.value = '';
+      amountBox.classList.remove('active');
       refresh();
     }));
-    presets.querySelector('[data-custom]').addEventListener('click', (e) => {
-      pick(e.currentTarget);
-      amountInput.disabled = false;
-      amountBox.hidden = false;
-      amountInput.focus();
-      if (amountInput.value) refresh();
+    amountInput.addEventListener('input', () => {
+      const custom = amountInput.value.trim() !== '';
+      amountBox.classList.toggle('active', custom);
+      if (custom) pick(null);
+      else pick([...buttons].find((b) => b.dataset.qty === qtyInput.value) || null);
+      refreshSoon();
     });
-    amountInput.addEventListener('input', refreshSoon);
   });
 
   // Pay-what-you-want amounts.
-  form.querySelectorAll('.pp-amount input').forEach((input) => input.addEventListener('input', refreshSoon));
+  form.querySelectorAll('.cx-amount input').forEach((input) => input.addEventListener('input', refreshSoon));
 
   if (couponInput) {
     const applyCoupon = () => {
@@ -169,9 +209,25 @@
         applyCoupon();
       }
     });
-    // Only an applied code goes with the order — not one typed but never applied.
-    form.addEventListener('submit', () => {
-      couponInput.value = appliedCoupon;
-    });
   }
+
+  form.addEventListener('submit', (e) => {
+    if (payButton.classList.contains('is-busy')) {
+      e.preventDefault();
+      return;
+    }
+    // Only an applied code goes with the order — not one typed but never applied.
+    if (couponInput) couponInput.value = appliedCoupon;
+    payButton.classList.add('is-busy');
+    $('payButtonText').textContent = 'Processing…';
+  });
+  // Coming back to the page from the next step shouldn't leave it stuck.
+  window.addEventListener('pageshow', () => {
+    if (!payButton.classList.contains('is-busy')) return;
+    payButton.classList.remove('is-busy');
+    refresh();
+  });
+
+  // An empty cart can't be paid for yet.
+  if (isCart && !form.querySelector('.cx-product.added')) payButton.disabled = true;
 })();
