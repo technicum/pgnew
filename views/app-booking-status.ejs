@@ -18,7 +18,7 @@
       <% } %>
 
       <dl class="ax-facts">
-        <div><dt>When</dt><dd><%= when %> (IST)</dd></div>
+        <div><dt>When</dt><dd><%= when %> · <%= tzName %></dd></div>
         <% if (booking.location) { %><div><dt>Where</dt><dd><%= booking.location %></dd></div><% } %>
         <div><dt>Booked for</dt><dd><%= booking.name %> · <%= booking.email %></dd></div>
         <% if (booking.amount) { %><div><dt><%= st === 'confirmed' ? 'Paid' : 'Price' %></dt><dd><%= booking.amountLabel %></dd></div><% } %>

@@ -20,8 +20,18 @@ var sections = [
 
     <form method="POST" action="/dashboard/bookings/availability">
       <section class="ax-panel ax-panel-flush">
-        <div class="ax-panel-head"><h2>Weekly hours</h2><span class="ax-count">IST</span></div>
-        <p class="ax-hint ax-pad ax-pad-top">Every service uses these unless you give it its own hours. Once any service is booked at a time, that time is taken for all of them. Use “+ Add hours” for a break.</p>
+        <div class="ax-panel-head"><h2>Weekly hours</h2><span class="ax-count"><%= fmt.tz(s.timezone) %></span></div>
+        <div class="ax-tz ax-pad ax-pad-top">
+          <label class="ax-field">
+            <span>Timezone</span>
+            <select class="ax-input" name="timezone" data-pick data-pick-search>
+              <% var tzSaved = timezoneAliases[s.timezone] || s.timezone;
+              timezones.forEach(function (tz) { %><option value="<%= tz.value %>"<%= tz.value === tzSaved ? ' selected' : '' %>><%= tz.label %></option><% }) %>
+            </select>
+          </label>
+          <button type="button" class="ax-btn ax-btn-quiet" data-tz-detect data-aliases="<%= JSON.stringify(timezoneAliases) %>" hidden></button>
+        </div>
+        <p class="ax-hint ax-pad">Your hours, notice and days off are all on this clock. Visitors elsewhere also see each time in their own timezone. Bookings already made keep the timezone they were made in. Every service uses these hours unless you give it its own; once any service is booked at a time, it’s taken for all of them.</p>
         <%- include('partials/ax-hours', { hours: s.hours, weekdays: weekdays, maxRanges: maxRanges }) %>
         <div class="ax-savebar ax-savebar-in">
           <span class="ax-sub">Currently: <%= fmt.hours(s.hours) %></span>

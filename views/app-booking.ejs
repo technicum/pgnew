@@ -53,16 +53,17 @@ var dayHref = function (d) { return '?date=' + d + '#times'; };
         </div>
 
         <% if (!date) { %>
-        <p class="bk-hint">Days in colour have open times. Times are in IST.</p>
+        <p class="bk-hint">Days in colour have open times. Times are in <%= tzName %>.</p>
         <% } else { %>
         <form method="POST" action="/book/<%= service.slug %>" novalidate id="times">
           <input type="hidden" name="date" value="<%= date %>" />
-          <h2 class="bk-h"><%= dateLabel %> <small>IST</small></h2>
+          <h2 class="bk-h"><%= dateLabel %> <small><%= tzName %></small></h2>
+          <p class="bk-tz-note" data-tz-note hidden></p>
           <div class="ax-slots">
             <% slots.forEach(function (s) { %>
             <label class="ax-slot">
               <input type="radio" name="start" value="<%= s.time %>"<%= values.start === s.time && values.date === date ? ' checked' : '' %> required />
-              <span><%= s.label %></span>
+              <span><%= s.label %><small class="bk-local" data-utc="<%= s.utc %>" hidden></small></span>
             </label>
             <% }) %>
           </div>
@@ -116,4 +117,25 @@ var dayHref = function (d) { return '?date=' + d + '#times'; };
     </article>
   </div>
 
+<script>
+  // A visitor in another timezone also sees each time on their own clock.
+  (function () {
+    var mine = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    var theirs = <%- JSON.stringify(timezone) %>;
+    if (!mine || mine === theirs) return;
+    var fmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+    var day = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+    var slots = document.querySelectorAll('[data-utc]');
+    slots.forEach(function (el) {
+      var d = new Date(Number(el.getAttribute('data-utc')));
+      el.textContent = fmt.format(d) + ' your time';
+      el.hidden = false;
+    });
+    var note = document.querySelector('[data-tz-note]');
+    if (note && slots.length) {
+      note.textContent = 'Your own time (' + mine.split('/').pop().replace(/_/g, ' ') + ') is shown under each slot.';
+      note.hidden = false;
+    }
+  })();
+</script>
 <%- include('partials/app-public-bottom') %>

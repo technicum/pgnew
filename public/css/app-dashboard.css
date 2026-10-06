@@ -92,12 +92,20 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 }
 .ax-pick-btn::after { content: ''; flex: none; width: 7px; height: 7px; margin-top: -3px; border: solid var(--muted-foreground); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
 .ax-pick-btn[aria-expanded="true"] { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent); }
-.ax-pick-list {
-  position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 100%; max-height: 232px; overflow-y: auto;
-  margin: 0; padding: 4px; list-style: none; background: var(--card); border: 1px solid var(--border);
+.ax-pick-pop {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; min-width: 100%;
+  background: var(--card); border: 1px solid var(--border);
   border-radius: calc(var(--radius) - 2px); box-shadow: 0 12px 28px rgba(16,24,40,.14);
 }
-.ax-pick-list[hidden] { display: none; }
+.ax-pick-pop[hidden] { display: none; }
+.ax-pick-search { display: block; width: calc(100% - 8px); margin: 4px; height: 34px; }
+.ax-pick-list { max-height: 232px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; }
+.ax-pick-list li[hidden] { display: none; }
+
+/* Timezone row above the weekly hours. */
+.ax-tz { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.ax-tz .ax-field { width: min(340px, 100%); }
+.ax-tz .ax-pick-pop { width: 100%; }
 .ax-pick-list li { padding: 7px 10px; border-radius: calc(var(--radius) - 4px); font-size: 13.5px; white-space: nowrap; cursor: pointer; }
 .ax-pick-list li:hover, .ax-pick-list li.is-active { background: var(--muted); }
 .ax-pick-list li[aria-selected] { background: var(--secondary); color: var(--secondary-foreground); font-weight: 600; }

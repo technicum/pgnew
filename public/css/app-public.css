@@ -43,6 +43,8 @@
 form .bk-h { margin-top: 26px; }
 .lm-card form#times { margin-top: 24px; }
 .bk-hint { margin: 14px 0 0; font-size: 13.5px; color: var(--muted); }
+.bk-tz-note { margin: -6px 0 10px; font-size: 13px; color: var(--muted); }
+.bk-local { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; opacity: .75; }
 
 .bk-cal { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px; }
 .bk-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 15px; }

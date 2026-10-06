@@ -37,15 +37,18 @@
     });
   });
 
-  // Time dropdowns (select[data-start] / [data-end]): the browser's own
-  // list opens wherever it likes — on Windows often upward, centred on the
-  // chosen time — so each gets a small list of ours that always opens
-  // below. The <select> stays as the value the form posts (hidden); the
-  // button and list just mirror it, and picking writes back to it with a
-  // change event, so the hours rules below run exactly as before.
+  // Our dropdowns — time pickers (select[data-start] / [data-end]) and any
+  // select[data-pick], e.g. the timezone. The browser's own list opens
+  // wherever it likes (on Windows often upward, centred on the choice), so
+  // each gets a list of ours that always opens below. The <select> stays as
+  // the value the form posts (hidden); the button and list mirror it, and
+  // picking writes back with a change event, so other scripts (the hours
+  // rules below) run as before. data-pick-search adds a filter box — for
+  // long lists like the ~400 timezones.
   var pickers = [];
   var closePickers = function (except) { pickers.forEach(function (p) { if (p !== except) p.close(); }); };
-  document.querySelectorAll('select[data-start], select[data-end]').forEach(function (select) {
+  document.querySelectorAll('select[data-start], select[data-end], select[data-pick]').forEach(function (select) {
+    var searchable = select.hasAttribute('data-pick-search');
     var wrap = document.createElement('div');
     wrap.className = 'ax-pick';
     var btn = document.createElement('button');
@@ -53,24 +56,37 @@
     btn.className = 'ax-input ax-pick-btn';
     btn.setAttribute('aria-haspopup', 'listbox');
     btn.setAttribute('aria-label', select.getAttribute('aria-label') || '');
+    var pop = document.createElement('div');
+    pop.className = 'ax-pick-pop';
+    pop.hidden = true;
+    var search = null;
+    if (searchable) {
+      search = document.createElement('input');
+      search.type = 'search';
+      search.className = 'ax-input ax-pick-search';
+      search.placeholder = 'Search…';
+      search.setAttribute('aria-label', 'Search');
+      pop.appendChild(search);
+    }
     var list = document.createElement('ul');
     list.className = 'ax-pick-list';
     list.setAttribute('role', 'listbox');
-    list.hidden = true;
+    pop.appendChild(list);
     select.parentNode.insertBefore(wrap, select);
     wrap.appendChild(select);
     wrap.appendChild(btn);
-    wrap.appendChild(list);
+    wrap.appendChild(pop);
     select.hidden = true;
     select.tabIndex = -1;
 
     var active = -1;
-    var items = function () { return Array.prototype.slice.call(list.children); };
+    var items = function () { return Array.prototype.filter.call(list.children, function (li) { return !li.hidden; }); };
     var label = function () { var o = select.options[select.selectedIndex]; btn.textContent = o ? o.textContent : '—'; };
     var highlight = function (i) {
-      items().forEach(function (li, k) { li.classList.toggle('is-active', k === i); });
+      var all = items();
+      all.forEach(function (li, k) { li.classList.toggle('is-active', k === i); });
       active = i;
-      if (list.children[i]) list.children[i].scrollIntoView({ block: 'nearest' });
+      if (all[i]) all[i].scrollIntoView({ block: 'nearest' });
     };
     var choose = function (value) {
       select.value = value;
@@ -79,9 +95,15 @@
       picker.close();
       btn.focus();
     };
+    var filter = function () {
+      var q = search.value.trim().toLowerCase().replace(/\s+/g, ' ');
+      Array.prototype.forEach.call(list.children, function (li) { li.hidden = !!q && li.dataset.search.indexOf(q) === -1; });
+      highlight(items().length ? 0 : -1);
+      list.scrollTop = 0;
+    };
     var picker = {
       refresh: label,
-      close: function () { list.hidden = true; btn.setAttribute('aria-expanded', 'false'); },
+      close: function () { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); },
       open: function () {
         closePickers(picker);
         list.innerHTML = '';
@@ -90,43 +112,72 @@
           li.setAttribute('role', 'option');
           li.textContent = o.textContent;
           li.dataset.value = o.value;
+          li.dataset.search = (o.textContent + ' ' + o.value).toLowerCase().replace(/[_/]/g, ' ');
           if (o.disabled) li.setAttribute('aria-disabled', 'true');
           if (o.value === select.value) li.setAttribute('aria-selected', 'true');
           list.appendChild(li);
         });
-        list.hidden = false;
+        if (search) search.value = '';
+        pop.hidden = false;
         btn.setAttribute('aria-expanded', 'true');
-        // Show the chosen time near the top of the list, not at its start.
+        // Show the current choice near the top of the list, not at its start.
         var sel = list.querySelector('[aria-selected]');
         list.scrollTop = sel ? Math.max(0, sel.offsetTop - list.clientHeight / 3) : 0;
         highlight(sel ? items().indexOf(sel) : -1);
+        if (search) search.focus();
       },
     };
     pickers.push(picker);
     label();
 
-    btn.addEventListener('click', function () { if (list.hidden) picker.open(); else picker.close(); });
-    list.addEventListener('mousedown', function (e) { e.preventDefault(); }); // keep focus on the button
+    btn.addEventListener('click', function () { if (pop.hidden) picker.open(); else picker.close(); });
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); }); // keep focus where it is
     list.addEventListener('click', function (e) {
       var li = e.target.closest('li');
       if (li && !li.hasAttribute('aria-disabled')) choose(li.dataset.value);
     });
-    btn.addEventListener('keydown', function (e) {
+    var keys = function (e) {
       var all = items();
       var step = function (dir) {
-        if (list.hidden) return picker.open();
+        if (pop.hidden) return picker.open();
         for (var i = active + dir; i >= 0 && i < all.length; i += dir) {
           if (!all[i].hasAttribute('aria-disabled')) return highlight(i);
         }
       };
       if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
-      else if ((e.key === 'Enter' || e.key === ' ') && !list.hidden && all[active]) { e.preventDefault(); choose(all[active].dataset.value); }
-      else if (e.key === 'Escape' || e.key === 'Tab') picker.close();
-    });
+      else if ((e.key === 'Enter' || (e.key === ' ' && e.target === btn)) && !pop.hidden && all[active]) { e.preventDefault(); choose(all[active].dataset.value); }
+      else if (e.key === 'Escape') { e.preventDefault(); picker.close(); btn.focus(); }
+      else if (e.key === 'Tab') picker.close();
+    };
+    btn.addEventListener('keydown', keys);
+    if (search) {
+      search.addEventListener('keydown', keys);
+      search.addEventListener('input', filter);
+    }
   });
   document.addEventListener('click', function (e) { if (!e.target.closest('.ax-pick')) closePickers(); });
   var refreshPickers = function () { pickers.forEach(function (p) { p.refresh(); }); };
+
+  // "Use <my timezone>" beside the timezone dropdown, when the browser's
+  // own timezone is a different one from the list.
+  document.querySelectorAll('[data-tz-detect]').forEach(function (btn) {
+    var select = btn.parentNode.querySelector('select[name=timezone]');
+    var mine = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // Browsers can report an old name (Asia/Calcutta); the list uses current ones.
+    var aliases = {};
+    try { aliases = JSON.parse(btn.getAttribute('data-aliases') || '{}'); } catch (err) {}
+    mine = aliases[mine] || mine;
+    if (!select || !mine || select.value === mine || !select.querySelector('option[value="' + mine + '"]')) return;
+    btn.textContent = 'Use ' + mine.split('/').pop().replace(/_/g, ' ') + ' (your timezone)';
+    btn.hidden = false;
+    btn.addEventListener('click', function () {
+      select.value = mine;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      refreshPickers();
+      btn.hidden = true;
+    });
+  });
 
   // Weekly hours (partials/ax-hours). Times are 'HH:MM', so they compare
   // as strings. Within a day: each "to" must be after its "from", and each

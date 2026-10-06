@@ -36,7 +36,7 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
   </section>
 
   <section class="ax-panel" id="hours">
-    <div class="ax-panel-head"><h2>When it can be booked</h2><span class="ax-count">IST</span></div>
+    <div class="ax-panel-head"><h2>When it can be booked</h2><span class="ax-count"><%= fmt.tz(bookingSettings.timezone) %></span></div>
     <div class="ax-pad ax-pad-top ax-hours-choice">
       <label class="ax-check"><input type="radio" name="custom_hours" value="0"<%= service.custom_hours ? '' : ' checked' %> data-hours-mode /> <span>My availability <small class="ax-sub">— <%= fmt.hours(bookingSettings.hours) %> ·<a href="/dashboard/bookings/settings">change in Settings</a></small></span></label>
       <label class="ax-check"><input type="radio" name="custom_hours" value="1"<%= service.custom_hours ? ' checked' : '' %> data-hours-mode /> <span>Different hours for this service</span></label>
