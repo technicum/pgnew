@@ -113,6 +113,7 @@
         <div class="pp-order-amount">
           <strong>${formatINR(o.total)}</strong>
           ${o.discount ? `<span><s>${formatINR(o.subtotal + (o.shipping || 0))}</s></span>` : ''}
+          ${o.platform_fee ? `<span class="pp-order-fee" title="${o.source === 'marketplace' ? 'Buyer came from the marketplace' : 'Buyer came from your own link'}">${o.source === 'marketplace' ? 'Marketplace' : 'Direct'} · fee ${formatINR(o.platform_fee)} (${Number(o.fee_pct)}%)</span>` : ''}
         </div>
         <div class="pp-order-side">
           <span class="pp-order-badges">
@@ -127,6 +128,7 @@
   function renderStats() {
     const paid = orders.filter((o) => o.status === 'paid');
     $('statRevenue').textContent = formatINR(paid.reduce((sum, o) => sum + (Number(o.total) || 0), 0));
+    $('statFees').textContent = formatINR(paid.reduce((sum, o) => sum + (Number(o.platform_fee) || 0), 0));
     $('statPaid').textContent = paid.length;
     $('statPending').textContent = orders.filter((o) => o.status === 'pending').length;
   }

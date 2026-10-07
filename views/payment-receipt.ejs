@@ -73,6 +73,10 @@ var placedOn = new Date(order.paid_at || order.created_at).toLocaleDateString('e
         <h1>Order cancelled</h1>
         <p class="lm-desc">Nothing was charged. You can start again whenever you’re ready.</p>
         <a href="/pay/<%= page.slug %>" class="btn btn-primary">Back to <%= page.title %></a>
+      <% } else if (mode === 'cashfree') { %>
+        <h1>Payment not completed</h1>
+        <p class="lm-desc">Your order is saved but hasn’t been paid yet. Already paid? This page updates as soon as the payment is confirmed.</p>
+        <a href="/pay/<%= page.slug %>/checkout/<%= order.token %>" class="btn btn-primary">Complete payment</a>
       <% } else { %>
         <h1>Order placed</h1>
         <p class="lm-desc"><%= owner.name %> will confirm your payment shortly. Keep this page — your purchase unlocks here as soon as it’s confirmed.</p>

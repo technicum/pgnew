@@ -421,7 +421,7 @@ textarea.pb-prod-desc { margin-bottom: 10px; height: auto; padding: 8px 11px; re
 .pp-empty-line { padding: 18px 20px; font-size: 13px; color: var(--muted-foreground); margin: 0; }
 
 /* ---------- Orders page ---------- */
-.pp-order-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.pp-order-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 20px; }
 .pp-order-stat { padding: 16px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); }
 .pp-order-stat p { margin: 0; font-size: 12px; color: var(--muted-foreground); font-weight: 600; }
 .pp-order-stat strong { display: block; margin-top: 6px; font-family: var(--font-display); font-size: 24px; font-variant-numeric: tabular-nums; }
@@ -456,6 +456,7 @@ textarea.pb-prod-desc { margin-bottom: 10px; height: auto; padding: 8px 11px; re
 .pp-order-amount { text-align: right; font-variant-numeric: tabular-nums; }
 .pp-order-amount strong { display: block; font-size: 14px; }
 .pp-order-amount span { color: var(--muted-foreground); font-size: 11.5px; }
+.pp-order-amount .pp-order-fee { display: block; margin-top: 2px; white-space: nowrap; }
 .pp-order-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 150px; }
 .pp-status {
   padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
@@ -560,3 +561,4 @@ textarea.pb-prod-desc { margin-bottom: 10px; height: auto; padding: 8px 11px; re
   .pa-ab-cart { grid-column: 1 / -1; grid-row: 2; }
   .pa-ab-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
+.pp-mode-cashfree { background: #ecfdf3; border: 1px solid #abefc6; color: #067647; }

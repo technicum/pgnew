@@ -1,0 +1,27 @@
+<%# A description textarea with a formatting toolbar (the small format
+    lib/richText.js renders — the buttons just insert its markers; the
+    script is in partials/app-dash-bottom). Pass name, label, value, and
+    optionally rows, maxlength, placeholder, hint, extraClass. %>
+<% var fieldId = 'rich_' + name + '_' + Math.random().toString(36).slice(2, 7); %>
+<div class="ax-field <%= typeof extraClass !== 'undefined' ? extraClass : 'ax-span-3' %>">
+  <span><label for="<%= fieldId %>"><%- label %></label></span>
+  <div class="ax-rte" data-rich>
+    <div class="ax-rte-toolbar" role="toolbar" aria-label="Formatting" aria-controls="<%= fieldId %>">
+      <button type="button" data-format="heading" title="Heading" aria-label="Heading">H</button>
+      <button type="button" data-format="bold" title="Bold (Ctrl+B)" aria-label="Bold"><b>B</b></button>
+      <button type="button" data-format="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i>I</i></button>
+      <span class="ax-rte-sep" aria-hidden="true"></span>
+      <button type="button" data-format="bullet" title="Bullet list" aria-label="Bullet list">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+      </button>
+      <button type="button" data-format="numbered" title="Numbered list" aria-label="Numbered list">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M4 4h1v4M4 8h2"/><path d="M4 14h2l-2 4h2"/></svg>
+      </button>
+      <button type="button" data-format="link" title="Link" aria-label="Link">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </button>
+    </div>
+    <textarea class="ax-input" id="<%= fieldId %>" name="<%= name %>" rows="<%= typeof rows !== 'undefined' ? rows : 5 %>" maxlength="<%= typeof maxlength !== 'undefined' ? maxlength : 2000 %>" placeholder="<%= typeof placeholder !== 'undefined' ? placeholder : '' %>"><%= value || '' %></textarea>
+  </div>
+  <small><%= typeof hint !== 'undefined' && hint ? hint + ' ' : '' %>Select text and use the buttons — or type ## for a heading, - for bullets, **bold**, *italic*.</small>
+</div>

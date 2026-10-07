@@ -9,8 +9,8 @@
       <h1>You’re booked</h1>
       <p class="lm-desc"><%= booking.service_title %> with <%= owner.name %></p>
       <% } else if (st === 'pending') { %>
-      <span class="lm-kicker"><span class="dot"></span><%= paymentMode === 'test' ? 'One step left' : 'Awaiting payment' %></span>
-      <h1><%= paymentMode === 'test' ? 'Pay to confirm your booking' : 'Your slot is held' %></h1>
+      <span class="lm-kicker"><span class="dot"></span><%= paymentMode !== 'manual' ? 'One step left' : 'Awaiting payment' %></span>
+      <h1><%= paymentMode !== 'manual' ? 'Pay to confirm your booking' : 'Your slot is held' %></h1>
       <p class="lm-desc"><%= booking.service_title %> with <%= owner.name %></p>
       <% } else { %>
       <h1><%= st === 'expired' ? 'This hold ran out' : 'This booking was cancelled' %></h1>
@@ -19,9 +19,16 @@
 
       <dl class="ax-facts">
         <div><dt>When</dt><dd><%= when %> · <%= tzName %></dd></div>
-        <% if (booking.location) { %><div><dt>Where</dt><dd><%= booking.location %></dd></div><% } %>
+        <% if (booking.attend === 'online') { %>
+        <div><dt>Where</dt><dd>Online<% if (st === 'confirmed' && booking.meeting_url) { %> · <a href="<%= booking.meeting_url %>" target="_blank" rel="noopener">Join link</a><% } else if (st === 'confirmed') { %> — <%= owner.name %> will send you the link<% } %></dd></div>
+        <% } else if (booking.location) { %>
+        <div><dt>Where</dt><dd><%= booking.location %><% if (booking.mapsUrl) { %> · <a href="<%= booking.mapsUrl %>" target="_blank" rel="noopener">Get directions</a><% } %></dd></div>
+        <% } %>
         <div><dt>Booked for</dt><dd><%= booking.name %> · <%= booking.email %></dd></div>
-        <% if (booking.amount) { %><div><dt><%= st === 'confirmed' ? 'Paid' : 'Price' %></dt><dd><%= booking.amountLabel %></dd></div><% } %>
+        <% if (booking.amount && booking.due_later) { %>
+        <% if (booking.payNowLabel) { %><div><dt><%= st === 'confirmed' ? 'Advance paid' : 'Advance' %></dt><dd><%= booking.payNowLabel %></dd></div><% } %>
+        <div><dt>At the appointment</dt><dd><%= booking.dueLaterLabel %><% if (booking.payNowLabel) { %> <small>(of <%= booking.amountLabel %>)</small><% } %></dd></div>
+        <% } else if (booking.amount) { %><div><dt><%= st === 'confirmed' ? 'Paid' : 'Price' %></dt><dd><%= booking.amountLabel %></dd></div><% } %>
         <% booking.answers.filter(function (a) { return a.value; }).forEach(function (a) { %><div><dt><%= a.label %></dt><dd><%= a.value %></dd></div><% }) %>
       </dl>
 
@@ -36,17 +43,35 @@
         <b>Test mode</b> — no payment gateway is connected yet, so nothing is charged. Your slot is held for <%= holdMinutes %> minutes.
       </div>
       <form method="POST" action="<%= self %>" class="bk-actions">
-        <button class="btn btn-primary" name="action" value="pay">Complete test payment · <%= booking.amountLabel %></button>
+        <button class="btn btn-primary" name="action" value="pay">Complete test payment · <%= booking.payNowLabel %></button>
         <button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button>
       </form>
+      <% } else if (st === 'pending' && paymentMode === 'cashfree') { %>
+      <% if (gatewayError || retry) { %>
+      <div class="bk-test" role="alert"><%= gatewayError || 'The payment didn’t go through and nothing was charged. You can try again.' %></div>
+      <% } %>
+      <p class="ax-note">Your slot is held for <%= holdMinutes %> minutes. You’ll pay securely on Cashfree — UPI, cards, net banking or wallets.</p>
+      <div class="bk-actions">
+        <% if (gateway) { %>
+        <button type="button" id="cfPay" class="btn btn-primary" data-session="<%= gateway.sessionId %>" data-env="<%= gateway.env %>" data-auto="<%= gateway.auto ? '1' : '' %>">Pay <%= booking.payNowLabel %></button>
+        <% } else { %>
+        <a class="btn btn-primary" href="<%= self %>">Try again</a>
+        <% } %>
+        <form method="POST" action="<%= self %>" style="display:contents"><button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button></form>
+      </div>
+      <% if (gateway) { %>
+      <% if (gateway.env === 'sandbox') { %><p class="ax-note">Cashfree sandbox: no real money moves.</p><% } %>
+      <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+      <script src="/js/cashfree-checkout.js?v=<%= assetVersion %>"></script>
+      <% } %>
       <% } else if (st === 'pending') { %>
       <div class="bk-test">
         <% if (paymentNote) { %>
-        Pay <b><%= booking.amountLabel %></b> to <%= owner.name %>:
+        Pay <b><%= booking.payNowLabel %></b> to <%= owner.name %>:
         <span class="bk-paynote"><%= paymentNote %></span>
         They’ll confirm your booking once it’s received — this page updates when they do.
         <% } else { %>
-        Pay <b><%= booking.amountLabel %></b> to <%= owner.name %> the way they’ve shared with you (UPI or bank transfer). They’ll confirm your booking once it’s received — this page updates when they do.
+        Pay <b><%= booking.payNowLabel %></b> to <%= owner.name %> the way they’ve shared with you (UPI or bank transfer). They’ll confirm your booking once it’s received — this page updates when they do.
         <% } %>
       </div>
       <p class="ax-note">Bookmark this page to check on your booking.</p>

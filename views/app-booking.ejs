@@ -20,8 +20,9 @@ var dayHref = function (d) { return '?date=' + d + '#times'; };
         <h1><%= service.title %></h1>
         <ul class="bk-facts">
           <li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><%= service.duration_min %> minutes</li>
-          <li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg><b><%= service.priceLabel %></b></li>
-          <% if (service.location) { %><li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><%= service.location %></li><% } %>
+          <li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg><span><b><%= service.priceLabel %></b><% if (service.payNow && service.payNow < service.price) { %> · <%= service.payNowLabel %> advance to book, the rest at the appointment<% } else if (service.price && !service.payNow) { %> · pay at the appointment<% } %></span></li>
+          <% if (service.attend === 'online' || service.attend === 'either') { %><li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3"/></svg><span>Online<%= service.attend === 'either' ? ' or in person — your choice' : ' · video call' %></span></li><% } %>
+          <% if (service.location) { %><li><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span><%= service.location %><% if (service.mapsUrl) { %> · <a href="<%= service.mapsUrl %>" target="_blank" rel="noopener">Get directions</a><% } %></span></li><% } %>
         </ul>
         <% if (service.description) { %><div class="lm-desc ax-rich"><%- descriptionHtml %></div><% } %>
       </div>
@@ -68,7 +69,21 @@ var dayHref = function (d) { return '?date=' + d + '#times'; };
             <% }) %>
           </div>
 
+          <% if (service.attend === 'either') { %>
+          <h2 class="bk-h">How would you like to attend?</h2>
+          <div class="ax-slots bk-attend">
+            <label class="ax-slot"><input type="radio" name="attend" value="in_person"<%= values.attend === 'in_person' ? ' checked' : '' %> required /><span>In person</span></label>
+            <label class="ax-slot"><input type="radio" name="attend" value="online"<%= values.attend === 'online' ? ' checked' : '' %> required /><span>Online</span></label>
+          </div>
+          <% } %>
+
           <h2 class="bk-h">Your details</h2>
+          <%# Buyer sign-in (lib/customerAccount.js) — fills in these details. %>
+          <% if (customer) { %>
+          <p class="bk-account">Signed in as <b><%= customer.name %></b> · <button type="submit" form="logoutForm" class="bk-link-btn">Not you? Sign out</button></p>
+          <% } else { %>
+          <p class="bk-account">Have an account? <a href="/account/login?next=/book/<%= service.slug %>">Sign in</a> to fill these in.</p>
+          <% } %>
           <div class="field">
             <label for="name">Your name</label>
             <input type="text" id="name" name="name" value="<%= values.name || '' %>" autocomplete="name" required />
@@ -108,7 +123,7 @@ var dayHref = function (d) { return '?date=' + d + '#times'; };
             <label for="note">Anything to share beforehand? <span class="lm-opt">(optional)</span></label>
             <textarea id="note" name="note" rows="3" maxlength="500"><%= values.note || '' %></textarea>
           </div>
-          <button type="submit" class="btn btn-primary"><%= service.price ? 'Continue to pay ' + service.priceLabel : 'Confirm booking' %></button>
+          <button type="submit" class="btn btn-primary"><%= service.payNow ? 'Continue to pay ' + service.payNowLabel + (service.payNow < service.price ? ' advance' : '') : 'Confirm booking' %></button>
         </form>
         <% } %>
         <% } %>
@@ -116,6 +131,7 @@ var dayHref = function (d) { return '?date=' + d + '#times'; };
       <p class="lm-card-foot"><span>Your details go to <%= owner.name %> only, to arrange this session.</span></p>
     </article>
   </div>
+  <% if (customer) { %><form id="logoutForm" method="POST" action="/account/logout" hidden><input type="hidden" name="next" value="/book/<%= service.slug %>" /></form><% } %>
 
 <script>
   // A visitor in another timezone also sees each time on their own clock.

@@ -17,12 +17,43 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
       <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= service.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
       <label class="ax-field"><span>Length (minutes)</span><input class="ax-input" type="number" name="duration_min" value="<%= service.duration_min %>" min="5" max="480" step="5" /></label>
       <label class="ax-field"><span>Price (₹) <small>0 = free</small></span><input class="ax-input" name="price" value="<%= priceRupees %>" inputmode="decimal" /></label>
-      <label class="ax-field"><span>Where</span><input class="ax-input" name="location" value="<%= service.location %>" maxlength="300" placeholder="Google Meet — link sent by email" /></label>
-      <label class="ax-field ax-span-3"><span>Description</span><textarea class="ax-input" name="description" rows="4" maxlength="2000" placeholder="What you’ll cover, who it’s for…"><%= service.description %></textarea>
-        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
+      <span></span>
+      <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: service.description, rows: 6, maxlength: 2000, placeholder: 'What you’ll cover, who it’s for, what to bring…' }) %>
+    </div>
+  </section>
+
+  <%# Where it happens — attend / location (address) / meeting_url (lib/bookings.js ATTEND).
+      A service from before this (attend '') starts on "In person" with its old text as the address. %>
+  <% var attend = service.attend || (service.location ? 'in_person' : 'online'); %>
+  <section class="ax-panel" data-attend-panel>
+    <div class="ax-panel-head"><h2>Where it happens</h2></div>
+    <div class="ax-pad ax-pad-top ax-hours-choice">
+      <label class="ax-check"><input type="radio" name="attend" value="online"<%= attend === 'online' ? ' checked' : '' %> /> <span>Online <small class="ax-sub">— video call (Google Meet, Zoom…)</small></span></label>
+      <label class="ax-check"><input type="radio" name="attend" value="in_person"<%= attend === 'in_person' ? ' checked' : '' %> /> <span>In person <small class="ax-sub">— at your clinic, salon, studio…</small></span></label>
+      <label class="ax-check"><input type="radio" name="attend" value="either"<%= attend === 'either' ? ' checked' : '' %> /> <span>Both <small class="ax-sub">— the booker chooses</small></span></label>
+    </div>
+    <div class="ax-grid">
+      <label class="ax-field ax-span-3" data-attend-show="in_person either"><span>Address</span><input class="ax-input" name="location" value="<%= service.location %>" maxlength="300" placeholder="Smile Dental Clinic, 2nd floor, 14 MG Road, Indore 452001" />
+        <small>Shown on the booking page with a “Get directions” link to Google Maps.</small></label>
+      <label class="ax-field ax-span-3" data-attend-show="online either"><span>Meeting link <small>(optional)</small></span><input class="ax-input" name="meeting_url" value="<%= service.meeting_url %>" maxlength="500" placeholder="https://meet.google.com/abc-defg-hij" />
+        <small>Only shown to people once they’ve booked (and paid, if there’s anything to pay online). Leave blank to send each person a link yourself.</small></label>
+    </div>
+  </section>
+
+  <%# How it's paid for — pay_option / deposit (lib/bookings.js PAY_OPTIONS). Only matters with a price. %>
+  <section class="ax-panel" data-pay-panel>
+    <div class="ax-panel-head"><h2>Payment</h2><span class="ax-count">For a paid service</span></div>
+    <div class="ax-pad ax-pad-top ax-hours-choice">
+      <label class="ax-check"><input type="radio" name="pay_option" value="online"<%= service.pay_option === 'online' ? ' checked' : '' %> /> <span>Full price online <small class="ax-sub">— paid when booking</small></span></label>
+      <label class="ax-check"><input type="radio" name="pay_option" value="deposit"<%= service.pay_option === 'deposit' ? ' checked' : '' %> /> <span>Advance online <small class="ax-sub">— the rest at the appointment; fewer no-shows</small></span></label>
+      <label class="ax-check"><input type="radio" name="pay_option" value="later"<%= service.pay_option === 'later' ? ' checked' : '' %> /> <span>Pay at the appointment <small class="ax-sub">— nothing online; booked straight away</small></span></label>
+    </div>
+    <div class="ax-grid" data-pay-show="deposit">
+      <label class="ax-field"><span>Advance (₹)</span><input class="ax-input" name="deposit" value="<%= service.deposit ? String(service.deposit / 100) : '' %>" inputmode="decimal" placeholder="200" /></label>
     </div>
     <p class="ax-hint ax-pad">
       <% if (paymentMode === 'test') { %><b>Paid sessions run in test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged.
+      <% } else if (paymentMode === 'cashfree') { %><b>Paid sessions are collected online</b> — bookers pay through Cashfree and the booking confirms itself once the payment goes through.
       <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid under Upcoming bookings or in Orders. Tell bookers how to pay (UPI ID, bank details) in <a href="/dashboard/bookings/settings/payments">Settings</a>.<% } %>
     </p>
   </section>
@@ -60,9 +91,9 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
   </section>
 
   <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Booking questions</h2><span class="ax-count">Asked after name, email and phone</span></div>
-    <div class="ax-questions">
-      <% for (var n = 0; n < maxQuestions; n++) { var q = service.questions[n] || {}; var shown = n === 0 || !!q.label || !!service.questions[n - 1]; %>
+    <div class="ax-panel-head"><h2>Booking questions</h2><span class="ax-count">Up to <%= maxQuestions %> · asked after name, email and phone</span></div>
+    <div class="ax-questions" data-questions>
+      <% for (var n = 0; n < maxQuestions; n++) { var q = service.questions[n] || {}; var shown = !!q.label || (n === 0 && !service.questions.length); %>
       <div class="ax-question"<%= shown ? '' : ' hidden' %>>
         <input class="ax-input" name="q_label_<%= n %>" value="<%= q.label || '' %>" placeholder="<%= n === 0 ? 'e.g. What would you like to talk about?' : 'Another question' %>" maxlength="120" aria-label="Question <%= n + 1 %>" />
         <select class="ax-input" name="q_type_<%= n %>" aria-label="Answer type">
@@ -70,14 +101,17 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
         </select>
         <input class="ax-input ax-q-options" name="q_options_<%= n %>" value="<%= (q.options || []).join(', ') %>" placeholder="Choices, separated by commas" maxlength="400" aria-label="Choices" />
         <label class="ax-check"><input type="checkbox" name="q_required_<%= n %>" value="1"<%= q.required ? ' checked' : '' %> /> <span>Required</span></label>
+        <button type="button" class="ax-q-remove" data-q-remove aria-label="Remove question" title="Remove question">×</button>
       </div>
       <% } %>
-      <p class="ax-hint">Leave a question blank to remove it. Answers show on each booking.</p>
+      <button type="button" class="ax-btn ax-btn-quiet ax-q-add" data-q-add>+ Add question</button>
+      <p class="ax-hint">Answers show on each booking. For example “What would you like help with?”, “First visit?” (Choose one) or “Which treatment?” (Dropdown).</p>
     </div>
   </section>
 
   <section class="ax-panel ax-savebar">
     <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= service.visible ? ' checked' : '' %> /> <span>Taking bookings (page is live)</span></label>
+    <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= service.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find this service</small></span></label>
     <button class="ax-btn ax-btn-primary">Save changes</button>
   </section>
 </form>
@@ -95,19 +129,50 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
       radio.addEventListener('change', function () { custom.hidden = radio.value !== '1'; });
     });
 
-    // Questions: choices only for dropdown / choose-one; typing in the last
-    // shown question reveals the next row.
-    document.querySelectorAll('.ax-question').forEach(function (row) {
+    // Where / Payment: show only the fields the picked option uses.
+    [['attend', 'data-attend-show'], ['pay_option', 'data-pay-show']].forEach(function (pair) {
+      var radios = document.querySelectorAll('input[name="' + pair[0] + '"]');
+      var sync = function () {
+        var picked = (document.querySelector('input[name="' + pair[0] + '"]:checked') || {}).value;
+        document.querySelectorAll('[' + pair[1] + ']').forEach(function (el) {
+          el.hidden = el.getAttribute(pair[1]).split(' ').indexOf(picked) < 0;
+        });
+      };
+      radios.forEach(function (r) { r.addEventListener('change', sync); });
+      sync();
+    });
+
+    // Questions: choices only for dropdown / choose-one. "+ Add question"
+    // shows the next hidden row; × clears a row and hides it (a blank
+    // question isn't saved). Rows keep their place, so answers already
+    // given keep matching their question.
+    var qBox = document.querySelector('[data-questions]');
+    var qRows = Array.prototype.slice.call(qBox.querySelectorAll('.ax-question'));
+    var qAdd = qBox.querySelector('[data-q-add]');
+    var syncAdd = function () { qAdd.hidden = qRows.every(function (r) { return !r.hidden; }); };
+    qRows.forEach(function (row) {
       var type = row.querySelector('select');
       var opts = row.querySelector('.ax-q-options');
       var sync = function () { opts.hidden = type.value !== 'dropdown' && type.value !== 'radio'; };
       type.addEventListener('change', sync);
       sync();
-      row.querySelector('input[name^=q_label]').addEventListener('input', function () {
-        var next = row.nextElementSibling;
-        if (next && next.classList.contains('ax-question')) next.hidden = false;
+      row.querySelector('[data-q-remove]').addEventListener('click', function () {
+        row.querySelectorAll('input[type=text], input:not([type]), .ax-q-options').forEach(function (i) { i.value = ''; });
+        row.querySelector('input[type=checkbox]').checked = false;
+        type.selectedIndex = 0;
+        sync();
+        row.hidden = true;
+        syncAdd();
       });
     });
+    qAdd.addEventListener('click', function () {
+      var next = qRows.filter(function (r) { return r.hidden; })[0];
+      if (!next) return;
+      next.hidden = false;
+      next.querySelector('input').focus();
+      syncAdd();
+    });
+    syncAdd();
   })();
 </script>
 

@@ -178,6 +178,7 @@
   const descInput = $('ppDescription');
   const aboutInput = $('ppAbout');
   const successInput = $('ppSuccessMessage');
+  const marketplaceInput = $('ppMarketplace');
   const slugInput = $('ppSlug');
   const coverImageInput = $('ppCoverImage');
   const coverVideoInput = $('ppCoverVideo');
@@ -308,6 +309,8 @@
     // product is edited inline in Details.
     const multiple = pageKind === 'multiple';
     $('tabProductsBtn').hidden = !multiple;
+    // Coffee pages are tips, never listed on the marketplace (lib/marketplace.js).
+    marketplaceInput.closest('.pb-option').hidden = pageKind === 'coffee';
     if (!multiple && $('tab-products').classList.contains('active')) showTab('page');
     $('tabPageLabel').textContent = multiple ? 'Page' : 'Details';
     $('ppProductsNote').hidden = !multiple;
@@ -788,6 +791,7 @@
     descInput.value = page ? page.description : '';
     aboutInput.value = page ? page.about || '' : '';
     successInput.value = page ? page.success_message : '';
+    marketplaceInput.checked = !!(page && page.marketplace);
     slugInput.value = page ? page.slug : '';
     nextPid = 1;
     if (page && page.products.length) products = page.products.map(fromStored);
@@ -963,6 +967,7 @@
       description: descInput.value,
       about: aboutInput.value,
       successMessage: successInput.value,
+      marketplace: pageKind !== 'coffee' && marketplaceInput.checked,
       products: collected.products,
       accentColor: accent,
       showCover,

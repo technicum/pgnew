@@ -32,7 +32,7 @@
   flex: none; width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
   display: grid; place-items: center; background: var(--magnet-accent); color: #fff; font-weight: 700; font-size: 16px;
 }
-.bk-cover + .lm-card-body .bk-avatar { margin-top: -52px; width: 64px; height: 64px; border: 4px solid var(--surface); font-size: 20px; }
+.bk-cover + .lm-card-body .bk-avatar { margin-top: -64px; width: 96px; height: 96px; border: 4px solid var(--surface); font-size: 28px; }
 .bk-cover + .lm-card-body .bk-host { align-items: flex-end; }
 .bk-facts { list-style: none; margin: 10px 0 16px; padding: 0; display: grid; gap: 7px; font-size: 14.5px; color: var(--ink-soft); }
 .bk-facts li { display: flex; align-items: flex-start; gap: 9px; overflow-wrap: anywhere; }
@@ -80,8 +80,8 @@ form .bk-h { margin-top: 26px; }
 /* ---------- Booking page: all services (app-booking-list.ejs) ---------- */
 .bk-list .lm-card-body { padding: 30px 32px; }
 .bk-list-head { text-align: center; margin-bottom: 24px; }
-.bk-list-head .bk-avatar { width: 76px; height: 76px; font-size: 24px; margin: 0 auto 14px; }
-.bk-list .bk-cover + .lm-card-body .bk-list-head .bk-avatar { margin-top: -70px; border: 4px solid var(--surface); }
+.bk-list-head .bk-avatar { width: 112px; height: 112px; font-size: 34px; margin: 0 auto 14px; }
+.bk-list .bk-cover + .lm-card-body .bk-list-head .bk-avatar { margin-top: -86px; border: 4px solid var(--surface); }
 .bk-list-head .lm-desc { max-width: 46ch; margin: 6px auto 0; }
 .bk-services { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .bk-service {
@@ -168,3 +168,9 @@ form .bk-h { margin-top: 26px; }
 @media (max-width: 560px) {
   .ax-learn .lm-card-body { padding: 22px 18px; }
 }
+.bk-attend { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 4px; }
+.bk-facts a { color: var(--magnet-accent-dark); font-weight: 600; }
+.bk-account { margin: -4px 0 14px; font-size: 13.5px; color: var(--muted); }
+.bk-account a, .bk-link-btn { color: var(--magnet-accent-dark); font-weight: 600; text-decoration: none; }
+.bk-link-btn { border: 0; background: none; padding: 0; font: inherit; cursor: pointer; }
+.bk-link-btn:hover, .bk-account a:hover { text-decoration: underline; }

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title><%= title %></title>
+<meta name="description" content="Find sessions, courses, events and products from creators, coaches, doctors and studios on <%= siteName %>." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>" />
+</head>
+<%# The marketplace (lib/marketplace.js, server.js GET /explore): ?q= search and ?type= one kind.
+    Browsing (neither): a row per kind. Works without JavaScript. %>
+<%
+var suggestions = ['Yoga', 'Dentist', 'Fitness coach', 'Excel', 'Salon', 'Guitar', 'Career'];
+var qs = function (t) { var p = []; if (t) p.push('type=' + t); if (q) p.push('q=' + encodeURIComponent(q)); return p.length ? '?' + p.join('&') : ''; };
+var TAB_ICONS = {
+  '': '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  session: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  course: '<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/>',
+  event: '<path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7Z"/>',
+  product: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>',
+};
+%>
+<body class="mk-page">
+  <header class="mk-nav">
+    <div class="mk-nav-in">
+      <a class="mk-brand" href="/"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
+      <nav class="mk-nav-links" aria-label="Main">
+        <a href="/explore" aria-current="page">Explore</a>
+        <% if (currentUser) { %><a class="mk-cta" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Log in</a><a class="mk-cta" href="/signup">Start selling</a><% } %>
+      </nav>
+    </div>
+  </header>
+
+  <section class="mk-hero">
+    <div class="mk-hero-glow" aria-hidden="true"></div>
+    <div class="mk-hero-in">
+      <span class="mk-pill">✦ <%= siteName %> marketplace</span>
+      <h1>Book experts. Learn skills.<br><em>Buy from creators.</em></h1>
+      <p>Sessions with doctors, coaches and studios, plus courses, events and digital products — all from independent creators.</p>
+      <form class="mk-search" method="GET" action="/explore" role="search">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <% if (type) { %><input type="hidden" name="type" value="<%= type %>" /><% } %>
+        <input type="search" name="q" value="<%= q %>" placeholder="Search “yoga”, “dentist Indore”, “Excel course”…" aria-label="Search the marketplace" />
+        <button type="submit">Search</button>
+      </form>
+      <div class="mk-suggest" aria-label="Popular searches">
+        <span>Popular:</span>
+        <% suggestions.forEach(function (s) { %><a href="/explore?q=<%= encodeURIComponent(s.toLowerCase()) %>"><%= s %></a><% }) %>
+      </div>
+    </div>
+  </section>
+
+  <nav class="mk-tabs" aria-label="Kinds">
+    <div class="mk-tabs-in">
+      <a href="/explore<%= qs('') %>"<%- !type ? ' aria-current="page"' : '' %>><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- TAB_ICONS[''] %></svg>All <small><%= total %></small></a>
+      <% Object.keys(types).forEach(function (t) { %>
+      <a href="/explore<%= qs(t) %>"<%- type === t ? ' aria-current="page"' : '' %>><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- TAB_ICONS[t] %></svg><%= types[t] %> <small><%= counts[t] %></small></a>
+      <% }) %>
+    </div>
+  </nav>
+
+  <main class="mk-results">
+    <% if (sections) { %>
+      <% if (!sections.length) { %>
+      <div class="mk-empty">
+        <div class="mk-empty-art" aria-hidden="true">✦</div>
+        <h2>The marketplace is just opening</h2>
+        <p>Creators are setting up their first listings. Have something to offer?</p>
+        <a class="mk-btn" href="/signup">List yours for free →</a>
+      </div>
+      <% } %>
+      <% sections.forEach(function (s) { %>
+      <section class="mk-section">
+        <div class="mk-section-head">
+          <h2><%= s.label %></h2>
+          <% if (s.count > s.items.length) { %><a href="/explore?type=<%= s.type %>">See all <%= s.count %> →</a><% } %>
+        </div>
+        <div class="mk-grid">
+          <% s.items.forEach(function (item) { %><%- include('partials/market-card', { item: item }) %><% }) %>
+        </div>
+      </section>
+      <% }) %>
+    <% } else if (items.length) { %>
+      <div class="mk-section-head">
+        <h2><%= type ? types[type] : 'Results' %><% if (q) { %> <span>for “<%= q %>”</span><% } %></h2>
+        <span class="mk-count"><%= items.length %> found</span>
+      </div>
+      <div class="mk-grid">
+        <% items.forEach(function (item) { %><%- include('partials/market-card', { item: item }) %><% }) %>
+      </div>
+    <% } else { %>
+      <div class="mk-empty">
+        <div class="mk-empty-art" aria-hidden="true">⌕</div>
+        <h2>No matches<%= q ? ' for “' + q + '”' : '' %></h2>
+        <p>Try fewer or different words, or look through everything.</p>
+        <a class="mk-btn" href="/explore">Browse all</a>
+      </div>
+    <% } %>
+  </main>
+
+  <section class="mk-sell">
+    <div>
+      <span class="mk-pill mk-pill-dark">For creators &amp; professionals</span>
+      <h2>Get found by new<br><em>customers, every day.</em></h2>
+      <p>List your sessions, courses and products here — free to list, you only pay when you sell.</p>
+    </div>
+    <a class="mk-btn mk-btn-lime" href="<%= currentUser ? '/dashboard' : '/signup' %>"><%= currentUser ? 'Go to dashboard →' : 'Start selling →' %></a>
+  </section>
+
+  <footer class="mk-footer">
+    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/signup">Sell on <%= siteName %></a></nav>
+  </footer>
+</body>
+</html>

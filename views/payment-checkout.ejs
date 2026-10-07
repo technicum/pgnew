@@ -13,8 +13,10 @@
 <link rel="stylesheet" href="/css/lead-magnet.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/payment-page.css?v=<%= assetVersion %>" />
 </head>
-<%# Test mode only (lib/payments.js): stands in for the gateway's own
-    checkout until a real one is connected. %>
+<%# Test mode (lib/payments.js): stands in for the gateway's own checkout.
+    Cashfree mode: the order summary plus a button that opens Cashfree's
+    checkout — opened straight away on the first visit; also where Cashfree
+    sends the buyer back (?cf=return) when they didn't pay. %>
 <body class="lm-page" style="<%= lmThemeStyle(page) %>">
 
 <main class="lm-shell">
@@ -24,6 +26,31 @@
 
   <article class="lm-card pp-checkout">
     <div class="lm-card-body">
+      <% if (mode === 'cashfree') { %>
+      <h1>Pay <%= formatINR(order.total) %></h1>
+      <% if (gatewayError) { %>
+      <p class="pp-desc pp-gateway-error" role="alert"><%= gatewayError %></p>
+      <% } else if (retry) { %>
+      <p class="pp-desc pp-gateway-error" role="alert">The payment didn’t go through and nothing was charged. You can try again.</p>
+      <% } else { %>
+      <p class="pp-desc">You’ll pay securely on Cashfree — UPI, cards, net banking or wallets.</p>
+      <% } %>
+
+      <%- include('partials/order-summary', { order: order, formatINR: formatINR }) %>
+      <p class="pp-hint">Paying as <%= order.buyer_name %> · <%= order.buyer_email %></p>
+
+      <div class="pp-checkout-actions">
+        <% if (gateway) { %>
+        <button type="button" id="cfPay" class="btn btn-primary" data-session="<%= gateway.sessionId %>" data-env="<%= gateway.env %>" data-auto="<%= retry ? '' : '1' %>">Pay <%= formatINR(order.total) %></button>
+        <% } else { %>
+        <a href="" class="btn btn-primary">Try again</a>
+        <% } %>
+        <form method="POST" action="/pay/<%= page.slug %>/checkout/<%= order.token %>">
+          <button type="submit" name="result" value="cancel" class="pp-link-btn">Cancel order</button>
+        </form>
+      </div>
+      <% if (gateway && gateway.env === 'sandbox') { %><p class="pp-hint"><span class="pp-test-badge">Cashfree sandbox</span> no real money moves.</p><% } %>
+      <% } else { %>
       <span class="pp-test-badge">Test checkout</span>
       <h1>Pay <%= formatINR(order.total) %></h1>
       <p class="pp-desc">This is a simulated payment — no gateway is connected yet, and no money moves. Complete it to see exactly what a buyer gets after paying.</p>
@@ -35,9 +62,14 @@
         <button type="submit" name="result" value="paid" class="btn btn-primary">Complete test payment</button>
         <button type="submit" name="result" value="cancel" class="pp-link-btn">Cancel order</button>
       </form>
+      <% } %>
     </div>
   </article>
 </main>
+<% if (mode === 'cashfree' && gateway) { %>
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<script src="/js/cashfree-checkout.js?v=<%= assetVersion %>"></script>
+<% } %>
 
 </body>
 </html>

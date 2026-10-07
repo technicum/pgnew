@@ -14,12 +14,12 @@
     <div class="ax-grid">
       <label class="ax-field ax-span-2"><span>Name</span><input class="ax-input" name="title" value="<%= course.title %>" required maxlength="200" /></label>
       <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= course.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
-      <label class="ax-field ax-span-3"><span>Description</span><textarea class="ax-input" name="description" rows="4" maxlength="2000" placeholder="What students will learn"><%= course.description %></textarea>
-        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
+      <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: course.description, rows: 5, maxlength: 2000, placeholder: 'What students will learn' }) %>
     </div>
   </section>
   <section class="ax-panel ax-savebar">
     <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= course.visible ? ' checked' : '' %> /> <span>Open for enrolment (page is live)</span></label>
+    <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= course.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find this course</small></span></label>
     <button class="ax-btn ax-btn-primary">Save changes</button>
   </section>
 </form>
@@ -45,7 +45,7 @@
         <div class="ax-grid">
           <label class="ax-field ax-span-2"><span>Title</span><input class="ax-input" name="title" value="<%= l.title %>" required maxlength="200" /></label>
           <label class="ax-field"><span>Video link <small>(optional)</small></span><input class="ax-input" name="video_url" value="<%= l.video_url %>" placeholder="YouTube or Vimeo link" maxlength="500" /></label>
-          <label class="ax-field ax-span-3"><span>Lesson text</span><textarea class="ax-input" name="body" rows="10" maxlength="20000"><%= l.body %></textarea></label>
+          <%- include('partials/ax-rich-field', { name: 'body', label: 'Lesson text', value: l.body, rows: 10, maxlength: 20000 }) %>
         </div>
         <div class="ax-actions">
           <button class="ax-btn ax-btn-primary">Save lesson</button>
@@ -63,8 +63,7 @@
     <div class="ax-grid">
       <label class="ax-field ax-span-2"><span>Title</span><input class="ax-input" name="title" placeholder="Lesson <%= lessons.length + 1 %>: …" required maxlength="200" /></label>
       <label class="ax-field"><span>Video link <small>(optional)</small></span><input class="ax-input" name="video_url" placeholder="YouTube or Vimeo link" maxlength="500" /></label>
-      <label class="ax-field ax-span-3"><span>Lesson text <small>(optional)</small></span><textarea class="ax-input" name="body" rows="5" maxlength="20000"></textarea>
-        <small>“## ” for a heading, **bold**, *italic*, “- ” for bullets, [text](https://…) for links.</small></label>
+      <%- include('partials/ax-rich-field', { name: 'body', label: 'Lesson text <small>(optional)</small>', value: '', rows: 6, maxlength: 20000 }) %>
     </div>
     <button class="ax-btn ax-btn-primary">Add lesson</button>
   </form>

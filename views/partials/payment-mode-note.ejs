@@ -1,10 +1,11 @@
-<%# Tells the merchant how payments are being collected right now — no
-    gateway is connected yet (lib/payments.js). Shown on Payment pages and
-    Orders. %>
+<%# Tells the merchant how payments are being collected right now
+    (lib/payments.js). Shown on Payment pages and Orders. %>
 <div class="pp-mode-note pp-mode-<%= paymentMode %>">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
   <% if (paymentMode === 'test') { %>
   <p><strong>Test mode.</strong> No payment gateway is connected yet, so checkout is simulated — buyers see a “Complete test payment” step and nothing is charged. Use it to try the whole flow end to end.</p>
+  <% } else if (paymentMode === 'cashfree') { %>
+  <p><strong>Online payments (Cashfree).</strong> Buyers pay on Cashfree’s checkout — UPI, cards, net banking, wallets — and their order is marked paid automatically.</p>
   <% } else { %>
   <p><strong>Manual payments.</strong> No payment gateway is connected yet. Orders are placed as <em>pending</em>; once you’ve been paid (UPI, bank transfer), mark them paid in <a href="/dashboard/orders">Orders</a> and the buyer’s purchase unlocks.</p>
   <% } %>

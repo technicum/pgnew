@@ -56,8 +56,10 @@ const {
 } = require('./lib/paymentPages');
 const { listAbandoned, dismissDraft } = require('./lib/checkoutDrafts');
 const { APPS, APP_BY_ID, installedApps, setAppInstalled, appForPath } = require('./lib/apps');
-const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
-const { paymentMode } = require('./lib/payments');
+const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder, platformTotals } = require('./lib/orders');
+const { paymentMode, handleCashfreeWebhook } = require('./lib/payments');
+const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
+const { getFees, saveFees, isAdmin, ATTRIBUTION_DAYS } = require('./lib/platform');
 const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { MySQLSessionStore } = require('./lib/sessionStore');
@@ -74,7 +76,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 // Only the builder's fetch()-based endpoints send JSON bodies — everything
 // else (signup/login) still posts as a normal HTML form.
-app.use(express.json());
+// The raw bytes are kept for the Cashfree webhook's signature check.
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
+
+// Cashfree payment events (lib/payments.js) — signed, no session needed.
+app.post('/webhooks/cashfree', (req, res, next) => handleCashfreeWebhook(req, res).catch(next));
 
 app.use(session({
   // Falls back to a fixed dev secret so `node server.js` works with no
@@ -104,6 +110,7 @@ app.use((req, res, next) => {
   res.locals.siteName = SITE_NAME;
   res.locals.siteDomain = SITE_DOMAIN;
   res.locals.currentUser = req.session.user || null;
+  res.locals.isAdmin = isAdmin(req.session.user);
   next();
 });
 
@@ -135,10 +142,71 @@ function requireAuth(req, res, next) {
   next();
 }
 
-app.get('/', (req, res) => {
-  res.render('index', {
-    title: `${SITE_NAME} — The Creator Business Toolkit`,
+app.get('/', async (req, res, next) => {
+  try {
+    // The marketplace's newest listings, under the homepage search.
+    const featured = (await listItems()).slice(0, 8);
+    res.render('index', {
+      title: `${SITE_NAME} — The Creator Business Toolkit`,
+      featured,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The marketplace (lib/marketplace.js): everything creators chose to list.
+app.get('/explore', async (req, res, next) => {
+  try {
+    const q = String(req.query.q || '').trim().slice(0, 100);
+    const type = MARKET_TYPES[req.query.type] ? req.query.type : '';
+    const all = await listItems({ q });
+    const counts = Object.fromEntries(Object.keys(MARKET_TYPES).map((t) => [t, all.filter((i) => i.type === t).length]));
+    const items = (type ? all.filter((i) => i.type === type) : all).slice(0, 120);
+    // Just browsing (no search, no kind picked): a row per kind.
+    const sections = !q && !type
+      ? Object.keys(MARKET_TYPES).map((t) => ({ type: t, label: MARKET_TYPES[t], items: all.filter((i) => i.type === t).slice(0, 8), count: counts[t] })).filter((s) => s.items.length)
+      : null;
+    res.render('explore', {
+      title: `${q ? `${q} — ` : ''}Explore — ${SITE_NAME}`,
+      q, type, types: MARKET_TYPES, counts, total: all.length, items, sections,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Platform admin (lib/platform.js): commission rates. ADMIN_EMAILS only.
+function requireAdmin(req, res, next) {
+  if (!req.session.user) return res.redirect('/login');
+  if (!isAdmin(req.session.user)) return res.status(404).render('error', { title: `Not found — ${SITE_NAME}`, heading: 'Page not found', message: 'This page doesn’t exist.' });
+  next();
+}
+
+async function renderAdminSettings(req, res, { status = 200, error = null, saved = false } = {}) {
+  const [fees, totals] = await Promise.all([getFees(), platformTotals()]);
+  const money = (t) => ({ count: t.count, sales: formatINR(t.sales), fee: formatINR(t.fees) });
+  res.status(status).render('admin-settings', {
+    title: `Platform settings — ${SITE_NAME}`,
+    user: req.session.user,
+    fees, error, saved,
+    totals: { marketplace: money(totals.marketplace), direct: money(totals.direct) },
+    attributionDays: ATTRIBUTION_DAYS,
   });
+}
+
+app.get('/admin/settings', requireAdmin, (req, res, next) => {
+  renderAdminSettings(req, res, { saved: req.query.saved === '1' }).catch(next);
+});
+
+app.post('/admin/settings', requireAdmin, async (req, res, next) => {
+  try {
+    await saveFees(req.body || {});
+    res.redirect(303, '/admin/settings?saved=1');
+  } catch (err) {
+    if (err.code === 'INVALID_INPUT') return renderAdminSettings(req, res, { status: 400, error: err.message }).catch(next);
+    next(err);
+  }
 });
 
 app.get('/signup', redirectIfLoggedIn, (req, res) => {

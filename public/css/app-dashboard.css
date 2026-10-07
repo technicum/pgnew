@@ -134,6 +134,7 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .ax-mode { margin: 16px 20px 0; padding: 10px 12px; border-radius: var(--radius); font-size: 13px; line-height: 1.5; }
 .ax-mode-test { background: var(--warning-soft); color: var(--warning); }
 .ax-mode-manual { background: var(--secondary); color: var(--secondary-foreground); }
+.ax-mode-cashfree { background: #ecfdf3; color: #067647; }
 @media (max-width: 820px) {
   .ax-settings { grid-template-columns: 1fr; gap: 14px; }
   .ax-subtabs { position: static; flex-direction: row; overflow-x: auto; gap: 6px; }
@@ -147,6 +148,7 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .ax-hours-choice small a { color: var(--primary); }
 [data-custom-hours] > .ax-hours { padding: 4px 20px 4px; }
 [data-custom-hours][hidden] { display: none; }
+[data-attend-show][hidden], [data-pay-show][hidden] { display: none; }
 
 .ax-tabs { margin-top: 18px; display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
 .ax-tabs a {
@@ -182,8 +184,12 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .ax-upload label.ax-btn { position: relative; }
 
 .ax-questions { padding: 16px 20px 4px; display: grid; gap: 8px; }
-.ax-question { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.6fr) auto; gap: 8px; align-items: center; }
+.ax-question { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.6fr) auto auto; gap: 8px; align-items: center; }
 .ax-question[hidden] { display: none; }
+.ax-q-remove { width: 28px; height: 28px; border: none; border-radius: 6px; background: none; color: var(--muted-foreground); font-size: 18px; line-height: 1; cursor: pointer; }
+.ax-q-remove:hover { background: var(--muted); color: var(--foreground); }
+.ax-q-add { justify-self: start; }
+.ax-q-add[hidden] { display: none; }
 .ax-question .ax-q-options[hidden] { visibility: hidden; display: block; }
 
 .ax-savebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 20px; }
@@ -211,3 +217,16 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
   .ax-question .ax-q-options[hidden] { display: none; }
   .ax-panel-head, .ax-new, .ax-savebar { padding-left: 16px; padding-right: 16px; }
 }
+
+/* Description fields with a formatting toolbar (partials/ax-rich-field). */
+.ax-rte { border: 1px solid var(--border); border-radius: calc(var(--radius) - 4px); background: var(--background); overflow: hidden; }
+.ax-rte:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent); }
+.ax-rte-toolbar { display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--border); background: var(--card); }
+.ax-rte-toolbar button {
+  min-width: 28px; height: 28px; padding: 0 6px; border: none; border-radius: 6px; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: inherit; font-size: 13px; font-weight: 700; color: var(--muted-foreground);
+}
+.ax-rte-toolbar button:hover, .ax-rte-toolbar button:focus-visible { background: var(--muted); color: var(--foreground); outline: none; }
+.ax-rte-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
+.ax-rte textarea.ax-input, .ax-rte textarea.ax-input:focus { border: none; border-radius: 0; box-shadow: none; min-height: 120px; }

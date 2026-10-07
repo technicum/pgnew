@@ -16,8 +16,7 @@
       <label class="ax-field"><span>Date</span><input class="ax-input" type="date" name="date" value="<%= event.date %>" required /></label>
       <label class="ax-field"><span>Starts (IST)</span><input class="ax-input" type="time" name="start_time" value="<%= event.start_time %>" required /></label>
       <label class="ax-field"><span>Ends <small>(optional)</small></span><input class="ax-input" type="time" name="end_time" value="<%= event.end_time %>" /></label>
-      <label class="ax-field ax-span-3"><span>Description</span><textarea class="ax-input" name="description" rows="5" maxlength="2000" placeholder="What happens, who it’s for, what to bring…"><%= event.description %></textarea>
-        <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
+      <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: event.description, rows: 6, maxlength: 2000, placeholder: 'What happens, who it’s for, what to bring…' }) %>
       <label class="ax-field"><span>Where</span>
         <select class="ax-input" name="mode">
           <option value="online"<%= event.mode === 'online' ? ' selected' : '' %>>Online</option>
@@ -32,6 +31,7 @@
 
   <section class="ax-panel ax-savebar">
     <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= event.visible ? ' checked' : '' %> /> <span>Page is live</span></label>
+    <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= event.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find this event</small></span></label>
     <button class="ax-btn ax-btn-primary">Save changes</button>
   </section>
 </form>

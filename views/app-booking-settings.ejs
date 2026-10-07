@@ -72,8 +72,7 @@ var sections = [
         </div>
         <div class="ax-grid">
           <label class="ax-field ax-span-3"><span>Headline</span><input class="ax-input" name="headline" value="<%= s.headline %>" maxlength="120" placeholder="Book time with <%= user.name %>" /></label>
-          <label class="ax-field ax-span-3"><span>Intro</span><textarea class="ax-input" name="intro" rows="3" maxlength="1000" placeholder="Who you help and what a session gets them. Blank shows your store bio."><%= s.intro %></textarea>
-            <small>**bold**, *italic*, “- ” for bullets and [text](https://…) for links.</small></label>
+          <%- include('partials/ax-rich-field', { name: 'intro', label: 'Intro', value: s.intro, rows: 4, maxlength: 1000, placeholder: 'Who you help and what a session gets them. Blank shows your store bio.' }) %>
           <%- include('partials/ax-image-field', { name: 'photo_url', label: 'Your photo', value: s.photo_url, hint: 'Also used on any service without its own photo.', round: true }) %>
           <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: s.cover_url, hint: 'About 1500 × 700. Also the default for services.' }) %>
         </div>
@@ -91,11 +90,12 @@ var sections = [
         <div class="ax-panel-head"><h2>Payments</h2><span class="ax-count">For paid services</span></div>
         <div class="ax-mode ax-mode-<%= paymentMode %>">
           <% if (paymentMode === 'test') { %><b>Test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged. Unpaid holds free up after 30 minutes.
+          <% } else if (paymentMode === 'cashfree') { %><b>Cashfree</b> — bookers pay online (UPI, cards, net banking) and their booking confirms itself. Unpaid holds free up after 30 minutes.
           <% } else { %><b>Manual payments</b> — a paid booking holds its slot as “awaiting payment” until you mark it paid under Upcoming bookings (or in Orders).<% } %>
         </div>
         <div class="ax-grid">
           <label class="ax-field ax-span-3"><span>How to pay you</span><textarea class="ax-input" name="payment_note" rows="4" maxlength="500" placeholder="UPI: yourname@okbank — or bank transfer to A/C 1234567890, IFSC ABCD0001234"><%= s.payment_note %></textarea>
-            <small>Shown to bookers while their paid booking waits for payment<%= paymentMode === 'test' ? ' (once you’re out of test mode)' : '' %>.</small></label>
+            <small>Shown to bookers while their paid booking waits for payment<%= paymentMode === 'test' ? ' (once you’re out of test mode)' : (paymentMode === 'cashfree' ? ' (only if online payments are switched off)' : '') %>.</small></label>
         </div>
         <div class="ax-savebar ax-savebar-in">
           <span class="ax-sub">Shown on paid bookings straight away.</span>

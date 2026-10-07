@@ -20,7 +20,7 @@
           <a href="/book/<%= s.slug %>" class="bk-service">
             <span class="bk-service-main">
               <b><%= s.title %></b>
-              <span class="bk-service-meta"><%= s.duration_min %> min<%= s.location ? ' · ' + s.location : '' %></span>
+              <span class="bk-service-meta"><%= s.duration_min %> min<%= s.attend ? ' · ' + s.attendLabel : (s.location ? ' · ' + s.location : '') %><%= s.payNow && s.payNow < s.price ? ' · ' + s.payNowLabel + ' advance' : (s.price && !s.payNow ? ' · pay at appointment' : '') %></span>
               <% if (s.summary) { %><span class="bk-service-desc"><%= s.summary %></span><% } %>
             </span>
             <span class="bk-service-side">

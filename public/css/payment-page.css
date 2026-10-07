@@ -531,6 +531,8 @@ html:not(.js) .cx-product .qty .n { border: 1.5px solid var(--line); background:
 }
 .pp-checkout .pp-summary { margin-bottom: 10px; }
 .pp-checkout-actions { margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.pp-checkout-actions form { margin: 0; }
+.pp-gateway-error { color: #b42318; }
 .pp-link-btn {
   border: 0;
   background: none;

@@ -7,7 +7,8 @@ function bookingRow(b, past) { %>
     <li class="ax-row<%= b.status === 'cancelled' ? ' is-off' : '' %>">
       <div class="ax-when"><b><%= fmt.date(b.date) %></b><span><%= fmt.time(b.start_time) %><%= past ? '' : ' – ' + fmt.time(b.end_time) %></span></div>
       <div class="ax-main">
-        <b><%= b.name %></b> <span class="ax-sub">· <%= b.service_title %><%= b.amount ? ' · ' + b.amountLabel : '' %></span>
+        <b><%= b.name %></b> <span class="ax-sub">· <%= b.service_title %><%= b.amount ? ' · ' + b.amountLabel : '' %><%= b.attendLabel ? ' · ' + b.attendLabel : '' %></span>
+        <% if (b.due_later && b.status !== 'cancelled') { %><span class="ax-sub ax-block"><b><%= b.dueLaterLabel %></b> to collect at the appointment<%= b.payNowLabel ? ' (' + b.payNowLabel + ' advance ' + (b.status === 'confirmed' ? 'paid' : 'pending') + ')' : '' %></span><% } %>
         <span class="ax-sub ax-block"><a href="mailto:<%= b.email %>"><%= b.email %></a><%= b.phone ? ' · ' + b.phone : '' %></span>
         <% if (!past) { b.answers.filter(function (a) { return a.value; }).forEach(function (a) { %><span class="ax-answer"><span><%= a.label %>:</span> <%= a.value %></span><% }); } %>
         <% if (b.note && !past) { %><span class="ax-quote">“<%= b.note %>”</span><% } %>

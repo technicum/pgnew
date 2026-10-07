@@ -12,6 +12,7 @@
   <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxMjYxZWYiLz4KICA8cGF0aCBkPSJNMzYgOCAxNCAzNWgxNWwtMiAyMSAyMy0zMEgzNWwxLTE4WiIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4=" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>">
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{--paper:#fbfaf6;--ink:#111827;--blue:#1261ef;--navy:#07134f;--lime:#b9ed28;--coral:#ff6c62;--muted:#667085;--line:#dce2ec;--surface:#fff;--pale:#e8f3ff;--shadow:0 22px 60px #1224551c}
@@ -28,10 +29,10 @@
   <div class="announcement">✦ Launch your creator business in minutes <a href="/signup">Start free →</a></div>
   <header class="nav">
     <a class="brand" href="#top"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
-    <nav class="navlinks" aria-label="Main navigation"><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
+    <nav class="navlinks" aria-label="Main navigation"><a href="/explore">Explore</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
     <div class="actions"><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free →</a></div>
     <button class="menu" type="button" aria-label="Toggle menu" aria-expanded="false">☰</button>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a class="btn btn-blue" href="/signup">Start for free</a></nav>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="/explore">Explore</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a class="btn btn-blue" href="/signup">Start for free</a></nav>
   </header>
 
   <main>
@@ -41,6 +42,15 @@
       <div class="stage"><div class="browser">pagezaper.com/arjuncreates</div><div class="dashboard"><div class="dashhead"><div><span>Good morning, Arjun</span><strong>Your business is growing.</strong></div><div class="avatar">AC</div></div><div class="stats"><div class="stat"><small>PAGE VIEWS</small><strong>24.8K</strong><i>↗ 18.4%</i></div><div class="stat"><small>SALES</small><strong>₹48,290</strong><i>↗ 24.1%</i></div><div class="stat"><small>NEW LEADS</small><strong>1,284</strong><i>↗ 12.8%</i></div></div><div class="chart"><label>Revenue</label><div class="bars"><i style="height:28%"></i><i style="height:46%"></i><i style="height:38%"></i><i style="height:66%"></i><i style="height:54%"></i><i style="height:76%"></i><i style="height:62%"></i><i style="height:88%"></i><i style="height:72%"></i><i style="height:96%"></i></div></div></div><div class="sale"><b>🟢 New sale!</b>The Creator Playbook · ₹999</div></div>
     </section>
     <div class="proof"><small>EVERYTHING YOUR CREATOR BUSINESS NEEDS</small><div><span>NO-CODE SETUP</span><span>INSTANT PAYOUTS</span><span>SMART AUTOMATION</span><span>BEAUTIFUL STOREFRONTS</span></div></div>
+
+    <%# Marketplace (lib/marketplace.js): search goes to /explore; the newest listings below it. %>
+    <section class="content wrap" id="explore"><div class="heading"><span class="kicker">Marketplace</span><h2>Find something<br><em>worth your time.</em></h2><p>Courses, sessions, events and products from creators, coaches, doctors and studios on <%= siteName %>.</p></div>
+      <form class="mk-search" method="GET" action="/explore" role="search"><input type="search" name="q" placeholder="Try “yoga”, “dentist Indore”, “Excel course”…" aria-label="Search the marketplace"><button type="submit">Search</button></form>
+      <% if (featured.length) { %>
+      <div class="mk-grid" style="margin-top:28px;"><% featured.forEach(function (item) { %><%- include('partials/market-card', { item: item }) %><% }) %></div>
+      <p style="margin-top:22px;"><a class="btn btn-blue" href="/explore">See everything →</a></p>
+      <% } %>
+    </section>
 
     <section class="content wrap" id="tools"><div class="heading"><span class="kicker">Grow your reach</span><h2>From follower to fan,<br><em>without the friction.</em></h2><p>Simple tools that help more people discover you—and give them a reason to stay.</p></div><div class="feature-grid">
       <article class="card"><div class="visual"><div class="mock"><small>AUTOMATIC REPLY</small><b>“Here’s the guide you asked for.”</b><span>✓ Triggered from a comment</span><div class="fake-btn">Send instantly →</div></div></div><div class="copy"><small>AUTODM</small><h3>Turn comments into conversations</h3><p>Send the right link, resource, or offer instantly when someone comments on your content.</p><a href="/signup">Explore AutoDM →</a></div></article>

@@ -127,6 +127,12 @@
                   <label for="ppSuccessMessage" class="pb-label">Thank-you message <span class="pz-option-hint">(optional — shown on the receipt)</span></label>
                   <textarea id="ppSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default."></textarea>
                 </div>
+                <div class="pb-option">
+                  <label class="pb-label" style="display:flex; gap:8px; align-items:flex-start; font-weight:600;">
+                    <input type="checkbox" id="ppMarketplace" style="margin-top:3px;" />
+                    <span>List on the <%= siteName %> marketplace <span class="pz-option-hint">— people browsing <a href="/explore" target="_blank" rel="noopener" style="text-decoration:underline;">Explore</a> can find this page</span></span>
+                  </label>
+                </div>
                 <!-- Only while editing: new pages get a link from their headline. -->
                 <div class="pb-option" id="ppSlugRow" hidden>
                   <label for="ppSlug" class="pb-label">Link</label>
