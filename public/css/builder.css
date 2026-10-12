@@ -197,46 +197,16 @@ body.pz-modal-open { overflow: hidden; }
   border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px;
 }
 
-.pz-phone {
-  background: var(--sidebar); border-radius: 28px; padding: 10px; position: relative;
-}
-.pz-phone-topicons { position: absolute; top: 22px; right: 22px; display: flex; gap: 6px; z-index: 2; }
-.pz-phone-topicons span {
-  width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.14);
-  display: flex; align-items: center; justify-content: center; color: #fff;
-}
-.pz-phone-topicons svg { width: 13px; height: 13px; }
-.pz-phone-screen {
-  background: var(--background); border-radius: 20px; overflow: hidden;
-  min-height: 480px; max-height: 620px; overflow-y: auto;
-}
-.pz-phone-header { padding: 26px 20px 18px; text-align: center; border-bottom: 1px solid var(--border); background: var(--card); }
-.pz-phone-avatar {
-  width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 12px;
-  background: var(--preview-accent, var(--accent)); color: var(--accent-foreground);
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-weight: 600; font-size: 20px;
-}
-.pz-phone-name { font-family: var(--font-display); font-weight: 600; font-size: 16px; margin-bottom: 4px; }
-.pz-phone-bio { font-size: 12px; color: var(--muted-foreground); max-width: 250px; margin: 0 auto; }
-.pz-phone-blocks { padding: 16px; display: flex; flex-direction: column; gap: 9px; }
-.pz-phone-block {
-  display: flex; justify-content: space-between; align-items: center; gap: 10px;
-  padding: 12px 13px; border: 1px solid var(--border); border-radius: calc(var(--radius) - 4px);
-  background: var(--card); font-size: 13px;
-}
-.pz-phone-block-title { font-weight: 600; font-size: 12.5px; }
-.pz-phone-block-sub { color: var(--muted-foreground); font-size: 10.5px; margin-top: 1px; }
-.pz-phone-block-price { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12px; white-space: nowrap; flex: none; }
-.pz-phone-empty { text-align: center; color: var(--muted-foreground); font-size: 12px; padding: 26px 18px; }
-.pz-phone-badge {
-  text-align: center; padding: 10px 16px 18px; font-size: 10.5px; color: var(--muted-foreground);
-}
-.pz-phone-badge span { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--foreground); }
-
 .pz-type-course   { background: var(--success-soft); color: var(--success); }
 .pz-type-booking  { background: var(--warning-soft);  color: var(--warning); }
 .pz-type-download { background: var(--muted);          color: var(--muted-foreground); }
 .pz-type-membership { background: var(--success-soft); color: var(--success); }
 .pz-type-link      { background: var(--muted);          color: var(--muted-foreground); }
 .pz-type-grow      { background: var(--secondary);      color: var(--secondary-foreground); }
+
+/* Fields on the left, the live store preview on the right (stacked on
+   narrower screens). */
+.pz-builder-grid { display: grid; gap: 24px; }
+@media (min-width: 1280px) {
+  .pz-builder-grid { grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr); align-items: start; }
+}

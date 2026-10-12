@@ -31,7 +31,6 @@
 
   const blocksList = document.getElementById('blocksList');
   const emptyBlocks = document.getElementById('emptyBlocks');
-  const previewBlocks = document.getElementById('previewBlocks');
   const saveStatus = document.getElementById('saveStatus');
   const saveStatusText = document.getElementById('saveStatusText');
 
@@ -167,22 +166,6 @@
       </div>`;
   }
 
-  function previewBlockHTML(block) {
-    const meta = TYPE_META[block.type];
-    const priceHTML = meta.hasPrice && block.price ? `<div class="pz-phone-block-price">${escapeHTML(block.price)}</div>` : '';
-    return `
-      <div class="pz-phone-block">
-        <div class="grid size-8 place-items-center rounded-md shrink-0 ${meta.cls}">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14">${meta.icon}</svg>
-        </div>
-        <div style="flex:1; min-width:0;">
-          <div class="pz-phone-block-title">${escapeHTML(block.title || 'Untitled')}</div>
-          ${block.sub ? `<div class="pz-phone-block-sub">${escapeHTML(block.sub)}</div>` : ''}
-        </div>
-        ${priceHTML}
-      </div>`;
-  }
-
   function closeAllKebabMenus() {
     document.querySelectorAll('.pz-kebab-menu.open').forEach((m) => m.classList.remove('open'));
   }
@@ -194,11 +177,11 @@
     attachBlockListeners();
   }
 
+  // The live preview (set up at the bottom): the real store page, redrawn
+  // a moment after each edit.
+  let refreshPreview = null;
   function renderPreviewOnly() {
-    const visible = blocks.filter((b) => b.visible);
-    previewBlocks.innerHTML = visible.length
-      ? visible.map(previewBlockHTML).join('')
-      : '<div class="pz-phone-empty">Add something and it’ll show up here.</div>';
+    if (refreshPreview) refreshPreview.soon();
   }
 
   function saveField(key, id, field, value) {
@@ -417,16 +400,14 @@
 
   // --- design tab -------------------------------------------------------
   const badgeToggle = document.getElementById('badgeToggle');
-  const previewBadge = document.getElementById('previewBadge');
   let currentAccent = window.__PZ_ACCENT__ || '#ff6b4a';
-  document.documentElement.style.setProperty('--preview-accent', currentAccent);
   document.querySelectorAll('.pz-swatch').forEach((btn) => {
     if (btn.dataset.color.toLowerCase() === currentAccent.toLowerCase()) btn.classList.add('active');
     btn.addEventListener('click', () => {
       document.querySelectorAll('.pz-swatch').forEach((s) => s.classList.remove('active'));
       btn.classList.add('active');
       currentAccent = btn.dataset.color;
-      document.documentElement.style.setProperty('--preview-accent', currentAccent);
+      renderPreviewOnly();
       api('/dashboard/builder/design', {
         method: 'POST',
         body: JSON.stringify({ accentColor: currentAccent, showBadge: badgeToggle.classList.contains('on') }),
@@ -435,13 +416,13 @@
   });
   badgeToggle.addEventListener('click', () => {
     const on = badgeToggle.classList.toggle('on');
-    previewBadge.style.display = on ? '' : 'none';
+    renderPreviewOnly();
     api('/dashboard/builder/design', {
       method: 'POST',
       body: JSON.stringify({ accentColor: currentAccent, showBadge: on }),
     }).catch(() => {
       badgeToggle.classList.toggle('on');
-      previewBadge.style.display = badgeToggle.classList.contains('on') ? '' : 'none';
+      renderPreviewOnly();
     });
   });
 
@@ -462,9 +443,6 @@
   const bio = document.getElementById('bio');
   const handle = document.getElementById('handle');
   const handleError = document.getElementById('handleError');
-  const previewName = document.getElementById('previewName');
-  const previewBio = document.getElementById('previewBio');
-  const previewInitials = document.getElementById('previewInitials');
   const avatarInitials = document.getElementById('avatarInitials');
   const switcherInitials = document.getElementById('switcherInitials');
   const switcherHandle = document.getElementById('switcherHandle');
@@ -497,15 +475,14 @@
   const debouncedProfileSave = debounce(() => saveProfile(), 700);
 
   displayName.addEventListener('input', () => {
-    previewName.textContent = displayName.value || 'Your name';
     const i = initials(displayName.value);
-    previewInitials.textContent = i;
     avatarInitials.textContent = i;
     switcherInitials.textContent = i;
+    renderPreviewOnly();
     debouncedProfileSave('profile');
   });
   bio.addEventListener('input', () => {
-    previewBio.textContent = bio.value;
+    renderPreviewOnly();
     debouncedProfileSave('profile');
   });
   handle.addEventListener('input', () => {
@@ -531,6 +508,23 @@
     if (unsavedCount() > 0 || pending > 0) { e.preventDefault(); e.returnValue = ''; }
   });
 
+  // --- live preview ------------------------------------------------------
+  // The store page itself (views/store.ejs), drawn by the server from
+  // what's on screen — saved or not (lib/livePreview.js,
+  // public/js/live-preview.js).
+  refreshPreview = window.livePreview(document.getElementById('storePreview'), () => ({
+    url: '/dashboard/builder/preview',
+    type: 'application/json',
+    body: JSON.stringify({
+      name: displayName.value,
+      bio: bio.value,
+      accent: currentAccent,
+      showBadge: badgeToggle.classList.contains('on'),
+      blocks: blocks.map((b) => ({ type: b.type, title: b.title, sub: b.sub, price: b.price, visible: b.visible })),
+    }),
+  }));
+
   render();
+  refreshPreview();
   paintSaveStatus();
 })();
