@@ -172,6 +172,11 @@ app.get('/', async (req, res, next) => {
   }
 });
 
+// About: what PageZaper is, who builds it, how to get in touch (views/about.ejs).
+app.get('/about', (req, res) => {
+  res.render('about', { title: `About — ${SITE_NAME}` });
+});
+
 // The marketplace (lib/marketplace.js): everything creators chose to list.
 app.get('/explore', async (req, res, next) => {
   try {

@@ -1,12 +1,43 @@
 /* The live preview (public/js/live-preview.js): the real public page in a
-   frame that fills the editor's device frame — the studio editors
-   (studio.css .st-screen) and the payment page builder (.pb-preview-screen).
-   Each update loads into a hidden frame that's swapped in once drawn. */
-.lp-box { position: relative; height: calc(100vh - 170px); min-height: 560px; background: #fff; }
-.lp-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
-.lp-frame.is-loading { visibility: hidden; }
-.lp-status { margin: -14px 0 14px; padding: 8px 12px; border-radius: 8px; background: #ffffff14; color: #ffffffb3; font-size: 12px; text-align: center; }
+   frame, in the editors' preview canvas — the studio editors (studio.css:
+   .st-canvas / .st-device / .st-screen) and the payment page builder
+   (payments-dashboard.css: .pb-canvas / .pb-preview-frame /
+   .pb-preview-screen). Loaded after those sheets.
+
+   The canvas is exactly the window's height and doesn't scroll itself:
+   the device fills what's left under the heading, and the page scrolls
+   inside it. Desktop draws the page at a real laptop width and scales it
+   down to fit (live-preview.js); Mobile is a phone at its real width. */
+
+/* --- the canvas: heading, status line, then the device, filling it --- */
+.st-canvas, .pb-canvas { display: flex; flex-direction: column; height: 100vh; overflow: hidden; padding: 18px 28px 24px; }
+.st-canvas-head, .pb-preview-head { flex: none; margin-bottom: 14px; }
+.st-canvas-head h2, .pb-preview-head h2 { font-size: 15px; }
+.st-canvas-head small, .pb-preview-head small { font-size: 11.5px; }
+.lp-status { flex: none; margin: 0 auto 12px; max-width: 640px; padding: 7px 12px; border-radius: 8px; background: #ffffff14; color: #ffffffb3; font-size: 12px; text-align: center; }
 .lp-status.is-bad { background: #fff3cd; color: #7a4d00; }
 .lp-status[hidden] { display: none; }
-.is-mobile .lp-box { height: min(780px, calc(100vh - 190px)); }
-@media (max-width: 980px) { .lp-box { height: 80vh; } }
+
+/* --- the device: browser window or phone --- */
+.st-device, .pb-preview-frame { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; margin: 0 auto; }
+.st-device.is-desktop, .pb-preview-frame.is-desktop { max-width: 1240px; }
+.st-device.is-mobile, .pb-preview-frame.is-mobile { max-width: 392px; max-height: 860px; }
+.st-chrome, .pb-preview-chrome { flex: none; }
+
+/* --- the screen the page is drawn in --- */
+.lp-box { position: relative; flex: 1; min-height: 0; height: auto; overflow: hidden; background: #fff; }
+.lp-frame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; background: #fff; transform-origin: 0 0; }
+.lp-frame.is-loading { visibility: hidden; }
+/* Until the first page arrives. */
+.lp-box:not(:has(.lp-frame:not(.is-loading)))::before {
+  content: 'Drawing your page…'; position: absolute; inset: 0; display: grid; place-items: center;
+  color: #98a2b3; font-size: 13px;
+}
+
+/* --- device switch: icons instead of emoji --- */
+.st-devices button svg, .pb-devices button svg { width: 15px; height: 15px; flex: none; }
+
+/* Narrow windows stack the fields over the preview: give it a screen's height. */
+@media (max-width: 980px) {
+  .st-canvas, .pb-canvas { height: 92vh; min-height: 560px; padding: 16px 12px 18px; }
+}

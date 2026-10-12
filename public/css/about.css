@@ -1,0 +1,58 @@
+/* About page (views/about.ejs). The header, hero, closing band and footer
+   come from explore.css (mk-*); this is what sits between them. Same
+   colours: blue #1261ef, navy #07134f, lime #b9ed28. */
+.ab-hero-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px; }
+.ab-ghost {
+  display: inline-block; padding: 13px 22px; border: 1px solid #ffffff59; border-radius: 999px;
+  color: #fff; font-weight: 800; text-decoration: none; transition: background .15s;
+}
+.ab-ghost:hover { background: #ffffff1a; }
+
+.ab-main { max-width: 1220px; width: calc(100% - 32px); margin: 0 auto; }
+.ab-section { padding: 84px 0 20px; }
+.ab-head { max-width: 680px; margin-bottom: 36px; }
+.ab-kicker { display: block; margin-bottom: 12px; color: var(--mk-blue); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.ab-section h2 { margin: 0 0 14px; font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(34px, 4.6vw, 54px); font-weight: 400; line-height: 1.02; }
+.ab-section h2 em { color: var(--mk-blue); }
+.ab-section p { margin: 0; color: var(--mk-soft); font-size: 16px; line-height: 1.65; }
+
+.ab-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.ab-card { padding: 26px; border: 1px solid var(--mk-line); border-radius: 20px; background: #fff; box-shadow: 0 14px 40px #0b1d4a0d; }
+.ab-card h3 { margin: 18px 0 8px; font-size: 18px; }
+.ab-card p { font-size: 14px; }
+.ab-icon { display: grid; place-items: center; flex: none; width: 46px; height: 46px; border-radius: 14px; background: #e8f0ff; color: var(--mk-blue); }
+
+.ab-founder {
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 40px; align-items: center;
+  margin: 70px 0 60px; padding: 48px; border-radius: 28px; background: #fff; border: 1px solid var(--mk-line);
+  box-shadow: 0 18px 50px #0b1d4a12; scroll-margin-top: 90px;
+}
+.ab-person { display: flex; gap: 22px; align-items: flex-start; }
+.ab-avatar {
+  flex: none; display: grid; place-items: center; width: 76px; height: 76px; border-radius: 22px;
+  background: linear-gradient(135deg, #1261ef, #07134f); color: #fff; font-size: 24px; font-weight: 800;
+  box-shadow: 0 12px 30px #1261ef40;
+}
+.ab-contact { display: grid; gap: 10px; }
+.ab-contact-row {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--mk-line); border-radius: 16px;
+  background: var(--mk-paper); color: var(--mk-ink); text-decoration: none; transition: border-color .15s, transform .15s;
+}
+.ab-contact-row:hover { border-color: var(--mk-blue); transform: translateY(-1px); }
+.ab-contact-row small { display: block; color: var(--mk-muted); font-size: 12px; font-weight: 700; }
+.ab-contact-row b { display: block; font-size: 15px; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .ab-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ab-founder { grid-template-columns: 1fr; padding: 32px; }
+}
+@media (max-width: 600px) {
+  .ab-section { padding-top: 60px; }
+  .ab-grid { grid-template-columns: 1fr; }
+  .ab-founder { margin: 50px 0 40px; padding: 24px 20px; border-radius: 22px; }
+  .ab-person { flex-direction: column; gap: 16px; }
+  .ab-avatar { width: 62px; height: 62px; font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ab-contact-row, .ab-ghost { transition: none; }
+}

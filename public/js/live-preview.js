@@ -23,6 +23,11 @@
   var SCROLL = '<script>(function(){var y=__Y__;addEventListener("load",function(){scrollTo(0,y);});'
     + 'addEventListener("scroll",function(){parent.postMessage({pvScroll:scrollY},"*");},{passive:true});})();<\/script>';
 
+  var DESKTOP_WIDTH = 1280;
+  // A slim scrollbar inside the preview, so it doesn't look like a second window.
+  var THIN = '<style>html{scrollbar-width:thin;scrollbar-color:#c8ccd4 transparent}'
+    + '::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:#c8ccd4;border-radius:8px}</style>';
+
   function livePreview(box, request) {
     var status = (box.closest('[data-live-wrap]') || document).querySelector('[data-live-status]');
     var current = null;
@@ -35,6 +40,22 @@
       status.hidden = !text;
     };
 
+    // Desktop: the page laid out at a laptop's width (DESKTOP_WIDTH), then
+    // scaled down to the screen it's shown in — what a buyer on a laptop
+    // sees, not a squeezed tablet layout. Mobile: the phone's real width.
+    function fit(frame) {
+      var w = box.clientWidth;
+      var h = box.clientHeight;
+      var mobile = !!box.closest('.is-mobile');
+      var scale = mobile || !w || w >= DESKTOP_WIDTH ? 1 : w / DESKTOP_WIDTH;
+      frame.style.width = scale < 1 ? DESKTOP_WIDTH + 'px' : '100%';
+      frame.style.height = scale < 1 ? (h / scale) + 'px' : '100%';
+      frame.style.transform = scale < 1 ? 'scale(' + scale + ')' : '';
+    }
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { box.querySelectorAll('iframe').forEach(fit); }).observe(box);
+    }
+
     function show(html) {
       var frame = document.createElement('iframe');
       frame.className = 'lp-frame is-loading';
@@ -46,7 +67,8 @@
         if (current && current !== frame) current.remove();
         current = frame;
       });
-      frame.srcdoc = html.replace(/<head>/i, function (m) { return m + SCROLL.replace('__Y__', String(Math.round(scrollY))); });
+      frame.srcdoc = html.replace(/<head>/i, function (m) { return m + SCROLL.replace('__Y__', String(Math.round(scrollY))) + THIN; });
+      fit(frame);
       box.appendChild(frame);
     }
 
