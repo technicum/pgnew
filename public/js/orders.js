@@ -66,10 +66,12 @@
   const pageKey = (o) => (pages.some((p) => p.id === o.page_id) ? `id:${o.page_id}` : `title:${o.page_title}`);
   function renderPageOptions() {
     const seen = new Map(pages.map((p) => [`id:${p.id}`, p.title]));
-    // Orders with no page at all are paid bookings (lib/bookings.js) —
-    // titled after their service, not a deleted page.
-    const isBooking = (o) => !o.page_id && o.items.some((i) => i.type === 'booking');
-    orders.forEach((o) => { if (!seen.has(pageKey(o))) seen.set(pageKey(o), isBooking(o) ? `${o.page_title} (booking)` : `${o.page_title} (deleted)`); });
+    // Orders with no page at all are paid bookings, courses and event
+    // tickets (lib/bookings.js, courses.js, events.js) — titled after what
+    // was bought, not a deleted page.
+    const APP_KIND = { booking: 'booking', course: 'course', event: 'event ticket' };
+    const appKind = (o) => !o.page_id && (o.items.find((i) => APP_KIND[i.type]) || {}).type;
+    orders.forEach((o) => { if (!seen.has(pageKey(o))) seen.set(pageKey(o), appKind(o) ? `${o.page_title} (${APP_KIND[appKind(o)]})` : `${o.page_title} (deleted)`); });
     pageFilter.innerHTML = '<option value="">All payment pages</option>'
       + [...seen].map(([key, title]) => `<option value="${escapeHTML(key)}">${escapeHTML(title)}</option>`).join('');
   }

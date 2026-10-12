@@ -1,13 +1,15 @@
-<%# Public event page (lib/appStorefront.js → /event/:slug): details and the RSVP form. An online event's link isn't shown here — only after registering (app-done.ejs). %>
+<%# Public event page (lib/appStorefront.js → /event/:slug): cover, details and the registration form. A free event registers straight away; a paid one holds a seat and goes to its ticket page to pay (app-event-pay). An online event's link isn't shown here — only after registering (app-done.ejs). %>
 <%- include('partials/app-public-top') %>
 
   <article class="lm-card">
+    <% if (event.cover_url) { %><div class="cr-cover"><img src="<%= event.cover_url %>" alt="" /></div><% } %>
     <div class="lm-card-body">
-      <span class="lm-kicker"><span class="dot"></span><%= event.mode === 'online' ? 'Online event' : 'Event' %></span>
+      <span class="lm-kicker"><span class="dot"></span><%= event.mode === 'online' ? 'Online event' : 'Event' %><%= event.price ? ' · ' + event.priceLabel : ' · Free' %></span>
       <h1><%= event.title %></h1>
       <dl class="ax-facts">
         <div><dt>When</dt><dd><%= when %></dd></div>
         <div><dt>Where</dt><dd><%= event.mode === 'online' ? 'Online — the link is shared once you register' : (event.location || 'Venue to be announced') %></dd></div>
+        <div><dt>Ticket</dt><dd><%= event.price ? event.priceLabel : 'Free' %></dd></div>
         <% if (event.capacity) { %><div><dt>Seats</dt><dd><%= seatsLeft > 0 ? seatsLeft + ' of ' + event.capacity + ' left' : 'Full' %></dd></div><% } %>
       </dl>
       <% if (event.description) { %><div class="lm-desc ax-rich"><%- descriptionHtml %></div><% } %>
@@ -32,7 +34,7 @@
           <label for="phone">Phone <span class="lm-opt">(optional)</span></label>
           <input type="tel" id="phone" name="phone" value="<%= values.phone || '' %>" autocomplete="tel" />
         </div>
-        <button type="submit" class="btn btn-primary">Register — it’s free</button>
+        <button type="submit" class="btn btn-primary"><%= event.price ? 'Get ticket · ' + event.priceLabel : 'Register — it’s free' %></button>
       </form>
       <% } %>
     </div>

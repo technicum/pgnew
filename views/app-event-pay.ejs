@@ -1,0 +1,51 @@
+<%# A paid event ticket waiting for payment (lib/appStorefront.js eventTicket → /event/:slug/ticket/:token): test button, Cashfree checkout (also its ?cf=return), or — manual mode — "pay the creator, they'll confirm". Paid, the same link is the ticket. %>
+<%- include('partials/app-public-top') %>
+
+  <article class="lm-card">
+    <% if (event.cover_url) { %><div class="cr-cover"><img src="<%= event.cover_url %>" alt="" /></div><% } %>
+    <div class="lm-card-body">
+      <% if (cancelled) { %>
+      <h1>This ticket was cancelled</h1>
+      <p class="lm-desc">Nothing was charged. You can start again whenever you’re ready.</p>
+      <a class="btn btn-primary" href="/event/<%= event.slug %>">Back to <%= event.title %></a>
+      <% } else { %>
+      <span class="lm-kicker"><span class="dot"></span>One step left</span>
+      <h1>Pay for your ticket</h1>
+      <dl class="ax-facts">
+        <div><dt>Event</dt><dd><%= event.title %> · by <%= owner.name %></dd></div>
+        <div><dt>When</dt><dd><%= when %></dd></div>
+        <div><dt>For</dt><dd><%= ticket.name %> · <%= ticket.email %></dd></div>
+        <div><dt>Ticket</dt><dd><%= amountLabel %></dd></div>
+      </dl>
+
+      <% if (paymentMode === 'test') { %>
+      <div class="bk-test"><b>Test mode</b> — no payment gateway is connected yet, so nothing is charged.</div>
+      <form method="POST" action="<%= base %>" class="bk-actions">
+        <button class="btn btn-primary" name="action" value="pay">Complete test payment · <%= amountLabel %></button>
+        <button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button>
+      </form>
+      <% } else if (paymentMode === 'cashfree') { %>
+      <% if (gatewayError || retry) { %><div class="bk-test" role="alert"><%= gatewayError || 'The payment didn’t go through and nothing was charged. You can try again.' %></div><% } %>
+      <p class="ax-note">You’ll pay securely on Cashfree — UPI, cards, net banking or wallets. Your ticket shows right after.</p>
+      <div class="bk-actions">
+        <% if (gateway) { %>
+        <button type="button" id="cfPay" class="btn btn-primary" data-session="<%= gateway.sessionId %>" data-env="<%= gateway.env %>" data-auto="<%= gateway.auto ? '1' : '' %>">Pay <%= amountLabel %></button>
+        <% } else { %>
+        <a class="btn btn-primary" href="<%= base %>">Try again</a>
+        <% } %>
+        <form method="POST" action="<%= base %>" style="display:contents"><button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button></form>
+      </div>
+      <% if (gateway) { %>
+      <% if (gateway.env === 'sandbox') { %><p class="ax-note">Cashfree sandbox: no real money moves.</p><% } %>
+      <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+      <script src="/js/cashfree-checkout.js?v=<%= assetVersion %>"></script>
+      <% } %>
+      <% } else { %>
+      <div class="bk-test">Pay <b><%= amountLabel %></b> to <%= owner.name %> the way they’ve shared with you (UPI or bank transfer). Your ticket is confirmed here as soon as they mark it paid.</div>
+      <% } %>
+      <p class="ax-note">Your seat is held for <%= holdMinutes %> minutes. Bookmark this page — it becomes your ticket once paid.</p>
+      <% } %>
+    </div>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

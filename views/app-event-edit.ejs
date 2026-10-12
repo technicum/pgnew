@@ -1,5 +1,5 @@
-<%# Edit one event (lib/appDashboard.js → /dashboard/events/:id) — a full-screen editor like the payment page builder (public/css/studio.css): three tabs on the left (Details: name, when, where, description; Attendees: who's going, cancel an RSVP; Settings: seats, link, visibility, delete), the event page's live preview on the right (partials/event-studio-preview).
-    Details and Settings are one form (the Save bar); "Save & publish" (on a hidden event) also turns it live. Cancelling an RSVP posts its own form (#rsvpCancel). %>
+<%# Edit one event (lib/appDashboard.js → /dashboard/events/:id) — a full-screen editor like the payment page builder (public/css/studio.css): three tabs on the left (Details: name, when, cover, tickets (free / paid), where, description; Attendees: who's going, paid / awaiting payment, mark paid (manual payments), cancel; Settings: seats, link, visibility, delete), the event page's live preview on the right (partials/event-studio-preview).
+    Details and Settings are one form (the Save bar); "Save & publish" (on a hidden event) also turns it live. An attendee's Mark paid / Cancel posts its own form (#rsvpAction). %>
 <%- include('partials/studio-head') %>
 <% var link = storeUrlFor(user.handle) + '/event/' + event.slug;
 var going = rsvps.filter(function (r) { return r.status === 'going'; });
@@ -33,7 +33,26 @@ var online = event.mode !== 'venue'; %>
                 <label class="ax-field"><span>Starts (IST)</span><input class="ax-input" type="time" name="start_time" value="<%= event.start_time %>" required /></label>
                 <label class="ax-field"><span>Ends <small>optional</small></span><input class="ax-input" type="time" name="end_time" value="<%= event.end_time %>" /></label>
               </div>
+              <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image <small>(optional)</small>', value: event.cover_url, hint: '1500 × 700 works well — a poster, the venue, or you on stage.' }) %>
             </div>
+          </section>
+
+          <%# Tickets — pricing (free / paid) and price in rupees (lib/events.js eventFields: Free saves 0). %>
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Tickets</h2></div>
+            <div class="st-cards">
+              <label class="st-card"><input type="radio" name="pricing" value="free"<%= event.price ? '' : ' checked' %> /><span class="st-card-ico">🎟️</span><span><b>Free</b><small>People register with their name and email</small></span></label>
+              <label class="st-card"><input type="radio" name="pricing" value="paid"<%= event.price ? ' checked' : '' %> /><span class="st-card-ico">💳</span><span><b>Paid ticket</b><small>They pay to get their seat — and the join link</small></span></label>
+            </div>
+            <div class="ax-grid" data-pricing-show="paid" style="margin-top:14px">
+              <label class="ax-field"><span>Ticket price</span><span class="st-affix"><i class="pre">₹</i><input class="ax-input has-pre" name="price" value="<%= event.price ? String(event.price / 100) : '' %>" inputmode="decimal" placeholder="499" /></span></label>
+            </div>
+            <p class="ax-hint" data-pricing-show="paid" style="margin-top:10px">
+              <% if (paymentMode === 'test') { %><b>Test mode</b> — buyers see a “Complete test payment” step and nothing is charged.
+              <% } else if (paymentMode === 'cashfree') { %><b>Collected online</b> — buyers pay through Cashfree and get their ticket straight away.
+              <% } else { %><b>Manual payments</b> — the seat is held while they pay you; mark it paid under Attendees.<% } %>
+              Unpaid seats are freed after 30 minutes.
+            </p>
           </section>
 
           <section class="ax-panel">
@@ -57,22 +76,31 @@ var online = event.mode !== 'venue'; %>
 
         <%# --- Attendees --- %>
         <div data-st-panel="attendees" id="attendees" hidden>
-          <div class="st-intro"><h2>Attendees</h2><p><%= going.length %><%= event.capacity ? ' of ' + event.capacity : '' %> going. Everyone who registers also lands in your Audience.</p></div>
+          <% var paidIn = going.reduce(function (sum, r) { return sum + (r.order_id ? r.amount : 0); }, 0); %>
+          <div class="st-intro"><h2>Attendees</h2><p><%= going.length %><%= event.capacity ? ' of ' + event.capacity : '' %> going<%= paidIn ? ' · ' + formatINR(paidIn) + ' in ticket sales' : '' %>. Everyone who registers also lands in your Audience.</p></div>
           <section class="ax-panel">
             <% if (!rsvps.length) { %>
-            <p class="ax-empty">No RSVPs yet. Share the link to get your first one.</p>
+            <p class="ax-empty">No one yet. Share the link to get your first <%= event.price ? 'ticket sale' : 'RSVP' %>.</p>
             <% } else { %>
             <ul class="ax-list">
-              <% rsvps.forEach(function (r) { var off = r.status !== 'going'; %>
-              <li class="ax-row<%= off ? ' is-off' : '' %>">
+              <% rsvps.forEach(function (r) { %>
+              <li class="ax-row<%= r.status === 'cancelled' ? ' is-off' : '' %>">
                 <div class="ax-main"><b><%= r.name %></b> <span class="ax-sub ax-block"><a href="mailto:<%= r.email %>"><%= r.email %></a><%= r.phone ? ' · ' + r.phone : '' %></span></div>
-                <% if (off) { %><span class="ax-pill">Cancelled</span><% } else { %>
-                <button class="ax-btn ax-btn-quiet" form="rsvpCancel" formaction="<%= base %>/rsvps/<%= r.id %>/cancel" data-confirm="Cancel RSVP?">Cancel</button>
+                <% if (r.status === 'cancelled') { %>
+                <span class="ax-pill">Cancelled</span>
+                <% } else if (r.status === 'pending') { %>
+                <span class="ax-pill ax-pill-warn">Awaiting <%= formatINR(r.amount) %></span>
+                <% if (paymentMode !== 'cashfree') { %><button class="ax-btn" form="rsvpAction" formaction="<%= base %>/rsvps/<%= r.id %>/paid" data-confirm="Paid? Confirm">Mark paid</button><% } %>
+                <button class="ax-btn ax-btn-quiet" form="rsvpAction" formaction="<%= base %>/rsvps/<%= r.id %>/cancel" data-confirm="Cancel it?">Cancel</button>
+                <% } else { %>
+                <% if (r.order_id) { %><span class="ax-pill">Paid <%= formatINR(r.amount) %></span><% } %>
+                <button class="ax-btn ax-btn-quiet" form="rsvpAction" formaction="<%= base %>/rsvps/<%= r.id %>/cancel" data-confirm="Cancel RSVP?">Cancel</button>
                 <% } %>
               </li>
               <% }) %>
             </ul>
             <% } %>
+            <% if (going.some(function (r) { return r.order_id; })) { %><p class="ax-hint" style="margin-top:10px">Cancelling a paid ticket here doesn’t refund it — refund them yourself, then cancel.</p><% } %>
           </section>
         </div>
 
@@ -123,7 +151,7 @@ var online = event.mode !== 'venue'; %>
       </div>
     </form>
     <form id="deleteEvent" method="POST" action="<%= base %>/delete" hidden></form>
-    <form id="rsvpCancel" method="POST" hidden></form>
+    <form id="rsvpAction" method="POST" hidden></form>
   </aside>
 
   <main class="st-canvas">
@@ -157,6 +185,13 @@ var online = event.mode !== 'venue'; %>
         input.placeholder = online ? 'https://meet.google.com/…' : 'Studio 4, 12 MG Road, Bengaluru';
       });
     });
+    // Tickets: the price only shows for a paid ticket.
+    var syncPricing = function () {
+      var picked = (document.querySelector('input[name="pricing"]:checked') || {}).value;
+      document.querySelectorAll('[data-pricing-show]').forEach(function (el) { el.hidden = el.getAttribute('data-pricing-show') !== picked; });
+    };
+    document.querySelectorAll('input[name="pricing"]').forEach(function (r) { r.addEventListener('change', syncPricing); });
+    syncPricing();
     // A brand-new event starts on its name.
     var name = document.querySelector('[data-st-name]');
     if (name && name.value === 'Untitled event') { name.focus(); name.select(); }

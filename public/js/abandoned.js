@@ -23,7 +23,7 @@
 
   const DEFAULT_TEMPLATE = 'Hi {name}, this is {store} 👋\n\nI noticed you were checking out {items} ({total}) but didn’t finish. Any questions I can help with?\n\n{coupon}You can pick up where you left off here: {link}';
   const DEFAULT_SUBJECT = 'Still thinking about {items}?';
-  const KIND = { page: 'Payment page', course: 'Course', booking: 'Booking', order: 'Order' };
+  const KIND = { page: 'Payment page', course: 'Course', booking: 'Booking', event: 'Event ticket', order: 'Order' };
   const STAGE = { details: 'Left at checkout', payment: 'Left at payment', cancelled: 'Cancelled payment' };
 
   const store = (key, value) => {

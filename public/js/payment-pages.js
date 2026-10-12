@@ -814,13 +814,29 @@
     showTab('page');
   }
 
-  // The builder stays hidden until a page is being created or edited.
+  // The builder stays hidden until a page is being created or edited; open,
+  // it covers the screen (the page behind doesn't scroll).
   const builderSection = $('builderSection');
   function openBuilder() {
     builderSection.hidden = false;
-    builderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.body.classList.add('pb-studio-open');
+    builderSection.querySelector('.pb-studio-scroll').scrollTop = 0;
     titleInput.focus({ preventScroll: true });
   }
+
+  // Preview size: Desktop / Mobile, remembered in this browser (best-effort).
+  const viewButtons = [...document.querySelectorAll('[data-pb-view]')];
+  function showView(view) {
+    view = view === 'mobile' ? 'mobile' : 'desktop';
+    previewFrame.classList.toggle('is-mobile', view === 'mobile');
+    previewFrame.classList.toggle('is-desktop', view !== 'mobile');
+    viewButtons.forEach((b) => b.setAttribute('aria-pressed', b.dataset.pbView === view ? 'true' : 'false'));
+    try { localStorage.setItem('pz-studio-view', view); } catch (err) { /* storage off */ }
+  }
+  viewButtons.forEach((b) => b.addEventListener('click', () => showView(b.dataset.pbView)));
+  let savedView = null;
+  try { savedView = localStorage.getItem('pz-studio-view'); } catch (err) { /* storage off */ }
+  showView(savedView || (window.innerWidth < 700 ? 'mobile' : 'desktop'));
 
   function startEdit(id) {
     const page = pages.find((p) => p.id === id);
@@ -842,6 +858,7 @@
     editingId = null;
     loadIntoBuilder(null);
     builderSection.hidden = true;
+    document.body.classList.remove('pb-studio-open');
     if (wasEditing) renderPages();
   }
   $('builderCancelBtn').addEventListener('click', resetBuilder);

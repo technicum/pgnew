@@ -49,16 +49,20 @@
 
       <%- include('partials/payment-mode-note', { paymentMode: paymentMode }) %>
 
-      <!-- Builder: hidden until "Create payment page" (after the type popup) or a page's Edit -->
-      <section class="pb-grid" id="builderSection" hidden>
-        <div class="pb-form rounded-lg border border-border bg-card shadow-sm">
+      <!-- Builder: a full-screen editor (fields left, live preview right — the
+           same layout as the event / course / booking editors), hidden until
+           "Create payment page" (after the type popup) or a page's Edit. -->
+      <section class="pb-studio" id="builderSection" role="dialog" aria-modal="true" aria-labelledby="builderHeading" hidden>
+        <div class="pb-form">
           <div class="pb-builder-top">
-            <button type="button" class="pb-back" id="builderBackBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-              All payment pages
+            <button type="button" class="pb-back" id="builderBackBtn" aria-label="Close editor" title="Back to your payment pages">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
+            <div class="pb-builder-title">
+              <h2 id="builderHeading">Create a payment page</h2>
+              <small>Payment page · changes show in the preview</small>
+            </div>
           </div>
-          <h2 class="text-lg font-bold" id="builderHeading">Create a payment page</h2>
 
           <div class="pb-tabs" role="tablist">
             <button type="button" class="pb-tab active" data-tab="page" role="tab">
@@ -77,6 +81,7 @@
           </div>
 
           <form id="pageForm" novalidate>
+            <div class="pb-studio-scroll">
             <!-- Details tab. On a single-product or coffee page the product's own
                  settings (type, price, delivery, media) render into #soloProduct. -->
             <div class="pb-panel active" id="tab-page">
@@ -215,24 +220,32 @@
               </div>
             </div>
 
+            </div>
+
+            <!-- Save bar: stays at the bottom of the panel while the fields scroll. -->
             <div class="pb-actions">
-              <button type="submit" class="pb-primary">
-                <svg id="builderSubmitIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
-                <span id="builderSubmitLabel">Create payment page</span>
-              </button>
-              <button type="button" class="pz-card-btn" id="builderCancelBtn" style="height:40px; padding:0 14px; font-size:13.5px;">Cancel</button>
+              <p class="pz-field-error" id="pageFormError" role="alert"></p>
+              <div class="pb-actions-row">
+                <button type="button" class="pz-card-btn" id="builderCancelBtn">Cancel</button>
+                <button type="submit" class="pb-primary">
+                  <svg id="builderSubmitIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                  <span id="builderSubmitLabel">Create payment page</span>
+                </button>
+              </div>
             </div>
           </form>
-          <p class="pz-field-error" id="pageFormError"></p>
         </div>
 
-        <!-- Live preview: what buyers will see -->
-        <div>
+        <!-- Live preview: what buyers will see, as a desktop browser or a phone -->
+        <div class="pb-canvas">
           <div class="pb-preview-head">
-            <h2>Live preview</h2>
-            <span>What buyers will see</span>
+            <h2>Preview<small>What buyers see — updates as you type</small></h2>
+            <div class="pb-devices" role="group" aria-label="Preview size">
+              <button type="button" data-pb-view="desktop" aria-pressed="true">🖥 Desktop</button>
+              <button type="button" data-pb-view="mobile" aria-pressed="false">📱 Mobile</button>
+            </div>
           </div>
-          <div class="pb-preview-frame" id="ppPreviewFrame">
+          <div class="pb-preview-frame is-desktop" id="ppPreviewFrame">
             <div class="pb-preview-chrome">
               <span></span><span></span><span></span>
               <span class="pb-preview-url" id="ppPreviewUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/…</span>
