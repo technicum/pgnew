@@ -9,6 +9,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
+<%# The live preview's canvas and device frame (studio.css), the real page in it (live-preview.css). %>
+<link rel="stylesheet" href="/css/studio.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/live-preview.css?v=<%= assetVersion %>" />
 </head>
 <body>
 <div class="min-h-screen bg-background">
@@ -29,7 +32,7 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+    <div class="mx-auto max-w-[1500px] px-4 py-7 md:px-8 md:py-9">
 
       <section class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -191,59 +194,21 @@
           <p class="pz-field-error" id="createFormError"></p>
         </div>
 
+        <%# Live preview: the real lead magnet page (views/lead-magnet.ejs), drawn by the
+            server from what's in the builder now — lib/livePreview.js, public/js/live-preview.js. %>
         <div class="pz-builder-preview">
-          <div style="position:sticky; top:104px;">
-            <div class="flex items-center justify-between" style="margin-bottom:14px;">
-              <h2 class="text-sm font-bold">Live preview</h2>
-              <span class="text-xs text-muted-foreground" style="font-variant-numeric:tabular-nums;">What visitors will see</span>
+          <div class="st-canvas is-docked">
+            <div class="st-canvas-head">
+              <h2>Preview<small>The real page visitors see — updates as you type</small></h2>
+              <div class="st-devices" role="group" aria-label="Preview size">
+                <button type="button" data-st-view="desktop" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>Desktop</button>
+                <button type="button" data-st-view="mobile" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>Mobile</button>
+              </div>
             </div>
-            <div class="pz-magnet-preview-frame">
-              <div class="pz-magnet-preview-chrome">
-                <span></span><span></span><span></span>
-                <span class="pz-magnet-preview-url" id="previewSlugUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/…</span>
-              </div>
-              <div class="pz-magnet-preview-screen">
-                <%# Mirrors views/lead-magnet.ejs: brand over the accent backdrop,
-                    then one card — cover banner, title, labelled fields, button. %>
-                <div class="pz-magnet-preview-visual">
-                  <div class="pz-magnet-preview-brand" id="previewBrand" data-site-name="<%= siteName %>"><!-- set by lead-magnets.js --></div>
-                  <div class="pz-magnet-preview-card">
-                    <div class="pz-magnet-preview-cover" id="previewCover" aria-hidden="true">
-                      <img id="previewCoverImage" alt="" style="display:none;" />
-                      <video id="previewCoverVideo" muted loop autoplay playsinline style="display:none;"></video>
-                      <svg id="previewCoverArt" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M-40 60 C 140 230, 380 200, 640 -20 L 640 -40 L -40 -40 Z" fill="rgba(4,8,30,.86)"/>
-                        <path d="M-40 80 C 140 250, 390 215, 640 0 L 640 40 C 400 250, 120 290, -40 140 Z" fill="#fff" fill-opacity=".28"/>
-                        <path d="M-40 150 C 160 280, 420 250, 640 70 L 640 130 C 430 290, 170 300, -40 215 Z" fill="#fff" fill-opacity=".16"/>
-                        <path d="M70 215 C 100 130, 160 70, 240 30" stroke="#fff" stroke-opacity=".38" stroke-width="22" stroke-linecap="round" fill="none"/>
-                      </svg>
-                      <!-- On the cover, like the public page; plain text above the form when the cover is off (.is-off). -->
-                      <div class="pz-magnet-preview-head">
-                        <span class="pz-magnet-preview-kicker"><span></span>Free download</span>
-                        <h3 id="previewTitle">Your lead magnet title</h3>
-                        <p id="previewDesc">A line about what someone gets when they sign up.</p>
-                      </div>
-                    </div>
-                    <div class="pz-magnet-preview-form">
-                      <div class="pz-magnet-preview-field" id="previewNameField">
-                        <span class="pz-magnet-preview-field-label">What's your name?<i>*</i></span>
-                        <div class="pz-magnet-preview-input">Full name</div>
-                      </div>
-                      <div class="pz-magnet-preview-field" id="previewEmailField">
-                        <span class="pz-magnet-preview-field-label">Your email<i>*</i></span>
-                        <div class="pz-magnet-preview-input">you@example.com</div>
-                      </div>
-                      <div class="pz-magnet-preview-field" id="previewPhoneField">
-                        <span class="pz-magnet-preview-field-label">Your phone number <span id="previewPhoneOptional">(optional)</span></span>
-                        <div class="pz-magnet-preview-input">Phone number</div>
-                      </div>
-                      <div id="previewExtraFields"><!-- injected --></div>
-                      <div class="pz-magnet-preview-btn" id="previewCta">Get it free</div>
-                    </div>
-                    <div class="pz-magnet-preview-foot">By continuing, you agree to receive updates.</div>
-                  </div>
-                </div>
-              </div>
+            <p class="lp-status" data-live-status hidden></p>
+            <div class="st-device is-mobile" data-st-device>
+              <div class="st-chrome"><i></i><i></i><i></i><span class="st-url" id="previewSlugUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/…</span></div>
+              <div class="st-screen lp-box" id="magnetPreview"></div>
             </div>
           </div>
         </div>
@@ -293,6 +258,8 @@
   window.__PZ_INITIAL_MAGNETS__ = <%- JSON.stringify(magnets).replace(/</g, '\\u003c') %>;
   window.__PZ_STORE_URL__ = <%- JSON.stringify(storeUrlFor(user.handle)) %>;
 </script>
+<script src="/js/live-preview.js?v=<%= assetVersion %>"></script>
+<script src="/js/studio.js?v=<%= assetVersion %>"></script>
 <script src="/js/lead-magnets.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

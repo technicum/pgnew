@@ -128,198 +128,30 @@ a.pz-copy-btn { display: inline-flex; align-items: center; }
 
 .pz-builder {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.85fr);
+  /* Fields, and the live preview (the real page, live-preview.css) beside them. */
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 1fr);
   gap: 20px;
   align-items: start;
   /* Edit scrolls the builder into view — keep it clear of the sticky header. */
   scroll-margin-top: 100px;
 }
-@media (max-width: 860px) {
+@media (max-width: 1100px) {
   .pz-builder { grid-template-columns: 1fr; }
 }
 
 .pz-builder-option label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 600; }
 
-.pz-magnet-preview-frame {
-  background: var(--sidebar);
-  border-radius: 22px;
-  padding: 9px;
-}
-
-.pz-magnet-preview-chrome {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 9px 12px 10px;
-}
-.pz-magnet-preview-chrome span:not(.pz-magnet-preview-url) {
-  width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.28); flex: none;
-}
-.pz-magnet-preview-url {
-  margin-left: 8px;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10.5px;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255,255,255,.55);
-}
-
-.pz-magnet-preview-screen {
-  background: var(--background);
-  border-radius: 15px;
-  overflow: hidden;
-  max-height: 640px;
-  overflow-y: auto;
-}
-
 /* Mirrors views/lead-magnet.ejs: the accent backdrop fading to paper,
    brand on top, then one card — cover banner, title, labelled fields. */
-.pz-magnet-preview-visual {
-  padding: 16px 14px 20px;
-  background:
-    linear-gradient(180deg, var(--sidebar) 0, var(--pv-accent-dark, #0a2f9e) 60px, color-mix(in srgb, var(--pv-accent-dark, #0a2f9e) 25%, var(--background)) 150px, var(--background) 230px);
-  background-repeat: no-repeat;
-  transition: background .2s ease;
-}
 
-.pz-magnet-preview-brand {
-  display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 22px; margin-bottom: 12px;
-  font-family: var(--font-display); font-weight: 700; font-size: 13px; color: #fff;
-  word-break: break-word;
-}
-.pz-magnet-preview-brand img { display: block; max-height: 26px; max-width: 130px; width: auto; object-fit: contain; }
-.pz-magnet-preview-brand .mark {
-  flex: none; width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center;
-  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
-}
 .pz-brand-input { margin-top: 10px; }
-
-.pz-magnet-preview-card {
-  background: #fff;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 12px 30px rgba(7,19,79,.16);
-}
 
 /* Mirrors .lm-hero on the public page: the cover is the card's header and
    the badge/title/description sit on it over a bottom scrim. */
-.pz-magnet-preview-cover {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  position: relative;
-  aspect-ratio: 2 / 1;
-  color: #fff;
-  background:
-    radial-gradient(ellipse 60% 90% at 8% 100%, color-mix(in srgb, var(--pv-accent, var(--primary)) 55%, #fff), transparent 70%),
-    radial-gradient(ellipse 55% 80% at 100% 100%, color-mix(in srgb, var(--pv-accent, var(--primary)) 70%, #8b5cf6), transparent 70%),
-    linear-gradient(120deg, var(--pv-accent, var(--primary)) 0%, var(--pv-accent-dark, #0a2f9e) 100%);
-}
-.pz-magnet-preview-cover svg,
-.pz-magnet-preview-cover img,
-.pz-magnet-preview-cover video { position: absolute; inset: 0; width: 100%; height: 100%; }
-.pz-magnet-preview-cover img,
-.pz-magnet-preview-cover video { object-fit: cover; }
-.pz-magnet-preview-cover::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(4,8,30,0) 45%, rgba(4,8,30,.28) 100%);
-}
 /* Image / video / color covers: the background color shows instead of the
    artwork gradient (JS sets --pv-cover-color, or it follows the accent). */
-.pz-magnet-preview-cover.is-plain { background: var(--pv-cover-color, var(--pv-accent-dark, #0a2f9e)); }
-.pz-magnet-preview-cover.is-plain::after {
-  background: linear-gradient(180deg, rgba(4,8,30,0) 30%, rgba(4,8,30,.35) 62%, rgba(4,8,30,.72) 100%);
-}
-.pz-magnet-preview-cover.is-color { background: var(--pv-cover-color, var(--pv-accent, var(--primary))); }
-
-.pz-magnet-preview-head {
-  position: relative; z-index: 1;
-  padding: 30px 18px 14px;
-  text-shadow: 0 1px 8px rgba(4,8,30,.35);
-}
-
-.pz-magnet-preview-kicker {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 9px 3px 7px; border-radius: 999px;
-  background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); color: #fff;
-  font-size: 9px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-  text-shadow: none;
-  margin-bottom: 8px;
-}
-.pz-magnet-preview-kicker span { width: 5px; height: 5px; border-radius: 50%; background: #b9ed28; }
-
-.pz-magnet-preview-head h3 {
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 17px;
-  line-height: 1.2;
-  color: #fff;
-  margin: 0 0 4px;
-  word-break: break-word;
-}
-.pz-magnet-preview-head p {
-  font-size: 11.5px;
-  line-height: 1.5;
-  color: rgba(255,255,255,.88);
-  margin: 0;
-  word-break: break-word;
-}
 
 /* Cover set to None: no media, the heading is plain dark text above the form. */
-.pz-magnet-preview-cover.is-off { aspect-ratio: auto; background: none; color: inherit; }
-.pz-magnet-preview-cover.is-off::after,
-.pz-magnet-preview-cover.is-off > img,
-.pz-magnet-preview-cover.is-off > video,
-.pz-magnet-preview-cover.is-off > svg { display: none !important; }
-.pz-magnet-preview-cover.is-off .pz-magnet-preview-head { padding: 16px 18px 0; text-shadow: none; }
-.pz-magnet-preview-cover.is-off .pz-magnet-preview-kicker {
-  background: color-mix(in srgb, var(--pv-accent, var(--primary)) 10%, #fff); border-color: transparent;
-  color: var(--pv-accent-dark, var(--primary));
-}
-.pz-magnet-preview-cover.is-off .pz-magnet-preview-kicker span { background: var(--pv-accent, var(--primary)); }
-.pz-magnet-preview-cover.is-off h3 { color: #111827; }
-.pz-magnet-preview-cover.is-off p { color: #667085; }
-
-.pz-magnet-preview-form { padding: 16px 18px 16px; }
-
-.pz-magnet-preview-field { margin-bottom: 10px; }
-.pz-magnet-preview-field-label,
-.pz-magnet-preview-group-label {
-  display: block; font-size: 11.5px; font-weight: 500; color: #111827; margin-bottom: 5px;
-}
-.pz-magnet-preview-field-label i,
-.pz-magnet-preview-field-label em,
-.pz-magnet-preview-group-label em,
-.pz-magnet-preview-check em { font-style: normal; color: #e5484d; margin-left: 2px; }
-.pz-magnet-preview-field-label span,
-.pz-magnet-preview-group-label span { font-weight: 400; color: #667085; }
-.pz-magnet-preview-input {
-  height: 30px; border-radius: 6px; background: #eef0f4;
-  display: flex; align-items: center; padding: 0 10px;
-  font-size: 11px; color: #98a2b3;
-}
-.pz-magnet-preview-input b { margin-left: auto; font-weight: 400; }
-.pz-magnet-preview-check {
-  display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
-  font-size: 11.5px; color: #344054;
-}
-.pz-magnet-preview-check i { flex: none; width: 13px; height: 13px; border-radius: 3px; border: 1px solid #d0d5dd; }
-.pz-magnet-preview-check span { color: #667085; }
-.pz-magnet-preview-check.radio i { border-radius: 50%; }
-.pz-magnet-preview-group { margin-bottom: 10px; }
-.pz-magnet-preview-group .pz-magnet-preview-check { margin-bottom: 5px; }
-.pz-magnet-preview-btn {
-  height: 34px; border-radius: 999px; background: var(--pv-accent, var(--primary)); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12.5px; font-weight: 600; margin-top: 12px; transition: background .2s ease;
-}
-.pz-magnet-preview-foot {
-  padding: 8px 12px; background: #f7f8fa; border-top: 1px solid #eef0f4;
-  font-size: 10px; color: #667085; text-align: center;
-}
 
 /* ---------------------------------------------------------------------
    Builder tabs (Content / Form / Design) — used both in the create form

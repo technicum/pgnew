@@ -656,50 +656,29 @@
     });
   });
 
-  // content preview
-  const previewTitle = document.getElementById('previewTitle');
-  const previewDesc = document.getElementById('previewDesc');
-  const previewCta = document.getElementById('previewCta');
+  // Live preview: the real page (views/lead-magnet.ejs), drawn by the
+  // server from what's in the builder now (lib/livePreview.js,
+  // public/js/live-preview.js) — set up at the bottom. Any change asks for
+  // a redraw a moment later.
+  let refreshPreview = null;
+  function schedulePreview() {
+    if (refreshPreview) refreshPreview.soon();
+  }
   const previewSlugUrl = document.getElementById('previewSlugUrl');
-  const previewFields = {
-    collectName: document.getElementById('previewNameField'),
-    collectEmail: document.getElementById('previewEmailField'),
-    collectPhone: document.getElementById('previewPhoneField'),
-  };
-  const previewPhoneOptional = document.getElementById('previewPhoneOptional');
   const magnetPhoneHint = document.getElementById('magnetPhoneHint');
-  const previewExtraFields = document.getElementById('previewExtraFields');
-  const previewCover = document.getElementById('previewCover');
-  const previewFrame = document.querySelector('.pz-magnet-preview-frame');
   const baseSlugUrl = previewSlugUrl.textContent.replace(/\/…$/, '/');
 
   function slugify(str) {
     return String(str || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || '…';
   }
   function updatePreviewFields() {
-    previewExtraFields.innerHTML = builderQuestions.map((q) => {
-      const placeholder = q.label || 'Question';
-      const opt = q.required ? '<em>*</em>' : ' <span>(optional)</span>';
-      if (q.type === 'checkbox') {
-        return `<div class="pz-magnet-preview-check"><i></i>${escapeHTML(placeholder)}${opt}</div>`;
-      }
-      if (q.type === 'radio' || q.type === 'checkboxes') {
-        const choices = (q.options || []).map((o) => `<div class="pz-magnet-preview-check${q.type === 'radio' ? ' radio' : ''}"><i></i>${escapeHTML(o)}</div>`).join('');
-        return `<div class="pz-magnet-preview-group"><div class="pz-magnet-preview-group-label">${escapeHTML(placeholder)}${opt}</div>${choices}</div>`;
-      }
-      // Same as the public page: the question as a label over an empty input.
-      const caret = q.type === 'dropdown' ? 'Choose…<b>▾</b>' : '';
-      return `<div class="pz-magnet-preview-field"><span class="pz-magnet-preview-field-label">${escapeHTML(placeholder)}${opt}</span><div class="pz-magnet-preview-input">${caret}</div></div>`;
-    }).join('');
+    schedulePreview();
   }
   function syncPreview() {
-    previewTitle.textContent = titleInput.value.trim() || 'Your lead magnet title';
-    previewDesc.textContent = descriptionInput.value.trim() || 'A line about what someone gets when they sign up.';
-    previewDesc.style.display = descriptionInput.value.trim() ? '' : 'none';
-    previewCta.textContent = ctaInput.value.trim() || 'Get it free';
     // An existing magnet keeps its link whatever the title becomes.
     const editing = magnets.find((m) => m.id === editingId);
     previewSlugUrl.textContent = baseSlugUrl + (editing ? editing.slug : slugify(titleInput.value));
+    schedulePreview();
   }
   [titleInput, descriptionInput, ctaInput].forEach((el) => el.addEventListener('input', syncPreview));
 
@@ -710,11 +689,10 @@
   function setField(key, on) {
     fieldToggles[key].classList.toggle('on', on);
     fieldToggles[key].setAttribute('aria-pressed', on ? 'true' : 'false');
-    previewFields[key].style.display = on ? '' : 'none';
     // Phone is only optional for the visitor while email is there to fall back on.
     const phoneOptional = fieldOn('collectEmail');
-    previewPhoneOptional.style.display = phoneOptional ? '' : 'none';
     magnetPhoneHint.textContent = phoneOptional ? '(optional for the visitor)' : '(required — it’s the only way to reach them)';
+    schedulePreview();
   }
   Object.keys(fieldToggles).forEach((key) => {
     fieldToggles[key].addEventListener('click', () => {
@@ -760,8 +738,6 @@
       document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s) => s.classList.remove('active'));
       sw.classList.add('active');
       builderAccent = sw.dataset.accent;
-      previewFrame.style.setProperty('--pv-accent', builderAccent);
-      previewFrame.style.setProperty('--pv-accent-dark', shadeHex(builderAccent, -60));
       syncCoverPreview();
     });
   });
@@ -770,8 +746,6 @@
     document.querySelectorAll('#magnetSwatchRow .swatch').forEach((s) => s.classList.remove('active'));
     magnetCustomColor.parentElement.classList.add('active');
     builderAccent = magnetCustomColor.value;
-    previewFrame.style.setProperty('--pv-accent', builderAccent);
-    previewFrame.style.setProperty('--pv-accent-dark', shadeHex(builderAccent, -60));
     syncCoverPreview();
   });
 
@@ -784,9 +758,6 @@
   const coverColorHint = document.getElementById('magnetCoverColorHint');
   const coverColorReset = document.getElementById('magnetCoverColorReset');
   const coverError = document.getElementById('magnetCoverError');
-  const previewCoverImage = document.getElementById('previewCoverImage');
-  const previewCoverVideo = document.getElementById('previewCoverVideo');
-  const previewCoverArt = document.getElementById('previewCoverArt');
   // Our own uploads (/uploads/…) or an http(s) link — same rule as the server.
   function isCoverUrl(value) {
     return isHttpUrl(value) || /^\/uploads\//.test(value);
@@ -805,26 +776,7 @@
       : 'Matches your accent color.';
     coverColorReset.style.display = builderCoverColor ? '' : 'none';
 
-    previewCover.classList.toggle('is-off', !builderShowCover);
-    const image = coverImageInput.value.trim();
-    const video = coverVideoInput.value.trim();
-    // An image/video cover with no usable link yet shows the artwork,
-    // exactly like the public page does.
-    const shown = (type === 'image' && !isCoverUrl(image)) || (type === 'video' && !isCoverUrl(video)) ? 'art' : type;
-    previewCover.classList.toggle('is-plain', shown === 'image' || shown === 'video');
-    previewCover.classList.toggle('is-color', shown === 'color');
-    if (builderCoverColor) previewCover.style.setProperty('--pv-cover-color', builderCoverColor);
-    else previewCover.style.removeProperty('--pv-cover-color');
-    previewCoverArt.style.display = shown === 'art' ? '' : 'none';
-    previewCoverImage.style.display = shown === 'image' ? '' : 'none';
-    if (shown === 'image' && previewCoverImage.getAttribute('src') !== image) previewCoverImage.src = image;
-    previewCoverVideo.style.display = shown === 'video' ? '' : 'none';
-    if (shown === 'video') {
-      if (previewCoverVideo.getAttribute('src') !== video) previewCoverVideo.src = video;
-      previewCoverVideo.play().catch(() => {});
-    } else {
-      previewCoverVideo.pause();
-    }
+    schedulePreview();
   }
   document.querySelectorAll('#magnetCoverChoice .cover-opt').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -898,22 +850,12 @@
   const brandLogoInput = document.getElementById('magnetBrandLogo');
   const brandLogoHint = document.getElementById('magnetBrandLogoHint');
   const brandError = document.getElementById('magnetBrandError');
-  const previewBrand = document.getElementById('previewBrand');
-  const siteName = previewBrand.dataset.siteName;
   let builderBrandType = 'text';
   function isHttpUrl(value) {
     return /^https?:\/\//i.test(value);
   }
   function syncBrandPreview() {
-    const text = brandTextInput.value.trim();
-    const logo = brandLogoInput.value.trim();
-    if (builderBrandType === 'logo' && isHttpUrl(logo)) {
-      previewBrand.innerHTML = `<img src="${escapeHTML(logo)}" alt="${escapeHTML(text || 'Logo')}" />`;
-    } else if (text) {
-      previewBrand.textContent = text;
-    } else {
-      previewBrand.innerHTML = `<span class="mark"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="11" height="11"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>${escapeHTML(siteName)}`;
-    }
+    schedulePreview();
   }
   function setBuilderBrand(type) {
     builderBrandType = type === 'logo' ? 'logo' : 'text';
@@ -943,8 +885,6 @@
       magnetCustomColor.value = color;
       magnetCustomColor.parentElement.classList.add('active');
     }
-    previewFrame.style.setProperty('--pv-accent', color);
-    previewFrame.style.setProperty('--pv-accent-dark', shadeHex(color, -60));
     syncCoverPreview();
   }
   function setBuilderCover({ show = true, type = 'art', image = '', video = '', color = '' } = {}) {
@@ -1021,13 +961,36 @@
     setBuilderCover();
     // form.reset() above already emptied the brand inputs.
     setBuilderBrand('text');
-    previewFrame.style.removeProperty('--pv-accent');
-    previewFrame.style.removeProperty('--pv-accent-dark');
     renderBuilderQuestions();
     syncPreview();
     document.querySelector('.pz-tab-btn[data-btab="content"]').click();
     // Drops the "being edited" highlight from its card.
     if (wasEditing) render();
+  }
+
+  // Everything in the builder, as the server takes it — saved on submit,
+  // and drawn by the live preview as it changes.
+  function currentPayload() {
+    return {
+      title: titleInput.value,
+      ctaText: ctaInput.value,
+      description: descriptionInput.value,
+      fileUrl: fileUrlInput.value,
+      successMessage: successInput.value,
+      collectName: fieldOn('collectName'),
+      collectEmail: fieldOn('collectEmail'),
+      collectPhone: fieldOn('collectPhone'),
+      extraQuestions: builderQuestions,
+      accentColor: builderAccent,
+      showCover: builderShowCover,
+      coverType: builderCoverType,
+      coverImageUrl: coverImageInput.value.trim(),
+      coverVideoUrl: coverVideoInput.value.trim(),
+      coverColor: builderCoverColor,
+      brandType: builderBrandType,
+      brandText: brandTextInput.value,
+      brandLogoUrl: brandLogoInput.value.trim(),
+    };
   }
 
   form.addEventListener('submit', async (e) => {
@@ -1070,26 +1033,7 @@
       badCover.focus();
       return;
     }
-    const payload = {
-      title: titleInput.value,
-      ctaText: ctaInput.value,
-      description: descriptionInput.value,
-      fileUrl: fileUrlInput.value,
-      successMessage: successInput.value,
-      collectName: fieldOn('collectName'),
-      collectEmail: fieldOn('collectEmail'),
-      collectPhone: fieldOn('collectPhone'),
-      extraQuestions: builderQuestions,
-      accentColor: builderAccent,
-      showCover: builderShowCover,
-      coverType: builderCoverType,
-      coverImageUrl,
-      coverVideoUrl,
-      coverColor: builderCoverColor,
-      brandType: builderBrandType,
-      brandText: brandTextInput.value,
-      brandLogoUrl,
-    };
+    const payload = currentPayload();
     const savingId = editingId;
     try {
       if (savingId !== null) {
@@ -1131,8 +1075,15 @@
     }
   });
 
+  refreshPreview = window.livePreview(document.getElementById('magnetPreview'), () => ({
+    url: '/dashboard/lead-magnets/preview',
+    type: 'application/json',
+    body: JSON.stringify({ magnet: currentPayload(), id: editingId }),
+  }));
+
   renderBuilderQuestions();
   syncBrandPreview();
   syncCoverPreview();
   render();
+  refreshPreview();
 })();

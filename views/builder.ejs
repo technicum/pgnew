@@ -212,8 +212,9 @@
 </div>
 
 <script>
-  // <-escaping keeps a block title like "</script>" from closing this
-  // tag early and running as HTML.
+  // Escaping "<" keeps a block title containing a closing script tag from
+  // ending this tag early and running as HTML. (Never write that tag
+  // literally in here, even in a comment — the browser ends the script at it.)
   window.__PZ_INITIAL_BLOCKS__ = <%- JSON.stringify(blocks).replace(/</g, '\\u003c') %>;
   window.__PZ_ACCENT__ = <%- JSON.stringify(user.accent_color || '#ff6b4a') %>;
   window.__PZ_SITE_DOMAIN__ = <%- JSON.stringify(siteDomain) %>;
