@@ -328,8 +328,8 @@
   text-decoration: none;
 }
 .lm-made-with b { color: var(--ink); }
-.lm-made-with .logo-mark { width: 20px; height: 20px; border-radius: 6px; }
-.lm-made-with .logo-mark svg { width: 12px; height: 12px; }
+.lm-made-with .lm-heart { display: grid; place-items: center; width: 20px; height: 20px; color: #e11d48; }
+.lm-made-with .lm-heart svg { width: 15px; height: 15px; }
 
 /* ---------- success screen ---------- */
 

@@ -58,6 +58,11 @@
             <h2 class="text-lg font-bold">People</h2>
             <p class="mt-1 text-sm text-muted-foreground" id="contactCountLine"><%= contacts.length %> <%= contacts.length === 1 ? 'person' : 'people' %> in your audience</p>
           </div>
+          <!-- A CSV of the people shown — everyone, or just those matching the search / filters (audience.js). -->
+          <button type="button" id="exportContacts" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-card shadow-sm hover:bg-muted h-10 px-4"<%= contacts.length ? '' : ' disabled' %>>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+            <span id="exportContactsLabel">Export CSV</span>
+          </button>
         </div>
 
         <!-- Search + filters, all client-side over the list below (audience.js). -->

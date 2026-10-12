@@ -1,7 +1,8 @@
 <%# Opening of every Bookings / Events / Courses dashboard page
     (lib/appDashboard.js): head, sidebar, sticky header, page heading and
     the ?ok= / ?error= flash. Pass navActive, section (the small label) and
-    heading; optional intro and back ({ href, label }). %>
+    heading; optional intro, back ({ href, label }) and headAction (HTML for
+    a button beside the heading, like Payment pages' "Create" button). %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,6 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/app-dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/ax-preview.css?v=<%= assetVersion %>" />
 </head>
 <body>
 <div class="min-h-screen bg-background">
@@ -27,10 +29,14 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+    <div class="mx-auto <%= typeof wide !== 'undefined' && wide ? 'ax-wide-page' : 'max-w-[1100px]' %> px-4 py-7 md:px-8 md:py-9">
       <% if (typeof back !== 'undefined' && back) { %><a class="ax-back" href="<%= back.href %>">← <%= back.label %></a><% } %>
-      <section class="ax-heading">
-        <h1 class="text-3xl font-extrabold md:text-4xl"><%= heading %></h1>
-        <% if (typeof intro !== 'undefined' && intro) { %><p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;"><%- intro %></p><% } %>
+      <% var hasAction = typeof headAction !== 'undefined' && headAction; %>
+      <section class="ax-heading<%= hasAction ? ' has-action' : '' %>">
+        <div>
+          <h1 class="text-3xl font-extrabold md:text-4xl"><%= heading %></h1>
+          <% if (typeof intro !== 'undefined' && intro) { %><p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;"><%- intro %></p><% } %>
+        </div>
+        <% if (hasAction) { %><%- headAction %><% } %>
       </section>
       <% if (flash) { %><div class="ax-flash ax-flash-<%= flash.kind %>" role="status"><%= flash.text %></div><% } %>

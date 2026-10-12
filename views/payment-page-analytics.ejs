@@ -30,14 +30,6 @@ var ago = function (v) {
 var addressLine = function (a) { return a ? [a.line, a.city, a.pincode].filter(Boolean).join(', ') : ''; };
 var abandonedValue = abandoned.reduce(function (n, a) { return n + a.total; }, 0);
 var STAGE = { details: 'Left at checkout', payment: 'Left at payment', cancelled: 'Cancelled payment' };
-var reminderLink = function (a) {
-  var first = (a.name || '').trim().split(/\s+/)[0] || 'there';
-  var items = a.items.map(function (i) { return i.qty > 1 ? i.title + ' × ' + i.qty : i.title; }).join(', ');
-  var body = 'Hi ' + first + ',\n\nYou were checking out ' + items + ' on ' + page.title + ' but didn’t finish.'
-    + ' Your cart came to ' + formatINR(a.total) + ' — you can pick up where you left off here:\n\n' + pageUrl
-    + '\n\nAny questions, just reply to this email.\n\n— ' + user.name;
-  return 'mailto:' + encodeURIComponent(a.email) + '?subject=' + encodeURIComponent('Still thinking about ' + page.title + '?') + '&body=' + encodeURIComponent(body);
-};
 %>
 <body>
 <div class="min-h-screen bg-background">
@@ -196,45 +188,9 @@ var reminderLink = function (a) {
         <div class="pb-an-tile"><span>Left at payment</span><strong><%= abandoned.filter(function (a) { return a.stage !== 'details'; }).length %></strong><small>placed the order, didn’t pay</small></div>
       </section>
 
-      <section class="pa-card pa-flush">
-        <div class="pa-card-head">
-          <div>
-            <h2>Abandoned carts</h2>
-            <p>Buyers who entered their email and had something in their cart, but didn’t pay within 30 minutes. Send a reminder, or dismiss carts you’ve dealt with.</p>
-          </div>
-        </div>
-        <% if (!abandoned.length) { %>
-        <p class="pb-an-empty pa-pad">No abandoned carts — everyone who started checking out finished. 🎉</p>
-        <% } else { %>
-        <ul class="pa-abandoned">
-          <% abandoned.forEach(function (a) { %>
-          <li class="pa-ab-row">
-            <div class="pa-ab-who">
-              <span class="pa-avatar" aria-hidden="true"><%= (a.name || a.email).trim().charAt(0).toUpperCase() %></span>
-              <span>
-                <b><%= a.name || 'No name given' %></b>
-                <small><a href="mailto:<%= a.email %>"><%= a.email %></a><%= a.phone ? ' · ' + a.phone : '' %></small>
-              </span>
-            </div>
-            <div class="pa-ab-cart">
-              <span><%= a.items.map(function (i) { return i.qty > 1 ? i.title + ' × ' + i.qty : i.title; }).join(', ') %></span>
-              <small><span class="pb-an-status <%= a.stage === 'details' ? 'pending' : 'cancelled' %>"><%= STAGE[a.stage] %></span> · <%= ago(a.updatedAt) %></small>
-            </div>
-            <div class="pa-ab-total"><b><%= formatINR(a.total) %></b></div>
-            <div class="pa-ab-actions">
-              <a class="pz-card-btn" href="<%= reminderLink(a) %>">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
-                Send reminder
-              </a>
-              <form method="POST" action="/dashboard/payment-pages/<%= page.id %>/abandoned/<%= a.id %>/dismiss">
-                <button type="submit" class="pz-card-btn" title="Remove from this list">Dismiss</button>
-              </form>
-            </div>
-          </li>
-          <% }) %>
-        </ul>
-        <% } %>
-      </section>
+      <%# The same list and follow-up tools as Dashboard → Abandoned carts, just this page's (partials/abandoned-carts). %>
+      <%- include('partials/abandoned-carts', { ab: ab, title: 'Abandoned carts', intro: 'Buyers who entered their email and had something in their cart, but didn’t pay within 30 minutes. Follow up on WhatsApp or email, or dismiss carts you’ve dealt with.' }) %>
+      <p class="pa-more"><a href="/dashboard/abandoned">See abandoned carts from every page, course and booking →</a></p>
       <% } %>
 
     </div>

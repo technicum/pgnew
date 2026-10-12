@@ -1,8 +1,9 @@
-<%# Tab bar across the Bookings app (lib/appDashboard.js), plus the link to the creator's booking page (/book) — the one to put in a bio. Pass tab: 'page' | 'upcoming' | 'settings'. %>
+<%# Tab bar across the Bookings app (lib/appDashboard.js), plus the link to the creator's booking page (/book) — the one to put in a bio. Pass tab: 'page' | 'upcoming' | 'abandoned' | 'settings'. %>
 <% var bookUrl = storeUrlFor(user.handle) + '/book'; %>
 <nav class="ax-tabs" aria-label="Bookings">
   <a href="/dashboard/bookings"<%- tab === 'page' ? ' aria-current="page"' : '' %>>Booking page</a>
   <a href="/dashboard/bookings/upcoming"<%- tab === 'upcoming' ? ' aria-current="page"' : '' %>>Upcoming bookings<% if (upcomingCount) { %> <span class="ax-tab-count"><%= upcomingCount %></span><% } %></a>
+  <a href="/dashboard/bookings/abandoned"<%- tab === 'abandoned' ? ' aria-current="page"' : '' %>>Abandoned<% if (typeof abandonedCount !== 'undefined' && abandonedCount) { %> <span class="ax-tab-count"><%= abandonedCount %></span><% } %></a>
   <a href="/dashboard/bookings/settings"<%- tab === 'settings' ? ' aria-current="page"' : '' %>>Settings</a>
 </nav>
 <div class="ax-linkbar">

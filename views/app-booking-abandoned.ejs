@@ -1,0 +1,8 @@
+<%# Bookings app → Abandoned tab (lib/appDashboard.js → /dashboard/bookings/abandoned): people who picked a paid session's time and didn't pay the advance — followed up from here or Dashboard → Abandoned carts (partials/abandoned-carts). %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: 'Bookings' }) %>
+<%- include('partials/booking-tabs', { tab: 'abandoned' }) %>
+
+<%- include('partials/abandoned-carts', { ab: ab, title: 'Didn’t finish booking', intro: 'Picked a time for a paid session and didn’t pay within 30 minutes. Invite them to finish, or to book another time.' }) %>
+<p class="ab-more"><a href="/dashboard/abandoned">All abandoned carts — payment pages, courses and bookings →</a></p>
+
+<%- include('partials/app-dash-bottom') %>

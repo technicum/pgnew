@@ -1,0 +1,16 @@
+<%# A student's course link opened on a device past their limit (lib/courses.js lockDevice → lib/appStorefront.js): what happened and how to get back in — the creator can reset their devices from the Students tab. %>
+<%- include('partials/app-public-top') %>
+
+  <article class="lm-card">
+    <div class="lm-card-body">
+      <div class="ax-done-icon cl-lock-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" width="24" height="24" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </div>
+      <h1>This course is open on other devices</h1>
+      <p class="lm-desc">Each student’s access to <b><%= course.title %></b> works on up to <%= maxDevices %> devices, and this one would be number <%= maxDevices + 1 %>. Open the course on a device you’ve used before — the same browser, without clearing its data.</p>
+      <p class="lm-desc">Got a new phone or laptop? Ask <%= owner.name %> to reset your devices, then open your link here again.</p>
+      <p class="ax-note">Course links are personal — please don’t share yours.</p>
+    </div>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

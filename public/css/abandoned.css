@@ -1,0 +1,79 @@
+/* Abandoned carts (partials/abandoned-carts.ejs, public/js/abandoned.js) —
+   self-contained, so it sits the same on the Abandoned carts page and
+   inside a service (payment page Analytics, Courses, Bookings). Uses only
+   dashboard.css's colour tokens. */
+.ab { display: grid; gap: 16px; margin-top: 20px; }
+.ab-card { border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 1px 2px #0000000a; }
+.ab-stat-sub { display: block; margin-top: 4px; font-size: 11.5px; color: var(--muted-foreground); }
+
+.ab-input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--background); color: var(--foreground); font: inherit; font-size: 13.5px; }
+.ab-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent); }
+textarea.ab-input { height: auto; min-height: 168px; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+select.ab-input { cursor: pointer; }
+
+/* The message editor — a <details>, open on the Abandoned carts page. */
+.ab-compose summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; cursor: pointer; list-style: none; }
+.ab-compose summary::-webkit-details-marker { display: none; }
+.ab-compose summary b { display: block; font-size: 15px; }
+.ab-compose summary small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted-foreground); }
+.ab-summary-edit { flex: none; font-size: 13px; font-weight: 600; color: var(--primary); }
+.ab-compose[open] .ab-summary-edit { visibility: hidden; }
+.ab-compose-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; padding: 0 20px 20px; }
+.ab-field { display: grid; gap: 6px; align-content: start; font-size: 13px; font-weight: 600; }
+.ab-field small { font-weight: 400; color: var(--muted-foreground); }
+.ab-field code { padding: 1px 5px; border-radius: 5px; background: var(--muted); font-size: 11.5px; }
+.ab-side { display: grid; gap: 14px; align-content: start; }
+.ab-hint { font-weight: 400; font-size: 12px; color: var(--muted-foreground); }
+.ab-hint a, .ab-link { color: var(--primary); text-decoration: underline; }
+.ab-link { justify-self: start; border: 0; background: none; padding: 0; font: inherit; font-size: 12.5px; font-weight: 400; cursor: pointer; }
+.ab-preview { padding: 12px 14px; border-radius: 12px; background: #e7f8ee; border: 1px solid #c8eed6; }
+.ab-preview span { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #15803d; }
+.ab-preview p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; color: #14361f; }
+
+/* The list. */
+.ab-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+.ab-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.ab-head p { margin: 4px 0 0; font-size: 13px; color: var(--muted-foreground); }
+.ab-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+.ab-tools select { flex: 0 1 180px; width: auto; }
+.ab-tools select[hidden] { display: none; }
+.ab-search { position: relative; flex: 1 1 240px; min-width: 0; }
+.ab-search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted-foreground); pointer-events: none; }
+.ab-search .ab-input { padding-left: 34px; }
+.ab-list { list-style: none; margin: 0; padding: 0; }
+.ab-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) auto; grid-template-areas: "who cart total" "actions actions actions"; gap: 10px 16px; align-items: center; padding: 14px 20px; border-top: 1px solid var(--border); transition: opacity .2s; }
+.ab-row:first-child { border-top: 0; }
+.ab-row.is-leaving { opacity: .4; }
+.ab-who { grid-area: who; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ab-who b { display: block; font-size: 14px; }
+.ab-who small, .ab-cart small { display: block; font-size: 12px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.ab-avatar { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--secondary); color: var(--secondary-foreground); font-weight: 700; font-size: 13px; }
+.ab-cart { grid-area: cart; min-width: 0; font-size: 13.5px; }
+.ab-cart > span:first-child { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.ab-total { grid-area: total; font-family: var(--font-display); font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; text-align: right; }
+.ab-tag { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; }
+.ab-tag.is-done { background: #e7f8ee; color: #15803d; }
+.ab-actions { grid-area: actions; display: flex; flex-wrap: wrap; gap: 6px; }
+.ab-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--foreground); font: inherit; font-size: 12.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.ab-btn:hover { background: var(--muted); }
+.ab-btn.is-wa { border-color: #25d366; background: #25d366; color: #fff; }
+.ab-btn.is-wa:hover { background: #1ebe5b; }
+.ab-btn.is-quiet { margin-left: auto; border-color: transparent; color: var(--muted-foreground); }
+
+.ab-empty { display: grid; gap: 4px; padding: 44px 20px; text-align: center; font-size: 13.5px; color: var(--muted-foreground); }
+.ab-empty[hidden] { display: none; }
+.ab-empty b { color: var(--foreground); font-size: 14.5px; }
+
+.ab-toast { position: fixed; left: 50%; bottom: 24px; z-index: 60; transform: translateX(-50%); padding: 10px 16px; border-radius: 10px; background: #111827; color: #fff; font-size: 13px; box-shadow: 0 10px 30px #0004; }
+.ab-toast[hidden] { display: none; }
+
+@media (max-width: 760px) {
+  .ab-compose-body { grid-template-columns: 1fr; padding: 0 16px 18px; }
+  .ab-compose summary, .ab-head { padding-left: 16px; padding-right: 16px; }
+  .ab-tools { padding: 12px 16px; }
+  .ab-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "who total" "cart cart" "actions actions"; padding: 14px 16px; }
+}
+
+/* "See every abandoned cart" under a service's own list. */
+.pa-more, .ab-more { margin: 12px 2px 0; font-size: 13px; }
+.pa-more a, .ab-more a { color: var(--primary); text-decoration: underline; }

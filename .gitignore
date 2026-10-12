@@ -16,3 +16,7 @@ public/uploads/
 # hit earlier with package-lock.json. lib/users.js creates this file itself
 # on first run, so there's nothing to set up.
 data/users.json
+
+# Course lesson videos (lib/courseMedia.js) — private uploads, never served
+# from public/, runtime data like public/uploads/.
+private/

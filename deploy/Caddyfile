@@ -1,0 +1,38 @@
+# Caddy in front of the PageZaper app — replaces nginx on ports 80/443.
+# Setup steps: deploy/CUSTOM_DOMAINS.md.
+#
+# Caddy gets free Let's Encrypt certificates by itself:
+#   - pagezaper.com and www.pagezaper.com: as soon as Caddy starts
+#   - store subdomains (meera.pagezaper.com) and creators' own domains
+#     (mybrand.com): "on demand", the first time each is visited — after
+#     asking the app whether that name is one of ours (/internal/domain-check
+#     in server.js, lib/customDomains.js mayIssueCertificate). Names the app
+#     doesn't know never get a certificate.
+#
+# The app listens on 127.0.0.1:3001 (PORT in .env). Change it below if yours differs.
+
+{
+	email you@pagezaper.com
+	on_demand_tls {
+		ask http://127.0.0.1:3001/internal/domain-check
+	}
+}
+
+pagezaper.com, www.pagezaper.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:3001
+}
+
+# Everything else: store subdomains and connected custom domains.
+https:// {
+	tls {
+		on_demand
+	}
+	encode gzip
+	reverse_proxy 127.0.0.1:3001
+}
+
+# Plain http → https for every name.
+http:// {
+	redir https://{host}{uri} permanent
+}

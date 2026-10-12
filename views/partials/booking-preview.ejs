@@ -1,0 +1,95 @@
+<%# Live preview of a booking service's public page (/book/:slug) beside its editor — bound to the form by public/js/ax-preview.js; the window.axPreview below handles price, place and questions. Pass service, settings (Bookings → Settings, for the photo/cover fallbacks), link. %>
+<% var initials = String(user.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '•'; %>
+<div class="axp-head"><h2>Live preview</h2><span>What bookers will see</span></div>
+<div class="axp-frame">
+  <div class="axp-chrome"><i></i><i></i><i></i><span class="axp-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
+  <div class="axp-screen" data-pv-screen style="<%= lmThemeStyle(storeTheme) %>">
+    <p class="axp-brand"><%= user.name %></p>
+    <div class="axp-card">
+      <div class="axp-cover" data-pv-cover hidden><img alt="" /></div>
+      <div class="axp-body">
+        <div class="axp-host">
+          <img class="axp-avatar" data-pv-photo alt="" hidden /><span class="axp-avatar" data-pv-initials><%= initials %></span>
+          <b><%= user.name %></b>
+        </div>
+        <h3 class="axp-title" data-pv-text="title" data-pv-empty="Your service"></h3>
+        <ul class="axp-facts">
+          <li>⏱ <span><span data-pv-text="duration_min" data-pv-empty="30"></span> minutes</span></li>
+          <li>₹ <span data-pv-price></span></li>
+          <li data-pv-online hidden>▶ <span data-pv-online-text>Online · video call</span></li>
+          <li data-pv-place hidden>📍 <span data-pv-text="location"></span></li>
+        </ul>
+        <div class="axp-rich" data-pv-rich="description"></div>
+      </div>
+    </div>
+    <div class="axp-card">
+      <div class="axp-body">
+        <div class="axp-label" style="margin-top:0">Pick a day</div>
+        <div class="axp-cal">
+          <% ['M','T','W','T','F','S','S'].forEach(function (d) { %><span style="font-weight:700;color:#98a2b3"><%= d %></span><% }) %>
+          <% for (var d = 1; d <= 14; d++) { %><span class="<%= d === 9 ? 'is-on' : ([3,4,5,8,10,11,12].indexOf(d) >= 0 ? 'is-open' : '') %>"><%= d + 6 %></span><% } %>
+        </div>
+        <div class="axp-label">Times</div>
+        <div class="axp-slots"><span>9:00 am</span><span class="is-on">9:30 am</span><span>10:00 am</span><span>11:30 am</span><span>2:00 pm</span><span>4:30 pm</span></div>
+        <div data-pv-choice hidden>
+          <div class="axp-label">How would you like to attend?</div>
+          <div class="axp-slots" style="grid-template-columns:1fr 1fr"><span class="is-on">In person</span><span>Online</span></div>
+        </div>
+        <div class="axp-label">Your details</div>
+        <div class="axp-input">Your name</div>
+        <div class="axp-input">Your email</div>
+        <div class="axp-input">Phone (optional)</div>
+        <div data-pv-questions></div>
+        <div class="axp-btn" data-pv-button>Confirm booking</div>
+        <p class="axp-note" data-pv-paynote hidden></p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  // Booking-specific bits of the preview: cover/photo (falling back to
+  // Bookings → Settings), price with advance / pay-later, where it
+  // happens, the questions, and the button.
+  window.axPreview = function (get, screen) {
+    var q = function (s) { return screen.querySelector(s); };
+    var fallback = <%- JSON.stringify({ cover: settings.cover_url || '', photo: settings.photo_url || '' }) %>;
+    var cover = get('cover_url') || fallback.cover;
+    var photo = get('photo_url') || fallback.photo;
+    q('[data-pv-cover]').hidden = !cover;
+    if (cover) q('[data-pv-cover] img').src = cover;
+    q('[data-pv-photo]').hidden = !photo;
+    q('[data-pv-initials]').hidden = !!photo;
+    if (photo) q('[data-pv-photo]').src = photo;
+
+    var rupees = function (s) { var n = Number(String(s).replace(/[₹,\s]/g, '')); return isFinite(n) && n > 0 ? n : 0; };
+    var inr = function (n) { return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 }); };
+    var price = rupees(get('price'));
+    var option = get('pay_option') || 'online';
+    var advance = option === 'deposit' ? Math.min(rupees(get('deposit')), price) : 0;
+    var now = !price ? 0 : (option === 'later' ? 0 : (option === 'deposit' ? advance : price));
+    var priceText = price ? inr(price) : 'Free';
+    if (price && option === 'deposit' && advance) priceText += ' · ' + inr(advance) + ' advance, rest at the appointment';
+    if (price && option === 'later') priceText += ' · pay at the appointment';
+    q('[data-pv-price]').textContent = priceText;
+    q('[data-pv-button]').textContent = now ? 'Continue to pay ' + inr(now) + (now < price ? ' advance' : '') : 'Confirm booking';
+    var note = q('[data-pv-paynote]');
+    note.hidden = !(price && option === 'later');
+    note.textContent = '<%= siteName %> may take its small fee as an online advance.';
+
+    var attend = get('attend') || 'online';
+    q('[data-pv-online]').hidden = attend === 'in_person';
+    q('[data-pv-online-text]').textContent = attend === 'either' ? 'Online or in person — your choice' : 'Online · video call';
+    q('[data-pv-place]').hidden = attend === 'online' || !get('location');
+    q('[data-pv-choice]').hidden = attend !== 'either';
+
+    var html = '';
+    for (var n = 0; n < <%= maxQuestions %>; n++) {
+      var label = get('q_label_' + n);
+      if (!label) continue;
+      var required = get('q_required_' + n);
+      html += '<div class="axp-input">' + label.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }) + (required ? '' : ' (optional)') + '</div>';
+    }
+    q('[data-pv-questions]').innerHTML = html;
+  };
+</script>
+<script src="/js/ax-preview.js?v=<%= assetVersion %>"></script>

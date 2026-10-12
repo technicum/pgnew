@@ -1,19 +1,51 @@
-<%# A student's view of a course (lib/appStorefront.js → /course/:slug/learn/:token[/:lessonId]): lesson list beside the current lesson. The token in the URL is their access, so the page reminds them to bookmark it. %>
+<%# A student's view of a course (lib/appStorefront.js → /course/:slug/learn/:token[/:lessonId]) — or a free preview lesson (/course/:slug/preview/:id, student null).
+    Left: progress and the outline by module (✓ done; locked items in a preview). Right: the item, by kind —
+    a lesson: uploaded videos in our player (public/js/course-player.js: no download, signed short-lived link, the student's name moving over the picture), YouTube/Vimeo embedded, then the text and "Mark complete";
+    a quiz: its questions (partials/course-quiz), or the last submission's score and answers (attempt) with "Retake";
+    a download: its notes and the file's signed link (download), then "Mark complete". %>
 <%- include('partials/app-public-top', { wide: true }) %>
-
+<%
+var isPreview = !student;
+var tick = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5L10 17L19 7"/></svg>';
+var lock = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+var isDone = lesson && done.has(lesson.id);
+%>
   <div class="ax-learn">
     <aside class="lm-card ax-learn-nav">
       <div class="lm-card-body">
+        <% if (isPreview) { %>
+        <span class="lm-kicker"><span class="dot"></span>Free preview</span>
+        <% } else { %>
         <span class="lm-kicker"><span class="dot"></span>Hi <%= student.name.split(' ')[0] %></span>
+        <% } %>
         <h2 class="ax-learn-title"><%= course.title %></h2>
-        <% if (lessons.length) { %>
+        <% if (!isPreview && lessons.length) { %>
+        <div class="cl-progress" aria-label="Course progress">
+          <div class="cl-progress-bar"><span style="width:<%= progress %>%"></span></div>
+          <small><%= progress %>% complete</small>
+        </div>
+        <% } %>
+        <% modules.forEach(function (m) { %>
+        <% if (m.title) { %><p class="cl-module"><%= m.title %></p><% } %>
         <ol class="ax-lessons">
-          <% lessons.forEach(function (l, i) { %>
-          <li><a href="<%= base %>/<%= l.id %>"<%= lesson && l.id === lesson.id ? ' aria-current="page"' : '' %>><span><%= i + 1 %></span><%= l.title %></a></li>
+          <% m.lessons.forEach(function (l) { var on = lesson && l.id === lesson.id; var open = !isPreview || l.preview; %>
+          <li>
+            <% if (open) { %>
+            <a href="<%= isPreview ? '/course/' + course.slug + '/preview/' + l.id : base + '/' + l.id %>"<%= on ? ' aria-current="page"' : '' %>>
+              <span class="cl-dot<%= done.has(l.id) ? ' is-done' : '' %>"><%= done.has(l.id) ? '' : l.number %><%- done.has(l.id) ? tick : '' %></span><span class="cl-title"><%= l.title %></span><%- include('partials/course-kind-icon', { kind: l.kind, video: !!(l.video_file || l.video_url) }) %>
+            </a>
+            <% } else { %>
+            <span class="cl-locked"><span class="cl-dot"><%- lock %></span><span class="cl-title"><%= l.title %></span><%- include('partials/course-kind-icon', { kind: l.kind, video: !!(l.video_file || l.video_url) }) %></span>
+            <% } %>
+          </li>
           <% }) %>
         </ol>
-        <% } %>
+        <% }) %>
+        <% if (isPreview) { %>
+        <a class="btn btn-primary cl-enrol" href="<%= coursePage %>#enrol"><%= course.price ? 'Get the full course · ' + course.priceLabel : 'Enrol free' %></a>
+        <% } else { %>
         <p class="ax-bookmark">Bookmark this page — this link is your way back in.</p>
+        <% } %>
       </div>
     </aside>
 
@@ -21,22 +53,70 @@
       <div class="lm-card-body">
         <% if (!lesson) { %>
         <h1>Lessons are on the way</h1>
-        <p class="lm-desc"><%= owner.name %> hasn’t added any lessons yet. Keep this link — they’ll appear here.</p>
+        <p class="lm-desc"><%= owner.name %> hasn’t added anything yet. Keep this link — the lessons will appear here.</p>
         <% } else { %>
+        <% if (lesson.module) { %><p class="cl-crumb"><%= lesson.module %></p><% } %>
         <h1><%= lesson.title %></h1>
-        <% if (embedUrl) { %>
-        <div class="ax-video"><iframe src="<%= embedUrl %>" title="<%= lesson.title %>" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>
-        <% } else if (lesson.video_url) { %>
-        <p><a class="btn btn-primary" href="<%= lesson.video_url %>" target="_blank" rel="noopener">Watch the video</a></p>
+
+        <% if (video && video.kind === 'file') { %>
+        <div class="cp" data-player data-watermark="<%= watermark %>" data-play="<%= playUrl %>" tabindex="0" aria-label="Video player">
+          <video src="<%= video.src %>" preload="metadata" playsinline controls controlslist="nodownload noremoteplayback" disablepictureinpicture disableremoteplayback></video>
+        </div>
+        <% } else if (video && video.kind === 'embed') { %>
+        <div class="ax-video cp-embed">
+          <iframe src="<%= video.src %>" title="<%= lesson.title %>" allow="accelerometer; encrypted-media; gyroscope; fullscreen" allowfullscreen loading="lazy"></iframe>
+          <% if (watermark) { %><div class="cp-mark" aria-hidden="true" data-mark><%= watermark %></div><% } %>
+        </div>
+        <% } else if (video && video.kind === 'link') { %>
+        <p><a class="btn btn-primary" href="<%= video.src %>" target="_blank" rel="noopener">Watch the video</a></p>
         <% } %>
+
         <% if (lessonHtml) { %><div class="ax-rich ax-lesson-body"><%- lessonHtml %></div><% } %>
+
+        <% if (lesson.kind === 'file') { %>
+        <% if (download) { %>
+        <a class="cl-download" href="<%= download.href %>" download>
+          <%- include('partials/course-kind-icon', { kind: 'file' }) %>
+          <span><b><%= download.name %></b><small><%= download.size %> · Download</small></span>
+        </a>
+        <% } else { %>
+        <p class="lm-desc">The file for this download isn’t up yet — check back soon.</p>
+        <% } %>
+        <% } %>
+
+        <% if (lesson.kind === 'quiz') { %>
+        <%- include('partials/course-quiz', { quiz: lesson, attempt: attempt, action: isPreview ? null : base + '/' + lesson.id, retakeHref: isPreview ? null : base + '/' + lesson.id + '?retake' }) %>
+        <% } %>
+
+        <% if (!isPreview) { %>
+        <% if (lesson.kind === 'quiz') { %>
+        <% if (isDone && attempt && next) { %><p class="cl-done"><a class="btn btn-primary" href="<%= base %>/<%= next.id %>">Continue →</a></p><% } %>
+        <% } else { %>
+        <form method="POST" action="<%= base %>/<%= lesson.id %>" class="cl-done">
+          <% if (isDone) { %>
+          <span class="cl-done-label"><%- tick %> Completed</span>
+          <button class="cl-link" name="action" value="undone">Mark as not done</button>
+          <% } else { %>
+          <button class="btn btn-primary" name="action" value="done"><%= next ? 'Mark complete & continue →' : 'Mark complete' %></button>
+          <% } %>
+        </form>
+        <% } %>
         <nav class="ax-pager">
           <% if (prev) { %><a href="<%= base %>/<%= prev.id %>">← <%= prev.title %></a><% } else { %><span></span><% } %>
           <% if (next) { %><a class="is-next" href="<%= base %>/<%= next.id %>"><%= next.title %> →</a><% } %>
         </nav>
+        <% } else { %>
+        <div class="cl-upsell">
+          <b>Liked this <%= lesson.kind === 'quiz' ? 'quiz' : lesson.kind === 'file' ? 'download' : 'lesson' %>?</b>
+          <span>Get the whole course<%= course.price ? ' for ' + course.priceLabel : ' free' %><%= lesson.kind === 'quiz' ? ' to take its quizzes and see your score' : '' %>, with progress tracking.</span>
+          <a class="btn btn-primary" href="<%= coursePage %>#enrol"><%= course.price ? 'Buy the course' : 'Enrol free' %></a>
+        </div>
+        <% } %>
         <% } %>
       </div>
     </article>
   </div>
-
+<% if (video && video.kind === 'file' || (video && video.kind === 'embed' && watermark)) { %>
+<script src="/js/course-player.js?v=<%= assetVersion %>"></script>
+<% } %>
 <%- include('partials/app-public-bottom') %>

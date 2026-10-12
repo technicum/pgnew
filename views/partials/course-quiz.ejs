@@ -1,0 +1,47 @@
+<%# A quiz on the student's page (app-course-learn): its questions as a form (POST action=quiz to `action`; a question with several right answers takes checkboxes) — or, with `attempt` (their last submission, lib/courses.js lastQuizAttempt), the score and every question with the right answers ✓ and their wrong picks ✗, and a link to retake it.
+    Pass quiz (with questions), attempt, action (null in a free preview: the questions show but can't be sent), retakeHref. %>
+<% var questions = quiz.questions || []; %>
+<% if (!questions.length) { %>
+<p class="lm-desc">This quiz doesn’t have any questions yet — check back soon.</p>
+<% } else if (attempt) { var pct = attempt.total ? Math.round(attempt.score * 100 / attempt.total) : 0; %>
+<div class="qz-result" id="result">
+  <div class="qz-score"><b><%= attempt.score %>/<%= attempt.total %></b><span><%= pct %>%</span></div>
+  <div>
+    <h2><%= pct === 100 ? 'Perfect score!' : pct >= 70 ? 'Nicely done.' : 'Keep going.' %></h2>
+    <p>You got <%= attempt.score %> of <%= attempt.total %> right. The right answers are marked below.</p>
+    <% if (retakeHref) { %><a class="cl-link" href="<%= retakeHref %>">Retake the quiz</a><% } %>
+  </div>
+</div>
+<ol class="qz-list">
+  <% questions.forEach(function (question, n) { var picked = attempt.picked[n] || []; var right = picked.length === question.correct.length && picked.every(function (k) { return question.correct.indexOf(k) >= 0; }); %>
+  <li class="qz-q <%= right ? 'is-right' : 'is-wrong' %>">
+    <p class="qz-text"><span class="qz-mark"><%= right ? '✓' : '✗' %></span><%= question.q %></p>
+    <ul class="qz-options">
+      <% question.options.forEach(function (o, k) { var isRight = question.correct.indexOf(k) >= 0; var mine = picked.indexOf(k) >= 0; %>
+      <li class="<%= isRight ? 'is-right' : mine ? 'is-wrong' : '' %>"><span class="qz-pick"><%= isRight ? '✓' : mine ? '✗' : '' %></span><%= o %><% if (mine) { %><small>your answer</small><% } %></li>
+      <% }) %>
+    </ul>
+  </li>
+  <% }) %>
+</ol>
+<% } else { %>
+<form method="POST" action="<%= action || '#' %>" class="qz-form">
+  <ol class="qz-list">
+    <% questions.forEach(function (question, n) { var many = question.correct.length > 1; %>
+    <li class="qz-q">
+      <fieldset>
+        <legend class="qz-text"><%= question.q %><% if (many) { %><small>Choose all that apply</small><% } %></legend>
+        <% question.options.forEach(function (o, k) { %>
+        <label class="qz-option"><input type="<%= many ? 'checkbox' : 'radio' %>" name="a_<%= n %>" value="<%= k %>"<%= action ? '' : ' disabled' %><%= !many && action ? ' required' : '' %> /><span><%= o %></span></label>
+        <% }) %>
+      </fieldset>
+    </li>
+    <% }) %>
+  </ol>
+  <% if (action) { %>
+  <button class="btn btn-primary" name="action" value="quiz">Submit answers</button>
+  <% } else { %>
+  <p class="qz-locked">Enrol to take this quiz and see your score.</p>
+  <% } %>
+</form>
+<% } %>

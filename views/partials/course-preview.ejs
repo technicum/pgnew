@@ -1,0 +1,59 @@
+<%# Live preview of a course's public page (/course/:slug) beside its editor — bound to the details form by public/js/ax-preview.js; window.axPreview below handles the price and cover. The outline comes from the saved lessons. Pass course, lessons, link. %>
+<% var initials = String(user.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '•';
+var groups = []; lessons.forEach(function (l, i) { var last = groups[groups.length - 1]; if (last && last.title === (l.module || '')) last.lessons.push({ l: l, n: i + 1 }); else groups.push({ title: l.module || '', lessons: [{ l: l, n: i + 1 }] }); }); %>
+<div class="axp-head"><h2>Live preview</h2><span>What students will see</span></div>
+<div class="axp-frame">
+  <div class="axp-chrome"><i></i><i></i><i></i><span class="axp-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
+  <div class="axp-screen" data-pv-screen style="<%= lmThemeStyle(storeTheme) %>">
+    <p class="axp-brand"><%= user.name %></p>
+    <div class="axp-card">
+      <div class="axp-cover" data-pv-show="cover_url"><img data-pv-img="cover_url" alt="" /></div>
+      <div class="axp-body">
+        <span class="axp-kicker" data-pv-kicker>Free course</span>
+        <h3 class="axp-title" data-pv-text="title" data-pv-empty="Your course"></h3>
+        <div class="axp-host"><span class="axp-avatar"><%= initials %></span><span>by <b><%= user.name %></b></span></div>
+        <div class="axp-chips"><span><%= lessons.length %> lesson<%= lessons.length === 1 ? '' : 's' %></span><span>Learn at your own pace</span></div>
+        <div class="axp-learn" data-pv-show="outcomes">
+          <div class="axp-label" style="margin-top:0">What you’ll learn</div>
+          <ul data-pv-lines="outcomes"></ul>
+        </div>
+        <div class="axp-rich" data-pv-rich="description"></div>
+        <div class="axp-label">Course content</div>
+        <% if (!lessons.length) { %>
+        <p class="axp-empty">Lessons you add show up here.</p>
+        <% } else { %>
+        <div class="axp-outline">
+          <% groups.forEach(function (g) { %>
+          <p><span><%= g.title || 'Lessons' %></span><small><%= g.lessons.length %></small></p>
+          <ol>
+            <% g.lessons.forEach(function (x) { %><li><i><%= x.n %></i><span><%= x.l.title %></span><% if (x.l.preview) { %><em>Preview</em><% } %></li><% }) %>
+          </ol>
+          <% }) %>
+        </div>
+        <% } %>
+      </div>
+    </div>
+    <div class="axp-card">
+      <div class="axp-body">
+        <div class="axp-price" data-pv-price>Free</div>
+        <p class="axp-note" style="text-align:left;margin:2px 0 8px" data-pv-pricenote>Free · lifetime access</p>
+        <div class="axp-input">Your name</div>
+        <div class="axp-input">Your email</div>
+        <div class="axp-btn" data-pv-button>Start learning — free</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  window.axPreview = function (get, screen) {
+    var q = function (s) { return screen.querySelector(s); };
+    var n = Number(String(get('price')).replace(/[₹,\s]/g, ''));
+    var price = isFinite(n) && n > 0 ? n : 0;
+    var label = price ? '₹' + price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 'Free';
+    q('[data-pv-price]').textContent = label;
+    q('[data-pv-pricenote]').textContent = price ? 'One payment · lifetime access' : 'Free · lifetime access';
+    q('[data-pv-button]').textContent = price ? 'Buy now · ' + label : 'Start learning — free';
+    q('[data-pv-kicker]').textContent = price ? 'Online course' : 'Free course';
+  };
+</script>
+<script src="/js/ax-preview.js?v=<%= assetVersion %>"></script>

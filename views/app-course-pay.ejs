@@ -1,0 +1,50 @@
+<%# A paid course's enrolment waiting for payment (lib/appStorefront.js coursePayment → /course/:slug/learn/:token): test button, Cashfree checkout (also its ?cf=return), or — manual mode — "pay the creator, they'll confirm". Paid, the same link opens the lessons. %>
+<%- include('partials/app-public-top') %>
+
+  <article class="lm-card">
+    <% if (course.cover_url) { %><div class="cr-cover"><img src="<%= course.cover_url %>" alt="" /></div><% } %>
+    <div class="lm-card-body">
+      <% if (cancelled) { %>
+      <h1>This order was cancelled</h1>
+      <p class="lm-desc">Nothing was charged. You can start again whenever you’re ready.</p>
+      <a class="btn btn-primary" href="/course/<%= course.slug %>">Back to <%= course.title %></a>
+      <% } else { %>
+      <span class="lm-kicker"><span class="dot"></span>One step left</span>
+      <h1>Pay to unlock <%= course.title %></h1>
+      <dl class="ax-facts">
+        <div><dt>Course</dt><dd><%= course.title %> · by <%= owner.name %></dd></div>
+        <div><dt>For</dt><dd><%= student.name %> · <%= student.email %></dd></div>
+        <div><dt>Price</dt><dd><%= amountLabel %></dd></div>
+      </dl>
+
+      <% if (paymentMode === 'test') { %>
+      <div class="bk-test"><b>Test mode</b> — no payment gateway is connected yet, so nothing is charged.</div>
+      <form method="POST" action="<%= base %>" class="bk-actions">
+        <button class="btn btn-primary" name="action" value="pay">Complete test payment · <%= amountLabel %></button>
+        <button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button>
+      </form>
+      <% } else if (paymentMode === 'cashfree') { %>
+      <% if (gatewayError || retry) { %><div class="bk-test" role="alert"><%= gatewayError || 'The payment didn’t go through and nothing was charged. You can try again.' %></div><% } %>
+      <p class="ax-note">You’ll pay securely on Cashfree — UPI, cards, net banking or wallets. Your lessons open right after.</p>
+      <div class="bk-actions">
+        <% if (gateway) { %>
+        <button type="button" id="cfPay" class="btn btn-primary" data-session="<%= gateway.sessionId %>" data-env="<%= gateway.env %>" data-auto="<%= gateway.auto ? '1' : '' %>">Pay <%= amountLabel %></button>
+        <% } else { %>
+        <a class="btn btn-primary" href="<%= base %>">Try again</a>
+        <% } %>
+        <form method="POST" action="<%= base %>" style="display:contents"><button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button></form>
+      </div>
+      <% if (gateway) { %>
+      <% if (gateway.env === 'sandbox') { %><p class="ax-note">Cashfree sandbox: no real money moves.</p><% } %>
+      <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+      <script src="/js/cashfree-checkout.js?v=<%= assetVersion %>"></script>
+      <% } %>
+      <% } else { %>
+      <div class="bk-test">Pay <b><%= amountLabel %></b> to <%= owner.name %> the way they’ve shared with you (UPI or bank transfer). Your lessons unlock here as soon as they confirm it.</div>
+      <% } %>
+      <p class="ax-note">Bookmark this page — it becomes your link to the lessons once paid.</p>
+      <% } %>
+    </div>
+  </article>
+
+<%- include('partials/app-public-bottom') %>

@@ -1,5 +1,6 @@
-<%# Events app home (lib/appDashboard.js → /dashboard/events): upcoming and past events with RSVP counts, and a form to add one. %>
-<%- include('partials/app-dash-top', { navActive: '/dashboard/events', section: 'Events', heading: 'Events', intro: 'Workshops, webinars and meetups. Share an event’s link and people RSVP — each one also lands in your Audience.' }) %>
+<%# Events app home (lib/appDashboard.js → /dashboard/events): upcoming and past events with RSVP counts. "Create event" (beside the heading, as on Payment pages) makes a hidden draft and opens it in the full-screen editor (app-event-edit). %>
+<% var createBtn = '<form method="POST" action="/dashboard/events"><button class="ax-btn ax-btn-primary ax-create"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg><span>Create event</span></button></form>'; %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/events', section: 'Events', heading: 'Events', intro: 'Workshops, webinars and meetups. Share an event’s link and people RSVP — each one also lands in your Audience.', headAction: createBtn }) %>
 <% var storeUrl = storeUrlFor(user.handle);
 function eventRow(e) { var link = storeUrl + '/event/' + e.slug; %>
     <li class="ax-row<%= e.visible ? '' : ' is-off' %>">
@@ -10,7 +11,7 @@ function eventRow(e) { var link = storeUrl + '/event/' + e.slug; %>
         <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
       </div>
       <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
-      <a class="ax-btn" href="/dashboard/events/<%= e.id %>">Manage</a>
+      <a class="ax-btn" href="/dashboard/events/<%= e.id %>">Edit</a>
     </li>
 <% } %>
 
@@ -19,19 +20,11 @@ function eventRow(e) { var link = storeUrl + '/event/' + e.slug; %>
   <% if (upcoming.length) { %>
   <ul class="ax-list"><% upcoming.forEach(eventRow) %></ul>
   <% } else { %>
-  <p class="ax-empty">Nothing scheduled. Add your first event below.</p>
+  <div class="ax-empty">
+    <p style="margin:0 0 12px">Nothing scheduled yet.</p>
+    <%- createBtn %>
+  </div>
   <% } %>
-  <form method="POST" action="/dashboard/events" class="ax-new">
-    <h3>New event</h3>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-3"><span>Name</span><input class="ax-input" name="title" placeholder="Live Q&amp;A: pricing your first product" required maxlength="200" /></label>
-      <label class="ax-field"><span>Date</span><input class="ax-input" type="date" name="date" value="<%= defaultDate %>" required /></label>
-      <label class="ax-field"><span>Starts (IST)</span><input class="ax-input" type="time" name="start_time" value="18:00" required /></label>
-      <label class="ax-field"><span>Where</span>
-        <select class="ax-input" name="mode"><option value="online">Online</option><option value="venue">At a venue</option></select></label>
-    </div>
-    <button class="ax-btn ax-btn-primary">Create event</button>
-  </form>
 </section>
 
 <% if (past.length) { %>

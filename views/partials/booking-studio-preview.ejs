@@ -1,0 +1,127 @@
+<%# The booking page (/book/:slug, views/app-booking.ejs) as it looks live, drawn in the studio's device frame (app-booking-service) with public/css/studio.css's pvs-* styles. Left: the service — cover, host, title, facts, description; right: the month calendar, the times, the details form with the creator's questions, the button.
+    Bound to the editor's form by public/js/ax-preview.js (loaded in partials/studio-bottom); the window.axPreview below handles cover/photo, price, place and questions. Pass service, settings (Bookings → Settings, for the photo/cover fallbacks). %>
+<%
+var initials = String(user.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '•';
+// A sample month: weekdays from today on are open, the first one picked.
+var today = new Date();
+var year = today.getFullYear(), month = today.getMonth();
+var lead = (new Date(year, month, 1).getDay() + 6) % 7;
+var days = new Date(year, month + 1, 0).getDate();
+var cells = [];
+for (var i = 0; i < lead; i++) cells.push(null);
+var picked = 0;
+for (var d = 1; d <= days; d++) {
+  var wd = new Date(year, month, d).getDay();
+  var open = d > today.getDate() && wd !== 0 && wd !== 6;
+  if (open && !picked) picked = d;
+  cells.push({ day: d, open: open, today: d === today.getDate() });
+}
+while (cells.length % 7) cells.push(null);
+var monthLabel = today.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+var pickedLabel = picked ? new Date(year, month, picked).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+%>
+<div class="pvs" data-pv-screen style="<%= lmThemeStyle(storeTheme) %>">
+  <div class="pvs-bar is-center"><%= user.name %></div>
+  <div class="pvs-grid is-booking">
+    <div class="pvs-card">
+      <div class="pvs-cover" data-pv-cover hidden><img alt="" /></div>
+      <div class="pvs-in">
+        <div class="pvs-host">
+          <img class="pvs-av" data-pv-photo alt="" hidden /><span class="pvs-av" data-pv-initials><%= initials %></span>
+          <div><b><%= user.name %></b><% if (user.bio) { %><small><%= user.bio %></small><% } %></div>
+        </div>
+        <h3 class="pvs-title" data-pv-text="title" data-pv-empty="Your session"></h3>
+        <ul class="pvs-list">
+          <li><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><span data-pv-text="duration_min" data-pv-empty="30"></span> minutes</span></li>
+          <li><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg><span data-pv-price></span></li>
+          <li data-pv-online hidden><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3"/></svg><span data-pv-online-text>Online · video call</span></li>
+          <li data-pv-place hidden><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span data-pv-text="location"></span></li>
+        </ul>
+        <div class="pvs-rich" data-pv-rich="description"></div>
+      </div>
+    </div>
+
+    <div class="pvs-card">
+      <div class="pvs-in">
+        <div class="pvs-h">Pick a day</div>
+        <div class="pvs-cal">
+          <div class="pvs-cal-head"><span>‹</span><b><%= monthLabel %></b><span>›</span></div>
+          <div class="pvs-cal-grid">
+            <% ['Mo','Tu','We','Th','Fr','Sa','Su'].forEach(function (n) { %><i><%= n %></i><% }) %>
+            <% cells.forEach(function (c) { %><span class="<%= !c ? '' : [c.open ? 'is-open' : '', c.day === picked ? 'is-on' : '', c.today ? 'is-today' : ''].join(' ').trim() %>"><%= c ? c.day : '' %></span><% }) %>
+          </div>
+        </div>
+        <div class="pvs-h is-gap"><%= pickedLabel %></div>
+        <div class="pvs-slots"><span>9:00 am</span><span class="is-on">9:30 am</span><span>10:00 am</span><span>11:30 am</span><span>2:00 pm</span><span>4:30 pm</span></div>
+        <div data-pv-choice hidden>
+          <div class="pvs-h is-gap">How would you like to attend?</div>
+          <div class="pvs-slots is-two"><span class="is-on">In person</span><span>Online</span></div>
+        </div>
+        <div class="pvs-h is-gap">Your details</div>
+        <div class="pvs-field"><span>Your name</span><div class="pvs-input"></div></div>
+        <div class="pvs-field"><span>Your email</span><div class="pvs-input"></div></div>
+        <div class="pvs-field"><span>Phone <em>(optional)</em></span><div class="pvs-input"></div></div>
+        <div data-pv-questions></div>
+        <div class="pvs-field"><span>Anything to share beforehand? <em>(optional)</em></span><div class="pvs-input is-tall"></div></div>
+        <div class="pvs-btn" data-pv-button>Confirm booking</div>
+        <p class="pvs-note" data-pv-paynote hidden></p>
+      </div>
+      <p class="pvs-foot">Your details go to <%= user.name %> only, to arrange this session.</p>
+    </div>
+  </div>
+</div>
+<script>
+  // Booking-specific bits of the preview: cover/photo (falling back to
+  // Bookings → Settings), price with advance / pay-later, where it
+  // happens, the questions, and the button — worded as app-booking.ejs.
+  window.axPreview = function (get, screen) {
+    var q = function (s) { return screen.querySelector(s); };
+    var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var fallback = <%- JSON.stringify({ cover: settings.cover_url || '', photo: settings.photo_url || '' }) %>;
+    var cover = get('cover_url') || fallback.cover;
+    var photo = get('photo_url') || fallback.photo;
+    q('[data-pv-cover]').hidden = !cover;
+    if (cover) q('[data-pv-cover] img').src = cover;
+    q('[data-pv-photo]').hidden = !photo;
+    q('[data-pv-initials]').hidden = !!photo;
+    if (photo) q('[data-pv-photo]').src = photo;
+
+    var rupees = function (s) { var n = Number(String(s).replace(/[₹,\s]/g, '')); return isFinite(n) && n > 0 ? n : 0; };
+    var inr = function (n) { return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 }); };
+    var price = rupees(get('price'));
+    var option = get('pay_option') || 'online';
+    var advance = option === 'deposit' ? Math.min(rupees(get('deposit')), price) : 0;
+    var now = !price ? 0 : (option === 'later' ? 0 : (option === 'deposit' ? advance : price));
+    var priceHtml = '<b>' + (price ? inr(price) : 'Free') + '</b>';
+    if (now && now < price) priceHtml += ' · ' + inr(now) + ' advance to book, the rest at the appointment';
+    else if (price && !now) priceHtml += ' · pay at the appointment';
+    q('[data-pv-price]').innerHTML = priceHtml;
+    q('[data-pv-button]').textContent = now ? 'Continue to pay ' + inr(now) + (now < price ? ' advance' : '') : 'Confirm booking';
+    var note = q('[data-pv-paynote]');
+    note.hidden = !(price && option === 'later');
+    note.textContent = '<%= siteName %> may take its small fee as an online advance.';
+
+    var attend = get('attend') || 'online';
+    q('[data-pv-online]').hidden = attend === 'in_person';
+    q('[data-pv-online-text]').textContent = attend === 'either' ? 'Online or in person — your choice' : 'Online · video call';
+    q('[data-pv-place]').hidden = attend === 'online' || !get('location');
+    q('[data-pv-choice]').hidden = attend !== 'either';
+
+    var html = '';
+    for (var n = 0; n < <%= maxQuestions %>; n++) {
+      var label = get('q_label_' + n);
+      if (!label) continue;
+      var type = get('q_type_' + n);
+      var opt = get('q_required_' + n) ? '' : ' <em>(optional)</em>';
+      var options = String(get('q_options_' + n) || '').split(/\r?\n|,/).map(function (o) { return o.trim(); }).filter(Boolean);
+      if (type === 'checkbox') {
+        html += '<div class="pvs-field"><span class="pvs-check"><i></i>' + esc(label) + opt + '</span></div>';
+      } else if (type === 'radio') {
+        html += '<div class="pvs-field"><span>' + esc(label) + opt + '</span>' + options.map(function (o) { return '<span class="pvs-check is-radio"><i></i>' + esc(o) + '</span>'; }).join('') + '</div>';
+      } else {
+        html += '<div class="pvs-field"><span>' + esc(label) + opt + '</span><div class="pvs-input' + (type === 'textarea' ? ' is-tall' : '') + '">' + (type === 'dropdown' ? 'Choose…' : '') + '</div></div>';
+      }
+    }
+    q('[data-pv-questions]').innerHTML = html;
+  };
+</script>

@@ -1,93 +1,432 @@
-<%# Edit one course (lib/appDashboard.js → /dashboard/courses/:id): details, lessons (add / edit / reorder / delete — ?lesson=<id> opens one for editing), students, delete. %>
-<%- include('partials/app-dash-top', { navActive: '/dashboard/courses', section: 'Courses', heading: course.title, back: { href: '/dashboard/courses', label: 'All courses' } }) %>
-<% var link = storeUrlFor(user.handle) + '/course/' + course.slug; var base = '/dashboard/courses/' + course.id; %>
+<%# Edit one course (lib/appDashboard.js → /dashboard/courses/:id) — a full-screen editor (public/css/studio.css): four tabs on the left (Details: name, price, description, what you'll learn, cover; Curriculum: modules (add / rename / reorder / delete), each holding lessons, quizzes and downloads (add / edit / reorder / move between modules — ?lesson=<id> opens one: a lesson's video and text, a quiz's questions, a download's file); Students, with their quiz scores; Settings: link, visibility, delete), the course page's live preview on the right (partials/course-studio-preview) as a desktop browser or a phone.
+    Details and Settings are one form (#courseForm, the Save bar); lessons and students post their own forms. A link to #lessons / #students / #lesson-<id> opens that tab (public/js/studio.js).
+    A lesson's video and a download's file upload straight from the browser (script below → POST …/lessons/:id/video or /file, lib/courseMedia.js) and are stored privately. %>
+<%- include('partials/studio-head') %>
+<% var link = storeUrlFor(user.handle) + '/course/' + course.slug; var base = '/dashboard/courses/' + course.id;
+var priceRupees = course.price ? String(course.price / 100) : '0';
+var videoKind = function (l) { return l.video_file ? 'Uploaded video' : (l.video_url ? 'Video link' : ''); };
+var quizzes = lessons.filter(function (l) { return l.kind === 'quiz'; }); %>
+<div class="st">
+  <aside class="st-panel">
+    <div class="st-top">
+      <a class="st-close" href="/dashboard/courses" aria-label="Close editor" title="Back to all courses">✕</a>
+      <div class="st-top-title"><b><%= course.title %></b><small>Course · <a href="<%= link %>" target="_blank" rel="noopener" style="color:inherit">open page ↗</a></small></div>
+      <span class="st-live<%= course.visible ? ' is-on' : '' %>"><%= course.visible ? 'Live' : 'Hidden' %></span>
+    </div>
+    <nav class="st-tabs" role="tablist" aria-label="Editor sections">
+      <button type="button" role="tab" data-st-tab="details" aria-selected="true">Details</button>
+      <button type="button" role="tab" data-st-tab="lessons" aria-selected="false">Curriculum<span class="st-badge"><%= lessons.length %></span></button>
+      <button type="button" role="tab" data-st-tab="students" aria-selected="false">Students<span class="st-badge"><%= students.length %></span></button>
+      <button type="button" role="tab" data-st-tab="settings" aria-selected="false">Settings</button>
+    </nav>
 
-<div class="ax-linkbar">
-  <span>Course link</span>
-  <a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a>
-  <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy</button>
+    <div class="st-form">
+      <div class="st-scroll">
+        <% if (flash) { %><div class="ax-flash ax-flash-<%= flash.kind %>" role="status"><%= flash.text %></div><% } %>
+
+        <form id="courseForm" method="POST" action="<%= base %>" data-pv-form>
+          <%# --- Details --- %>
+          <div data-st-panel="details">
+            <div class="st-intro"><h2>Set up your course</h2><p>What students see before they enrol.</p></div>
+            <section class="ax-panel">
+              <div class="ax-grid">
+                <label class="ax-field"><span>Name</span><input class="ax-input" name="title" value="<%= course.title %>" required maxlength="200" /></label>
+                <label class="ax-field"><span>Price <small>0 = free</small></span><span class="st-affix"><i class="pre">₹</i><input class="ax-input has-pre" name="price" value="<%= priceRupees %>" inputmode="decimal" /></span></label>
+                <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: course.description, rows: 6, maxlength: 2000, placeholder: 'Who it’s for, what it covers, how it’s taught…' }) %>
+                <label class="ax-field"><span>What you’ll learn <small>(one point per line, up to 10)</small></span>
+                  <textarea class="ax-input" name="outcomes" rows="5" maxlength="2000" placeholder="Build formulas without looking them up&#10;Make pivot tables in under a minute&#10;Turn data into charts your boss understands"><%= course.outcomesList.join('\n') %></textarea>
+                  <small>Shown as a checklist on the course page.</small></label>
+              </div>
+              <% if (course.price) { %>
+              <p class="ax-hint" style="margin-top:10px">
+                <% if (paymentMode === 'test') { %><b>Test mode</b> — students see a “Complete test payment” step and nothing is charged.
+                <% } else if (paymentMode === 'cashfree') { %><b>Paid online</b> — students pay through Cashfree and their lessons unlock as soon as it goes through.
+                <% } else { %><b>Manual payments</b> — a student’s lessons unlock when you mark their order paid in <a href="/dashboard/orders">Orders</a>.<% } %>
+              </p>
+              <% } %>
+            </section>
+
+            <section class="ax-panel">
+              <div class="ax-panel-head"><h2>Cover</h2><span class="ax-count">Optional</span></div>
+              <div class="ax-grid">
+                <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: course.cover_url, hint: 'Wide image at the top of the course page and on Explore — about 1600 × 900.' }) %>
+              </div>
+            </section>
+          </div>
+
+          <%# --- Settings --- %>
+          <div data-st-panel="settings" hidden>
+            <div class="st-intro"><h2>Settings</h2><p>Link and who can find it.</p></div>
+            <section class="ax-panel">
+              <div class="ax-panel-head"><h2>Link</h2></div>
+              <div class="ax-grid">
+                <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= course.slug %>" maxlength="60" pattern="[a-z0-9-]+" />
+                  <small><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/course/<b><%= course.slug %></b> · <button type="button" class="ax-btn ax-btn-quiet" style="height:auto;padding:0" data-copy="<%= link %>">Copy link</button></small></label>
+              </div>
+            </section>
+
+            <section class="ax-panel">
+              <div class="ax-panel-head"><h2>Visibility</h2></div>
+              <div class="st-cards">
+                <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= course.visible ? ' checked' : '' %> /> <span>Open for enrolment <small class="ax-sub">— the page is live</small></span></label>
+                <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= course.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find this course</small></span></label>
+              </div>
+            </section>
+
+            <section class="ax-panel ax-danger" style="display:block">
+              <p style="margin:0 0 10px">Deleting the course removes its page, lessons, videos and students’ access. Students stay in your Audience.</p>
+              <button class="ax-btn ax-btn-danger" form="deleteCourse" data-confirm="Click again to delete">Delete course</button>
+            </section>
+          </div>
+        </form>
+
+        <%# --- Curriculum: modules, each with its lessons / quizzes / downloads (lib/courses.js) --- %>
+        <div data-st-panel="lessons" hidden>
+          <div class="st-intro"><h2>Curriculum</h2><p>Modules hold your lessons, quizzes and downloads — students go through them in this order.</p></div>
+          <section class="ax-panel cu" id="lessons">
+            <% if (!outline.length) { %>
+            <div class="cu-empty">
+              <b>Start with a module</b>
+              <span>e.g. “Getting started” — then add lessons, quizzes and downloads to it.</span>
+            </div>
+            <% } %>
+            <% outline.forEach(function (g, gi) { var modIndex = modules.findIndex(function (m) { return m.id === g.id; }); %>
+            <div class="cu-mod<%= g.id ? '' : ' is-loose' %>"<%= g.id ? ' id=module-' + g.id : '' %>>
+              <div class="cu-mod-head">
+                <% if (g.id) { %>
+                <span class="cu-mod-n">Module <%= modIndex + 1 %></span>
+                <form method="POST" action="<%= base %>/modules/<%= g.id %>" class="cu-rename">
+                  <input class="ax-input" name="title" value="<%= g.title %>" required maxlength="120" aria-label="Module name" />
+                  <button class="ax-btn ax-btn-quiet">Save</button>
+                </form>
+                <div class="cu-tools">
+                  <form method="POST" action="<%= base %>/modules/<%= g.id %>/move"><input type="hidden" name="dir" value="up" /><button class="ax-btn ax-btn-quiet" aria-label="Move module up"<%= modIndex === 0 ? ' disabled' : '' %>>↑</button></form>
+                  <form method="POST" action="<%= base %>/modules/<%= g.id %>/move"><input type="hidden" name="dir" value="down" /><button class="ax-btn ax-btn-quiet" aria-label="Move module down"<%= modIndex === modules.length - 1 ? ' disabled' : '' %>>↓</button></form>
+                  <form method="POST" action="<%= base %>/modules/<%= g.id %>/delete"><button class="ax-btn ax-btn-quiet" data-confirm="Delete? Its items stay" title="Delete the module — its items move to the top">✕</button></form>
+                </div>
+                <% } else { %>
+                <span class="cu-mod-n">Not in a module</span>
+                <span class="ax-sub">Shown first. Edit an item to move it into a module.</span>
+                <% } %>
+              </div>
+
+              <ol class="cu-items">
+                <% if (!g.lessons.length) { %><li class="cu-none">Nothing here yet — add a lesson, quiz or download below.</li><% } %>
+                <% g.lessons.forEach(function (l, li) { %>
+                <li class="cu-item<%= editing === l.id ? ' is-open' : '' %>">
+                  <%- include('partials/course-kind-icon', { kind: l.kind, video: !!(l.video_file || l.video_url) }) %>
+                  <div class="ax-main">
+                    <a class="ax-title" href="?lesson=<%= l.id %>#lesson-<%= l.id %>"><%= l.number %>. <%= l.title %></a>
+                    <span class="ax-sub ax-block">
+                      <%= kinds[l.kind] %> ·
+                      <% if (l.kind === 'quiz') { %><%= l.questions.length ? l.questions.length + ' question' + (l.questions.length === 1 ? '' : 's') : 'No questions yet' %>
+                      <% } else if (l.kind === 'file') { %><%= l.file_name ? l.file_label + ' (' + sizeLabel(l.file_size) + ')' : 'No file yet' %>
+                      <% } else { %><%= [videoKind(l), l.body ? 'Text' : ''].filter(Boolean).join(' + ') || 'Empty' %><% } %>
+                      <% if (l.preview) { %> · <b class="ax-tag">Free preview</b><% } %>
+                    </span>
+                  </div>
+                  <form method="POST" action="<%= base %>/lessons/<%= l.id %>/move"><input type="hidden" name="dir" value="up" /><button class="ax-btn ax-btn-quiet" aria-label="Move up"<%= li === 0 ? ' disabled' : '' %>>↑</button></form>
+                  <form method="POST" action="<%= base %>/lessons/<%= l.id %>/move"><input type="hidden" name="dir" value="down" /><button class="ax-btn ax-btn-quiet" aria-label="Move down"<%= li === g.lessons.length - 1 ? ' disabled' : '' %>>↓</button></form>
+                  <a class="ax-btn" href="?lesson=<%= l.id %>#lesson-<%= l.id %>">Edit</a>
+                </li>
+                <% if (editing === l.id) { %>
+                <li class="ax-edit cu-edit" id="lesson-<%= l.id %>">
+                  <% if (l.kind === 'lesson') { %>
+                  <div class="ax-video-box" data-media-upload="<%= base %>/lessons/<%= l.id %>/video" data-media-kind="video">
+                    <div class="ax-video-head">
+                      <b>Video</b>
+                      <span class="ax-sub">Upload an MP4 or WebM (up to 2 GB). It’s private: students watch it in the course player, with no download button and their name over the video.</span>
+                    </div>
+                    <% if (l.video_file) { %>
+                    <video class="ax-video-preview" src="<%= base %>/lessons/<%= l.id %>/video" controls controlslist="nodownload" preload="metadata"></video>
+                    <% } %>
+                    <div class="ax-video-actions">
+                      <label class="ax-btn"><input type="file" accept="video/mp4,video/webm" hidden data-media-file /><span><%= l.video_file ? 'Replace video' : 'Upload video' %></span></label>
+                      <% if (l.video_file) { %><form method="POST" action="<%= base %>/lessons/<%= l.id %>/video/delete"><button class="ax-btn ax-btn-quiet" data-confirm="Click again to remove">Remove video</button></form><% } %>
+                    </div>
+                    <div class="ax-progress" hidden data-media-progress><span></span></div>
+                    <small class="ax-video-status" data-media-status role="status"></small>
+                  </div>
+                  <% } else if (l.kind === 'file') { %>
+                  <div class="ax-video-box" data-media-upload="<%= base %>/lessons/<%= l.id %>/file" data-media-kind="file">
+                    <div class="ax-video-head">
+                      <b>File</b>
+                      <span class="ax-sub">PDF, Word, Excel, PowerPoint, ZIP, EPUB, image, MP3, text or CSV — up to <%= maxFileMb %> MB. Only enrolled students can download it (anyone, if it’s a free preview).</span>
+                    </div>
+                    <% if (l.file_name) { %>
+                    <a class="cu-file" href="<%= base %>/lessons/<%= l.id %>/file"><%- include('partials/course-kind-icon', { kind: 'file' }) %><span><b><%= l.file_label %></b><small><%= sizeLabel(l.file_size) %> · download your copy</small></span></a>
+                    <% } %>
+                    <div class="ax-video-actions">
+                      <label class="ax-btn"><input type="file" accept="<%= fileAccept %>" hidden data-media-file /><span><%= l.file_name ? 'Replace file' : 'Upload file' %></span></label>
+                      <% if (l.file_name) { %><form method="POST" action="<%= base %>/lessons/<%= l.id %>/file/delete"><button class="ax-btn ax-btn-quiet" data-confirm="Click again to remove">Remove file</button></form><% } %>
+                    </div>
+                    <div class="ax-progress" hidden data-media-progress><span></span></div>
+                    <small class="ax-video-status" data-media-status role="status"></small>
+                  </div>
+                  <% } %>
+
+                  <form method="POST" action="<%= base %>/lessons/<%= l.id %>">
+                    <div class="ax-grid">
+                      <label class="ax-field"><span><%= kinds[l.kind] %> title</span><input class="ax-input" name="title" value="<%= l.title %>" required maxlength="200" /></label>
+                      <label class="ax-field"><span>Module</span>
+                        <select class="ax-input" name="module_id">
+                          <option value=""<%= l.module_id ? '' : ' selected' %>>Not in a module</option>
+                          <% modules.forEach(function (m) { %><option value="<%= m.id %>"<%= l.module_id === m.id ? ' selected' : '' %>><%= m.title %></option><% }) %>
+                        </select></label>
+                      <% if (l.kind === 'lesson') { %>
+                      <label class="ax-field"><span>Or a YouTube / Vimeo link <small>(used only without an upload — can’t be protected)</small></span><input class="ax-input" name="video_url" value="<%= l.video_url %>" placeholder="https://youtube.com/…" maxlength="500" /></label>
+                      <%# A paid lesson on YouTube: anyone can find the video ID in the page and watch it there — say so. %>
+                      <% if (course.price && !l.preview) { %>
+                      <p class="st-alert" data-yt-warn<%= l.video_url && !l.video_file ? '' : ' hidden' %>><b>Anyone can copy a YouTube or Vimeo link.</b> The video’s address is in the page, so it can be shared and watched outside your course — the watermark and device limit don’t apply there. For paid lessons, upload the video instead; keep YouTube for free previews (or use Vimeo with “only on my domain” embedding).</p>
+                      <% } %>
+                      <%- include('partials/ax-rich-field', { name: 'body', label: 'Lesson text', value: l.body, rows: 10, maxlength: 20000 }) %>
+                      <% } else if (l.kind === 'file') { %>
+                      <%- include('partials/ax-rich-field', { name: 'body', label: 'Notes <small>(optional — shown above the download)</small>', value: l.body, rows: 4, maxlength: 20000 }) %>
+                      <% } else { %>
+                      <%- include('partials/ax-rich-field', { name: 'body', label: 'Instructions <small>(optional)</small>', value: l.body, rows: 3, maxlength: 20000 }) %>
+                      <input type="hidden" name="quiz_form" value="1" />
+                      <div class="qe" data-quiz>
+                        <span class="qe-label">Questions <small>Tick the right answer — tick more than one and students choose all that apply.</small></span>
+                        <% for (var n = 0; n < maxQuestions; n++) { var q = l.questions[n] || { q: '', options: [], correct: [] }; var shown = n < Math.max(1, l.questions.length); var optCount = Math.max(q.options.length, 3); %>
+                        <div class="qe-q"<%= shown ? '' : ' hidden' %>>
+                          <div class="qe-q-head"><b>Question <%= n + 1 %></b><button type="button" class="ax-q-remove" data-qe-remove aria-label="Remove question" title="Remove question">×</button></div>
+                          <textarea class="ax-input" name="qq_<%= n %>" rows="2" maxlength="500" placeholder="What’s the question?"><%= q.q %></textarea>
+                          <% for (var k = 0; k < maxOptions; k++) { %>
+                          <div class="qe-opt"<%= k < optCount ? '' : ' hidden' %>>
+                            <label class="qe-right" title="Right answer"><input type="checkbox" name="qc_<%= n %>_<%= k %>" value="1"<%= q.correct.indexOf(k) >= 0 ? ' checked' : '' %> /><span>✓</span></label>
+                            <input class="ax-input" name="qo_<%= n %>_<%= k %>" value="<%= q.options[k] || '' %>" maxlength="200" placeholder="Choice <%= k + 1 %>" aria-label="Question <%= n + 1 %>, choice <%= k + 1 %>" />
+                          </div>
+                          <% } %>
+                          <button type="button" class="ax-btn ax-btn-quiet qe-add-opt" data-qe-add-opt>+ Choice</button>
+                        </div>
+                        <% } %>
+                        <button type="button" class="ax-btn ax-btn-quiet" data-qe-add>+ Add question</button>
+                      </div>
+                      <% } %>
+                      <label class="ax-check ax-check-field"><input type="checkbox" name="preview" value="1"<%= l.preview ? ' checked' : '' %> /> <span>Free preview <small class="ax-sub">— anyone can open it from the course page</small></span></label>
+                    </div>
+                    <div class="ax-actions">
+                      <button class="ax-btn ax-btn-primary">Save <%= kinds[l.kind].toLowerCase() %></button>
+                      <a class="ax-btn ax-btn-quiet" href="<%= base %>#lessons">Close</a>
+                      <button class="ax-btn ax-btn-danger" formaction="<%= base %>/lessons/<%= l.id %>/delete" data-confirm="Click again to delete">Delete</button>
+                    </div>
+                  </form>
+                </li>
+                <% } %>
+                <% }) %>
+              </ol>
+
+              <form method="POST" action="<%= base %>/lessons" class="cu-add">
+                <input type="hidden" name="module_id" value="<%= g.id || '' %>" />
+                <select class="ax-input" name="kind" aria-label="What to add">
+                  <% Object.keys(kinds).forEach(function (k) { %><option value="<%= k %>"><%= kinds[k] %></option><% }) %>
+                </select>
+                <input class="ax-input" name="title" placeholder="Title of the new item" required maxlength="200" aria-label="Title" />
+                <button class="ax-btn">Add</button>
+              </form>
+            </div>
+            <% }) %>
+
+            <form method="POST" action="<%= base %>/modules" class="cu-add cu-add-mod">
+              <input class="ax-input" name="title" placeholder="<%= modules.length ? 'Next module’s name' : 'e.g. Getting started' %>" required maxlength="120" aria-label="Module name" />
+              <button class="ax-btn ax-btn-primary">+ Add module</button>
+            </form>
+          </section>
+        </div>
+
+        <%# --- Students --- %>
+        <div data-st-panel="students" hidden>
+          <div class="st-intro"><h2>Students</h2><p>Who’s enrolled and how far they’ve got.</p></div>
+          <% if (abandonedCount) { %><p class="st-alert" style="margin-bottom:16px"><b><%= abandonedCount %> <%= abandonedCount === 1 ? 'person' : 'people' %> started buying and didn’t pay.</b> <a href="/dashboard/courses#abandoned" style="color:inherit;text-decoration:underline">Follow up on WhatsApp or email →</a></p><% } %>
+          <section class="ax-panel" id="students">
+            <% if (!students.length) { %>
+            <p class="ax-empty">No one has enrolled yet.</p>
+            <% } else { %>
+            <ul class="ax-list">
+              <% students.forEach(function (s) { var pct = lessons.length ? Math.round(s.done * 100 / lessons.length) : 0; %>
+              <li class="ax-row">
+                <div class="ax-main">
+                  <b><%= s.name %></b> <span class="ax-sub">· <a href="mailto:<%= s.email %>"><%= s.email %></a><%= s.phone ? ' · ' + s.phone : '' %> · <%= new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+                  <% if (s.status === 'active') { %>
+                  <span class="ax-sub ax-block"><span class="ax-meter" aria-hidden="true"><span style="width:<%= pct %>%"></span></span> <%= s.done %> of <%= lessons.length %> done</span>
+                  <% var mine = scores.get(s.id); if (mine && mine.size) { %>
+                  <span class="ax-sub ax-block">Quizzes: <%= quizzes.filter(function (qz) { return mine.has(qz.id); }).map(function (qz) { var r = mine.get(qz.id); return qz.title + ' ' + r.score + '/' + r.total; }).join(' · ') %></span>
+                  <% } %>
+                  <%# Their devices (lib/courses.js lockDevice) — and tries from others, a sign the link is being shared. %>
+                  <% var devs = devices.get(s.id) || []; %>
+                  <span class="ax-sub ax-block">Devices <%= devs.length %>/<%= maxDevices %><%= devs.length ? ': ' + devs.map(function (d) { return d.label; }).join(', ') : ' — not opened yet' %></span>
+                  <% if (s.blocked_tries) { %><span class="ax-sub ax-block st-warn">⚠ Blocked <%= s.blocked_tries %> time<%= s.blocked_tries === 1 ? '' : 's' %> on another device — their link may be shared.</span><% } %>
+                  <% } %>
+                </div>
+                <% if (s.status === 'pending') { %><span class="ax-pill ax-pill-warn">Awaiting payment</span><% } %>
+                <% if (s.status === 'active') { %><button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>/learn/<%= s.token %>" title="Their private link — send it if they lost it. Opening it yourself uses one of their devices.">Copy their link</button><% } %>
+                <% if (s.status === 'active' && ((devices.get(s.id) || []).length || s.blocked_tries)) { %><form method="POST" action="<%= base %>/students/<%= s.id %>/devices/reset"><button class="ax-btn ax-btn-quiet" data-confirm="Reset their devices?" title="For a new phone or cleared browser — frees their device slots">Reset devices</button></form><% } %>
+                <form method="POST" action="<%= base %>/students/<%= s.id %>/remove"><button class="ax-btn ax-btn-quiet" data-confirm="Remove access?">Remove</button></form>
+              </li>
+              <% }) %>
+            </ul>
+            <% } %>
+          </section>
+        </div>
+      </div>
+
+      <div class="st-foot" data-st-foot="details settings">
+        <small>Changes show in the preview — save to publish them.</small>
+        <button class="st-save" form="courseForm">Save changes</button>
+      </div>
+    </div>
+    <form id="deleteCourse" method="POST" action="<%= base %>/delete" hidden></form>
+  </aside>
+
+  <main class="st-canvas">
+    <div class="st-canvas-head">
+      <h2>Preview<small>What students see — updates as you type</small></h2>
+      <div class="st-devices" role="group" aria-label="Preview size">
+        <button type="button" data-st-view="desktop" aria-pressed="true">🖥 Desktop</button>
+        <button type="button" data-st-view="mobile" aria-pressed="false">📱 Mobile</button>
+      </div>
+    </div>
+    <div class="st-device is-desktop" data-st-device>
+      <div class="st-chrome"><i></i><i></i><i></i><span class="st-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
+      <div class="st-screen">
+        <%- include('partials/course-studio-preview', { course: course, lessons: lessons, outline: outline, counts: counts }) %>
+      </div>
+    </div>
+  </main>
 </div>
 
-<form method="POST" action="<%= base %>">
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Details</h2></div>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-2"><span>Name</span><input class="ax-input" name="title" value="<%= course.title %>" required maxlength="200" /></label>
-      <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= course.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
-      <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: course.description, rows: 5, maxlength: 2000, placeholder: 'What students will learn' }) %>
-    </div>
-  </section>
-  <section class="ax-panel ax-savebar">
-    <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= course.visible ? ' checked' : '' %> /> <span>Open for enrolment (page is live)</span></label>
-    <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= course.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find this course</small></span></label>
-    <button class="ax-btn ax-btn-primary">Save changes</button>
-  </section>
-</form>
+<script>
+  // A lesson's video / a download's file: it goes up as the raw request
+  // body (a download's name in X-File-Name), with a progress bar; the page
+  // reloads to show it once it's stored.
+  document.querySelectorAll('[data-media-upload]').forEach(function (box) {
+    var isVideo = box.getAttribute('data-media-kind') === 'video';
+    var input = box.querySelector('[data-media-file]');
+    var bar = box.querySelector('[data-media-progress]');
+    var status = box.querySelector('[data-media-status]');
+    input.addEventListener('change', function () {
+      var file = input.files[0];
+      if (!file) return;
+      if (isVideo) {
+        if (['video/mp4', 'video/webm'].indexOf(file.type) < 0) { status.textContent = 'Choose an MP4 or WebM video.'; return; }
+        if (file.size > <%= 2048 * 1024 * 1024 %>) { status.textContent = 'That video is too big — keep it under 2 GB.'; return; }
+      } else if (file.size > <%= maxFileMb * 1024 * 1024 %>) {
+        status.textContent = 'That file is too big — keep it under <%= maxFileMb %> MB.';
+        return;
+      }
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', box.getAttribute('data-media-upload'));
+      xhr.setRequestHeader('Content-Type', isVideo ? file.type : 'application/octet-stream');
+      if (!isVideo) xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+      bar.hidden = false;
+      input.disabled = true;
+      xhr.upload.onprogress = function (e) {
+        if (!e.lengthComputable) return;
+        var pct = Math.round(e.loaded * 100 / e.total);
+        bar.firstElementChild.style.width = pct + '%';
+        status.textContent = 'Uploading… ' + pct + '% of ' + (file.size / 1048576).toFixed(0) + ' MB — keep this page open.';
+      };
+      xhr.onload = function () {
+        var data = {};
+        try { data = JSON.parse(xhr.responseText); } catch (err) {}
+        if (xhr.status >= 200 && xhr.status < 300) {
+          status.textContent = 'Uploaded.';
+          location.reload();
+        } else {
+          status.textContent = data.error || 'Upload failed. Please try again.';
+          input.disabled = false;
+          bar.hidden = true;
+        }
+      };
+      xhr.onerror = function () { status.textContent = 'Upload failed — check your connection and try again.'; input.disabled = false; bar.hidden = true; };
+      xhr.send(file);
+    });
+  });
 
-<section class="ax-panel" id="lessons">
-  <div class="ax-panel-head"><h2>Lessons</h2><span class="ax-count"><%= lessons.length %></span></div>
-  <% if (lessons.length) { %>
-  <ol class="ax-list ax-lesson-list">
-    <% lessons.forEach(function (l, i) { %>
-    <li class="ax-row">
-      <span class="ax-num"><%= i + 1 %></span>
-      <div class="ax-main">
-        <a class="ax-title" href="?lesson=<%= l.id %>#lesson-<%= l.id %>"><%= l.title %></a>
-        <span class="ax-sub ax-block"><%= l.video_url ? 'Video' : '' %><%= l.video_url && l.body ? ' + ' : '' %><%= l.body ? 'text' : '' %></span>
-      </div>
-      <form method="POST" action="<%= base %>/lessons/<%= l.id %>/move"><input type="hidden" name="dir" value="up" /><button class="ax-btn ax-btn-quiet" aria-label="Move up"<%= i === 0 ? ' disabled' : '' %>>↑</button></form>
-      <form method="POST" action="<%= base %>/lessons/<%= l.id %>/move"><input type="hidden" name="dir" value="down" /><button class="ax-btn ax-btn-quiet" aria-label="Move down"<%= i === lessons.length - 1 ? ' disabled' : '' %>>↓</button></form>
-      <a class="ax-btn" href="?lesson=<%= l.id %>#lesson-<%= l.id %>">Edit</a>
-    </li>
-    <% if (editing === l.id) { %>
-    <li class="ax-edit" id="lesson-<%= l.id %>">
-      <form method="POST" action="<%= base %>/lessons/<%= l.id %>">
-        <div class="ax-grid">
-          <label class="ax-field ax-span-2"><span>Title</span><input class="ax-input" name="title" value="<%= l.title %>" required maxlength="200" /></label>
-          <label class="ax-field"><span>Video link <small>(optional)</small></span><input class="ax-input" name="video_url" value="<%= l.video_url %>" placeholder="YouTube or Vimeo link" maxlength="500" /></label>
-          <%- include('partials/ax-rich-field', { name: 'body', label: 'Lesson text', value: l.body, rows: 10, maxlength: 20000 }) %>
-        </div>
-        <div class="ax-actions">
-          <button class="ax-btn ax-btn-primary">Save lesson</button>
-          <a class="ax-btn ax-btn-quiet" href="<%= base %>#lessons">Close</a>
-          <button class="ax-btn ax-btn-danger" formaction="<%= base %>/lessons/<%= l.id %>/delete" data-confirm="Click again to delete">Delete lesson</button>
-        </div>
-      </form>
-    </li>
-    <% } %>
-    <% }) %>
-  </ol>
-  <% } %>
-  <form method="POST" action="<%= base %>/lessons" class="ax-new">
-    <h3>Add a lesson</h3>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-2"><span>Title</span><input class="ax-input" name="title" placeholder="Lesson <%= lessons.length + 1 %>: …" required maxlength="200" /></label>
-      <label class="ax-field"><span>Video link <small>(optional)</small></span><input class="ax-input" name="video_url" placeholder="YouTube or Vimeo link" maxlength="500" /></label>
-      <%- include('partials/ax-rich-field', { name: 'body', label: 'Lesson text <small>(optional)</small>', value: '', rows: 6, maxlength: 20000 }) %>
-    </div>
-    <button class="ax-btn ax-btn-primary">Add lesson</button>
-  </form>
-</section>
+  // A paid lesson's YouTube / Vimeo link: the warning shows as soon as one is typed.
+  document.querySelectorAll('[data-yt-warn]').forEach(function (warn) {
+    var input = warn.parentNode.querySelector('input[name="video_url"]');
+    var hasUpload = <%- JSON.stringify(lessons.filter(function (l) { return l.video_file; }).map(function (l) { return l.id; })) %>.indexOf(<%= editing || 0 %>) >= 0;
+    input.addEventListener('input', function () { warn.hidden = hasUpload || !input.value.trim(); });
+  });
 
-<section class="ax-panel" id="students">
-  <div class="ax-panel-head"><h2>Students</h2><span class="ax-count"><%= students.length %></span></div>
-  <% if (!students.length) { %>
-  <p class="ax-empty">No one has enrolled yet.</p>
-  <% } else { %>
-  <ul class="ax-list">
-    <% students.forEach(function (s) { %>
-    <li class="ax-row">
-      <div class="ax-main"><b><%= s.name %></b> <span class="ax-sub">· <a href="mailto:<%= s.email %>"><%= s.email %></a> · enrolled <%= new Date(s.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) %></span></div>
-      <form method="POST" action="<%= base %>/students/<%= s.id %>/remove"><button class="ax-btn ax-btn-quiet" data-confirm="Remove access?">Remove</button></form>
-    </li>
-    <% }) %>
-  </ul>
-  <% } %>
-</section>
+  // Quiz questions: "+ Add question" shows the next hidden one, "+ Choice"
+  // the next hidden choice in it; × clears a question and hides it (blank
+  // questions aren't saved). A question with a right answer ticked but no
+  // text in that choice is left for the server to explain.
+  document.querySelectorAll('[data-quiz]').forEach(function (box) {
+    var rows = Array.prototype.slice.call(box.querySelectorAll('.qe-q'));
+    var add = box.querySelector('[data-qe-add]');
+    var sync = function () { add.hidden = rows.every(function (r) { return !r.hidden; }); };
+    rows.forEach(function (row) {
+      var opts = Array.prototype.slice.call(row.querySelectorAll('.qe-opt'));
+      var addOpt = row.querySelector('[data-qe-add-opt]');
+      var syncOpt = function () { addOpt.hidden = opts.every(function (o) { return !o.hidden; }); };
+      addOpt.addEventListener('click', function () {
+        var next = opts.filter(function (o) { return o.hidden; })[0];
+        if (!next) return;
+        next.hidden = false;
+        next.querySelector('input:not([type])').focus();
+        syncOpt();
+      });
+      syncOpt();
+      row.querySelector('[data-qe-remove]').addEventListener('click', function () {
+        row.querySelectorAll('textarea, input:not([type])').forEach(function (i) { i.value = ''; });
+        row.querySelectorAll('input[type=checkbox]').forEach(function (i) { i.checked = false; });
+        row.hidden = true;
+        sync();
+      });
+    });
+    add.addEventListener('click', function () {
+      var next = rows.filter(function (r) { return r.hidden; })[0];
+      if (!next) return;
+      next.hidden = false;
+      next.querySelector('textarea').focus();
+      sync();
+    });
+    sync();
 
-<form method="POST" action="<%= base %>/delete" class="ax-danger">
-  <span>Deleting the course removes its page, lessons and students’ access. Students stay in your Audience.</span>
-  <button class="ax-btn ax-btn-danger" data-confirm="Click again to delete">Delete course</button>
-</form>
-
-<%- include('partials/app-dash-bottom') %>
+    // Check the questions before saving — the server's rules (lib/courses.js
+    // quizFromForm) — so a mistake is shown beside its question instead of
+    // reloading the editor and losing what was typed.
+    box.closest('form').addEventListener('submit', function (e) {
+      if (e.submitter && e.submitter.getAttribute('formaction')) return; // Delete
+      var problem = null;
+      var filled = 0;
+      rows.forEach(function (row, n) {
+        row.classList.remove('has-error');
+        var old = row.querySelector('.qe-error');
+        if (old) old.remove();
+        var text = row.querySelector('textarea').value.trim();
+        var opts = Array.prototype.slice.call(row.querySelectorAll('.qe-opt'));
+        var choices = opts.filter(function (o) { return o.querySelector('input:not([type])').value.trim(); });
+        var right = choices.filter(function (o) { return o.querySelector('input[type=checkbox]').checked; });
+        var ticksOnBlank = opts.some(function (o) { return o.querySelector('input[type=checkbox]').checked && !o.querySelector('input:not([type])').value.trim(); });
+        if (!text && !choices.length) return;
+        filled += 1;
+        var why = !text ? 'Write the question.'
+          : choices.length < 2 ? 'Add at least two choices.'
+          : !right.length ? 'Tick ✓ the right answer.'
+          : ticksOnBlank ? 'A ticked choice is empty — type it in or untick it.' : '';
+        if (why && !problem) problem = { row: row, why: why, n: n };
+        if (why) {
+          row.classList.add('has-error');
+          row.querySelector('.qe-q-head').insertAdjacentHTML('afterend', '<p class="qe-error" role="alert"></p>');
+          row.querySelector('.qe-error').textContent = why;
+        }
+      });
+      if (!problem && !filled) {
+        problem = { row: rows[0], why: 'Add at least one question before saving.' };
+        rows[0].hidden = false;
+        rows[0].classList.add('has-error');
+        rows[0].querySelector('.qe-q-head').insertAdjacentHTML('afterend', '<p class="qe-error" role="alert"></p>');
+        rows[0].querySelector('.qe-error').textContent = problem.why;
+      }
+      if (!problem) return;
+      e.preventDefault();
+      problem.row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      (problem.row.querySelector('textarea').value.trim() ? problem.row.querySelector('.qe-opt input:not([type])') : problem.row.querySelector('textarea')).focus({ preventScroll: true });
+    });
+  });
+</script>
+<%- include('partials/studio-bottom') %>

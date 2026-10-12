@@ -57,6 +57,11 @@ var exploreOn = navActive === '/dashboard/apps';
         Platform admin
       </a>
       <% } %>
+      <% var domainOn = navActive === '/dashboard/domain'; %>
+      <a href="/dashboard/domain" class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm <%= domainOn ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent' %>" style="text-decoration:none;"<%- domainOn ? ' aria-current="page"' : '' %>>
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+        Domain
+      </a>
       <a href="#" class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-sidebar-foreground/65 hover:bg-sidebar-accent" style="text-decoration:none;">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"></path><circle cx="12" cy="12" r="3"></circle></svg>
         Settings

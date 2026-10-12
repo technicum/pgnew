@@ -1,5 +1,5 @@
 <%# Courses app home (lib/appDashboard.js → /dashboard/courses): the creator's courses with lesson and student counts, and a form to add one. %>
-<%- include('partials/app-dash-top', { navActive: '/dashboard/courses', section: 'Courses', heading: 'Courses', intro: 'Build a course from text and video lessons. Students enrol with their email and get their own link to the lessons — and land in your Audience.' }) %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/courses', section: 'Courses', heading: 'Courses', intro: 'Sell or give away courses of video and text lessons, grouped into modules. Students get their own link, track their progress, and land in your Audience.' }) %>
 <% var storeUrl = storeUrlFor(user.handle); %>
 
 <section class="ax-panel">
@@ -12,7 +12,7 @@
     <li class="ax-row<%= c.visible ? '' : ' is-off' %>">
       <div class="ax-main">
         <a class="ax-title" href="/dashboard/courses/<%= c.id %>"><%= c.title %></a>
-        <span class="ax-sub ax-block"><%= c.lesson_count %> lesson<%= c.lesson_count === 1 ? '' : 's' %> · <%= c.student_count %> student<%= c.student_count === 1 ? '' : 's' %><%= c.visible ? '' : ' · Hidden' %></span>
+        <span class="ax-sub ax-block"><%= c.priceLabel %> · <%= c.contentLabel %> · <%= c.student_count %> student<%= c.student_count === 1 ? '' : 's' %><%= c.visible ? '' : ' · Hidden' %></span>
         <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
       </div>
       <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
@@ -29,5 +29,13 @@
     <button class="ax-btn ax-btn-primary">Create course</button>
   </form>
 </section>
+
+<%# People who started buying a paid course and didn't pay — followed up from here or Dashboard → Abandoned carts (partials/abandoned-carts). Shown once there's a paid course or a cart. %>
+<% if (ab.carts.length || courses.some(function (c) { return c.price; })) { %>
+<div id="abandoned">
+  <%- include('partials/abandoned-carts', { ab: ab, title: 'Didn’t finish paying', intro: 'Started buying a paid course and didn’t pay within 30 minutes. A quick WhatsApp often brings them back.' }) %>
+  <p class="ab-more"><a href="/dashboard/abandoned">All abandoned carts — payment pages, courses and bookings →</a></p>
+</div>
+<% } %>
 
 <%- include('partials/app-dash-bottom') %>

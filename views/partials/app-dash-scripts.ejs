@@ -1,0 +1,321 @@
+<%# The dashboard's shared behaviour (image uploads, our dropdowns, weekly hours rules, formatting toolbars, copy buttons, click-again-to-confirm) — on every app dashboard page via app-dash-bottom, and on the full-screen editors (partials/studio-bottom). %>
+<script>
+  // Image fields (partials/ax-image-field): upload the file as the request
+  // body (lib/uploads.js), then put the returned link in the text field.
+  document.querySelectorAll('[data-upload]').forEach(function (box) {
+    var input = box.querySelector('input[name]');
+    var file = box.querySelector('input[type=file]');
+    var preview = box.querySelector('.ax-upload-preview');
+    var label = file.parentNode;
+    var show = function () {
+      preview.innerHTML = '';
+      if (!input.value) return;
+      var img = document.createElement('img');
+      img.alt = '';
+      img.src = input.value;
+      preview.appendChild(img);
+    };
+    input.addEventListener('change', show);
+    box.querySelector('[data-clear]').addEventListener('click', function () { input.value = ''; input.dispatchEvent(new Event('change', { bubbles: true })); });
+    file.addEventListener('change', async function () {
+      var f = file.files[0];
+      if (!f) return;
+      label.firstChild.textContent = 'Uploading…';
+      try {
+        var res = await fetch('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': f.type }, body: f });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        input.value = data.url;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (err) {
+        box.querySelector('small').textContent = err.message;
+      }
+      label.firstChild.textContent = 'Upload';
+      file.value = '';
+    });
+  });
+
+  // Our dropdowns — time pickers (select[data-start] / [data-end]) and any
+  // select[data-pick], e.g. the timezone. The browser's own list opens
+  // wherever it likes (on Windows often upward, centred on the choice), so
+  // each gets a list of ours that always opens below. The <select> stays as
+  // the value the form posts (hidden); the button and list mirror it, and
+  // picking writes back with a change event, so other scripts (the hours
+  // rules below) run as before. data-pick-search adds a filter box — for
+  // long lists like the ~400 timezones.
+  var pickers = [];
+  var closePickers = function (except) { pickers.forEach(function (p) { if (p !== except) p.close(); }); };
+  document.querySelectorAll('select[data-start], select[data-end], select[data-pick]').forEach(function (select) {
+    var searchable = select.hasAttribute('data-pick-search');
+    var wrap = document.createElement('div');
+    wrap.className = 'ax-pick';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ax-input ax-pick-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-label', select.getAttribute('aria-label') || '');
+    var pop = document.createElement('div');
+    pop.className = 'ax-pick-pop';
+    pop.hidden = true;
+    var search = null;
+    if (searchable) {
+      search = document.createElement('input');
+      search.type = 'search';
+      search.className = 'ax-input ax-pick-search';
+      search.placeholder = 'Search…';
+      search.setAttribute('aria-label', 'Search');
+      pop.appendChild(search);
+    }
+    var list = document.createElement('ul');
+    list.className = 'ax-pick-list';
+    list.setAttribute('role', 'listbox');
+    pop.appendChild(list);
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    wrap.appendChild(btn);
+    wrap.appendChild(pop);
+    select.hidden = true;
+    select.tabIndex = -1;
+
+    var active = -1;
+    var items = function () { return Array.prototype.filter.call(list.children, function (li) { return !li.hidden; }); };
+    var label = function () { var o = select.options[select.selectedIndex]; btn.textContent = o ? o.textContent : '—'; };
+    var highlight = function (i) {
+      var all = items();
+      all.forEach(function (li, k) { li.classList.toggle('is-active', k === i); });
+      active = i;
+      if (all[i]) all[i].scrollIntoView({ block: 'nearest' });
+    };
+    var choose = function (value) {
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      label();
+      picker.close();
+      btn.focus();
+    };
+    var filter = function () {
+      var q = search.value.trim().toLowerCase().replace(/\s+/g, ' ');
+      Array.prototype.forEach.call(list.children, function (li) { li.hidden = !!q && li.dataset.search.indexOf(q) === -1; });
+      highlight(items().length ? 0 : -1);
+      list.scrollTop = 0;
+    };
+    var picker = {
+      refresh: label,
+      close: function () { pop.hidden = true; btn.setAttribute('aria-expanded', 'false'); },
+      open: function () {
+        closePickers(picker);
+        list.innerHTML = '';
+        Array.prototype.forEach.call(select.options, function (o) {
+          var li = document.createElement('li');
+          li.setAttribute('role', 'option');
+          li.textContent = o.textContent;
+          li.dataset.value = o.value;
+          li.dataset.search = (o.textContent + ' ' + o.value).toLowerCase().replace(/[_/]/g, ' ');
+          if (o.disabled) li.setAttribute('aria-disabled', 'true');
+          if (o.value === select.value) li.setAttribute('aria-selected', 'true');
+          list.appendChild(li);
+        });
+        if (search) search.value = '';
+        pop.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        // Show the current choice near the top of the list, not at its start.
+        var sel = list.querySelector('[aria-selected]');
+        list.scrollTop = sel ? Math.max(0, sel.offsetTop - list.clientHeight / 3) : 0;
+        highlight(sel ? items().indexOf(sel) : -1);
+        if (search) search.focus();
+      },
+    };
+    pickers.push(picker);
+    label();
+
+    btn.addEventListener('click', function () { if (pop.hidden) picker.open(); else picker.close(); });
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); }); // keep focus where it is
+    list.addEventListener('click', function (e) {
+      var li = e.target.closest('li');
+      if (li && !li.hasAttribute('aria-disabled')) choose(li.dataset.value);
+    });
+    var keys = function (e) {
+      var all = items();
+      var step = function (dir) {
+        if (pop.hidden) return picker.open();
+        for (var i = active + dir; i >= 0 && i < all.length; i += dir) {
+          if (!all[i].hasAttribute('aria-disabled')) return highlight(i);
+        }
+      };
+      if (e.key === 'ArrowDown') { e.preventDefault(); step(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+      else if ((e.key === 'Enter' || (e.key === ' ' && e.target === btn)) && !pop.hidden && all[active]) { e.preventDefault(); choose(all[active].dataset.value); }
+      else if (e.key === 'Escape') { e.preventDefault(); picker.close(); btn.focus(); }
+      else if (e.key === 'Tab') picker.close();
+    };
+    btn.addEventListener('keydown', keys);
+    if (search) {
+      search.addEventListener('keydown', keys);
+      search.addEventListener('input', filter);
+    }
+  });
+  document.addEventListener('click', function (e) { if (!e.target.closest('.ax-pick')) closePickers(); });
+  var refreshPickers = function () { pickers.forEach(function (p) { p.refresh(); }); };
+
+  // "Use <my timezone>" beside the timezone dropdown, when the browser's
+  // own timezone is a different one from the list.
+  document.querySelectorAll('[data-tz-detect]').forEach(function (btn) {
+    var select = btn.parentNode.querySelector('select[name=timezone]');
+    var mine = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // Browsers can report an old name (Asia/Calcutta); the list uses current ones.
+    var aliases = {};
+    try { aliases = JSON.parse(btn.getAttribute('data-aliases') || '{}'); } catch (err) {}
+    mine = aliases[mine] || mine;
+    if (!select || !mine || select.value === mine || !select.querySelector('option[value="' + mine + '"]')) return;
+    btn.textContent = 'Use ' + mine.split('/').pop().replace(/_/g, ' ') + ' (your timezone)';
+    btn.hidden = false;
+    btn.addEventListener('click', function () {
+      select.value = mine;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      refreshPickers();
+      btn.hidden = true;
+    });
+  });
+
+  // Weekly hours (partials/ax-hours). Times are 'HH:MM', so they compare
+  // as strings. Within a day: each "to" must be after its "from", and each
+  // extra range must start at or after the previous one ends — options that
+  // would break that are disabled, and a choice that's become invalid moves
+  // to the nearest valid one. The server checks the same (hoursFromForm).
+  document.querySelectorAll('.ax-ranges').forEach(function (box) {
+    var add = box.querySelector('[data-range-add]');
+    var ranges = Array.prototype.slice.call(box.querySelectorAll('.ax-range'));
+    var firstAllowed = function (select, test) {
+      var opt = Array.prototype.find.call(select.options, function (o) { return o.value && test(o.value); });
+      return opt ? opt.value : '';
+    };
+    var sync = function () {
+      var floor = '';
+      ranges.forEach(function (range) {
+        var start = range.querySelector('[data-start]');
+        var end = range.querySelector('[data-end]');
+        if (range.hidden) return;
+        // 11:45 pm can't start a range — there'd be no "to" after it.
+        var okStart = function (v) { return v >= floor && v < '23:45'; };
+        Array.prototype.forEach.call(start.options, function (o) { o.disabled = !!o.value && !okStart(o.value); });
+        if (start.value && !okStart(start.value)) start.value = firstAllowed(start, okStart);
+        var from = start.value;
+        Array.prototype.forEach.call(end.options, function (o) { o.disabled = !!o.value && !!from && o.value <= from; });
+        if (from && (!end.value || end.value <= from)) end.value = firstAllowed(end, function (v) { return v > from; });
+        if (end.value) floor = end.value;
+      });
+      add.hidden = !box.querySelector('.ax-range[hidden]') || !floor || floor >= '23:30';
+      refreshPickers();
+    };
+    box.addEventListener('change', sync);
+    add.addEventListener('click', function () {
+      var next = box.querySelector('.ax-range[hidden]');
+      if (!next) return;
+      // Start the new range an hour after the last one ends.
+      var prevEnd = ranges.filter(function (r) { return !r.hidden; }).map(function (r) { return r.querySelector('[data-end]').value; }).pop() || '09:00';
+      var h = Math.min(23, Number(prevEnd.slice(0, 2)) + 1);
+      var start = next.querySelector('[data-start]');
+      start.value = firstAllowed(start, function (v) { return v >= String(h).padStart(2, '0') + prevEnd.slice(2); }) || firstAllowed(start, function (v) { return v >= prevEnd; });
+      next.querySelector('[data-end]').value = '';
+      next.hidden = false;
+      sync();
+    });
+    box.querySelectorAll('[data-range-remove]').forEach(function (x) {
+      x.addEventListener('click', function () {
+        var range = x.parentNode;
+        range.querySelectorAll('select').forEach(function (s) { s.value = ''; });
+        range.hidden = true;
+        sync();
+      });
+    });
+    sync();
+  });
+
+  // Formatting toolbars (partials/ax-rich-field): each button wraps the
+  // selection — or formats the line(s) it's on — in the markers
+  // lib/richText.js renders. Same rules as the payment pages builder
+  // (public/js/payment-pages.js editAbout).
+  var richFormat = function (el, format) {
+    var start = el.selectionStart;
+    var end = el.selectionEnd;
+    var value = el.value;
+    var selected = value.slice(start, end);
+    var before = value.slice(0, start);
+    var after = value.slice(end);
+    var insert, selFrom, selTo;
+    var wrap = function (mark, fallback) {
+      var inner = selected || fallback;
+      insert = mark + inner + mark;
+      selFrom = before.length + mark.length;
+      selTo = selFrom + inner.length;
+    };
+    var prefixLines = function (makePrefix, fallback) {
+      var lineStart = before.lastIndexOf('\n') + 1;
+      var lead = before.slice(lineStart);
+      before = before.slice(0, lineStart);
+      var nl = after.indexOf('\n');
+      var tail = nl === -1 ? after : after.slice(0, nl);
+      after = after.slice(tail.length);
+      var lines = (lead + selected + tail).split('\n');
+      insert = lines.map(function (l, i) {
+        return makePrefix(i) + (l.replace(/^(#{2,3}\s+|\s*[-*]\s+|\s*\d{1,3}[.)]\s+)/, '') || (lines.length === 1 ? fallback : ''));
+      }).join('\n');
+      selFrom = before.length;
+      selTo = selFrom + insert.length;
+    };
+    if (format === 'bold') wrap('**', 'bold text');
+    else if (format === 'italic') wrap('*', 'italic text');
+    else if (format === 'heading') prefixLines(function () { return '## '; }, 'Heading');
+    else if (format === 'bullet') prefixLines(function () { return '- '; }, 'List item');
+    else if (format === 'numbered') prefixLines(function (i) { return (i + 1) + '. '; }, 'List item');
+    else if (format === 'link') {
+      var url = window.prompt('Link address (https://…)', 'https://');
+      if (!url || !/^(https?:\/\/|mailto:)\S+$/i.test(url.trim())) return;
+      var text = selected || 'link text';
+      insert = '[' + text + '](' + url.trim() + ')';
+      selFrom = before.length + 1;
+      selTo = selFrom + text.length;
+    } else return;
+    if (before.length + insert.length + after.length > el.maxLength && el.maxLength > 0) return;
+    el.value = before + insert + after;
+    el.focus();
+    el.setSelectionRange(selFrom, selTo);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  document.querySelectorAll('[data-rich]').forEach(function (box) {
+    var el = box.querySelector('textarea');
+    box.querySelectorAll('[data-format]').forEach(function (btn) {
+      // mousedown keeps the textarea's selection while the button is pressed.
+      btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      btn.addEventListener('click', function () { richFormat(el, btn.getAttribute('data-format')); });
+    });
+    el.addEventListener('keydown', function (e) {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+      var k = e.key.toLowerCase();
+      if (k === 'b' || k === 'i') { e.preventDefault(); richFormat(el, k === 'b' ? 'bold' : 'italic'); }
+    });
+  });
+
+  // Copy buttons for public links, and a second click to confirm deletes.
+  document.addEventListener('click', function (e) {
+    var copy = e.target.closest('[data-copy]');
+    if (copy) {
+      navigator.clipboard.writeText(copy.getAttribute('data-copy')).then(function () {
+        var was = copy.textContent;
+        copy.textContent = 'Copied';
+        setTimeout(function () { copy.textContent = was; }, 1200);
+      });
+    }
+    var confirmBtn = e.target.closest('[data-confirm]');
+    if (confirmBtn && !confirmBtn.classList.contains('is-armed')) {
+      e.preventDefault();
+      confirmBtn.classList.add('is-armed');
+      confirmBtn.dataset.label = confirmBtn.textContent;
+      confirmBtn.textContent = confirmBtn.getAttribute('data-confirm');
+      setTimeout(function () {
+        confirmBtn.classList.remove('is-armed');
+        confirmBtn.textContent = confirmBtn.dataset.label;
+      }, 3000);
+    }
+  });
+</script>

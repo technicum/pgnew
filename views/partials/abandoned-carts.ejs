@@ -1,0 +1,70 @@
+<%# Abandoned carts — the follow-up message and the list with WhatsApp / Email / Copy / Dismiss (public/js/abandoned.js, public/css/abandoned.css). Used whole on the Abandoned carts page (views/abandoned.ejs) and inside each service: a payment page's Analytics, Courses, Bookings → Abandoned. One per page.
+    Pass ab (lib/abandoned.js abandonedView: carts, coupons), and optionally: kindFilter (show the Everywhere / Payment pages / Courses / Bookings select), composeOpen (the message editor starts open), title, intro. The message is shared by every list, kept in this browser. %>
+<% var showKinds = typeof kindFilter !== 'undefined' && kindFilter;
+var open = typeof composeOpen !== 'undefined' && composeOpen;
+var heading = typeof title !== 'undefined' && title ? title : 'Abandoned carts';
+var lead = typeof intro !== 'undefined' ? intro : ''; %>
+<link rel="stylesheet" href="/css/abandoned.css?v=<%= assetVersion %>" />
+<div class="ab">
+  <details class="ab-card ab-compose"<%= open ? ' open' : '' %>>
+    <summary>
+      <span><b>Your follow-up message</b><small>Filled in for each person — the same message everywhere you follow up.</small></span>
+      <span class="ab-summary-edit">Edit message</span>
+    </summary>
+    <div class="ab-compose-body">
+      <div class="ab-field">
+        <span>Message <small>use <code>{name}</code> <code>{items}</code> <code>{total}</code> <code>{link}</code> <code>{coupon}</code> <code>{store}</code></small></span>
+        <textarea id="abTemplate" class="ab-input" rows="7" maxlength="1500" aria-label="Follow-up message"></textarea>
+        <button type="button" class="ab-link" id="abReset">Reset to the default message</button>
+      </div>
+      <div class="ab-side">
+        <label class="ab-field"><span>Email subject</span><input id="abSubject" class="ab-input" maxlength="150" /></label>
+        <label class="ab-field"><span>Offer a coupon <small>(payment pages only)</small></span>
+          <select id="abCoupon" class="ab-input">
+            <option value="">No coupon</option>
+            <% ab.coupons.forEach(function (c) { %><option value="<%= c.code %>" data-label="<%= c.label %>" data-page="<%= c.pageId || '' %>"><%= c.code %> — <%= c.label %><%= c.pageId ? ' (one page)' : '' %></option><% }) %>
+          </select>
+          <% if (!ab.coupons.length) { %><small class="ab-hint">No active coupons — <a href="/dashboard/coupons">make one</a> to sweeten the nudge.</small><% } %>
+        </label>
+        <div class="ab-preview"><span>Preview</span><p id="abPreview"></p></div>
+      </div>
+    </div>
+  </details>
+
+  <section class="ab-card">
+    <div class="ab-head">
+      <div>
+        <h2><%= heading %></h2>
+        <% if (lead) { %><p><%= lead %></p><% } %>
+        <p class="ab-count" id="abCountLine"></p>
+      </div>
+    </div>
+    <div class="ab-tools">
+      <div class="ab-search">
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+        <input type="search" id="abSearch" class="ab-input" placeholder="Search by name, email, phone or product" aria-label="Search carts" />
+      </div>
+      <select id="abStatus" class="ab-input" aria-label="Filter by follow-up">
+        <option value="">Everyone</option>
+        <option value="new" selected>Not contacted</option>
+        <option value="contacted">Contacted</option>
+      </select>
+      <select id="abKind" class="ab-input" aria-label="Filter by where"<%= showKinds ? '' : ' hidden' %>>
+        <option value="">Everywhere</option>
+        <option value="page">Payment pages</option>
+        <option value="course">Courses</option>
+        <option value="booking">Bookings</option>
+      </select>
+    </div>
+    <ul class="ab-list" id="abList"></ul>
+    <div class="ab-empty" id="abEmpty" hidden>
+      <b id="abEmptyTitle">No abandoned carts</b>
+      <span id="abEmptySub">Everyone who started checking out finished. 🎉</span>
+    </div>
+  </section>
+</div>
+<div class="ab-toast" id="abToast" role="status" hidden></div>
+<script>
+  window.__PZ_ABANDONED__ = <%- JSON.stringify({ carts: ab.carts, storeUrl: storeUrlFor(user.handle), store: user.name }).replace(/</g, '\\u003c') %>;
+</script>
+<script src="/js/abandoned.js?v=<%= assetVersion %>"></script>

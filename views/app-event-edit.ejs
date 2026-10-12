@@ -1,62 +1,165 @@
-<%# Edit one event (lib/appDashboard.js → /dashboard/events/:id): details, place, seats, visibility, the attendee list, delete. %>
-<%- include('partials/app-dash-top', { navActive: '/dashboard/events', section: 'Events', heading: event.title, back: { href: '/dashboard/events', label: 'All events' } }) %>
-<% var link = storeUrlFor(user.handle) + '/event/' + event.slug; var going = rsvps.filter(function (r) { return r.status === 'going'; }); %>
+<%# Edit one event (lib/appDashboard.js → /dashboard/events/:id) — a full-screen editor like the payment page builder (public/css/studio.css): three tabs on the left (Details: name, when, where, description; Attendees: who's going, cancel an RSVP; Settings: seats, link, visibility, delete), the event page's live preview on the right (partials/event-studio-preview).
+    Details and Settings are one form (the Save bar); "Save & publish" (on a hidden event) also turns it live. Cancelling an RSVP posts its own form (#rsvpCancel). %>
+<%- include('partials/studio-head') %>
+<% var link = storeUrlFor(user.handle) + '/event/' + event.slug;
+var going = rsvps.filter(function (r) { return r.status === 'going'; });
+var base = '/dashboard/events/' + event.id;
+var online = event.mode !== 'venue'; %>
+<div class="st">
+  <aside class="st-panel">
+    <div class="st-top">
+      <a class="st-close" href="/dashboard/events" aria-label="Close editor" title="Back to your events">✕</a>
+      <div class="st-top-title"><b><%= event.title %></b><small>Event · <a href="<%= link %>" target="_blank" rel="noopener" style="color:inherit">open page ↗</a></small></div>
+      <span class="st-live<%= event.visible ? ' is-on' : '' %>"><%= event.visible ? 'Live' : 'Hidden' %></span>
+    </div>
+    <nav class="st-tabs" role="tablist" aria-label="Editor sections">
+      <button type="button" role="tab" data-st-tab="details" aria-selected="true">Details</button>
+      <button type="button" role="tab" data-st-tab="attendees" aria-selected="false">Attendees (<%= going.length %>)</button>
+      <button type="button" role="tab" data-st-tab="settings" aria-selected="false">Settings</button>
+    </nav>
 
-<div class="ax-linkbar">
-  <span>Event link</span>
-  <a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a>
-  <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy</button>
+    <form class="st-form" method="POST" action="<%= base %>" data-pv-form>
+      <div class="st-scroll">
+        <% if (flash) { %><div class="ax-flash ax-flash-<%= flash.kind %>" role="status"><%= flash.text %></div><% } %>
+
+        <%# --- Details --- %>
+        <div data-st-panel="details">
+          <div class="st-intro"><h2>Set up your event</h2><p>What it is, when, and where it happens.</p></div>
+          <section class="ax-panel">
+            <div class="ax-grid">
+              <label class="ax-field"><span>Event name</span><input class="ax-input" name="title" value="<%= event.title %>" required maxlength="200" placeholder="Live Q&amp;A: pricing your first product" data-st-name /></label>
+              <label class="ax-field"><span>Date</span><input class="ax-input" type="date" name="date" value="<%= event.date %>" required /></label>
+              <div class="st-pair">
+                <label class="ax-field"><span>Starts (IST)</span><input class="ax-input" type="time" name="start_time" value="<%= event.start_time %>" required /></label>
+                <label class="ax-field"><span>Ends <small>optional</small></span><input class="ax-input" type="time" name="end_time" value="<%= event.end_time %>" /></label>
+              </div>
+            </div>
+          </section>
+
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Where it happens</h2></div>
+            <div class="st-cards">
+              <label class="st-card"><input type="radio" name="mode" value="online"<%= online ? ' checked' : '' %> /><span class="st-card-ico">🎥</span><span><b>Online</b><small>Webinar or video call — Google Meet, Zoom…</small></span></label>
+              <label class="st-card"><input type="radio" name="mode" value="venue"<%= online ? '' : ' checked' %> /><span class="st-card-ico">📍</span><span><b>At a venue</b><small>A studio, café, hall…</small></span></label>
+            </div>
+            <div class="ax-grid" style="margin-top:14px">
+              <label class="ax-field"><span data-where-label><%= online ? 'Join link' : 'Venue address' %></span><input class="ax-input" name="location" value="<%= event.location %>" maxlength="500" placeholder="<%= online ? 'https://meet.google.com/…' : 'Studio 4, 12 MG Road, Bengaluru' %>" />
+                <small data-where-hint><%= online ? 'Only shown to people who’ve registered.' : 'Shown on the page.' %></small></label>
+            </div>
+          </section>
+
+          <section class="ax-panel">
+            <div class="ax-grid">
+              <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: event.description, rows: 7, maxlength: 2000, placeholder: 'What happens, who it’s for, what to bring…' }) %>
+            </div>
+          </section>
+        </div>
+
+        <%# --- Attendees --- %>
+        <div data-st-panel="attendees" id="attendees" hidden>
+          <div class="st-intro"><h2>Attendees</h2><p><%= going.length %><%= event.capacity ? ' of ' + event.capacity : '' %> going. Everyone who registers also lands in your Audience.</p></div>
+          <section class="ax-panel">
+            <% if (!rsvps.length) { %>
+            <p class="ax-empty">No RSVPs yet. Share the link to get your first one.</p>
+            <% } else { %>
+            <ul class="ax-list">
+              <% rsvps.forEach(function (r) { var off = r.status !== 'going'; %>
+              <li class="ax-row<%= off ? ' is-off' : '' %>">
+                <div class="ax-main"><b><%= r.name %></b> <span class="ax-sub ax-block"><a href="mailto:<%= r.email %>"><%= r.email %></a><%= r.phone ? ' · ' + r.phone : '' %></span></div>
+                <% if (off) { %><span class="ax-pill">Cancelled</span><% } else { %>
+                <button class="ax-btn ax-btn-quiet" form="rsvpCancel" formaction="<%= base %>/rsvps/<%= r.id %>/cancel" data-confirm="Cancel RSVP?">Cancel</button>
+                <% } %>
+              </li>
+              <% }) %>
+            </ul>
+            <% } %>
+          </section>
+        </div>
+
+        <%# --- Settings --- %>
+        <div data-st-panel="settings" hidden>
+          <div class="st-intro"><h2>Settings</h2><p>Seats, link and who can find it.</p></div>
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Seats</h2></div>
+            <div class="ax-grid">
+              <label class="ax-field"><span>Seats <small>0 = no limit</small></span><input class="ax-input" type="number" name="capacity" value="<%= event.capacity %>" min="0" max="100000" />
+                <small>Registration closes once they’re taken.</small></label>
+            </div>
+          </section>
+
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Link</h2></div>
+            <div class="ax-grid">
+              <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= event.slug %>" maxlength="60" pattern="[a-z0-9-]+" />
+                <small><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/event/<b><%= event.slug %></b> · <button type="button" class="ax-btn ax-btn-quiet" style="height:auto;padding:0" data-copy="<%= link %>">Copy link</button></small></label>
+            </div>
+          </section>
+
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Visibility</h2></div>
+            <div class="st-cards">
+              <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= event.visible ? ' checked' : '' %> /> <span>Page is live <small class="ax-sub">— people with the link can register</small></span></label>
+              <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= event.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find it</small></span></label>
+            </div>
+          </section>
+
+          <section class="ax-panel ax-danger" style="display:block">
+            <p style="margin:0 0 10px">Deleting the event takes its page down and removes its attendee list. They stay in your Audience.</p>
+            <button class="ax-btn ax-btn-danger" form="deleteEvent" data-confirm="Click again to delete">Delete event</button>
+          </section>
+        </div>
+      </div>
+
+      <div class="st-foot" data-st-foot="details settings">
+        <small>Changes show in the preview — save to publish them.</small>
+        <div class="st-foot-btns">
+          <% if (event.visible) { %>
+          <button class="st-save">Save changes</button>
+          <% } else { %>
+          <button class="st-save is-quiet">Save draft</button>
+          <button class="st-save" name="publish" value="1">Save &amp; publish</button>
+          <% } %>
+        </div>
+      </div>
+    </form>
+    <form id="deleteEvent" method="POST" action="<%= base %>/delete" hidden></form>
+    <form id="rsvpCancel" method="POST" hidden></form>
+  </aside>
+
+  <main class="st-canvas">
+    <div class="st-canvas-head">
+      <h2>Preview<small>What visitors see — updates as you type</small></h2>
+      <div class="st-devices" role="group" aria-label="Preview size">
+        <button type="button" data-st-view="desktop" aria-pressed="true">🖥 Desktop</button>
+        <button type="button" data-st-view="mobile" aria-pressed="false">📱 Mobile</button>
+      </div>
+    </div>
+    <div class="st-device is-desktop" data-st-device>
+      <div class="st-chrome"><i></i><i></i><i></i><span class="st-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
+      <div class="st-screen">
+        <%- include('partials/event-studio-preview', { event: event }) %>
+      </div>
+    </div>
+  </main>
 </div>
 
-<form method="POST" action="/dashboard/events/<%= event.id %>">
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Details</h2></div>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-3"><span>Name</span><input class="ax-input" name="title" value="<%= event.title %>" required maxlength="200" /></label>
-      <label class="ax-field"><span>Date</span><input class="ax-input" type="date" name="date" value="<%= event.date %>" required /></label>
-      <label class="ax-field"><span>Starts (IST)</span><input class="ax-input" type="time" name="start_time" value="<%= event.start_time %>" required /></label>
-      <label class="ax-field"><span>Ends <small>(optional)</small></span><input class="ax-input" type="time" name="end_time" value="<%= event.end_time %>" /></label>
-      <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: event.description, rows: 6, maxlength: 2000, placeholder: 'What happens, who it’s for, what to bring…' }) %>
-      <label class="ax-field"><span>Where</span>
-        <select class="ax-input" name="mode">
-          <option value="online"<%= event.mode === 'online' ? ' selected' : '' %>>Online</option>
-          <option value="venue"<%= event.mode === 'venue' ? ' selected' : '' %>>At a venue</option>
-        </select></label>
-      <label class="ax-field ax-span-2"><span><%= event.mode === 'online' ? 'Join link' : 'Venue address' %></span><input class="ax-input" name="location" value="<%= event.location %>" maxlength="500" placeholder="<%= event.mode === 'online' ? 'https://meet.google.com/…' : 'Studio 4, 12 MG Road, Bengaluru' %>" />
-        <small>Online: shown only to people who’ve registered. Venue: shown on the page.</small></label>
-      <label class="ax-field"><span>Seats <small>(0 = no limit)</small></span><input class="ax-input" type="number" name="capacity" value="<%= event.capacity %>" min="0" /></label>
-      <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= event.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
-    </div>
-  </section>
-
-  <section class="ax-panel ax-savebar">
-    <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= event.visible ? ' checked' : '' %> /> <span>Page is live</span></label>
-    <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= event.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find this event</small></span></label>
-    <button class="ax-btn ax-btn-primary">Save changes</button>
-  </section>
-</form>
-
-<section class="ax-panel" id="attendees">
-  <div class="ax-panel-head"><h2>Attendees</h2><span class="ax-count"><%= going.length %><%= event.capacity ? ' / ' + event.capacity : '' %> going</span></div>
-  <% if (!rsvps.length) { %>
-  <p class="ax-empty">No RSVPs yet.</p>
-  <% } else { %>
-  <ul class="ax-list">
-    <% rsvps.forEach(function (r) { var off = r.status !== 'going'; %>
-    <li class="ax-row<%= off ? ' is-off' : '' %>">
-      <div class="ax-main"><b><%= r.name %></b> <span class="ax-sub">· <a href="mailto:<%= r.email %>"><%= r.email %></a><%= r.phone ? ' · ' + r.phone : '' %></span></div>
-      <% if (off) { %><span class="ax-pill">Cancelled</span><% } else { %>
-      <form method="POST" action="/dashboard/events/<%= event.id %>/rsvps/<%= r.id %>/cancel"><button class="ax-btn ax-btn-quiet" data-confirm="Cancel RSVP?">Cancel</button></form>
-      <% } %>
-    </li>
-    <% }) %>
-  </ul>
-  <% } %>
-</section>
-
-<form method="POST" action="/dashboard/events/<%= event.id %>/delete" class="ax-danger">
-  <span>Deleting the event takes its page down and removes its attendee list. They stay in your Audience.</span>
-  <button class="ax-btn ax-btn-danger" data-confirm="Click again to delete">Delete event</button>
-</form>
-
-<%- include('partials/app-dash-bottom') %>
+<script>
+  (function () {
+    // Where: the one location field is a join link online, an address at a venue.
+    var input = document.querySelector('input[name="location"]');
+    var label = document.querySelector('[data-where-label]');
+    var hint = document.querySelector('[data-where-hint]');
+    document.querySelectorAll('input[name="mode"]').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        var online = radio.value === 'online';
+        label.textContent = online ? 'Join link' : 'Venue address';
+        hint.textContent = online ? 'Only shown to people who’ve registered.' : 'Shown on the page.';
+        input.placeholder = online ? 'https://meet.google.com/…' : 'Studio 4, 12 MG Road, Bengaluru';
+      });
+    });
+    // A brand-new event starts on its name.
+    var name = document.querySelector('[data-st-name]');
+    if (name && name.value === 'Untitled event') { name.focus(); name.select(); }
+  })();
+</script>
+<%- include('partials/studio-bottom') %>

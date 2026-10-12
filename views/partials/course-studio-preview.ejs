@@ -1,0 +1,89 @@
+<%# The course page (/course/:slug, views/app-course.ejs) as it looks live, drawn in the studio's device frame (app-course-edit) with public/css/studio.css's pvs-* styles. Left: cover, title, host, stats, what you'll learn, about, the outline by module; right: the enrol box.
+    Bound to the details form by public/js/ax-preview.js (loaded in partials/studio-bottom); window.axPreview below handles the price, kicker, button and phone field. Stats and outline come from the saved items. Pass course, lessons, outline (lib/courses.js groupModules), counts (countKinds). %>
+<%
+var initials = String(user.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '•';
+// As the live page: modules with nothing in them yet are left out.
+var modules = outline.filter(function (m) { return m.lessons.length; });
+var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); };
+var included = [plural(counts.lesson, 'lesson'), counts.video ? plural(counts.video, 'video') : '', counts.quiz ? plural(counts.quiz, 'quiz', 'quizzes') : '', counts.file ? plural(counts.file, 'download') : ''].filter(Boolean);
+var check = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5L10 17L19 7"/></svg>';
+var lock = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+var play = '<svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+%>
+<div class="pvs" data-pv-screen style="<%= lmThemeStyle(storeTheme) %>">
+  <div class="pvs-bar is-center"><%= user.name %></div>
+  <div class="pvs-grid is-course">
+    <div class="pvs-card">
+      <div class="pvs-cover is-wide" data-pv-show="cover_url"><img data-pv-img="cover_url" alt="" /></div>
+      <div class="pvs-in">
+        <span class="pvs-kicker" data-pv-kicker>Free course</span>
+        <h3 class="pvs-title is-plain" data-pv-text="title" data-pv-empty="Your course"></h3>
+        <div class="pvs-by"><span class="pvs-av"><%= initials %></span><span>by <b><%= user.name %></b><% if (user.bio) { %><small><%= user.bio %></small><% } %></span></div>
+        <ul class="pvs-stats">
+          <li><b><%= counts.lesson %></b> lesson<%= counts.lesson === 1 ? '' : 's' %></li>
+          <% if (counts.video) { %><li><b><%= counts.video %></b> video<%= counts.video === 1 ? '' : 's' %></li><% } %>
+          <% if (counts.quiz) { %><li><b><%= counts.quiz %></b> quiz<%= counts.quiz === 1 ? '' : 'zes' %></li><% } %>
+          <% if (counts.file) { %><li><b><%= counts.file %></b> download<%= counts.file === 1 ? '' : 's' %></li><% } %>
+          <% if (modules.filter(function (m) { return m.title; }).length > 1) { %><li><b><%= modules.length %></b> modules</li><% } %>
+          <li>Learn at your own pace</li>
+        </ul>
+        <div class="pvs-learn" data-pv-show="outcomes">
+          <div class="pvs-h">What you’ll learn</div>
+          <ul data-pv-lines="outcomes"></ul>
+        </div>
+        <div class="pvs-sec" data-pv-show="description">
+          <div class="pvs-h">About this course</div>
+          <div class="pvs-rich" data-pv-rich="description"></div>
+        </div>
+        <div class="pvs-sec">
+          <div class="pvs-h">Course content</div>
+          <% if (!modules.length) { %>
+          <p class="pvs-empty">Modules, lessons, quizzes and downloads you add show up here.</p>
+          <% } else { %>
+          <div class="pvs-outline">
+            <% modules.forEach(function (m, mi) { var open = mi === 0 || modules.length <= 2; %>
+            <p><span><%= m.title || (modules.length > 1 ? 'Start here' : 'Lessons') %></span><small><%= m.lessons.length %> item<%= m.lessons.length === 1 ? '' : 's' %> <%= open ? '−' : '+' %></small></p>
+            <% if (open) { %>
+            <ol>
+              <% m.lessons.forEach(function (l) { %><li><i><%= l.number %></i><%- include('course-kind-icon', { kind: l.kind, video: !!(l.video_file || l.video_url) }) %><span class="<%= l.preview ? 'is-link' : '' %>"><%= l.title %></span><% if (l.preview) { %><em><%- play %> Preview</em><% } else { %><b class="pvs-lock"><%- lock %></b><% } %></li><% }) %>
+            </ol>
+            <% } %>
+            <% }) %>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="pvs-card">
+      <div class="pvs-in">
+        <div class="pvs-price" data-pv-price>Free</div>
+        <p class="pvs-sub" data-pv-pricenote>Free · lifetime access</p>
+        <div class="pvs-field"><span>Your name</span><div class="pvs-input"></div></div>
+        <div class="pvs-field"><span>Your email</span><div class="pvs-input"></div></div>
+        <div class="pvs-field" data-pv-phone hidden><span>Phone <em>(optional)</em></span><div class="pvs-input"></div></div>
+        <div class="pvs-btn" data-pv-button>Start learning — free</div>
+        <ul class="pvs-perks is-icons">
+          <li><%- check %> <%= included.join(', ') %></li>
+          <li><%- check %> Watch on phone or laptop</li>
+          <li><%- check %> Track your progress</li>
+        </ul>
+      </div>
+      <p class="pvs-foot">You’ll get a private link to your lessons — bookmark it.</p>
+    </div>
+  </div>
+</div>
+<script>
+  // Course-specific bits of the preview — worded as app-course.ejs.
+  window.axPreview = function (get, screen) {
+    var q = function (s) { return screen.querySelector(s); };
+    var n = Number(String(get('price')).replace(/[₹,\s]/g, ''));
+    var price = isFinite(n) && n > 0 ? n : 0;
+    var label = price ? '₹' + price.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : 'Free';
+    q('[data-pv-price]').textContent = label;
+    q('[data-pv-pricenote]').textContent = price ? 'One payment · lifetime access' : 'Free · lifetime access';
+    q('[data-pv-button]').textContent = price ? 'Buy now · ' + label : 'Start learning — free';
+    q('[data-pv-kicker]').textContent = price ? 'Online course' : 'Free course';
+    q('[data-pv-phone]').hidden = !price;
+  };
+</script>

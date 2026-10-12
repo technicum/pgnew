@@ -1,0 +1,51 @@
+<%# Abandoned carts (server.js → /dashboard/abandoned, lib/abandoned.js): every service's unpaid checkouts in one place — tiles, then partials/abandoned-carts (the message and the list, filterable by where). Each service also shows its own: a payment page's Analytics, Courses, Bookings → Abandoned. %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/payments-dashboard.css?v=<%= assetVersion %>" />
+</head>
+<body>
+<% var recovered = ab.recovered; %>
+<div class="min-h-screen bg-background">
+
+  <%- include('partials/dashboard-sidebar', { navActive: '/dashboard/abandoned' }) %>
+
+  <main class="lg:ml-64">
+    <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <div><p class="text-sm font-semibold text-primary" style="line-height:1;">Abandoned carts</p></div>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+
+      <section>
+        <p class="text-sm font-semibold text-primary">Sales</p>
+        <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Abandoned carts</h1>
+        <p class="mt-2 text-sm text-muted-foreground">People who started paying for something — a payment page, a course or a booking — and didn’t finish within <%= abandonedAfter %> minutes. A friendly nudge brings a lot of them back.</p>
+      </section>
+
+      <section class="pp-order-stats" aria-label="Totals">
+        <div class="pp-order-stat"><p>Abandoned carts</p><strong><%= ab.carts.length %></strong></div>
+        <div class="pp-order-stat"><p>Value left behind</p><strong><%= formatINR(ab.total) %></strong></div>
+        <div class="pp-order-stat"><p>Not contacted yet</p><strong id="statWaiting"><%= ab.waiting %></strong></div>
+        <div class="pp-order-stat"><p>Recovered after a follow-up</p><strong><%= recovered.count %></strong><small class="ab-stat-sub"><%= recovered.count ? formatINR(recovered.value) + ' in carts won back' : 'buyers who paid after you reached out' %></small></div>
+      </section>
+
+      <%- include('partials/abandoned-carts', { ab: ab, kindFilter: true, composeOpen: true, title: 'Carts' }) %>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

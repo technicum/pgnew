@@ -1,0 +1,36 @@
+/* Dashboard → Domain (views/domain.ejs). */
+.dm-flash { margin-top: 18px; padding: 10px 14px; border-radius: 10px; font-size: 13.5px; font-weight: 600; }
+.dm-flash.is-ok { background: #e7f8ee; color: #15803d; }
+.dm-flash.is-error { background: #fdecec; color: #991b1b; }
+.dm-card { margin-top: 20px; padding: 22px 24px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); box-shadow: 0 1px 2px #0000000a; }
+.dm-card h2 { margin: 0; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.dm-card h3 { margin: 22px 0 4px; font-size: 15px; font-weight: 700; }
+.dm-sub { margin: 6px 0 0; font-size: 13.5px; color: var(--muted-foreground); line-height: 1.5; }
+.dm-sub a, .dm-hint a { color: var(--primary); text-decoration: underline; }
+.dm-hint { margin: 12px 0 0; font-size: 12.5px; color: var(--muted-foreground); line-height: 1.5; }
+.dm-error { margin: 10px 0 0; padding: 8px 12px; border-radius: 9px; background: #fff8e6; color: #7a4b00; font-size: 13px; }
+.dm-card code { padding: 1px 6px; border-radius: 6px; background: var(--muted); font-size: 12.5px; }
+.dm-input { flex: 1; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); color: var(--foreground); font: inherit; font-size: 14px; }
+.dm-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent); }
+.dm-btn { flex: none; height: 42px; padding: 0 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--foreground); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.dm-btn:hover { background: var(--muted); }
+.dm-btn.is-primary { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground, #fff); }
+.dm-btn.is-primary:hover { opacity: .92; }
+.dm-connect, .dm-home { display: flex; gap: 8px; margin-top: 16px; }
+.dm-domain { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.dm-actions { display: flex; gap: 8px; flex: none; }
+.dm-actions form { margin: 0; }
+.dm-pill { display: inline-block; margin-bottom: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.dm-pill.is-warn { background: #fef3c7; color: #92400e; }
+.dm-pill.is-ok { background: #e7f8ee; color: #15803d; }
+.dm-table-wrap { margin-top: 12px; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+.dm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.dm-table th { padding: 9px 12px; text-align: left; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-foreground); background: var(--muted); }
+.dm-table td { padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: top; }
+.dm-table td small { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted-foreground); }
+.dm-table td:last-child { width: 28px; color: #15803d; font-weight: 800; }
+.dm-copy { cursor: pointer; }
+@media (max-width: 640px) {
+  .dm-card { padding: 18px 16px; }
+  .dm-domain, .dm-connect, .dm-home { flex-direction: column; align-items: stretch; }
+}

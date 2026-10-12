@@ -55,6 +55,8 @@ const {
   deleteCoupon,
 } = require('./lib/paymentPages');
 const { listAbandoned, dismissDraft } = require('./lib/checkoutDrafts');
+const { abandonedView, markContacted, dismissAbandoned, ABANDONED_AFTER_MINUTES } = require('./lib/abandoned');
+const customDomains = require('./lib/customDomains');
 const { APPS, APP_BY_ID, installedApps, setAppInstalled, appForPath } = require('./lib/apps');
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder, platformTotals } = require('./lib/orders');
 const { paymentMode, handleCashfreeWebhook } = require('./lib/payments');
@@ -114,6 +116,13 @@ app.use((req, res, next) => {
   next();
 });
 
+const SELLING_APPS = ['payment-pages', 'courses', 'bookings'];
+const ABANDONED_NAV = {
+  href: '/dashboard/abandoned',
+  label: 'Abandoned carts',
+  icon: '<circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>',
+};
+
 // Apps (lib/apps.js): every dashboard page knows which apps are added (the
 // sidebar lists them), and an app's own routes only open once it's added —
 // otherwise the page sends you to Explore apps to add it.
@@ -122,7 +131,14 @@ app.use('/dashboard', async (req, res, next) => {
   try {
     const installed = await installedApps(req.session.user.id);
     res.locals.installedApps = installed;
-    res.locals.appNav = APPS.filter((a) => installed.includes(a.id)).flatMap((a) => a.nav);
+    const nav = APPS.filter((a) => installed.includes(a.id)).flatMap((a) => a.nav);
+    // Abandoned carts (lib/abandoned.js) span every app that sells, so it
+    // shows once, after Orders, when any of them is added.
+    if (installed.some((x) => SELLING_APPS.includes(x))) {
+      const at = nav.findIndex((n) => n.href === '/dashboard/orders');
+      nav.splice(at >= 0 ? at + 1 : nav.length, 0, ABANDONED_NAV);
+    }
+    res.locals.appNav = nav;
     const needs = appForPath(req.baseUrl + req.path);
     if (!needs || needs.core || installed.includes(needs.id)) return next();
     if (req.method === 'GET') return res.redirect(`/dashboard/apps?add=${needs.id}`);
@@ -696,9 +712,10 @@ app.get('/dashboard/payment-pages/:id/analytics', requireAuth, async (req, res, 
     }
     const tab = ANALYTICS_TABS.has(req.query.tab) ? req.query.tab : 'overview';
     const mode = paymentMode();
-    const [stats, abandoned] = await Promise.all([
+    const [stats, abandoned, ab] = await Promise.all([
       pageAnalytics(userId, id),
-      listAbandoned(userId, id, { testMode: mode === 'test' }),
+      listAbandoned(userId, id, { testMode: mode !== 'manual' }),
+      tab === 'abandoned' ? abandonedView(userId, { kind: 'page', pageId: id }) : null,
     ]);
     const visits = page.view_count || 0;
     res.render('payment-page-analytics', {
@@ -708,6 +725,7 @@ app.get('/dashboard/payment-pages/:id/analytics', requireAuth, async (req, res, 
       tab,
       stats,
       abandoned,
+      ab,
       visits,
       // Paid orders per visit — capped, since a page's views started being
       // counted after some of its orders may already have been placed.
@@ -791,6 +809,142 @@ app.delete('/dashboard/coupons/:id', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     sendPaymentError(res, err, 'Could not delete that coupon.');
+  }
+});
+
+// --- Custom domain (lib/customDomains.js) ---------------------------------
+// A creator connects their own domain the way Shopify does it: type it, add
+// the DNS records shown, Verify. Caddy (deploy/Caddyfile) issues the HTTPS
+// certificate on the first visit, after asking /internal/domain-check.
+// They also pick what opens at the root: the store, or one course, event,
+// booking page or payment page.
+const domainBack = (res, query = '') => res.redirect(303, `/dashboard/domain${query}`);
+app.get('/dashboard/domain', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const domain = await customDomains.getDomain(userId);
+    const [courseList, eventList, serviceList, pageList, wwwOk, serverIps] = await Promise.all([
+      require('./lib/courses').listCourses(userId).catch(() => []),
+      require('./lib/events').listEvents(userId).catch(() => []),
+      require('./lib/bookings').listServices(userId).catch(() => []),
+      listPaymentPages(userId).catch(() => []),
+      domain ? customDomains.wwwPointsHere(domain.domain, { siteDomain: SITE_DOMAIN }).catch(() => false) : false,
+      customDomains.ourServerIps(SITE_DOMAIN).catch(() => []),
+    ]);
+    const pick = (list) => list.map((x) => ({ id: x.id, title: x.title }));
+    res.render('domain', {
+      title: `Domain — ${SITE_NAME}`,
+      user: req.session.user,
+      domain,
+      wwwOk,
+      serverIps,
+      homeTypes: customDomains.HOME_TYPES,
+      port: PORT,
+      homes: { course: pick(courseList), event: pick(eventList), booking: pick(serviceList), pay: pick(pageList) },
+      flash: req.query.error ? { kind: 'error', text: String(req.query.error).slice(0, 200) }
+        : req.query.ok ? { kind: 'ok', text: { connected: 'Domain added — now add the DNS records below.', saved: 'Saved.', removed: 'Domain disconnected.', checked: 'Checked.' }[req.query.ok] || 'Saved.' } : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+app.post('/dashboard/domain', requireAuth, async (req, res, next) => {
+  try {
+    await customDomains.connectDomain(req.session.user.id, req.body && req.body.domain, { siteDomain: SITE_DOMAIN });
+    domainBack(res, '?ok=connected');
+  } catch (err) {
+    if (err.code === 'INVALID_INPUT') return domainBack(res, `?error=${encodeURIComponent(err.message)}`);
+    next(err);
+  }
+});
+app.post('/dashboard/domain/verify', requireAuth, async (req, res, next) => {
+  try {
+    await customDomains.verifyDomain(req.session.user.id, { siteDomain: SITE_DOMAIN });
+    domainBack(res, '?ok=checked');
+  } catch (err) {
+    if (err.code === 'INVALID_INPUT') return domainBack(res, `?error=${encodeURIComponent(err.message)}`);
+    next(err);
+  }
+});
+app.post('/dashboard/domain/home', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    // "course:12" / "booking:" (the whole booking page) / "store".
+    const [type, rawId] = String((req.body && req.body.home) || 'store').split(':');
+    const homeId = Number(rawId) || null;
+    if (!customDomains.HOME_TYPES[type]) return domainBack(res, '?error=Pick what opens at your domain.');
+    if (type !== 'store' && !(type === 'booking' && !homeId)) {
+      const lists = {
+        course: () => require('./lib/courses').listCourses(userId),
+        event: () => require('./lib/events').listEvents(userId),
+        booking: () => require('./lib/bookings').listServices(userId),
+        pay: () => listPaymentPages(userId),
+      };
+      if (!homeId || !(await lists[type]()).some((x) => x.id === homeId)) return domainBack(res, '?error=That page doesn’t exist.');
+    }
+    await customDomains.setHome(userId, type, homeId);
+    domainBack(res, '?ok=saved');
+  } catch (err) {
+    next(err);
+  }
+});
+app.post('/dashboard/domain/disconnect', requireAuth, async (req, res, next) => {
+  try {
+    await customDomains.disconnectDomain(req.session.user.id);
+    domainBack(res, '?ok=removed');
+  } catch (err) {
+    next(err);
+  }
+});
+// Caddy's on-demand TLS asks this before getting a certificate for a name
+// (deploy/Caddyfile): 200 = go ahead, 404 = not one of ours. Answered only
+// to the machine itself, never through the proxy.
+app.get('/internal/domain-check', async (req, res) => {
+  const from = String(req.socket.remoteAddress || '');
+  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(from) || req.get('x-forwarded-for')) return res.status(403).end();
+  try {
+    return res.status(await customDomains.mayIssueCertificate(req.query.domain, { siteDomain: SITE_DOMAIN }) ? 200 : 404).end();
+  } catch (err) {
+    console.error('Domain check failed:', err.message);
+    return res.status(500).end();
+  }
+});
+
+// --- Abandoned carts (lib/abandoned.js) ---------------------------------
+// Every unpaid checkout across payment pages, paid courses and booking
+// advances, with WhatsApp / email / copy follow-ups. The page builds each
+// message from the creator's template; contacting and dismissing are JSON
+// calls so the list doesn't reload.
+app.get('/dashboard/abandoned', requireAuth, async (req, res, next) => {
+  try {
+    res.render('abandoned', {
+      title: `Abandoned carts — ${SITE_NAME}`,
+      user: req.session.user,
+      ab: await abandonedView(req.session.user.id),
+      abandonedAfter: ABANDONED_AFTER_MINUTES,
+      formatINR,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+app.post('/dashboard/abandoned/contacted', requireAuth, async (req, res) => {
+  try {
+    const row = await markContacted(req.session.user.id, req.body || {});
+    if (!row) return res.status(400).json({ error: 'Unknown cart.' });
+    return res.json({ ok: true, contactedAt: row.contacted_at, contacts: row.contacts, channel: row.channel });
+  } catch (err) {
+    console.error('Marking a cart contacted failed:', err);
+    return res.status(500).json({ error: 'Could not save that. Please try again.' });
+  }
+});
+app.post('/dashboard/abandoned/dismiss', requireAuth, async (req, res) => {
+  try {
+    await dismissAbandoned(req.session.user.id, req.body && req.body.ref);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Dismissing a cart failed:', err);
+    return res.status(500).json({ error: 'Could not dismiss that. Please try again.' });
   }
 });
 

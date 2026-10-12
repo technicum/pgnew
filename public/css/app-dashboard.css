@@ -4,6 +4,10 @@
 .ax-back { display: inline-block; margin-bottom: 12px; font-size: 13px; font-weight: 600; color: var(--muted-foreground); text-decoration: none; }
 .ax-back:hover { color: var(--primary); }
 .ax-heading h1 { overflow-wrap: anywhere; }
+.ax-heading.has-action { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.ax-heading.has-action form { margin: 0; }
+.ax-create { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; font-size: 14px; font-weight: 700; }
+.ax-create svg { width: 16px; height: 16px; }
 
 .ax-flash { margin-top: 18px; padding: 10px 14px; border-radius: var(--radius); font-size: 13.5px; font-weight: 500; }
 .ax-flash-ok { background: var(--success-soft); color: var(--success); }
@@ -230,3 +234,21 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .ax-rte-toolbar button:hover, .ax-rte-toolbar button:focus-visible { background: var(--muted); color: var(--foreground); outline: none; }
 .ax-rte-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border); }
 .ax-rte textarea.ax-input, .ax-rte textarea.ax-input:focus { border: none; border-radius: 0; box-shadow: none; min-height: 120px; }
+
+/* Course editor (app-course-edit.ejs): module headings, lesson video upload, student progress. */
+.ax-module-head { padding: 12px 20px 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted-foreground); border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 40%, var(--card)); }
+.ax-tag { padding: 1px 7px; border-radius: 999px; background: var(--success-soft); color: var(--success); font-size: 11px; font-weight: 700; }
+.ax-check-field { align-self: end; padding-bottom: 10px; }
+.ax-video-box { margin-bottom: 16px; padding: 14px; border: 1px dashed var(--border); border-radius: var(--radius); background: var(--card); display: grid; gap: 10px; }
+.ax-video-head { display: grid; gap: 2px; }
+.ax-video-preview { width: 100%; max-width: 480px; aspect-ratio: 16 / 9; border-radius: 8px; background: #000; }
+.ax-video-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ax-video-actions label.ax-btn { cursor: pointer; }
+.ax-video-actions form { margin: 0; }
+.ax-progress { height: 8px; border-radius: 999px; background: var(--muted); overflow: hidden; }
+.ax-progress span { display: block; width: 0; height: 100%; background: var(--primary); transition: width .2s; }
+.ax-progress[hidden] { display: none; }
+.ax-video-status { font-size: 12.5px; color: var(--muted-foreground); }
+.ax-video-status:empty { display: none; }
+.ax-meter { display: inline-block; width: 80px; height: 6px; margin-right: 6px; border-radius: 999px; background: var(--muted); vertical-align: middle; overflow: hidden; }
+.ax-meter span { display: block; height: 100%; background: var(--success); }

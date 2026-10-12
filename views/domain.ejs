@@ -1,0 +1,144 @@
+<%# Dashboard → Domain (server.js, lib/customDomains.js): connect the creator's own domain, Shopify-style — type it, add the DNS records shown, Verify (DNS, then HTTPS) — and pick what opens at its root: the store, or one course, event, booking page or payment page. Every other page keeps working under the domain. %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/domain.css?v=<%= assetVersion %>" />
+</head>
+<body>
+<% var subAddress = user.handle + '.' + siteDomain;
+var STATUS = { pending: { label: 'Waiting for DNS', kind: 'warn' }, dns: { label: 'Waiting for HTTPS', kind: 'warn' }, live: { label: 'Live', kind: 'ok' } };
+var homeValue = domain ? (domain.home_type === 'store' ? 'store' : domain.home_type + ':' + (domain.home_id || '')) : 'store';
+var isDev = domain && /\.localhost$/.test(domain.domain);
+var visit = domain ? (isDev ? 'http://' + domain.domain + ':' + port : 'https://' + domain.domain) : ''; %>
+<div class="min-h-screen bg-background">
+
+  <%- include('partials/dashboard-sidebar', { navActive: '/dashboard/domain' }) %>
+
+  <main class="lg:ml-64">
+    <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <div><p class="text-sm font-semibold text-primary" style="line-height:1;">Domain</p></div>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[900px] px-4 py-7 md:px-8 md:py-9">
+      <section>
+        <p class="text-sm font-semibold text-primary">Settings</p>
+        <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Your domain</h1>
+        <p class="mt-2 text-sm text-muted-foreground">Your store lives at <b><%= subAddress %></b>. Connect a domain you own — like <b>mybrand.com</b> — and your store, courses, bookings and events open there instead.</p>
+      </section>
+
+      <% if (flash) { %><div class="dm-flash is-<%= flash.kind %>" role="status"><%= flash.text %></div><% } %>
+
+      <% if (!domain) { %>
+      <section class="dm-card">
+        <h2>Connect a domain</h2>
+        <p class="dm-sub">Buy one from any registrar (GoDaddy, Hostinger, Namecheap…), then type it here.</p>
+        <form method="POST" action="/dashboard/domain" class="dm-connect">
+          <input class="dm-input" name="domain" placeholder="mybrand.com" required maxlength="253" autocapitalize="off" spellcheck="false" aria-label="Your domain" />
+          <button class="dm-btn is-primary">Connect</button>
+        </form>
+        <p class="dm-hint">Testing on this computer? Use a name like <code>shop.mybrand.localhost</code> — it connects straight away.</p>
+      </section>
+      <% } else { var st = STATUS[domain.status] || STATUS.pending; %>
+      <section class="dm-card">
+        <div class="dm-domain">
+          <div>
+            <span class="dm-pill is-<%= st.kind %>"><%= st.label %></span>
+            <h2><%= domain.domain %></h2>
+            <% if (domain.status === 'live') { %>
+            <p class="dm-sub">Connected — your store opens at <a href="<%= visit %>" target="_blank" rel="noopener"><%= visit.replace(/^https?:\/\//, '') %></a>, with HTTPS. <%= subAddress %> keeps working too.</p>
+            <% } else { %>
+            <p class="dm-sub">Add the DNS records below at your domain’s registrar, then press <b>Verify</b>.</p>
+            <% } %>
+            <% if (domain.last_error) { %><p class="dm-error"><%= domain.last_error %></p><% } %>
+            <% if (domain.checked_at) { %><p class="dm-hint">Last checked <%= new Date(domain.checked_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) %>.</p><% } %>
+          </div>
+          <div class="dm-actions">
+            <% if (!isDev) { %><form method="POST" action="/dashboard/domain/verify"><button class="dm-btn is-primary">Verify</button></form><% } %>
+            <form method="POST" action="/dashboard/domain/disconnect"><button class="dm-btn" data-confirm="Disconnect this domain?">Disconnect</button></form>
+          </div>
+        </div>
+
+        <% if (!isDev) { %>
+        <h3>DNS records</h3>
+        <p class="dm-sub">In your registrar’s DNS settings, add these. Delete any other <b>A</b> records on the same name (like a “parked” page).</p>
+        <div class="dm-table-wrap">
+          <table class="dm-table">
+            <thead><tr><th>Type</th><th>Name</th><th>Points to</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>A</b></td><td><code>@</code><small><%= domain.domain %></small></td>
+                <td><% if (serverIps.length) { %><% serverIps.forEach(function (ip) { %><code class="dm-copy" data-copy="<%= ip %>" title="Copy"><%= ip %></code> <% }) %><% } else { %><small>Your server’s IP — set SERVER_IP</small><% } %></td>
+                <td><%= domain.status !== 'pending' ? '✓' : '' %></td>
+              </tr>
+              <tr>
+                <td><b>CNAME</b></td><td><code>www</code><small>www.<%= domain.domain %></small></td>
+                <td><code class="dm-copy" data-copy="<%= siteDomain %>" title="Copy"><%= siteDomain %></code></td>
+                <td><%= wwwOk ? '✓' : '' %></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="dm-hint">Connecting a subdomain like <b>shop.mybrand.com</b> instead? Add one <b>CNAME</b> — name <code>shop</code>, pointing to <code><%= siteDomain %></code> — and skip the rows above. DNS changes usually show up within minutes, sometimes a few hours. HTTPS is set up automatically once they do.</p>
+        <% } %>
+      </section>
+
+      <%# What opens at the root — the rest stays at its own address under the domain. %>
+      <section class="dm-card">
+        <h2>What opens at <%= domain.domain %></h2>
+        <p class="dm-sub">Show your whole store, or make one page the home of your domain. Everything else still opens under it — <code>/course/…</code>, <code>/book/…</code>, <code>/event/…</code>, <code>/pay/…</code>.</p>
+        <form method="POST" action="/dashboard/domain/home" class="dm-home">
+          <select name="home" class="dm-input" aria-label="Home page">
+            <option value="store"<%= homeValue === 'store' ? ' selected' : '' %>>Your store (all your links and products)</option>
+            <% if (homes.booking.length) { %>
+            <optgroup label="Bookings">
+              <option value="booking:"<%= homeValue === 'booking:' ? ' selected' : '' %>>Booking page — every session</option>
+              <% homes.booking.forEach(function (x) { %><option value="booking:<%= x.id %>"<%= homeValue === 'booking:' + x.id ? ' selected' : '' %>><%= x.title %></option><% }) %>
+            </optgroup>
+            <% } %>
+            <% [['course', 'Courses'], ['event', 'Events'], ['pay', 'Payment pages']].forEach(function (g) { if (!homes[g[0]].length) return; %>
+            <optgroup label="<%= g[1] %>">
+              <% homes[g[0]].forEach(function (x) { %><option value="<%= g[0] %>:<%= x.id %>"<%= homeValue === g[0] + ':' + x.id ? ' selected' : '' %>><%= x.title %></option><% }) %>
+            </optgroup>
+            <% }) %>
+          </select>
+          <button class="dm-btn is-primary">Save</button>
+        </form>
+        <% if (domain.status === 'live') { %><p class="dm-hint"><a href="<%= visit %>" target="_blank" rel="noopener">Open <%= domain.domain %> ↗</a></p><% } %>
+      </section>
+      <% } %>
+    </div>
+  </main>
+</div>
+<script>
+  // Copy buttons on the DNS values; Disconnect asks once.
+  document.querySelectorAll('[data-copy]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      if (!navigator.clipboard) return;
+      navigator.clipboard.writeText(el.getAttribute('data-copy')).then(function () {
+        var was = el.textContent;
+        el.textContent = 'Copied';
+        setTimeout(function () { el.textContent = was; }, 1200);
+      });
+    });
+  });
+  document.querySelectorAll('[data-confirm]').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      if (btn.dataset.armed) return;
+      e.preventDefault();
+      btn.dataset.armed = '1';
+      btn.textContent = 'Click again to disconnect';
+    });
+  });
+</script>
+</body>
+</html>

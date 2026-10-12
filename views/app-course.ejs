@@ -1,35 +1,107 @@
-<%# Public course page (lib/appStorefront.js → /course/:slug): description, lesson outline and the enrol form. Enrolling redirects to the student's private /learn/ link. %>
-<%- include('partials/app-public-top') %>
-
-  <article class="lm-card">
-    <div class="lm-card-body">
-      <span class="lm-kicker"><span class="dot"></span>Free course</span>
-      <h1><%= course.title %></h1>
-      <% if (course.description) { %><div class="lm-desc ax-rich"><%- descriptionHtml %></div><% } %>
-
-      <% if (lessons.length) { %>
-      <h2 class="ax-step"><%= lessons.length %> lesson<%= lessons.length === 1 ? '' : 's' %></h2>
-      <ol class="ax-outline">
-        <% lessons.forEach(function (l) { %><li><%= l.title %><% if (l.video_url) { %> <small>· video</small><% } %></li><% }) %>
-      </ol>
-      <% } %>
-
-      <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
-
-      <h2 class="ax-step">Enrol</h2>
-      <form method="POST" action="/course/<%= course.slug %>" novalidate>
-        <div class="field">
-          <label for="name">Your name</label>
-          <input type="text" id="name" name="name" value="<%= values.name || '' %>" autocomplete="name" required />
+<%# Public course page (lib/appStorefront.js → /course/:slug): cover, title, what you'll learn, description, the outline by module — lessons, quizzes and downloads, each with its icon (free previews open to anyone) — and the enrol box — free courses go straight to the student's /learn/ link, paid ones to its checkout. %>
+<%- include('partials/app-public-top', { wide: true }) %>
+<%
+var initials = String(owner.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (p) { return p[0].toUpperCase(); }).join('') || '•';
+var check = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5L10 17L19 7"/></svg>';
+var lock = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+var play = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+var plural = function (n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); };
+var included = [plural(counts.lesson, 'lesson'), counts.video ? plural(counts.video, 'video') : '', counts.quiz ? plural(counts.quiz, 'quiz', 'quizzes') : '', counts.file ? plural(counts.file, 'download') : ''].filter(Boolean);
+%>
+  <div class="cr">
+    <article class="lm-card cr-main">
+      <% if (course.cover_url) { %><div class="cr-cover"><img src="<%= course.cover_url %>" alt="" /></div><% } %>
+      <div class="lm-card-body">
+        <span class="lm-kicker"><span class="dot"></span><%= course.price ? 'Online course' : 'Free course' %></span>
+        <h1><%= course.title %></h1>
+        <div class="cr-by">
+          <span class="cr-avatar" aria-hidden="true"><%= initials %></span>
+          <span>by <b><%= owner.name %></b><% if (owner.bio) { %><small><%= owner.bio %></small><% } %></span>
         </div>
-        <div class="field">
-          <label for="email">Your email</label>
-          <input type="email" id="email" name="email" value="<%= values.email || '' %>" autocomplete="email" required />
-        </div>
-        <button type="submit" class="btn btn-primary">Start learning</button>
-      </form>
-    </div>
-    <p class="lm-card-foot"><span>Already enrolled? Use the same email to get back to your lessons.</span></p>
-  </article>
+        <ul class="cr-stats">
+          <li><b><%= counts.lesson %></b> lesson<%= counts.lesson === 1 ? '' : 's' %></li>
+          <% if (videoCount) { %><li><b><%= videoCount %></b> video<%= videoCount === 1 ? '' : 's' %></li><% } %>
+          <% if (counts.quiz) { %><li><b><%= counts.quiz %></b> quiz<%= counts.quiz === 1 ? '' : 'zes' %></li><% } %>
+          <% if (counts.file) { %><li><b><%= counts.file %></b> download<%= counts.file === 1 ? '' : 's' %></li><% } %>
+          <% if (modules.filter(function (m) { return m.title; }).length > 1) { %><li><b><%= modules.length %></b> modules</li><% } %>
+          <li>Learn at your own pace</li>
+        </ul>
+
+        <% if (course.outcomesList.length) { %>
+        <section class="cr-learn">
+          <h2>What you’ll learn</h2>
+          <ul><% course.outcomesList.forEach(function (o) { %><li><%- check %><span><%= o %></span></li><% }) %></ul>
+        </section>
+        <% } %>
+
+        <% if (course.description) { %>
+        <section class="cr-section">
+          <h2>About this course</h2>
+          <div class="lm-desc ax-rich"><%- descriptionHtml %></div>
+        </section>
+        <% } %>
+
+        <% if (lessons.length) { %>
+        <section class="cr-section">
+          <h2>Course content</h2>
+          <div class="cr-outline">
+            <% modules.forEach(function (m, mi) { %>
+            <details class="cr-module"<%= mi === 0 || modules.length <= 2 ? ' open' : '' %>>
+              <summary><span><%= m.title || (modules.length > 1 ? 'Start here' : 'Lessons') %></span><small><%= m.lessons.length %> item<%= m.lessons.length === 1 ? '' : 's' %></small></summary>
+              <ol>
+                <% m.lessons.forEach(function (l) { %>
+                <li>
+                  <span class="cr-n"><%= l.number %></span>
+                  <%- include('partials/course-kind-icon', { kind: l.kind, video: !!(l.video_file || l.video_url) }) %>
+                  <% if (l.preview) { %>
+                  <a href="/course/<%= course.slug %>/preview/<%= l.id %>"><%= l.title %></a>
+                  <span class="cr-preview"><%- play %> Preview</span>
+                  <% } else { %>
+                  <span class="cr-lesson"><%= l.title %></span>
+                  <span class="cr-lock" title="Unlocks when you enrol"><%- lock %></span>
+                  <% } %>
+                </li>
+                <% }) %>
+              </ol>
+            </details>
+            <% }) %>
+          </div>
+        </section>
+        <% } %>
+      </div>
+    </article>
+
+    <aside class="lm-card cr-buy" id="enrol">
+      <div class="lm-card-body">
+        <div class="cr-price"><%= course.priceLabel %></div>
+        <p class="cr-price-note"><%= course.price ? 'One payment · lifetime access' : 'Free · lifetime access' %></p>
+        <% if (error) { %><div class="auth-error"><%= error %></div><% } %>
+        <form method="POST" action="/course/<%= course.slug %>" novalidate>
+          <div class="field">
+            <label for="name">Your name</label>
+            <input type="text" id="name" name="name" value="<%= values.name || '' %>" autocomplete="name" required />
+          </div>
+          <div class="field">
+            <label for="email">Your email</label>
+            <input type="email" id="email" name="email" value="<%= values.email || '' %>" autocomplete="email" required />
+          </div>
+          <% if (course.price) { %>
+          <div class="field">
+            <label for="phone">Phone <span class="lm-opt">(optional)</span></label>
+            <input type="tel" id="phone" name="phone" value="<%= values.phone || '' %>" autocomplete="tel" />
+          </div>
+          <% } %>
+          <button type="submit" class="btn btn-primary"><%= course.price ? 'Buy now · ' + course.priceLabel : 'Start learning — free' %></button>
+        </form>
+        <ul class="cr-perks">
+          <li><%- check %> <%= included.join(', ') %></li>
+          <li><%- check %> Watch on phone or laptop</li>
+          <li><%- check %> Track your progress</li>
+        </ul>
+        <% if (customer) { %><p class="cr-small">Signed in as <b><%= customer.name %></b></p><% } %>
+      </div>
+      <p class="lm-card-foot"><span>You’ll get a private link to your lessons — bookmark it.</span></p>
+    </aside>
+  </div>
 
 <%- include('partials/app-public-bottom') %>

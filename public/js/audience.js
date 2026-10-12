@@ -259,7 +259,53 @@
     }
     emptyContacts.style.display = visibleCount ? 'none' : 'flex';
     contactsList.style.display = visibleCount ? '' : 'none';
+    syncExport();
   }
+  // --- export (client-side: every contact is already on the page) -----
+  // A CSV of the people shown — the whole list, or only the rows matching
+  // the search / filters — newest first, with a BOM so Excel reads UTF-8.
+  const exportBtn = document.getElementById('exportContacts');
+  const exportLabel = document.getElementById('exportContactsLabel');
+  const SOURCE_NAMES = { form: 'Lead magnet', order: 'Order', booking: 'Booking', event: 'Event', course: 'Course', manual: 'Added by hand' };
+
+  function shownContacts() {
+    const visible = new Set();
+    contactsList.querySelectorAll('.pz-contact-row').forEach((row) => {
+      if (row.style.display !== 'none' && row.closest('.pz-contact-group').style.display !== 'none') visible.add(Number(row.dataset.id));
+    });
+    return contacts.filter((c) => visible.has(Number(c.id)));
+  }
+  // A cell, quoted, and kept from running as a formula in a spreadsheet
+  // (=, +, -, @ at the start) — except a phone number like +91 98765 43210.
+  function csvCell(value) {
+    let text = String(value ?? '');
+    if (/^[=@\t\r]/.test(text) || (/^[+-]/.test(text) && !/^[+-][\d\s().-]+$/.test(text))) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  function syncExport() {
+    const n = shownContacts().length;
+    const filtering = !!(searchInput.value.trim() || sourceFilter.value || reachFilter.value);
+    exportBtn.disabled = !n;
+    exportLabel.textContent = filtering && n ? `Export ${countLabel(n)}` : 'Export CSV';
+  }
+  exportBtn.addEventListener('click', () => {
+    const rows = shownContacts();
+    if (!rows.length) return;
+    const lines = [['Name', 'Email', 'Phone', 'Note', 'Source', 'From', 'Added on']].concat(rows.map((c) => [
+      c.name, c.email, c.phone, c.note || '', SOURCE_NAMES[sourceOf(c)], sourceOf(c) === 'manual' ? '' : (c.source_label || ''),
+      c.created_at ? new Date(c.created_at).toISOString().slice(0, 10) : '',
+    ]));
+    const csv = '﻿' + lines.map((cells) => cells.map(csvCell).join(',')).join('\r\n') + '\r\n';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audience-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
   searchInput.addEventListener('input', applyFilters);
   sourceFilter.addEventListener('change', applyFilters);
   reachFilter.addEventListener('change', applyFilters);

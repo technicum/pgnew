@@ -1,125 +1,181 @@
-<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id). Field names match lib/bookings.js: hours (partials/ax-hours, used when custom_hours is 1), questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. Images upload through /dashboard/uploads (the small script below) or take a pasted link. %>
-<%- include('partials/app-dash-top', { navActive: '/dashboard/bookings', section: 'Bookings', heading: service.title, back: { href: '/dashboard/bookings#services', label: 'Booking page' } }) %>
+<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id) — a full-screen editor (public/css/studio.css): fields in three tabs on the left (Details: what it is and where; Rules: payment, hours, scheduling; Settings: questions, link, visibility), the booking page's live preview on the right (partials/booking-studio-preview).
+    One form posts every tab. Field names match lib/bookings.js: hours (partials/ax-hours, used when custom_hours is 1), questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. %>
+<%- include('partials/studio-head') %>
 <% var link = storeUrlFor(user.handle) + '/book/' + service.slug;
-var priceRupees = service.price ? String(service.price / 100) : '0'; %>
+var priceRupees = service.price ? String(service.price / 100) : '0';
+var attend = service.attend || (service.location ? 'in_person' : 'online');
+var base = '/dashboard/bookings/services/' + service.id; %>
+<div class="st">
+  <aside class="st-panel">
+    <div class="st-top">
+      <a class="st-close" href="/dashboard/bookings#services" aria-label="Close editor" title="Back to your booking page">✕</a>
+      <div class="st-top-title"><b><%= service.title %></b><small>1:1 session · <a href="<%= link %>" target="_blank" rel="noopener" style="color:inherit">open page ↗</a></small></div>
+      <span class="st-live<%= service.visible ? ' is-on' : '' %>"><%= service.visible ? 'Live' : 'Hidden' %></span>
+    </div>
+    <nav class="st-tabs" role="tablist" aria-label="Editor sections">
+      <button type="button" role="tab" data-st-tab="details" aria-selected="true">Details</button>
+      <button type="button" role="tab" data-st-tab="rules" aria-selected="false">Rules</button>
+      <button type="button" role="tab" data-st-tab="settings" aria-selected="false">Settings</button>
+    </nav>
 
-<div class="ax-linkbar">
-  <span>Booking link</span>
-  <a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a>
-  <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy</button>
-</div>
+    <form class="st-form" method="POST" action="<%= base %>" data-pv-form>
+      <div class="st-scroll">
+        <% if (flash) { %><div class="ax-flash ax-flash-<%= flash.kind %>" role="status"><%= flash.text %></div><% } %>
 
-<form method="POST" action="/dashboard/bookings/services/<%= service.id %>">
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Details</h2></div>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-2"><span>Name</span><input class="ax-input" name="title" value="<%= service.title %>" required maxlength="200" /></label>
-      <label class="ax-field"><span>Link ending</span><input class="ax-input" name="slug" value="<%= service.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></label>
-      <label class="ax-field"><span>Length (minutes)</span><input class="ax-input" type="number" name="duration_min" value="<%= service.duration_min %>" min="5" max="480" step="5" /></label>
-      <label class="ax-field"><span>Price (₹) <small>0 = free</small></span><input class="ax-input" name="price" value="<%= priceRupees %>" inputmode="decimal" /></label>
-      <span></span>
-      <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: service.description, rows: 6, maxlength: 2000, placeholder: 'What you’ll cover, who it’s for, what to bring…' }) %>
-    </div>
-  </section>
+        <%# --- Details --- %>
+        <div data-st-panel="details">
+          <div class="st-intro"><h2>Set up your session</h2><p>What people book, and where it happens.</p></div>
+          <section class="ax-panel">
+            <div class="ax-grid">
+              <label class="ax-field"><span>Session title</span><input class="ax-input" name="title" value="<%= service.title %>" required maxlength="200" placeholder="Discovery call" /></label>
+              <div class="st-pair">
+                <label class="ax-field"><span>Duration</span><span class="st-affix"><input class="ax-input has-post" type="number" name="duration_min" value="<%= service.duration_min %>" min="5" max="480" step="5" /><i class="post">mins</i></span></label>
+                <label class="ax-field"><span>Price <small>0 = free</small></span><span class="st-affix"><i class="pre">₹</i><input class="ax-input has-pre" name="price" value="<%= priceRupees %>" inputmode="decimal" /></span></label>
+              </div>
+              <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image <small>(optional)</small>', value: service.cover_url, hint: '1500 × 700 works well. Blank uses the one in Settings.' }) %>
+              <%- include('partials/ax-rich-field', { name: 'description', label: 'Description', value: service.description, rows: 7, maxlength: 2000, placeholder: 'What you’ll cover, who it’s for, what to bring…', extraClass: '' }) %>
+            </div>
+          </section>
 
-  <%# Where it happens — attend / location (address) / meeting_url (lib/bookings.js ATTEND).
-      A service from before this (attend '') starts on "In person" with its old text as the address. %>
-  <% var attend = service.attend || (service.location ? 'in_person' : 'online'); %>
-  <section class="ax-panel" data-attend-panel>
-    <div class="ax-panel-head"><h2>Where it happens</h2></div>
-    <div class="ax-pad ax-pad-top ax-hours-choice">
-      <label class="ax-check"><input type="radio" name="attend" value="online"<%= attend === 'online' ? ' checked' : '' %> /> <span>Online <small class="ax-sub">— video call (Google Meet, Zoom…)</small></span></label>
-      <label class="ax-check"><input type="radio" name="attend" value="in_person"<%= attend === 'in_person' ? ' checked' : '' %> /> <span>In person <small class="ax-sub">— at your clinic, salon, studio…</small></span></label>
-      <label class="ax-check"><input type="radio" name="attend" value="either"<%= attend === 'either' ? ' checked' : '' %> /> <span>Both <small class="ax-sub">— the booker chooses</small></span></label>
-    </div>
-    <div class="ax-grid">
-      <label class="ax-field ax-span-3" data-attend-show="in_person either"><span>Address</span><input class="ax-input" name="location" value="<%= service.location %>" maxlength="300" placeholder="Smile Dental Clinic, 2nd floor, 14 MG Road, Indore 452001" />
-        <small>Shown on the booking page with a “Get directions” link to Google Maps.</small></label>
-      <label class="ax-field ax-span-3" data-attend-show="online either"><span>Meeting link <small>(optional)</small></span><input class="ax-input" name="meeting_url" value="<%= service.meeting_url %>" maxlength="500" placeholder="https://meet.google.com/abc-defg-hij" />
-        <small>Only shown to people once they’ve booked (and paid, if there’s anything to pay online). Leave blank to send each person a link yourself.</small></label>
-    </div>
-  </section>
+          <%# Where it happens — attend / location (address) / meeting_url (lib/bookings.js ATTEND). A service from before this (attend '') starts on "In person" with its old text as the address. %>
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Where it happens</h2></div>
+            <div class="st-cards">
+              <label class="st-card"><input type="radio" name="attend" value="online"<%= attend === 'online' ? ' checked' : '' %> /><span class="st-card-ico">🎥</span><span><b>Online</b><small>Video call — Google Meet, Zoom…</small></span></label>
+              <label class="st-card"><input type="radio" name="attend" value="in_person"<%= attend === 'in_person' ? ' checked' : '' %> /><span class="st-card-ico">📍</span><span><b>In person</b><small>At your clinic, salon, studio…</small></span></label>
+              <label class="st-card"><input type="radio" name="attend" value="either"<%= attend === 'either' ? ' checked' : '' %> /><span class="st-card-ico">🔀</span><span><b>Both</b><small>The booker chooses</small></span></label>
+            </div>
+            <div class="ax-grid" style="margin-top:14px">
+              <label class="ax-field" data-attend-show="in_person either"><span>Address</span><input class="ax-input" name="location" value="<%= service.location %>" maxlength="300" placeholder="Smile Dental Clinic, 14 MG Road, Indore" />
+                <small>Shown with a “Get directions” link to Google Maps.</small></label>
+              <label class="ax-field" data-attend-show="online either"><span>Meeting link <small>(optional)</small></span><input class="ax-input" name="meeting_url" value="<%= service.meeting_url %>" maxlength="500" placeholder="https://meet.google.com/abc-defg-hij" />
+                <small>Only shown once they’ve booked. Leave blank to send each person a link yourself.</small></label>
+            </div>
+          </section>
 
-  <%# How it's paid for — pay_option / deposit (lib/bookings.js PAY_OPTIONS). Only matters with a price. %>
-  <section class="ax-panel" data-pay-panel>
-    <div class="ax-panel-head"><h2>Payment</h2><span class="ax-count">For a paid service</span></div>
-    <div class="ax-pad ax-pad-top ax-hours-choice">
-      <label class="ax-check"><input type="radio" name="pay_option" value="online"<%= service.pay_option === 'online' ? ' checked' : '' %> /> <span>Full price online <small class="ax-sub">— paid when booking</small></span></label>
-      <label class="ax-check"><input type="radio" name="pay_option" value="deposit"<%= service.pay_option === 'deposit' ? ' checked' : '' %> /> <span>Advance online <small class="ax-sub">— the rest at the appointment; fewer no-shows</small></span></label>
-      <label class="ax-check"><input type="radio" name="pay_option" value="later"<%= service.pay_option === 'later' ? ' checked' : '' %> /> <span>Pay at the appointment <small class="ax-sub">— nothing online; booked straight away</small></span></label>
-    </div>
-    <div class="ax-grid" data-pay-show="deposit">
-      <label class="ax-field"><span>Advance (₹)</span><input class="ax-input" name="deposit" value="<%= service.deposit ? String(service.deposit / 100) : '' %>" inputmode="decimal" placeholder="200" /></label>
-    </div>
-    <p class="ax-hint ax-pad">
-      <% if (paymentMode === 'test') { %><b>Paid sessions run in test mode</b> — no payment gateway is connected yet, so bookers see a “Complete test payment” step and nothing is charged.
-      <% } else if (paymentMode === 'cashfree') { %><b>Paid sessions are collected online</b> — bookers pay through Cashfree and the booking confirms itself once the payment goes through.
-      <% } else { %><b>Paid sessions are manual for now</b> — the slot is held as “awaiting payment” until you mark it paid under Upcoming bookings or in Orders. Tell bookers how to pay (UPI ID, bank details) in <a href="/dashboard/bookings/settings/payments">Settings</a>.<% } %>
-    </p>
-  </section>
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Your photo</h2><span class="ax-count">Optional</span></div>
+            <div class="ax-grid">
+              <%- include('partials/ax-image-field', { name: 'photo_url', label: 'Photo', value: service.photo_url, hint: 'Blank uses the one in Settings, else your initials.', round: true }) %>
+            </div>
+          </section>
+        </div>
 
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Photos</h2><span class="ax-count">Optional</span></div>
-    <div class="ax-grid">
-      <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: service.cover_url, hint: 'Wide image across the top — about 1500 × 700. Blank uses the one in Settings.' }) %>
-      <%- include('partials/ax-image-field', { name: 'photo_url', label: 'Your photo', value: service.photo_url, hint: 'Blank uses the one in Settings, else your initials.', round: true }) %>
-    </div>
-  </section>
+        <%# --- Rules --- %>
+        <div data-st-panel="rules" hidden>
+          <div class="st-intro"><h2>Booking rules</h2><p>How it’s paid for, and when people can book.</p></div>
 
-  <section class="ax-panel" id="hours">
-    <div class="ax-panel-head"><h2>When it can be booked</h2><span class="ax-count"><%= fmt.tz(bookingSettings.timezone) %></span></div>
-    <div class="ax-pad ax-pad-top ax-hours-choice">
-      <label class="ax-check"><input type="radio" name="custom_hours" value="0"<%= service.custom_hours ? '' : ' checked' %> data-hours-mode /> <span>My availability <small class="ax-sub">— <%= fmt.hours(bookingSettings.hours) %> ·<a href="/dashboard/bookings/settings">change in Settings</a></small></span></label>
-      <label class="ax-check"><input type="radio" name="custom_hours" value="1"<%= service.custom_hours ? ' checked' : '' %> data-hours-mode /> <span>Different hours for this service</span></label>
-    </div>
-    <div data-custom-hours<%= service.custom_hours ? '' : ' hidden' %>>
-      <%- include('partials/ax-hours', { hours: service.hours, weekdays: weekdays, maxRanges: maxRanges }) %>
-    </div>
-    <p class="ax-hint ax-pad">Whichever hours it uses, a time is only offered if no other booking — for any of your services — is already in it.</p>
-  </section>
+          <%# How it's paid for — pay_option / deposit (lib/bookings.js PAY_OPTIONS). Only matters with a price. %>
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Payment</h2><span class="ax-count">For a paid session</span></div>
+            <div class="st-cards">
+              <label class="st-card"><input type="radio" name="pay_option" value="online"<%= service.pay_option === 'online' ? ' checked' : '' %> /><span class="st-card-ico">💳</span><span><b>Full price online</b><small>Paid when booking</small></span></label>
+              <label class="st-card"><input type="radio" name="pay_option" value="deposit"<%= service.pay_option === 'deposit' ? ' checked' : '' %> /><span class="st-card-ico">🪙</span><span><b>Advance online</b><small>The rest at the appointment — fewer no-shows</small></span></label>
+              <label class="st-card"><input type="radio" name="pay_option" value="later"<%= service.pay_option === 'later' ? ' checked' : '' %> /><span class="st-card-ico">🤝</span><span><b>Pay at the appointment</b><small>Just <%= siteName %>’s small fee online</small></span></label>
+            </div>
+            <div class="ax-grid" data-pay-show="deposit" style="margin-top:14px">
+              <label class="ax-field"><span>Advance</span><span class="st-affix"><i class="pre">₹</i><input class="ax-input has-pre" name="deposit" value="<%= service.deposit ? String(service.deposit / 100) : '' %>" inputmode="decimal" placeholder="200" /></span></label>
+            </div>
+            <p class="ax-hint" style="margin-top:10px">
+              <% if (paymentMode === 'test') { %><b>Test mode</b> — bookers see a “Complete test payment” step and nothing is charged.
+              <% } else if (paymentMode === 'cashfree') { %><b>Collected online</b> — bookers pay through Cashfree and the booking confirms itself.
+              <% } else { %><b>Manual payments</b> — the slot is held until you mark it paid. Tell bookers how to pay in <a href="/dashboard/bookings/settings/payments">Settings</a>.<% } %>
+            </p>
+          </section>
 
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Scheduling</h2></div>
-    <div class="ax-grid">
-      <label class="ax-field"><span>Gap between sessions (minutes)</span><input class="ax-input" type="number" name="buffer_min" value="<%= service.buffer_min %>" min="0" max="240" step="5" /></label>
-      <label class="ax-field"><span>Most bookings a day <small>(0 = no limit)</small></span><input class="ax-input" type="number" name="max_per_day" value="<%= service.max_per_day %>" min="0" max="100" /></label>
-      <span></span>
-      <label class="ax-field"><span>Minimum notice (hours)</span><input class="ax-input" type="number" name="min_notice_hours" value="<%= service.min_notice_hours %>" min="0" max="720" /></label>
-      <label class="ax-field"><span>Bookable up to (days ahead)</span><input class="ax-input" type="number" name="days_ahead" value="<%= service.days_ahead %>" min="1" max="180" /></label>
-    </div>
-    <p class="ax-hint ax-pad">Days off (holidays, travel) apply to every service — set them in <a href="/dashboard/bookings/settings#days-off">Settings</a>.</p>
-  </section>
+          <section class="ax-panel" id="hours">
+            <div class="ax-panel-head"><h2>When it can be booked</h2><span class="ax-count"><%= fmt.tz(bookingSettings.timezone) %></span></div>
+            <div class="ax-hours-choice">
+              <label class="ax-check"><input type="radio" name="custom_hours" value="0"<%= service.custom_hours ? '' : ' checked' %> data-hours-mode /> <span>My availability <small class="ax-sub">— <%= fmt.hours(bookingSettings.hours) %> · <a href="/dashboard/bookings/settings">change</a></small></span></label>
+              <label class="ax-check"><input type="radio" name="custom_hours" value="1"<%= service.custom_hours ? ' checked' : '' %> data-hours-mode /> <span>Different hours for this session</span></label>
+            </div>
+            <div data-custom-hours<%= service.custom_hours ? '' : ' hidden' %>>
+              <%- include('partials/ax-hours', { hours: service.hours, weekdays: weekdays, maxRanges: maxRanges }) %>
+            </div>
+            <p class="ax-hint">A time is only offered if no other booking — for any of your sessions — is already in it.</p>
+          </section>
 
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Booking questions</h2><span class="ax-count">Up to <%= maxQuestions %> · asked after name, email and phone</span></div>
-    <div class="ax-questions" data-questions>
-      <% for (var n = 0; n < maxQuestions; n++) { var q = service.questions[n] || {}; var shown = !!q.label || (n === 0 && !service.questions.length); %>
-      <div class="ax-question"<%= shown ? '' : ' hidden' %>>
-        <input class="ax-input" name="q_label_<%= n %>" value="<%= q.label || '' %>" placeholder="<%= n === 0 ? 'e.g. What would you like to talk about?' : 'Another question' %>" maxlength="120" aria-label="Question <%= n + 1 %>" />
-        <select class="ax-input" name="q_type_<%= n %>" aria-label="Answer type">
-          <% Object.keys(questionTypes).forEach(function (t) { %><option value="<%= t %>"<%= q.type === t ? ' selected' : '' %>><%= questionTypes[t] %></option><% }) %>
-        </select>
-        <input class="ax-input ax-q-options" name="q_options_<%= n %>" value="<%= (q.options || []).join(', ') %>" placeholder="Choices, separated by commas" maxlength="400" aria-label="Choices" />
-        <label class="ax-check"><input type="checkbox" name="q_required_<%= n %>" value="1"<%= q.required ? ' checked' : '' %> /> <span>Required</span></label>
-        <button type="button" class="ax-q-remove" data-q-remove aria-label="Remove question" title="Remove question">×</button>
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Scheduling</h2></div>
+            <div class="st-pair">
+              <label class="ax-field"><span>Gap between sessions</span><span class="st-affix"><input class="ax-input has-post" type="number" name="buffer_min" value="<%= service.buffer_min %>" min="0" max="240" step="5" /><i class="post">mins</i></span></label>
+              <label class="ax-field"><span>Most a day <small>0 = no limit</small></span><input class="ax-input" type="number" name="max_per_day" value="<%= service.max_per_day %>" min="0" max="100" /></label>
+              <label class="ax-field"><span>Minimum notice</span><span class="st-affix"><input class="ax-input has-post" type="number" name="min_notice_hours" value="<%= service.min_notice_hours %>" min="0" max="720" /><i class="post">hours</i></span></label>
+              <label class="ax-field"><span>Book up to</span><span class="st-affix"><input class="ax-input has-post" type="number" name="days_ahead" value="<%= service.days_ahead %>" min="1" max="180" /><i class="post">days</i></span></label>
+            </div>
+            <p class="ax-hint" style="margin-top:10px">Days off (holidays, travel) apply to every session — set them in <a href="/dashboard/bookings/settings#days-off">Settings</a>.</p>
+          </section>
+        </div>
+
+        <%# --- Settings --- %>
+        <div data-st-panel="settings" hidden>
+          <div class="st-intro"><h2>Settings</h2><p>Questions, link and who can find it.</p></div>
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Booking questions</h2><span class="ax-count">Up to <%= maxQuestions %></span></div>
+            <p class="ax-hint" style="margin:0 0 10px">Asked after name, email and phone. Answers show on each booking.</p>
+            <div class="ax-questions" data-questions>
+              <% for (var n = 0; n < maxQuestions; n++) { var q = service.questions[n] || {}; var shown = !!q.label || (n === 0 && !service.questions.length); %>
+              <div class="ax-question"<%= shown ? '' : ' hidden' %>>
+                <input class="ax-input" name="q_label_<%= n %>" value="<%= q.label || '' %>" placeholder="<%= n === 0 ? 'e.g. What would you like help with?' : 'Another question' %>" maxlength="120" aria-label="Question <%= n + 1 %>" />
+                <select class="ax-input" name="q_type_<%= n %>" aria-label="Answer type">
+                  <% Object.keys(questionTypes).forEach(function (t) { %><option value="<%= t %>"<%= q.type === t ? ' selected' : '' %>><%= questionTypes[t] %></option><% }) %>
+                </select>
+                <input class="ax-input ax-q-options" name="q_options_<%= n %>" value="<%= (q.options || []).join(', ') %>" placeholder="Choices, separated by commas" maxlength="400" aria-label="Choices" />
+                <label class="ax-check"><input type="checkbox" name="q_required_<%= n %>" value="1"<%= q.required ? ' checked' : '' %> /> <span>Required</span></label>
+                <button type="button" class="ax-q-remove" data-q-remove aria-label="Remove question" title="Remove question">×</button>
+              </div>
+              <% } %>
+              <button type="button" class="ax-btn ax-btn-quiet ax-q-add" data-q-add>+ Add question</button>
+            </div>
+          </section>
+
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Link</h2></div>
+            <div class="ax-grid">
+              <label class="ax-field"><span>Link ending</span><span class="st-affix"><input class="ax-input" name="slug" value="<%= service.slug %>" maxlength="60" pattern="[a-z0-9-]+" /></span>
+                <small><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/book/<b><%= service.slug %></b> · <button type="button" class="ax-btn ax-btn-quiet" style="height:auto;padding:0" data-copy="<%= link %>">Copy link</button></small></label>
+            </div>
+          </section>
+
+          <section class="ax-panel">
+            <div class="ax-panel-head"><h2>Visibility</h2></div>
+            <div class="st-cards">
+              <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= service.visible ? ' checked' : '' %> /> <span>Taking bookings <small class="ax-sub">— the page is live</small></span></label>
+              <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= service.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find it</small></span></label>
+            </div>
+          </section>
+
+          <section class="ax-panel ax-danger" style="display:block">
+            <p style="margin:0 0 10px">Deleting the session takes its page down. Bookings already made stay in your list.</p>
+            <button class="ax-btn ax-btn-danger" form="deleteService" data-confirm="Click again to delete">Delete session</button>
+          </section>
+        </div>
       </div>
-      <% } %>
-      <button type="button" class="ax-btn ax-btn-quiet ax-q-add" data-q-add>+ Add question</button>
-      <p class="ax-hint">Answers show on each booking. For example “What would you like help with?”, “First visit?” (Choose one) or “Which treatment?” (Dropdown).</p>
+
+      <div class="st-foot">
+        <small>Changes show in the preview — save to publish them.</small>
+        <button class="st-save">Save changes</button>
+      </div>
+    </form>
+    <form id="deleteService" method="POST" action="<%= base %>/delete" hidden></form>
+  </aside>
+
+  <main class="st-canvas">
+    <div class="st-canvas-head">
+      <h2>Preview<small>What bookers see — updates as you type</small></h2>
+      <div class="st-devices" role="group" aria-label="Preview size">
+        <button type="button" data-st-view="desktop" aria-pressed="true">🖥 Desktop</button>
+        <button type="button" data-st-view="mobile" aria-pressed="false">📱 Mobile</button>
+      </div>
     </div>
-  </section>
-
-  <section class="ax-panel ax-savebar">
-    <label class="ax-check"><input type="checkbox" name="visible" value="1"<%= service.visible ? ' checked' : '' %> /> <span>Taking bookings (page is live)</span></label>
-    <label class="ax-check"><input type="checkbox" name="marketplace" value="1"<%= service.marketplace ? ' checked' : '' %> /> <span>List on the <%= siteName %> marketplace <small class="ax-sub">— people browsing <a href="/explore" target="_blank" rel="noopener">Explore</a> can find this service</small></span></label>
-    <button class="ax-btn ax-btn-primary">Save changes</button>
-  </section>
-</form>
-
-<form method="POST" action="/dashboard/bookings/services/<%= service.id %>/delete" class="ax-danger">
-  <span>Deleting the service takes its page down. Bookings already made stay in your list.</span>
-  <button class="ax-btn ax-btn-danger" data-confirm="Click again to delete">Delete service</button>
-</form>
+    <div class="st-device is-desktop" data-st-device>
+      <div class="st-chrome"><i></i><i></i><i></i><span class="st-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
+      <div class="st-screen">
+        <%- include('partials/booking-studio-preview', { service: service, settings: bookingSettings }) %>
+      </div>
+    </div>
+  </main>
+</div>
 
 <script>
   (function () {
@@ -163,6 +219,7 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
         sync();
         row.hidden = true;
         syncAdd();
+        row.dispatchEvent(new Event('input', { bubbles: true }));
       });
     });
     qAdd.addEventListener('click', function () {
@@ -175,5 +232,4 @@ var priceRupees = service.price ? String(service.price / 100) : '0'; %>
     syncAdd();
   })();
 </script>
-
-<%- include('partials/app-dash-bottom') %>
+<%- include('partials/studio-bottom') %>
