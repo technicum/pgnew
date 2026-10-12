@@ -66,6 +66,7 @@ const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
+const { installGoogleAuth } = require('./lib/googleAuth');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -106,6 +107,10 @@ const SITE_DOMAIN = 'pagezaper.com';
 
 // Store subdomains, trust proxy, assetVersion and storeUrlFor for views.
 installStorefront(app, { siteName: SITE_NAME, siteDomain: SITE_DOMAIN, port: PORT });
+
+// "Continue with Google" on login/signup (lib/googleAuth.js) — only when
+// GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set.
+installGoogleAuth(app, { siteName: SITE_NAME });
 
 // Makes siteName/siteDomain available in every view without passing them
 // explicitly on every res.render call.
