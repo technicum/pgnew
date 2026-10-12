@@ -1,0 +1,12 @@
+/* The live preview (public/js/live-preview.js): the real public page in a
+   frame that fills the editor's device frame — the studio editors
+   (studio.css .st-screen) and the payment page builder (.pb-preview-screen).
+   Each update loads into a hidden frame that's swapped in once drawn. */
+.lp-box { position: relative; height: calc(100vh - 170px); min-height: 560px; background: #fff; }
+.lp-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+.lp-frame.is-loading { visibility: hidden; }
+.lp-status { margin: -14px 0 14px; padding: 8px 12px; border-radius: 8px; background: #ffffff14; color: #ffffffb3; font-size: 12px; text-align: center; }
+.lp-status.is-bad { background: #fff3cd; color: #7a4d00; }
+.lp-status[hidden] { display: none; }
+.is-mobile .lp-box { height: min(780px, calc(100vh - 190px)); }
+@media (max-width: 980px) { .lp-box { height: 80vh; } }

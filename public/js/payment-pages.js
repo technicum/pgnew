@@ -21,57 +21,6 @@
   function escapeHTML(str) {
     return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
-  // The full description's small format → safe HTML, for the live
-  // preview. A copy of renderRichText in lib/richText.js (which renders
-  // the real page) — keep the two in step.
-  function richInline(escaped) {
-    return escaped
-      .replace(/\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s()]+)\)/g, '<a href="$2" target="_blank" rel="nofollow noopener">$1</a>')
-      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g, '$1<em>$2</em>');
-  }
-  function renderRichText(raw) {
-    const text = String(raw || '').replace(/\r\n?/g, '\n').slice(0, 5000).trim();
-    if (!text) return '';
-    const out = [];
-    let list = null;
-    let para = [];
-    const flushPara = () => {
-      if (para.length) out.push(`<p>${para.map(richInline).join('<br>')}</p>`);
-      para = [];
-    };
-    const flushList = () => {
-      if (list) out.push(`<${list.tag}>${list.items.map((i) => `<li>${richInline(i)}</li>`).join('')}</${list.tag}>`);
-      list = null;
-    };
-    text.split('\n').forEach((rawLine) => {
-      const line = escapeHTML(rawLine.trimEnd());
-      const heading = line.match(/^#{2,3}\s+(.+)$/);
-      const bullet = line.match(/^\s*[-*]\s+(.+)$/);
-      const numbered = line.match(/^\s*\d{1,3}[.)]\s+(.+)$/);
-      if (!line.trim()) {
-        flushPara();
-        flushList();
-      } else if (heading) {
-        flushPara();
-        flushList();
-        out.push(`<h3>${richInline(heading[1])}</h3>`);
-      } else if (bullet || numbered) {
-        flushPara();
-        const tag = bullet ? 'ul' : 'ol';
-        if (list && list.tag !== tag) flushList();
-        if (!list) list = { tag, items: [] };
-        list.items.push((bullet || numbered)[1]);
-      } else {
-        flushList();
-        para.push(line);
-      }
-    });
-    flushPara();
-    flushList();
-    return out.join('');
-  }
-
   function shadeHex(hex, amount) {
     const num = parseInt(hex.slice(1), 16);
     const clamp = (n) => Math.min(255, Math.max(0, n));
@@ -191,9 +140,10 @@
   let showCover = true;
   let coverType = 'art';
   let coverColor = '';
+  // The live preview's redraw (set up in "live preview" below).
+  let refreshPreview = null;
 
-  // Products while editing: amounts as the rupee text typed, plus what the
-  // preview's pretend buyer has picked (previewQty / previewAmount).
+  // Products while editing: amounts as the rupee text typed.
   let products = [];
   let nextPid = 1;
   function blankProduct(seed) {
@@ -202,7 +152,6 @@
       price: '', compareAt: '', maxQty: '', suggested: '', minimum: '',
       fileUrl: '', stock: '', weight: '', shipFee: '',
       mediaType: '', mediaUrl: '',
-      previewQty: 1, previewAmount: null,
     }, seed || {});
   }
   // A stored product (paise) → an editable card.
@@ -475,134 +424,30 @@
   });
 
   // --- live preview -------------------------------------------------------------
-  // What a product line costs right now, given its pricing and what the
-  // pretend buyer has chosen in the preview. Paise.
-  function lineAmount(p) {
-    if (p.pricing === 'pwyw') {
-      return p.previewAmount !== null ? p.previewAmount : (toPaise(p.suggested) || toPaise(p.minimum) || 0);
-    }
-    const qty = p.pricing === 'qty' ? (p.previewQty || 1) : 1;
-    return (toPaise(p.price) || 0) * qty;
-  }
-  function typeLabel(p) {
-    if (p.type === 'coffee') return 'Support';
-    return p.type === 'digital' ? 'Instant download' : 'Ships to you';
-  }
-  function previewControlHTML(p) {
-    if (p.type === 'coffee') {
-      return `<div class="pb-preview-coffee" data-coffee-for="${p.id}">
-        ${[1, 3, 5].map((n) => `<button type="button" class="${p.previewQty === n ? 'active' : ''}" data-qty="${n}">×${n}</button>`).join('')}
-      </div>`;
-    }
-    if (p.pricing === 'qty') {
-      return `<div class="pb-preview-stepper" data-qty-for="${p.id}">
-        <button type="button" data-qty-dec aria-label="Fewer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-        <span>${p.previewQty || 1}</span>
-        <button type="button" data-qty-inc aria-label="More"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
-      </div>`;
-    }
-    if (p.pricing === 'pwyw') {
-      const value = p.previewAmount !== null ? rupeesText(p.previewAmount) : (p.suggested || '');
-      const min = toPaise(p.minimum);
-      return `<div class="pb-preview-pwyw"><span>₹</span><input type="text" inputmode="decimal" data-pwyw-for="${p.id}" value="${escapeHTML(value)}" placeholder="0" aria-label="Amount" /></div>
-        ${min ? `<div class="pb-preview-pwyw-hint">Minimum ${formatINR(min)}</div>` : ''}`;
-    }
-    return '';
-  }
+  // The real page (views/payment-page.ejs), drawn by the server from what's
+  // in the builder now (lib/livePreview.js, public/js/live-preview.js) — a
+  // page not named or priced yet shows stand-ins.
+  refreshPreview = window.livePreview($('ppPreviewBox'), () => {
+    const built = buildPayload({ draft: true });
+    if (built.error) return { error: built.error };
+    return {
+      url: '/dashboard/payment-pages/preview',
+      type: 'application/json',
+      body: JSON.stringify({ page: built.payload, id: editingId }),
+      note: built.standIns ? 'Showing stand-ins until you add a name and a price.' : '',
+    };
+  });
 
-  // The product's own image as its thumbnail; a play badge for a video.
-  const PLAY_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
-  function previewThumbHTML(p) {
-    const url = p.mediaUrl.trim();
-    if (p.mediaType === 'image' && isCoverUrl(url)) {
-      return `<div class="pb-preview-thumb has-image"><img src="${escapeHTML(url)}" alt="" /></div>`;
-    }
-    if (p.mediaType === 'video' && isCoverUrl(url)) return `<div class="pb-preview-thumb is-video">${PLAY_ICON}</div>`;
-    return `<div class="pb-preview-thumb ${p.type}">${icon(p.type)}</div>`;
-  }
-
+  // After any change: a one-product page's product follows the headline,
+  // the address bar follows the link, and the preview redraws (debounced).
   function syncPreview() {
-    // One-product pages: the product goes by the page's headline.
     if (pageKind !== 'multiple' && products[0]) products[0].title = titleInput.value;
-    const headline = titleInput.value.trim()
-      || (products.length === 1 && products[0].title.trim())
-      || 'Your payment page';
-    $('ppPreviewTitle').textContent = headline;
-    const desc = descInput.value.trim();
-    $('ppPreviewDesc').textContent = desc;
-    $('ppPreviewDesc').hidden = !desc;
-    const aboutHtml = renderRichText(aboutInput.value);
-    $('ppPreviewAboutBody').innerHTML = aboutHtml;
-    $('ppPreviewAbout').hidden = !aboutHtml;
-
-    const items = $('ppPreviewItems');
-    items.innerHTML = products.map((p) => {
-      const compare = p.pricing === 'fixed' && toPaise(p.compareAt) > toPaise(p.price) ? `<s>${formatINR(toPaise(p.compareAt))}</s>` : '';
-      return `
-        <div class="pb-preview-item" data-preview-pid="${p.id}">
-          ${previewThumbHTML(p)}
-          <div class="pb-preview-main">
-            <div class="pb-preview-title">${escapeHTML(p.title.trim() || (p.type === 'coffee' ? 'Buy me a coffee' : 'Untitled product'))}</div>
-            <div class="pb-preview-type">${typeLabel(p)}${p.pricing === 'pwyw' ? ' · name your price' : ''}</div>
-            ${pageKind === 'multiple' && p.description.trim() ? `<div class="pb-preview-pdesc">${escapeHTML(p.description.trim())}</div>` : ''}
-            ${previewControlHTML(p)}
-          </div>
-          <div class="pb-preview-price">${compare}<b>${formatINR(lineAmount(p))}</b></div>
-        </div>`;
-    }).join('') || '<div class="pb-preview-empty">Add a product to see it here.</div>';
-
-    items.querySelectorAll('[data-qty-for]').forEach((el) => {
-      const p = products.find((x) => x.id === Number(el.dataset.qtyFor));
-      el.querySelector('[data-qty-dec]').addEventListener('click', () => {
-        p.previewQty = Math.max(1, (p.previewQty || 1) - 1);
-        syncPreview();
-      });
-      el.querySelector('[data-qty-inc]').addEventListener('click', () => {
-        const max = toCount(p.maxQty) || 100;
-        p.previewQty = Math.min(max, (p.previewQty || 1) + 1);
-        syncPreview();
-      });
-    });
-    items.querySelectorAll('[data-pwyw-for]').forEach((input) => {
-      const p = products.find((x) => x.id === Number(input.dataset.pwywFor));
-      input.addEventListener('input', () => {
-        const v = toPaise(input.value);
-        p.previewAmount = Number.isNaN(v) ? null : v;
-        // Totals only — re-rendering the list would blur this input.
-        updateTotals();
-      });
-    });
-    items.querySelectorAll('[data-coffee-for]').forEach((row) => {
-      const p = products.find((x) => x.id === Number(row.dataset.coffeeFor));
-      row.querySelectorAll('[data-qty]').forEach((btn) => btn.addEventListener('click', () => {
-        p.previewQty = Number(btn.dataset.qty);
-        syncPreview();
-      }));
-    });
-
+    const headline = titleInput.value.trim() || (products.length === 1 && products[0].title.trim()) || '';
     const editing = pages.find((pg) => pg.id === editingId);
     const slug = editing ? (slugInput.value.trim() || editing.slug)
-      : (headline === 'Your payment page' ? '…' : headline.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40));
+      : headline.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
     $('ppPreviewUrl').textContent = `${storeHost}/pay/${slug || '…'}`;
-
-    updateTotals();
-  }
-
-  function updateTotals() {
-    const subtotal = products.reduce((sum, p) => sum + lineAmount(p), 0);
-    const physical = products.filter((p) => p.type === 'physical');
-    const shipping = physical.reduce((sum, p) => sum + (toPaise(p.shipFee) || 0), 0);
-    $('ppPreviewShip').hidden = !physical.length;
-    $('ppPreviewShipRow').hidden = !physical.length;
-    $('ppPreviewSubtotal').textContent = formatINR(subtotal);
-    $('ppPreviewShipAmt').textContent = shipping ? formatINR(shipping) : 'Free';
-    $('ppPreviewTotal').textContent = formatINR(subtotal + shipping);
-    $('ppPreviewBtnText').textContent = `Pay ${formatINR(subtotal + shipping)}`;
-    // Each row's price follows live stepper / amount edits too.
-    products.forEach((p) => {
-      const row = document.querySelector(`[data-preview-pid="${p.id}"] .pb-preview-price b`);
-      if (row) row.textContent = formatINR(lineAmount(p));
-    });
+    if (refreshPreview && !$('builderSection').hidden) refreshPreview.soon();
   }
   [titleInput, descInput, aboutInput, slugInput].forEach((el) => el.addEventListener('input', syncPreview));
 
@@ -673,8 +518,6 @@
       $('ppCustomColor').value = accent;
       $('ppCustomColor').parentElement.classList.add('active');
     }
-    previewFrame.style.setProperty('--pv-accent', accent);
-    previewFrame.style.setProperty('--pv-accent-dark', shadeHex(accent, -60));
     syncCover();
   }
   document.querySelectorAll('#ppSwatchRow .swatch[data-accent]').forEach((sw) => sw.addEventListener('click', () => setAccent(sw.dataset.accent)));
@@ -693,29 +536,7 @@
       ? (coverType === 'color' ? 'Fills the banner.' : 'Shows behind the cover while it loads.')
       : 'Matches your accent color.';
     $('ppCoverColorReset').hidden = !coverColor;
-
-    // The preview's header stands in for the cover.
-    const top = $('ppPreviewTop');
-    const image = coverImageInput.value.trim();
-    const video = coverVideoInput.value.trim();
-    const shown = !showCover ? 'none'
-      : (coverType === 'image' && !isCoverUrl(image)) || (coverType === 'video' && !isCoverUrl(video)) ? 'art' : coverType;
-    top.classList.toggle('is-off', shown === 'none');
-    top.classList.toggle('is-color', shown === 'color');
-    top.classList.toggle('is-media', shown === 'image' || shown === 'video');
-    if (coverColor) top.style.setProperty('--pv-cover-color', coverColor);
-    else top.style.removeProperty('--pv-cover-color');
-    const img = $('ppPreviewCoverImage');
-    img.hidden = shown !== 'image';
-    if (shown === 'image' && img.getAttribute('src') !== image) img.src = image;
-    const vid = $('ppPreviewCoverVideo');
-    vid.hidden = shown !== 'video';
-    if (shown === 'video') {
-      if (vid.getAttribute('src') !== video) vid.src = video;
-      vid.play().catch(() => {});
-    } else {
-      vid.pause();
-    }
+    syncPreview();
   }
   document.querySelectorAll('#ppCoverChoice .cover-opt').forEach((btn) => btn.addEventListener('click', () => {
     showCover = btn.dataset.cover !== 'none';
@@ -822,6 +643,7 @@
     document.body.classList.add('pb-studio-open');
     builderSection.querySelector('.pb-studio-scroll').scrollTop = 0;
     titleInput.focus({ preventScroll: true });
+    refreshPreview();
   }
 
   // Preview size: Desktop / Mobile, remembered in this browser (best-effort).
@@ -902,15 +724,21 @@
     : form.querySelector(`[data-pid="${p.id}"] [data-field="${field}"]`));
 
   // Builder cards → what the server stores (paise), or an error to show.
-  function collectProducts() {
+  // draft (the live preview): a product not named or priced yet gets a
+  // stand-in instead of an error, and `standIns` says so.
+  function collectProducts({ draft = false } = {}) {
     const out = [];
+    let standIns = false;
     for (let i = 0; i < products.length; i += 1) {
       const p = products[i];
       const name = pageKind === 'multiple' ? `product ${i + 1}` : 'your product';
       const bad = (message, field) => ({ error: message, product: p, field });
       const title = p.title.trim();
-      if (!title && p.type !== 'coffee') return bad(`Give ${name} a title.`, 'title');
-      const item = { id: p.id, title: title || 'Buy me a coffee', type: p.type, pricing: p.type === 'coffee' ? 'qty' : p.pricing };
+      if (!title && p.type !== 'coffee') {
+        if (!draft) return bad(`Give ${name} a title.`, 'title');
+        standIns = true;
+      }
+      const item = { id: p.id, title: title || (p.type === 'coffee' ? 'Buy me a coffee' : 'Your product'), type: p.type, pricing: p.type === 'coffee' ? 'qty' : p.pricing };
       if (p.description.trim()) item.description = p.description.trim();
       const mediaUrl = p.mediaUrl.trim();
       if (p.mediaType && mediaUrl) {
@@ -926,7 +754,11 @@
         if (suggested && minimum && suggested < minimum) return bad(`The suggested amount for ${name} can’t be below its minimum.`, 'suggested');
         Object.assign(item, { suggested: suggested || 0, minimum: minimum || 0 });
       } else {
-        const price = toPaise(p.price);
+        let price = toPaise(p.price);
+        if (!(price >= 100) && draft && !String(p.price).trim()) {
+          price = 100;
+          standIns = true;
+        }
         if (!(price >= 100)) return bad(p.type === 'coffee' ? `Set a price per coffee of at least ₹1 for ${name}.` : `Set a price of at least ₹1 for ${name}.`, 'price');
         item.price = price;
       }
@@ -956,31 +788,34 @@
       }
       out.push(item);
     }
-    return { products: out };
+    return { products: out, standIns };
   }
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    formError.classList.remove('show');
-    if (pageKind === 'single' && !titleInput.value.trim()) {
-      return showFormError('Give your product a name.', 'page', titleInput);
+  // The page as the server takes it — { payload } — or the first thing to
+  // fix — { error, tab, focus }. draft (the live preview): a page not named
+  // or priced yet gets stand-ins instead (standIns: true).
+  function buildPayload({ draft = false } = {}) {
+    let headline = titleInput.value;
+    if (pageKind === 'single' && !headline.trim()) {
+      if (!draft) return { error: 'Give your product a name.', tab: 'page', focus: titleInput };
     }
-    const collected = collectProducts();
+    const collected = collectProducts({ draft });
     if (collected.error) {
-      const tab = pageKind === 'multiple' ? 'products' : 'page';
-      return showFormError(collected.error, tab, productInput(collected.product, collected.field));
+      return { error: collected.error, tab: pageKind === 'multiple' ? 'products' : 'page', focus: productInput(collected.product, collected.field) };
     }
-    if (!titleInput.value.trim() && collected.products.length > 1) {
-      return showFormError('Give the page a headline, like “Complete Starter Bundle”.', 'page', titleInput);
+    let standIns = collected.standIns;
+    if (!headline.trim() && collected.products.length > 1) {
+      if (!draft) return { error: 'Give the page a headline, like “Complete Starter Bundle”.', tab: 'page', focus: titleInput };
+      headline = 'Your payment page';
+      standIns = true;
     }
     const coverImageUrl = coverImageInput.value.trim();
     const coverVideoUrl = coverVideoInput.value.trim();
     if ((coverImageUrl && !isCoverUrl(coverImageUrl)) || (coverVideoUrl && !isCoverUrl(coverVideoUrl))) {
-      return showFormError('The cover link needs to start with http:// or https://', 'design');
+      return { error: 'The cover link needs to start with http:// or https://', tab: 'design' };
     }
-
     const payload = {
-      title: titleInput.value,
+      title: headline,
       description: descInput.value,
       about: aboutInput.value,
       successMessage: successInput.value,
@@ -993,8 +828,17 @@
       coverVideoUrl,
       coverColor,
     };
+    if (editingId !== null) payload.slug = slugInput.value;
+    return { payload, standIns };
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    formError.classList.remove('show');
+    const built = buildPayload();
+    if (built.error) return showFormError(built.error, built.tab, built.focus);
+    const { payload } = built;
     const savingId = editingId;
-    if (savingId !== null) payload.slug = slugInput.value;
     try {
       if (savingId !== null) {
         const updated = await api(`/dashboard/payment-pages/${savingId}`, { method: 'PATCH', body: JSON.stringify(payload) });

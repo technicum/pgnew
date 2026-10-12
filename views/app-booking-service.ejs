@@ -1,4 +1,4 @@
-<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id) — a full-screen editor (public/css/studio.css): fields in three tabs on the left (Details: what it is and where; Rules: payment, hours, scheduling; Settings: questions, link, visibility), the booking page's live preview on the right (partials/booking-studio-preview).
+<%# Edit one booking service (lib/appDashboard.js → /dashboard/bookings/services/:id) — a full-screen editor (public/css/studio.css): fields in three tabs on the left (Details: what it is and where; Rules: payment, hours, scheduling; Settings: questions, link, visibility), the booking page's live preview on the right — the real booking page, drawn by the server from the unsaved fields (lib/livePreview.js, public/js/live-preview.js).
     One form posts every tab. Field names match lib/bookings.js: hours (partials/ax-hours, used when custom_hours is 1), questions as q_label_<n> / q_type_<n> / q_options_<n> / q_required_<n>. %>
 <%- include('partials/studio-head') %>
 <% var link = storeUrlFor(user.handle) + '/book/' + service.slug;
@@ -168,11 +168,10 @@ var base = '/dashboard/bookings/services/' + service.id; %>
         <button type="button" data-st-view="mobile" aria-pressed="false">📱 Mobile</button>
       </div>
     </div>
+    <p class="lp-status" data-live-status hidden></p>
     <div class="st-device is-desktop" data-st-device>
       <div class="st-chrome"><i></i><i></i><i></i><span class="st-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
-      <div class="st-screen">
-        <%- include('partials/booking-studio-preview', { service: service, settings: bookingSettings }) %>
-      </div>
+      <div class="st-screen lp-box" data-live-preview="C:/Program Files/Git/dashboard/bookings/services/<%= service.id %>/preview"></div>
     </div>
   </main>
 </div>

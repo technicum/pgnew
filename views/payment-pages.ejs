@@ -13,6 +13,7 @@
     the payment builder's own layout is payments-dashboard.css. %>
 <link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/payments-dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/live-preview.css?v=<%= assetVersion %>" />
 </head>
 <body>
 <div class="min-h-screen bg-background">
@@ -236,62 +237,23 @@
           </form>
         </div>
 
-        <!-- Live preview: what buyers will see, as a desktop browser or a phone -->
+        <!-- Live preview: the real page buyers will see (views/payment-page.ejs, drawn by
+             lib/livePreview.js from the builder’s unsaved fields), as a desktop browser or a phone -->
         <div class="pb-canvas">
           <div class="pb-preview-head">
-            <h2>Preview<small>What buyers see — updates as you type</small></h2>
+            <h2>Preview<small>The real page buyers see — updates as you type</small></h2>
             <div class="pb-devices" role="group" aria-label="Preview size">
               <button type="button" data-pb-view="desktop" aria-pressed="true">🖥 Desktop</button>
               <button type="button" data-pb-view="mobile" aria-pressed="false">📱 Mobile</button>
             </div>
           </div>
+          <p class="lp-status" data-live-status hidden></p>
           <div class="pb-preview-frame is-desktop" id="ppPreviewFrame">
             <div class="pb-preview-chrome">
               <span></span><span></span><span></span>
               <span class="pb-preview-url" id="ppPreviewUrl"><%= storeUrlFor(user.handle).replace(/^https?:\/\//, '') %>/pay/…</span>
             </div>
-            <div class="pb-preview-screen">
-              <div class="pb-preview-top" id="ppPreviewTop">
-                <img id="ppPreviewCoverImage" alt="" hidden />
-                <video id="ppPreviewCoverVideo" muted loop autoplay playsinline hidden></video>
-                <div class="pb-preview-top-text">
-                  <span class="pb-kicker"><span></span>Secure checkout</span>
-                  <h3 id="ppPreviewTitle">Your payment page</h3>
-                </div>
-              </div>
-              <p class="pb-preview-desc" id="ppPreviewDesc" hidden></p>
-              <div class="pb-preview-items" id="ppPreviewItems"></div>
-              <div class="pb-preview-about" id="ppPreviewAbout" hidden>
-                <span class="pb-preview-label">About</span>
-                <div class="pb-preview-rich" id="ppPreviewAboutBody"></div>
-              </div>
-              <div class="pb-preview-body">
-                <span class="pb-preview-label">Buyer details</span>
-                <div class="pb-preview-input">Full name</div>
-                <div class="pb-preview-input">you@example.com</div>
-                <div class="pb-preview-ship" id="ppPreviewShip" hidden>
-                  <div class="pb-preview-input">Address line</div>
-                  <div class="pb-preview-ship-row">
-                    <div class="pb-preview-input">City</div>
-                    <div class="pb-preview-input">Pincode</div>
-                  </div>
-                  <div class="pb-preview-input">Phone number</div>
-                </div>
-                <div class="pb-preview-totals">
-                  <div class="pb-preview-total-row"><span>Subtotal</span><span id="ppPreviewSubtotal">₹0</span></div>
-                  <div class="pb-preview-total-row" id="ppPreviewShipRow" hidden><span>Shipping</span><span id="ppPreviewShipAmt">Free</span></div>
-                  <div class="pb-preview-total-row grand"><span>Total</span><span id="ppPreviewTotal">₹0</span></div>
-                </div>
-                <div class="pb-preview-btn">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-                  <span id="ppPreviewBtnText">Pay ₹0</span>
-                </div>
-                <p class="pb-preview-secure">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  Secure checkout
-                </p>
-              </div>
-            </div>
+            <div class="pb-preview-screen lp-box" id="ppPreviewBox"></div>
           </div>
         </div>
       </section>
@@ -384,6 +346,7 @@
   window.__PZ_COUPONS__ = <%- JSON.stringify(coupons).replace(/</g, '\\u003c') %>;
   window.__PZ_STORE_URL__ = <%- JSON.stringify(storeUrlFor(user.handle)) %>;
 </script>
+<script src="/js/live-preview.js?v=<%= assetVersion %>"></script>
 <script src="/js/payment-pages.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

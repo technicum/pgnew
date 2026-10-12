@@ -1,4 +1,4 @@
-<%# Edit one course (lib/appDashboard.js → /dashboard/courses/:id) — a full-screen editor (public/css/studio.css): four tabs on the left (Details: name, price, description, what you'll learn, cover; Curriculum: modules (add / rename / reorder / delete), each holding lessons, quizzes and downloads (add / edit / reorder / move between modules — ?lesson=<id> opens one: a lesson's video and text, a quiz's questions, a download's file); Students, with their quiz scores; Settings: link, visibility, delete), the course page's live preview on the right (partials/course-studio-preview) as a desktop browser or a phone.
+<%# Edit one course (lib/appDashboard.js → /dashboard/courses/:id) — a full-screen editor (public/css/studio.css): four tabs on the left (Details: name, price, description, what you'll learn, cover; Curriculum: modules (add / rename / reorder / delete), each holding lessons, quizzes and downloads (add / edit / reorder / move between modules — ?lesson=<id> opens one: a lesson's video and text, a quiz's questions, a download's file); Students, with their quiz scores; Settings: link, visibility, delete), the course page's live preview on the right — the real course page, drawn by the server from the unsaved fields (lib/livePreview.js, public/js/live-preview.js) as a desktop browser or a phone.
     Details and Settings are one form (#courseForm, the Save bar); lessons and students post their own forms. A link to #lessons / #students / #lesson-<id> opens that tab (public/js/studio.js).
     A lesson's video and a download's file upload straight from the browser (script below → POST …/lessons/:id/video or /file, lib/courseMedia.js) and are stored privately. %>
 <%- include('partials/studio-head') %>
@@ -286,11 +286,10 @@ var quizzes = lessons.filter(function (l) { return l.kind === 'quiz'; }); %>
         <button type="button" data-st-view="mobile" aria-pressed="false">📱 Mobile</button>
       </div>
     </div>
+    <p class="lp-status" data-live-status hidden></p>
     <div class="st-device is-desktop" data-st-device>
       <div class="st-chrome"><i></i><i></i><i></i><span class="st-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
-      <div class="st-screen">
-        <%- include('partials/course-studio-preview', { course: course, lessons: lessons, outline: outline, counts: counts }) %>
-      </div>
+      <div class="st-screen lp-box" data-live-preview="C:/Program Files/Git/dashboard/courses/<%= course.id %>/preview"></div>
     </div>
   </main>
 </div>

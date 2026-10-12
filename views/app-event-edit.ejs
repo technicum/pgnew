@@ -1,4 +1,4 @@
-<%# Edit one event (lib/appDashboard.js → /dashboard/events/:id) — a full-screen editor like the payment page builder (public/css/studio.css): three tabs on the left (Details: name, when, cover, tickets (free / paid), where, description; Attendees: who's going, paid / awaiting payment, mark paid (manual payments), cancel; Settings: seats, link, visibility, delete), the event page's live preview on the right (partials/event-studio-preview).
+<%# Edit one event (lib/appDashboard.js → /dashboard/events/:id) — a full-screen editor like the payment page builder (public/css/studio.css): three tabs on the left (Details: name, when, cover, tickets (free / paid), where, description; Attendees: who's going, paid / awaiting payment, mark paid (manual payments), cancel; Settings: seats, link, visibility, delete), the event page's live preview on the right — the real event page, drawn by the server from the unsaved fields (lib/livePreview.js, public/js/live-preview.js).
     Details and Settings are one form (the Save bar); "Save & publish" (on a hidden event) also turns it live. An attendee's Mark paid / Cancel posts its own form (#rsvpAction). %>
 <%- include('partials/studio-head') %>
 <% var link = storeUrlFor(user.handle) + '/event/' + event.slug;
@@ -162,11 +162,10 @@ var online = event.mode !== 'venue'; %>
         <button type="button" data-st-view="mobile" aria-pressed="false">📱 Mobile</button>
       </div>
     </div>
+    <p class="lp-status" data-live-status hidden></p>
     <div class="st-device is-desktop" data-st-device>
       <div class="st-chrome"><i></i><i></i><i></i><span class="st-url"><%= link.replace(/^https?:\/\//, '') %></span></div>
-      <div class="st-screen">
-        <%- include('partials/event-studio-preview', { event: event }) %>
-      </div>
+      <div class="st-screen lp-box" data-live-preview="C:/Program Files/Git/dashboard/events/<%= event.id %>/preview"></div>
     </div>
   </main>
 </div>

@@ -64,6 +64,7 @@ const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
 const { getFees, saveFees, isAdmin, ATTRIBUTION_DAYS } = require('./lib/platform');
 const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
+const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 
 const app = express();
@@ -990,6 +991,9 @@ app.patch('/dashboard/orders/:id', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Could not update that order. Please try again.' });
   }
 });
+
+// --- Live preview: the editors show the real public page (lib/livePreview.js)
+installLivePreview(app, { requireAuth });
 
 // --- Bookings, Events, Courses (lib/appDashboard.js) ----------------------
 installAppDashboards(app, { requireAuth, siteName: SITE_NAME });
