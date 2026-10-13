@@ -17,6 +17,7 @@ const {
   verifyPassword,
   toPublicUser,
   updateProfile,
+  updateStoreSettings,
   updateDesign,
 } = require('./lib/users');
 const {
@@ -65,6 +66,7 @@ const { getFees, saveFees, isAdmin, ATTRIBUTION_DAYS } = require('./lib/platform
 const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials');
+const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
@@ -374,6 +376,8 @@ app.get('/dashboard/builder', requireAuth, async (req, res, next) => {
       blocks,
       socialPlatforms: SOCIAL_PLATFORMS,
       socials: normalizeSocials(user.socials),
+      settings: normalizeStoreSettings(user.store_settings),
+      limits: STORE_LIMITS,
     });
   } catch (err) {
     next(err);
@@ -458,6 +462,17 @@ app.post('/dashboard/builder/profile', requireAuth, async (req, res) => {
     if (err.code === 'NAME_REQUIRED' || err.code === 'HANDLE_REQUIRED') return res.status(400).json({ error: err.message });
     console.error('Update profile failed:', err);
     res.status(500).json({ error: 'Could not save your profile. Please try again.' });
+  }
+});
+
+// Everything in lib/storeSettings.js, sent whole on each change.
+app.post('/dashboard/builder/settings', requireAuth, async (req, res) => {
+  try {
+    const settings = await updateStoreSettings(req.session.user.id, (req.body && req.body.settings) || {});
+    res.json({ ok: true, settings });
+  } catch (err) {
+    console.error('Update store settings failed:', err);
+    res.status(500).json({ error: 'Could not save your store settings. Please try again.' });
   }
 });
 

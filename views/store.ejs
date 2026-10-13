@@ -3,19 +3,51 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title><%= title %></title>
-<% if (owner.bio) { %><meta name="description" content="<%= owner.bio %>" /><% } %>
+<%# SEO and link previews: the builder's SEO tab (lib/storeSettings.js), falling back to name and bio. %>
+<% var seoTitle = store.seo.title || title; var seoDesc = store.seo.description || owner.bio || store.tagline; %>
+<title><%= seoTitle %></title>
+<% if (seoDesc) { %><meta name="description" content="<%= seoDesc %>" /><% } %>
+<meta property="og:type" content="profile" />
+<meta property="og:title" content="<%= seoTitle %>" />
+<% if (seoDesc) { %><meta property="og:description" content="<%= seoDesc %>" /><% } %>
+<% if (pageUrl) { %><meta property="og:url" content="<%= pageUrl %>" /><link rel="canonical" href="<%= pageUrl %>" /><% } %>
+<% if (store.seo.image) { %><meta property="og:image" content="<%= store.seo.image %>" /><meta name="twitter:card" content="summary_large_image" /><% } else { %><meta name="twitter:card" content="summary" /><% } %>
+<% if (store.theme === 'dark') { %><meta name="color-scheme" content="dark" /><% } %>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600<%= store.font === 'rounded' ? '&family=Nunito:wght@400;600;700' : '' %>&display=swap" />
 <link rel="stylesheet" href="/css/store.css?v=<%= assetVersion %>" />
 </head>
-<body style="--store-accent: <%= owner.accent %>;">
+<body class="theme-<%= store.theme %> font-<%= store.font %> buttons-<%= store.buttons %>" style="--store-accent: <%= owner.accent %>;">
 
-<main class="store">
+<% if (store.announcement) { %>
+  <%# The announcement bar; a #subscribe-<id> link opens that newsletter popup. %>
+  <% var ann = store.announcement; var annExternal = ann.href && /^https?:/.test(ann.href); %>
+  <% if (ann.href) { %>
+    <a class="store-announce" href="<%= ann.href %>"<% if (annExternal) { %> target="_blank" rel="noopener noreferrer"<% } %>><span><%= ann.text %></span><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  <% } else { %>
+    <div class="store-announce"><span><%= ann.text %></span></div>
+  <% } %>
+<% } %>
+
+<main class="store<%= store.cover ? ' has-cover' : '' %>">
+  <% if (store.cover) { %>
+    <div class="store-cover"><img src="<%= store.cover %>" alt="" /></div>
+  <% } %>
   <header class="store-header">
-    <div class="store-avatar" aria-hidden="true"><%= owner.initials %></div>
+    <% if (store.photo) { %>
+      <img class="store-avatar store-avatar-img" src="<%= store.photo %>" alt="<%= owner.name %>" />
+    <% } else { %>
+      <div class="store-avatar" aria-hidden="true"><%= owner.initials %></div>
+    <% } %>
     <h1 class="store-name"><%= owner.name %></h1>
+    <% if (store.tagline) { %><p class="store-tagline"><%= store.tagline %></p><% } %>
+    <% if (store.location) { %>
+      <p class="store-location">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/></svg>
+        <%= store.location %>
+      </p>
+    <% } %>
     <% if (owner.bio) { %><p class="store-bio"><%= owner.bio %></p><% } %>
     <% if (owner.socials.length) { %>
       <nav class="store-socials" aria-label="Find me on">
@@ -25,6 +57,16 @@
           </a>
         <% }) %>
       </nav>
+    <% } %>
+    <% if (store.contact) { %>
+      <a class="store-contact" href="<%= store.contact.href %>"<% if (store.contact.kind === 'whatsapp') { %> target="_blank" rel="noopener noreferrer"<% } %>>
+        <% if (store.contact.kind === 'whatsapp') { %>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="17" height="17" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        <% } else { %>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="17" height="17" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        <% } %>
+        <%= store.contact.label %>
+      </a>
     <% } %>
   </header>
 

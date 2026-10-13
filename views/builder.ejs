@@ -6,7 +6,7 @@
 <title><%= title %></title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Nunito:wght@600;700&display=swap" />
 <link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/builder.css?v=<%= assetVersion %>" />
 <%# The live preview's canvas and device frame (the editors' studio.css), the real store page in it (live-preview.css). %>
@@ -40,6 +40,10 @@
       <button type="button" class="pz-rail-btn" data-tab="design">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Design
+      </button>
+      <button type="button" class="pz-rail-btn" data-tab="seo">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        SEO
       </button>
     </nav>
     <div class="pz-rail-bottom">
@@ -78,6 +82,30 @@
 
           <!-- CONTENT TAB -->
           <div class="pz-tabpanel active" id="tab-content">
+            <%# Announcement bar across the top of the store (lib/storeSettings.js). %>
+            <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6 mb-4">
+              <div class="flex items-center justify-between" style="gap:12px;">
+                <div>
+                  <h2 class="text-lg font-bold">Announcement bar</h2>
+                  <p class="mt-1 text-sm text-muted-foreground">A slim bar across the top of your store — a launch, a sale, a new video</p>
+                </div>
+                <button type="button" class="pz-switch<%= settings.announceOn ? ' on' : '' %>" id="announceToggle" role="switch" aria-checked="<%= settings.announceOn %>" aria-label="Show announcement bar"></button>
+              </div>
+              <div class="pz-grid-2 mt-4" id="announceFields"<%= settings.announceOn ? '' : ' hidden' %>>
+                <div>
+                  <div class="pz-label-row">
+                    <label class="pz-label" for="set-announceText">Message</label>
+                    <span class="pz-counter" data-counter-for="set-announceText"></span>
+                  </div>
+                  <input type="text" id="set-announceText" class="pz-field-input" data-setting="announceText" value="<%= settings.announceText %>" maxlength="<%= limits.announceText %>" placeholder="e.g. New course launching Friday" />
+                </div>
+                <div>
+                  <label class="pz-label" for="set-announceUrl">Link <span class="pz-optional">optional</span></label>
+                  <input type="text" id="set-announceUrl" class="pz-field-input" data-setting="announceUrl" value="<%= settings.announceUrl %>" maxlength="<%= limits.announceUrl %>" placeholder="https://… or #subscribe-12" />
+                </div>
+              </div>
+            </article>
+
             <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
               <div class="flex items-center justify-between">
                 <div>
@@ -105,8 +133,32 @@
                 <h2 class="text-lg font-bold">Profile</h2>
                 <p class="mt-1 text-sm text-muted-foreground">How you're introduced at the top of your store</p>
 
+                <%# Cover and photo: uploads (POST /dashboard/uploads), saved with the store settings. %>
+                <div class="pz-cover mt-5<%= settings.cover ? ' has-image' : '' %>" data-image-field="cover">
+                  <img src="<%= settings.cover %>" alt="" data-image-preview />
+                  <div class="pz-cover-empty">
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+                    <span><strong>Cover image</strong> · wide, at least 1200×400</span>
+                  </div>
+                  <div class="pz-cover-actions">
+                    <label class="pz-chip-btn">
+                      <span data-upload-label><%= settings.cover ? 'Change' : 'Upload cover' %></span>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload />
+                    </label>
+                    <button type="button" class="pz-chip-btn" data-image-remove<%= settings.cover ? '' : ' hidden' %>>Remove</button>
+                  </div>
+                </div>
+
                 <div class="pz-profile-row mt-5">
-                  <div class="pz-profile-avatar font-display" id="avatarInitials"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></div>
+                  <div class="pz-photo<%= settings.photo ? ' has-image' : '' %>" data-image-field="photo">
+                    <div class="pz-profile-avatar font-display" id="avatarInitials"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></div>
+                    <img src="<%= settings.photo %>" alt="" data-image-preview />
+                    <label class="pz-photo-btn" title="Upload a profile photo" aria-label="Upload a profile photo">
+                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload />
+                    </label>
+                    <button type="button" class="pz-photo-remove" data-image-remove<%= settings.photo ? '' : ' hidden' %>>Remove</button>
+                  </div>
                   <div class="pz-profile-fields">
                     <div>
                       <label class="pz-label" for="displayName">Display name</label>
@@ -123,12 +175,49 @@
                   </div>
                 </div>
 
+                <div class="pz-grid-2 mt-4">
+                  <div>
+                    <div class="pz-label-row">
+                      <label class="pz-label" for="set-tagline">Tagline</label>
+                      <span class="pz-counter" data-counter-for="set-tagline"></span>
+                    </div>
+                    <input type="text" id="set-tagline" class="pz-field-input" data-setting="tagline" value="<%= settings.tagline %>" maxlength="<%= limits.tagline %>" placeholder="e.g. Career coach · Ex-Google" />
+                  </div>
+                  <div>
+                    <div class="pz-label-row">
+                      <label class="pz-label" for="set-location">Location</label>
+                    </div>
+                    <input type="text" id="set-location" class="pz-field-input" data-setting="location" value="<%= settings.location %>" maxlength="<%= limits.location %>" placeholder="e.g. Bengaluru, India" />
+                  </div>
+                </div>
+
                 <div class="mt-4">
                   <div class="pz-label-row">
                     <label class="pz-label" for="bio">Bio</label>
                     <span class="pz-counter" id="bioCount"><%= (user.bio || '').length %>/280</span>
                   </div>
                   <textarea id="bio" rows="3" maxlength="280" class="pz-field-input pz-textarea" placeholder="A line or two about who you are and what you offer"><%= user.bio || '' %></textarea>
+                </div>
+              </article>
+
+              <%# Contact button: a WhatsApp or email button under the socials (lib/storeSettings.js). %>
+              <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+                <h2 class="text-lg font-bold">Contact button</h2>
+                <p class="mt-1 text-sm text-muted-foreground">A big button under your profile so visitors can reach you in one tap</p>
+                <div class="pz-segmented mt-5" role="radiogroup" aria-label="Contact button">
+                  <% [['none','Off'],['whatsapp','WhatsApp'],['email','Email']].forEach(function (o) { %>
+                    <button type="button" role="radio" data-choice="contactType" data-value="<%= o[0] %>" aria-checked="<%= settings.contactType === o[0] %>"><%= o[1] %></button>
+                  <% }) %>
+                </div>
+                <div class="pz-grid-2 mt-4" id="contactFields"<%= settings.contactType === 'none' ? ' hidden' : '' %>>
+                  <div>
+                    <label class="pz-label" for="set-contactValue" id="contactValueLabel"><%= settings.contactType === 'email' ? 'Email address' : 'WhatsApp number' %></label>
+                    <input type="text" id="set-contactValue" class="pz-field-input" data-setting="contactValue" value="<%= settings.contactValue %>" maxlength="<%= limits.contactValue %>" placeholder="<%= settings.contactType === 'email' ? 'you@example.com' : '+91 98765 43210' %>" />
+                  </div>
+                  <div>
+                    <label class="pz-label" for="set-contactLabel">Button text</label>
+                    <input type="text" id="set-contactLabel" class="pz-field-input" data-setting="contactLabel" value="<%= settings.contactLabel %>" maxlength="<%= limits.contactLabel %>" placeholder="<%= settings.contactType === 'email' ? 'Email me' : 'Message me on WhatsApp' %>" />
+                  </div>
                 </div>
               </article>
 
@@ -173,6 +262,37 @@
                 <% }) %>
               </div>
 
+              <%# Theme (lib/storeSettings.js): background, font, button shape. %>
+              <div class="pz-label mt-6">Background</div>
+              <div class="pz-option-grid" role="radiogroup" aria-label="Background">
+                <% [['light','Light'],['tinted','Tinted'],['dark','Dark']].forEach(function (o) { %>
+                  <button type="button" class="pz-option" role="radio" data-choice="theme" data-value="<%= o[0] %>" aria-checked="<%= settings.theme === o[0] %>">
+                    <span class="pz-theme-swatch is-<%= o[0] %>"><i></i><i></i></span>
+                    <%= o[1] %>
+                  </button>
+                <% }) %>
+              </div>
+
+              <div class="pz-label mt-5">Font</div>
+              <div class="pz-option-grid" role="radiogroup" aria-label="Font">
+                <% [['serif','Classic',"'Fraunces', Georgia, serif"],['sans','Modern',"'IBM Plex Sans', sans-serif"],['rounded','Friendly',"'Nunito', 'IBM Plex Sans', sans-serif"]].forEach(function (o) { %>
+                  <button type="button" class="pz-option" role="radio" data-choice="font" data-value="<%= o[0] %>" aria-checked="<%= settings.font === o[0] %>">
+                    <span class="pz-font-sample" style="font-family:<%= o[2] %>;">Aa</span>
+                    <%= o[1] %>
+                  </button>
+                <% }) %>
+              </div>
+
+              <div class="pz-label mt-5">Buttons &amp; cards</div>
+              <div class="pz-option-grid" role="radiogroup" aria-label="Button shape">
+                <% [['rounded','Rounded','10px'],['pill','Pill','999px'],['square','Square','3px']].forEach(function (o) { %>
+                  <button type="button" class="pz-option" role="radio" data-choice="buttons" data-value="<%= o[0] %>" aria-checked="<%= settings.buttons === o[0] %>">
+                    <span class="pz-shape-sample" style="border-radius:<%= o[2] %>;"></span>
+                    <%= o[1] %>
+                  </button>
+                <% }) %>
+              </div>
+
               <div class="pz-footer-toggle-row">
                 <div>
                   <strong class="text-sm" style="display:block;">Show "Made with PageZaper" badge</strong>
@@ -182,6 +302,68 @@
               </div>
             </article>
           </div>
+
+          <!-- SEO TAB -->
+          <%# Search and link-preview fields (lib/storeSettings.js) — the <title>, description and og: tags in views/store.ejs. %>
+          <div class="pz-tabpanel" id="tab-seo">
+            <div class="pz-stack">
+              <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+                <h2 class="text-lg font-bold">SEO &amp; sharing</h2>
+                <p class="mt-1 text-sm text-muted-foreground">How your store shows up on Google and when your link is shared. Leave blank to use your name and bio.</p>
+
+                <div class="mt-5">
+                  <div class="pz-label-row">
+                    <label class="pz-label" for="set-seoTitle">Page title</label>
+                    <span class="pz-counter" data-counter-for="set-seoTitle"></span>
+                  </div>
+                  <input type="text" id="set-seoTitle" class="pz-field-input" data-setting="seoTitle" value="<%= settings.seoTitle %>" maxlength="<%= limits.seoTitle %>" placeholder="<%= user.name %> — <%= siteName %>" />
+                </div>
+                <div class="mt-4">
+                  <div class="pz-label-row">
+                    <label class="pz-label" for="set-seoDescription">Description</label>
+                    <span class="pz-counter" data-counter-for="set-seoDescription"></span>
+                  </div>
+                  <textarea id="set-seoDescription" rows="3" class="pz-field-input pz-textarea" data-setting="seoDescription" maxlength="<%= limits.seoDescription %>" placeholder="One or two sentences on what visitors will find here"><%= settings.seoDescription %></textarea>
+                </div>
+
+                <div class="pz-label mt-4">Share image</div>
+                <div class="pz-share-field<%= settings.shareImage ? ' has-image' : '' %>" data-image-field="shareImage">
+                  <div class="pz-share-thumb"><img src="<%= settings.shareImage %>" alt="" data-image-preview /></div>
+                  <div>
+                    <p class="text-xs text-muted-foreground">Shown in WhatsApp, X and LinkedIn previews. 1200×630 works best. Without one, your cover or photo is used.</p>
+                    <div class="flex items-center gap-2 mt-2">
+                      <label class="pz-chip-btn is-solid">
+                        <span data-upload-label><%= settings.shareImage ? 'Change' : 'Upload image' %></span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload />
+                      </label>
+                      <button type="button" class="pz-chip-btn is-solid" data-image-remove<%= settings.shareImage ? '' : ' hidden' %>>Remove</button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+                <h2 class="text-lg font-bold">Preview</h2>
+                <p class="mt-1 text-sm text-muted-foreground">Roughly how it will look — each site draws it a little differently</p>
+                <div class="pz-label mt-5">Google</div>
+                <div class="pz-serp">
+                  <span class="pz-serp-url" id="serpUrl"><%= user.handle %>.<%= siteDomain %></span>
+                  <span class="pz-serp-title" id="serpTitle"></span>
+                  <span class="pz-serp-desc" id="serpDesc"></span>
+                </div>
+                <div class="pz-label mt-5">Link preview</div>
+                <div class="pz-share-card">
+                  <div class="pz-share-card-img" id="shareCardImg"></div>
+                  <div class="pz-share-card-body">
+                    <span class="pz-share-card-host" id="shareCardHost"><%= user.handle %>.<%= siteDomain %></span>
+                    <span class="pz-share-card-title" id="shareCardTitle"></span>
+                    <span class="pz-share-card-desc" id="shareCardDesc"></span>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+
 
         </div>
 
@@ -236,6 +418,8 @@
   // literally in here, even in a comment — the browser ends the script at it.)
   window.__PZ_INITIAL_BLOCKS__ = <%- JSON.stringify(blocks).replace(/</g, '\\u003c') %>;
   window.__PZ_ACCENT__ = <%- JSON.stringify(user.accent_color || '#ff6b4a') %>;
+  window.__PZ_SETTINGS__ = <%- JSON.stringify(settings).replace(/</g, '\\u003c') %>;
+  window.__PZ_SITE_NAME__ = <%- JSON.stringify(siteName) %>;
   window.__PZ_SITE_DOMAIN__ = <%- JSON.stringify(siteDomain) %>;
   // "{handle}" is swapped for the new handle after a profile save.
   window.__PZ_STORE_URL__ = <%- JSON.stringify(storeUrlFor('{handle}')) %>;

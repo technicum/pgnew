@@ -159,3 +159,57 @@ body.store-popup-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .store-popup-backdrop, .store-popup-card { animation: none; }
 }
+
+/* --- Store settings (builder → Design / Profile, lib/storeSettings.js) --- */
+
+/* Background themes. */
+body.theme-tinted { --bg: color-mix(in oklab, var(--store-accent, #ff6b4a) 9%, #f7f7f5); --border: color-mix(in oklab, var(--store-accent, #ff6b4a) 14%, #e3e6e1); }
+body.theme-dark { --bg: #0f1419; --card: #182029; --fg: #eef1f4; --muted: #9aa4ae; --border: #26303a; }
+body.theme-dark .store-popup-close:hover { background: #222c36; }
+
+/* Fonts: headings in Fraunces (serif), all Plex (sans), or all Nunito (rounded). */
+body.font-sans { --font-display: var(--font-sans); }
+body.font-sans .store-name { letter-spacing: -.01em; font-weight: 700; }
+body.font-rounded { --font-sans: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; --font-display: var(--font-sans); }
+body.font-rounded .store-name { font-weight: 700; }
+
+/* Button and card shapes. */
+body { --btn-radius: 10px; }
+body.buttons-pill { --btn-radius: 999px; --radius: 18px; }
+body.buttons-square { --btn-radius: 4px; --radius: 4px; }
+.store-button, .store-input, .store-contact { border-radius: var(--btn-radius); }
+.store-nl-cta { border-radius: var(--btn-radius); }
+body.buttons-square .store-nl-icon, body.buttons-square .store-popup-card { border-radius: 4px; }
+
+/* Announcement bar. */
+.store-announce {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 16px; font-size: 13.5px; font-weight: 600; text-align: center;
+  background: var(--store-accent, #ff6b4a); color: #fff; text-decoration: none;
+}
+a.store-announce:hover span { text-decoration: underline; text-underline-offset: 3px; }
+.store-announce svg { flex: none; }
+
+/* Cover banner, with the avatar overlapping its bottom edge. */
+.store.has-cover { padding-top: 16px; }
+.store-cover { height: 168px; border-radius: var(--radius); overflow: hidden; background: var(--border); }
+.store-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.store.has-cover .store-avatar { margin-top: -48px; position: relative; box-shadow: 0 0 0 4px var(--bg); }
+.store-avatar-img { object-fit: cover; display: block; background: var(--card); }
+
+.store-tagline { font-size: 15px; font-weight: 500; margin-top: 4px; }
+.store-location {
+  display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 6px;
+  color: var(--muted); font-size: 13px;
+}
+.store-tagline + .store-bio, .store-location + .store-bio { margin-top: 10px; }
+
+/* Contact button under the socials. */
+.store-contact {
+  display: flex; width: fit-content; margin: 18px auto 0; align-items: center; justify-content: center; gap: 8px;
+  height: 44px; padding: 0 20px; font-weight: 600; font-size: 14.5px; text-decoration: none;
+  background: var(--store-accent, #ff6b4a); color: #fff;
+  transition: filter .15s ease, transform .15s ease;
+}
+.store-contact:hover { filter: brightness(.94); transform: translateY(-1px); }
+.store-contact:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 2px; }

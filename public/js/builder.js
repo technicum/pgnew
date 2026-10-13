@@ -51,12 +51,15 @@
   let clearErrorTimer = null;
   const failedFieldSaves = new Map(); // "id:field" -> [id, field, value]
   let profileSaveFailed = false;
+  let settingsSaveFailed = false;
 
   function unsavedCount() {
     return debouncedFieldSave.pendingCount()
       + debouncedProfileSave.pendingCount()
+      + debouncedSettingsSave.pendingCount()
       + failedFieldSaves.size
-      + (profileSaveFailed ? 1 : 0);
+      + (profileSaveFailed ? 1 : 0)
+      + (settingsSaveFailed ? 1 : 0);
   }
 
   function paintSaveStatus() {
@@ -570,12 +573,160 @@
   });
   paintSocials();
 
+  // --- store settings ----------------------------------------------------
+  // Photo, cover, tagline, location, contact button, announcement bar,
+  // theme and SEO (lib/storeSettings.js) — one object, sent whole to
+  // /dashboard/builder/settings a moment after each change.
+  const settings = { ...(window.__PZ_SETTINGS__ || {}) };
+
+  function saveSettings() {
+    settingsSaveFailed = false;
+    api('/dashboard/builder/settings', {
+      method: 'POST',
+      body: JSON.stringify({ settings }),
+    }).catch(() => {
+      if (!debouncedSettingsSave.has('settings')) settingsSaveFailed = true;
+      paintSaveStatus();
+    });
+  }
+  const debouncedSettingsSave = debounce(() => saveSettings(), 600);
+
+  function settingChanged() {
+    renderPreviewOnly();
+    paintSeoPreview();
+    debouncedSettingsSave('settings');
+  }
+
+  // "12/80" beside fields with a limit.
+  function paintCounter(input) {
+    const counter = document.querySelector(`[data-counter-for="${input.id}"]`);
+    if (!counter) return;
+    const max = Number(input.getAttribute('maxlength'));
+    counter.textContent = `${input.value.length}/${max}`;
+    counter.classList.toggle('near', input.value.length >= max * 0.9);
+  }
+
+  document.querySelectorAll('[data-setting]').forEach((input) => {
+    paintCounter(input);
+    input.addEventListener('input', () => {
+      settings[input.dataset.setting] = input.value;
+      paintCounter(input);
+      settingChanged();
+    });
+  });
+
+  // Segmented / option buttons: data-choice="theme" data-value="dark".
+  function paintChoices(key) {
+    document.querySelectorAll(`[data-choice="${key}"]`).forEach((btn) => {
+      btn.setAttribute('aria-checked', String(btn.dataset.value === settings[key]));
+    });
+  }
+  document.querySelectorAll('[data-choice]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.choice;
+      if (settings[key] === btn.dataset.value) return;
+      settings[key] = btn.dataset.value;
+      paintChoices(key);
+      if (key === 'contactType') paintContactFields();
+      settingChanged();
+    });
+  });
+
+  const contactFields = document.getElementById('contactFields');
+  const contactValue = document.getElementById('set-contactValue');
+  const contactLabel = document.getElementById('set-contactLabel');
+  function paintContactFields() {
+    const type = settings.contactType;
+    contactFields.hidden = type === 'none';
+    const email = type === 'email';
+    document.getElementById('contactValueLabel').textContent = email ? 'Email address' : 'WhatsApp number';
+    contactValue.placeholder = email ? 'you@example.com' : '+91 98765 43210';
+    contactValue.type = email ? 'email' : 'tel';
+    contactLabel.placeholder = email ? 'Email me' : 'Message me on WhatsApp';
+  }
+
+  const announceToggle = document.getElementById('announceToggle');
+  announceToggle.addEventListener('click', () => {
+    settings.announceOn = !settings.announceOn;
+    announceToggle.classList.toggle('on', settings.announceOn);
+    announceToggle.setAttribute('aria-checked', String(settings.announceOn));
+    document.getElementById('announceFields').hidden = !settings.announceOn;
+    if (settings.announceOn) document.getElementById('set-announceText').focus();
+    settingChanged();
+  });
+
+  // Image fields (photo, cover, share image): the file goes to
+  // /dashboard/uploads as the raw body, the URL it comes back with is the
+  // setting.
+  const UPLOAD_LABELS = { cover: 'Upload cover', shareImage: 'Upload image' };
+  function paintImageField(field) {
+    const key = field.dataset.imageField;
+    const url = settings[key] || '';
+    field.classList.toggle('has-image', !!url);
+    const img = field.querySelector('[data-image-preview]');
+    if (url) img.src = url; else img.removeAttribute('src');
+    const remove = field.querySelector('[data-image-remove]');
+    if (remove) remove.hidden = !url;
+    const label = field.querySelector('[data-upload-label]');
+    if (label) label.textContent = url ? 'Change' : UPLOAD_LABELS[key] || 'Upload';
+  }
+  document.querySelectorAll('[data-image-field]').forEach((field) => {
+    const key = field.dataset.imageField;
+    const fileInput = field.querySelector('[data-upload]');
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      fileInput.value = '';
+      if (!file) return;
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError('Upload a JPG, PNG or WebP image'); paintSaveStatus(); return; }
+      if (file.size > 5 * 1024 * 1024) { setError('Keep images under 5 MB'); paintSaveStatus(); return; }
+      field.classList.add('is-uploading');
+      try {
+        const data = await api('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
+        settings[key] = data.url;
+        paintImageField(field);
+        settingChanged();
+      } catch (err) { /* status already shown */ } finally {
+        field.classList.remove('is-uploading');
+      }
+    });
+    const remove = field.querySelector('[data-image-remove]');
+    if (remove) {
+      remove.addEventListener('click', () => {
+        settings[key] = '';
+        paintImageField(field);
+        settingChanged();
+      });
+    }
+  });
+
+  // SEO tab: the Google result and link card, from the fields or the
+  // same fallbacks the store page uses (views/store.ejs).
+  function paintSeoPreview() {
+    const title = settings.seoTitle || `${displayName.value.trim() || 'Your store'} — ${window.__PZ_SITE_NAME__}`;
+    const desc = settings.seoDescription || bio.value.trim() || settings.tagline || 'Add a description so people know what they’ll find.';
+    document.getElementById('serpTitle').textContent = title;
+    document.getElementById('serpDesc').textContent = desc;
+    document.getElementById('shareCardTitle').textContent = title;
+    document.getElementById('shareCardDesc').textContent = desc;
+    const image = settings.shareImage || settings.cover || settings.photo;
+    const cardImg = document.getElementById('shareCardImg');
+    cardImg.style.backgroundImage = image ? `url("${image.replace(/"/g, '%22')}")` : '';
+    cardImg.classList.toggle('is-empty', !image);
+    const host = `${handle.value.trim() || 'yourname'}.${window.__PZ_SITE_DOMAIN__}`;
+    document.getElementById('serpUrl').textContent = host;
+    document.getElementById('shareCardHost').textContent = host;
+  }
+  [displayName, bio, handle].forEach((input) => input.addEventListener('input', paintSeoPreview));
+  paintSeoPreview();
+
   // --- save button -------------------------------------------------------
   function saveNow() {
     debouncedFieldSave.flush();
     debouncedProfileSave.flush();
+    debouncedSettingsSave.flush();
     for (const [key, [id, field, value]] of [...failedFieldSaves]) saveField(key, id, field, value);
     if (profileSaveFailed) saveProfile();
+    if (settingsSaveFailed) saveSettings();
     paintSaveStatus();
   }
   saveBtn.addEventListener('click', saveNow);
@@ -600,6 +751,7 @@
       name: displayName.value,
       bio: bio.value,
       socials: collectSocials(),
+      settings,
       accent: currentAccent,
       showBadge: badgeToggle.classList.contains('on'),
       blocks: blocks.map((b) => ({ id: b.id, type: b.type, title: b.title, sub: b.sub, price: b.price, visible: b.visible })),
