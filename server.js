@@ -27,6 +27,7 @@ const {
   reorderBlocks,
   deleteBlock,
   duplicateBlock,
+  starterFor,
   TYPES: BLOCK_TYPES,
 } = require('./lib/blocks');
 const {
@@ -378,6 +379,8 @@ app.get('/dashboard/builder', requireAuth, async (req, res, next) => {
       socials: normalizeSocials(user.socials),
       settings: normalizeStoreSettings(user.store_settings),
       limits: STORE_LIMITS,
+      // New blocks are added on screen and created on Save (public/js/builder.js).
+      starters: Object.fromEntries([...BLOCK_TYPES].map((type) => [type, starterFor(type)])),
     });
   } catch (err) {
     next(err);
