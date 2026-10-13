@@ -223,7 +223,7 @@
         <div class="pb-media-row">
           <label class="pz-card-btn pz-upload-btn">
             <input type="file" data-media-file data-library="${video ? 'video' : 'image'}" accept="${video ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp,image/gif'}" hidden />
-            ${UPLOAD_ICON}<span>Upload ${video ? 'video' : 'image'}</span>
+            ${UPLOAD_ICON}<span>Choose ${video ? 'video' : 'image'}</span>
           </label>
           <input type="text" class="pz-field-input" data-field="mediaUrl" maxlength="500" placeholder="${video ? '…or paste a YouTube / Vimeo / .mp4 link' : '…or paste an image link (https://…)'}" value="${escapeHTML(p.mediaUrl)}" />
         </div>

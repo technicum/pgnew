@@ -1046,7 +1046,7 @@
   // Image fields (photo, cover, share image): the file goes to
   // /dashboard/uploads as the raw body, the URL it comes back with is the
   // setting.
-  const UPLOAD_LABELS = { cover: 'Upload cover', shareImage: 'Upload image' };
+  const UPLOAD_LABELS = { cover: 'Choose cover', shareImage: 'Choose image' };
   function paintImageField(field) {
     const key = field.dataset.imageField;
     const url = settings[key] || '';
@@ -1056,7 +1056,7 @@
     const remove = field.querySelector('[data-image-remove]');
     if (remove) remove.hidden = !url;
     const label = field.querySelector('[data-upload-label]');
-    if (label) label.textContent = url ? 'Change' : UPLOAD_LABELS[key] || 'Upload';
+    if (label) label.textContent = url ? 'Change' : UPLOAD_LABELS[key] || 'Choose';
   }
   document.querySelectorAll('[data-image-field]').forEach((field) => {
     const key = field.dataset.imageField;

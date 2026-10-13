@@ -1,12 +1,13 @@
 // The creator's media library: their uploaded images and videos
 // (GET /dashboard/media), to reuse one instead of uploading it again.
 //
-// Any file input marked data-library gets a "Library" button beside its
-// upload button. Picking a file there fires a "media:pick" event on that
-// input with { url } — each page's upload code listens for it and does what
-// it does after an upload. Uploading from the library goes through the same
-// /dashboard/uploads, which hands back the existing file when it's a
-// duplicate (lib/uploads.js).
+// Library first: the upload control around any file input marked
+// data-library opens this popup instead of the computer's file picker.
+// Picking a file fires a "media:pick" event on that input with { url } —
+// each page's upload code listens for it and does what it does after an
+// upload. "Upload new" in the popup adds the file to the library (shown
+// first, highlighted) for the creator to pick; a file they already have
+// isn't stored again (lib/uploads.js) — the popup points at that copy.
 //
 //   window.mediaLibrary.open({ kind: 'image' | 'video' }) → Promise<url | null>
 (function () {
@@ -33,6 +34,7 @@
   let el = null;
   let files = null; // loaded once per page view, refreshed after changes
   let state = null; // { kind, resolve, opener }
+  let highlight = null; // the url just uploaded (or found again)
 
   function build() {
     el = document.createElement('div');
@@ -93,19 +95,20 @@
     const body = el.querySelector('[data-ml-body]');
     const kind = state.kind;
     const word = kind === 'video' ? 'videos' : 'images';
-    el.querySelector('[data-ml-sub]').textContent = `Your uploaded ${word} — pick one to use it again.`;
+    el.querySelector('[data-ml-sub]').textContent = `Your ${word} — pick one, or upload a new one.`;
     if (files === null) {
       body.innerHTML = '<p class="ml-empty">Loading your media…</p>';
       return;
     }
     const list = files.filter((f) => f.kind === kind);
     if (!list.length) {
-      body.innerHTML = `<p class="ml-empty">No ${word} yet — upload one and it’ll be here to reuse anywhere.</p>`;
+      body.innerHTML = `<p class="ml-empty">No ${word} yet — use “Upload new” and it’ll be here to use anywhere.</p>`;
       return;
     }
     body.innerHTML = `<div class="ml-grid">${list.map((f) => `
-      <div class="ml-tile">
+      <div class="ml-tile${f.url === highlight ? ' is-new' : ''}">
         <button type="button" class="ml-pick" data-ml-pick="${escapeHTML(f.url)}" aria-label="Use ${escapeHTML(f.name)}">
+          ${f.url === highlight ? '<span class="ml-badge">Just added</span>' : ''}
           ${f.kind === 'image'
             ? `<img src="${escapeHTML(f.url)}" alt="" loading="lazy" />`
             : `<video src="${escapeHTML(f.url)}#t=0.5" muted preload="metadata"></video><span class="ml-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>`}
@@ -146,9 +149,17 @@
       const res = await fetch('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      files = null; // refreshed next time
-      close(data.url);
-      if (data.reused) toast('That file was already in your library — used the existing copy.');
+      highlight = data.url;
+      await load();
+      // Newest first already; a reused file is moved to the front so it's seen.
+      const at = files.findIndex((f) => f.url === data.url);
+      if (at > 0) files.unshift(files.splice(at, 1)[0]);
+      render();
+      note(data.reused
+        ? 'You already have this file — here it is. Click it to use it.'
+        : 'Uploaded — click it to use it.');
+      const tile = el.querySelector('.ml-tile.is-new .ml-pick');
+      if (tile) { tile.scrollIntoView({ block: 'nearest' }); tile.focus(); }
     } catch (err) {
       note(err.message || 'Could not upload that file.', 'error');
     } finally {
@@ -183,6 +194,7 @@
     if (!el) build();
     return new Promise((resolve) => {
       state = { kind: kind === 'video' ? 'video' : 'image', resolve, opener: document.activeElement };
+      highlight = null;
       el.querySelector('[data-ml-file]').accept = ACCEPT[state.kind];
       note('');
       el.hidden = false;
@@ -213,24 +225,32 @@
     setTimeout(() => t.remove(), 3500);
   }
 
-  // --- "Library" buttons beside marked upload inputs -------------------------
+  // --- the upload controls open the library ---------------------------------
   function kindOf(input) {
     return input.dataset.library === 'video' || /video/.test(input.accept || '') ? 'video' : 'image';
+  }
+  async function pickFor(input) {
+    const url = await open({ kind: kindOf(input) });
+    if (url) input.dispatchEvent(new CustomEvent('media:pick', { detail: { url }, bubbles: true }));
   }
   function enhance(input) {
     if (input.dataset.libraryReady) return;
     input.dataset.libraryReady = '1';
-    // The button goes after the upload control (the label that holds the input).
-    const anchor = input.closest('label') || input;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `ml-open-btn ${anchor.className || ''}`.replace(/\bpz-upload-btn\b|\bis-busy\b/g, '').trim();
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Library</span>';
-    btn.addEventListener('click', async () => {
-      const url = await open({ kind: kindOf(input) });
-      if (url) input.dispatchEvent(new CustomEvent('media:pick', { detail: { url }, bubbles: true }));
+    // The control is the label holding the file input; clicking it would
+    // open the file picker — the library opens instead.
+    const control = input.closest('label') || input;
+    control.addEventListener('click', (e) => {
+      e.preventDefault();
+      pickFor(input);
     });
-    anchor.insertAdjacentElement('afterend', btn);
+    // A label isn't reachable by keyboard; make it a button.
+    if (control.tagName === 'LABEL') {
+      control.setAttribute('role', 'button');
+      control.tabIndex = 0;
+      control.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickFor(input); }
+      });
+    }
   }
   function scan(root) {
     root.querySelectorAll('input[type=file][data-library]').forEach(enhance);

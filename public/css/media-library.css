@@ -1,20 +1,10 @@
 /* The creator's media library popup (public/js/media-library.js), and the
-   "Library" button it adds beside upload buttons. Uses the dashboard's tokens
+   upload controls that open it. Uses the dashboard's tokens
    (dashboard.css), with fallbacks so it works on any dashboard page. */
 html.ml-open { overflow: hidden; }
 
-.ml-open-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 12px;
-  border: 1px solid var(--border, #dce2ec); border-radius: calc(var(--radius, 10px) - 4px);
-  background: var(--card, #fff); color: var(--foreground, #111827); cursor: pointer;
-  font-family: var(--font-sans, inherit); font-size: 12.5px; font-weight: 600; white-space: nowrap;
-}
-.ml-open-btn:hover { background: var(--muted, #f1f3f6); }
-.ml-open-btn:focus-visible { outline: 2px solid var(--ring, #1261ef); outline-offset: 1px; }
-/* Beside a translucent chip (the store builder's cover), match it. */
-.ml-open-btn.pz-chip-btn { height: 30px; background: rgba(18, 24, 31, .6); color: #fff; border-color: rgba(255, 255, 255, .35); backdrop-filter: blur(4px); }
-.ml-open-btn.pz-chip-btn.is-solid { background: var(--card, #fff); color: var(--foreground, #111827); border-color: var(--border, #dce2ec); backdrop-filter: none; }
-.ml-open-btn.ax-btn { height: 32px; }
+/* An upload control that opens the library (role=button) shows focus. */
+label[role=button]:focus-visible { outline: 2px solid var(--ring, #1261ef); outline-offset: 2px; }
 
 .ml-backdrop {
   position: fixed; inset: 0; z-index: 1000; background: rgba(18, 24, 31, .5);
@@ -73,4 +63,11 @@ html.ml-open { overflow: hidden; }
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1001;
   padding: 10px 16px; border-radius: 999px; background: #12181f; color: #fff; font-size: 13px; font-weight: 500;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .25); font-family: var(--font-sans, inherit);
+}
+
+/* The file just uploaded (or found again), first in the grid. */
+.ml-tile.is-new .ml-pick { border-color: var(--primary, #1261ef); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #1261ef) 25%, transparent); }
+.ml-badge {
+  position: absolute; top: 6px; left: 6px; z-index: 1; padding: 2px 8px; border-radius: 999px;
+  background: var(--primary, #1261ef); color: var(--primary-foreground, #fff); font-size: 11px; font-weight: 700;
 }
