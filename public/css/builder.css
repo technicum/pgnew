@@ -84,13 +84,25 @@
 }
 .pz-block-card:hover { box-shadow: 0 1px 3px 0 rgba(18,24,31,.06), 0 1px 2px -1px rgba(18,24,31,.06); }
 .pz-block-card.pz-hidden { opacity: .5; }
-.pz-block-card.pz-dragging { opacity: .4; }
+/* Reordering (builder.js): the dragged card lifts and follows the
+   pointer; the others slide out of its way. */
+.pz-block-card { position: relative; transition: box-shadow .15s ease, opacity .15s ease, transform .18s ease; }
+.pz-block-card.pz-dragging {
+  z-index: 10; transition: box-shadow .15s ease; cursor: grabbing;
+  box-shadow: 0 12px 28px rgba(18,24,31,.18), 0 2px 6px rgba(18,24,31,.08);
+  border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
+}
+body.pz-sorting, body.pz-sorting * { user-select: none; cursor: grabbing !important; }
 
 .pz-drag-handle {
-  flex: none; width: 16px; align-self: stretch; display: flex; align-items: center; justify-content: center;
-  color: var(--muted-foreground); cursor: grab; touch-action: none; margin-left: -4px; margin-top: 2px;
+  flex: none; width: 24px; height: 36px; align-self: center; display: flex; align-items: center; justify-content: center;
+  margin-left: -6px; padding: 0; border: none; border-radius: calc(var(--radius) - 6px); background: none;
+  color: var(--muted-foreground); cursor: grab; touch-action: none;
 }
+.pz-drag-handle:hover { background: var(--muted); color: var(--foreground); }
+.pz-drag-handle:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
 .pz-drag-handle:active { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) { .pz-block-card { transition: none; } }
 
 .pz-switch {
   position: relative; flex: none; width: 34px; height: 20px; border-radius: 999px;

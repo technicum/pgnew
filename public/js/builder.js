@@ -281,9 +281,9 @@
       : '';
     return `
       <div class="pz-block-card${block.visible ? '' : ' pz-hidden'}${open ? ' is-open' : ''}" data-id="${block.id}">
-        <div class="pz-drag-handle" title="Drag to reorder (coming soon)">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15"><circle cx="9" cy="6" r="1.4" fill="currentColor"/><circle cx="9" cy="12" r="1.4" fill="currentColor"/><circle cx="9" cy="18" r="1.4" fill="currentColor"/><circle cx="15" cy="6" r="1.4" fill="currentColor"/><circle cx="15" cy="12" r="1.4" fill="currentColor"/><circle cx="15" cy="18" r="1.4" fill="currentColor"/></svg>
-        </div>
+        <button type="button" class="pz-drag-handle" data-drag-id="${block.id}" title="Drag to reorder" aria-label="Reorder ${escapeHTML(block.title || meta.label)} — drag, or use the arrow keys">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" aria-hidden="true"><circle cx="9" cy="6" r="1.4" fill="currentColor"/><circle cx="9" cy="12" r="1.4" fill="currentColor"/><circle cx="9" cy="18" r="1.4" fill="currentColor"/><circle cx="15" cy="6" r="1.4" fill="currentColor"/><circle cx="15" cy="12" r="1.4" fill="currentColor"/><circle cx="15" cy="18" r="1.4" fill="currentColor"/></svg>
+        </button>
         <div class="grid size-10 place-items-center rounded-md shrink-0 ${meta.cls}">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">${meta.icon}</svg>
         </div>
@@ -464,6 +464,185 @@
   }
 
   document.addEventListener('click', closeAllKebabMenus);
+
+  // --- reordering ---------------------------------------------------------
+  // Drag a card by its handle (mouse, pen or touch — pointer events), or
+  // focus the handle and use ↑ ↓. The card follows the pointer, the others
+  // slide out of its way, the page scrolls near the edges, and the new
+  // order is saved on drop (POST /dashboard/builder/blocks/reorder).
+  const liveRegion = document.createElement('div');
+  liveRegion.className = 'sr-only';
+  liveRegion.setAttribute('aria-live', 'polite');
+  document.body.appendChild(liveRegion);
+
+  function saveOrder(previous) {
+    renderPreviewOnly();
+    api('/dashboard/builder/blocks/reorder', {
+      method: 'POST',
+      body: JSON.stringify({ order: blocks.map((b) => b.id) }),
+    }).catch(() => {
+      blocks = previous;
+      render();
+    });
+  }
+
+  // Slides cards from where they were to where they are now (FLIP).
+  function animateFrom(tops) {
+    blocksList.querySelectorAll('.pz-block-card:not(.pz-dragging)').forEach((el) => {
+      const before = tops.get(el);
+      if (before === undefined) return;
+      const shift = before - el.getBoundingClientRect().top;
+      if (!shift) return;
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${shift}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = '';
+        el.style.transform = '';
+      });
+    });
+  }
+  function cardTops() {
+    const tops = new Map();
+    blocksList.querySelectorAll('.pz-block-card').forEach((el) => tops.set(el, el.getBoundingClientRect().top));
+    return tops;
+  }
+
+  let drag = null;
+  blocksList.addEventListener('pointerdown', (e) => {
+    const handle = e.target.closest('.pz-drag-handle');
+    if (!handle || e.button !== 0 || blocks.length < 2) return;
+    e.preventDefault();
+    closeAllKebabMenus();
+    const card = handle.closest('.pz-block-card');
+    drag = {
+      card,
+      handle,
+      pointerId: e.pointerId,
+      startPageY: e.clientY + window.scrollY,
+      lastClientY: e.clientY,
+      startOrder: blocks.map((b) => b.id),
+      raf: null,
+    };
+    handle.setPointerCapture(e.pointerId);
+    card.classList.add('pz-dragging');
+    document.body.classList.add('pz-sorting');
+    handle.addEventListener('pointermove', onDragMove);
+    handle.addEventListener('pointerup', onDragEnd);
+    handle.addEventListener('pointercancel', onDragEnd);
+    // If capture is lost anyway (the window lost focus, say), the drop
+    // still ends the drag.
+    window.addEventListener('pointerup', onDragEnd);
+    handle.addEventListener('lostpointercapture', onDragEnd);
+    drag.raf = requestAnimationFrame(autoScroll);
+  });
+
+  // Where the card sits in the list without its drag offset.
+  function layoutTop(el) {
+    return el.getBoundingClientRect().top - (Number(el.dataset.dragOffset) || 0);
+  }
+
+  function positionDragged() {
+    const { card } = drag;
+    const offset = (drag.lastClientY + window.scrollY) - drag.startPageY;
+    card.dataset.dragOffset = offset;
+    card.style.transform = `translateY(${offset}px)`;
+    // Swap with a neighbour once the card's middle passes the neighbour's.
+    for (;;) {
+      const box = card.getBoundingClientRect();
+      const middle = box.top + box.height / 2;
+      const next = card.nextElementSibling;
+      const prev = card.previousElementSibling;
+      let moved = null;
+      if (next && middle > next.getBoundingClientRect().top + next.getBoundingClientRect().height / 2) moved = next;
+      else if (prev && middle < prev.getBoundingClientRect().top + prev.getBoundingClientRect().height / 2) moved = prev;
+      if (!moved) break;
+      const tops = cardTops();
+      const before = layoutTop(card);
+      // Always move the neighbour, never the dragged card: moving the
+      // card would drop its pointer capture and lose the drop.
+      if (moved === next) blocksList.insertBefore(next, card);
+      else blocksList.insertBefore(prev, card.nextSibling);
+      // Keep the card under the pointer: its slot moved, so the offset shrinks by as much.
+      const shift = layoutTop(card) - before;
+      drag.startPageY += shift;
+      const newOffset = (drag.lastClientY + window.scrollY) - drag.startPageY;
+      card.dataset.dragOffset = newOffset;
+      card.style.transform = `translateY(${newOffset}px)`;
+      animateFrom(tops);
+    }
+  }
+
+  function onDragMove(e) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    drag.lastClientY = e.clientY;
+    positionDragged();
+  }
+
+  // Scrolls while the pointer is near the top or bottom of the window.
+  function autoScroll() {
+    if (!drag) return;
+    const edge = 72;
+    const y = drag.lastClientY;
+    let speed = 0;
+    if (y < edge) speed = -Math.ceil((edge - y) / 6);
+    else if (y > window.innerHeight - edge) speed = Math.ceil((y - (window.innerHeight - edge)) / 6);
+    if (speed) {
+      window.scrollBy(0, speed);
+      positionDragged();
+    }
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+
+  function onDragEnd(e) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    const { card, handle, startOrder } = drag;
+    cancelAnimationFrame(drag.raf);
+    handle.removeEventListener('pointermove', onDragMove);
+    handle.removeEventListener('pointerup', onDragEnd);
+    handle.removeEventListener('pointercancel', onDragEnd);
+    window.removeEventListener('pointerup', onDragEnd);
+    handle.removeEventListener('lostpointercapture', onDragEnd);
+    drag = null;
+    card.classList.remove('pz-dragging');
+    card.style.transform = '';
+    delete card.dataset.dragOffset;
+    document.body.classList.remove('pz-sorting');
+
+    const order = [...blocksList.querySelectorAll('.pz-block-card')].map((el) => Number(el.dataset.id));
+    if (order.join() === startOrder.join()) return;
+    const previous = blocks;
+    blocks = order.map((id) => previous.find((b) => b.id === id)).filter(Boolean);
+    render();
+    const moved = blocksList.querySelector(`.pz-drag-handle[data-drag-id="${card.dataset.id}"]`);
+    if (moved) moved.focus({ preventScroll: true });
+    liveRegion.textContent = `Moved to position ${order.indexOf(Number(card.dataset.id)) + 1} of ${order.length}`;
+    saveOrder(previous);
+  }
+
+  // Keyboard: ↑ / ↓ on a focused handle moves that block one place.
+  blocksList.addEventListener('keydown', (e) => {
+    const handle = e.target.closest('.pz-drag-handle');
+    if (!handle || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    const id = Number(handle.dataset.dragId);
+    const i = blocks.findIndex((b) => b.id === id);
+    const j = e.key === 'ArrowUp' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= blocks.length) return;
+    const previous = blocks;
+    blocks = blocks.slice();
+    [blocks[i], blocks[j]] = [blocks[j], blocks[i]];
+    const tops = cardTops();
+    render();
+    // Re-rendered cards are new elements; carry the old positions over by id.
+    const byId = new Map();
+    tops.forEach((top, el) => byId.set(el.dataset.id, top));
+    const mapped = new Map();
+    blocksList.querySelectorAll('.pz-block-card').forEach((el) => mapped.set(el, byId.get(el.dataset.id)));
+    animateFrom(mapped);
+    blocksList.querySelector(`.pz-drag-handle[data-drag-id="${id}"]`).focus();
+    liveRegion.textContent = `Moved to position ${j + 1} of ${blocks.length}`;
+    saveOrder(previous);
+  });
 
   blocksList.addEventListener('input', (e) => {
     const el = e.target.closest('[data-item-field]');
