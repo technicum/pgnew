@@ -273,3 +273,21 @@ body.pz-modal-open { overflow: hidden; }
 .pz-block-hint { font-size: 12px; line-height: 1.45; color: var(--muted-foreground); }
 .pz-block-hint a { color: var(--primary); font-weight: 600; text-decoration: none; }
 .pz-block-hint a:hover { text-decoration: underline; }
+
+/* A newsletter block's own popup link (views/store.ejs #subscribe-<id>). */
+.pz-popup-link {
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  border: 1px dashed var(--border); border-radius: calc(var(--radius) - 4px);
+  background: var(--muted); padding: 5px 5px 5px 10px;
+}
+.pz-popup-link-label { flex: none; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-foreground); }
+.pz-popup-link code {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; color: var(--foreground);
+}
+.pz-copy-btn {
+  flex: none; height: 26px; padding: 0 10px; border-radius: calc(var(--radius) - 6px);
+  border: 1px solid var(--border); background: var(--card); color: var(--foreground);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.pz-copy-btn:hover { background: var(--background); }

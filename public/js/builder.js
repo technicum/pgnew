@@ -15,11 +15,11 @@
     event:       { group: 'Sell',   label: 'Webinar / Event',   desc: 'Tickets for a live session or workshop',    keywords: 'live workshop masterclass ticket seminar', cls: 'pz-type-booking',    icon: '<path d="m22 8-6 4 6 4V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/>', hasPrice: true, subPlaceholder: 'e.g. Live on Zoom · Sat 11am' },
     tip:         { group: 'Sell',   label: 'Tip jar',           desc: 'Let fans support you with any amount',      keywords: 'donation support pay what you want coffee', cls: 'pz-type-course',     icon: '<path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. Buy me a chai', pricePlaceholder: 'Min. amount' },
     newsletter:  { group: 'Grow',   label: 'Newsletter signup', desc: 'Collect emails from visitors',              keywords: 'email subscribe list lead form', cls: 'pz-type-grow',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, titlePlaceholder: 'Heading, e.g. Join my weekly newsletter', subPlaceholder: 'Short pitch, e.g. Career tips every Sunday, no spam',
-                   hint: 'Shows an email signup form on your store. New subscribers land in <a href="/dashboard/audience">Audience</a>.' },
+                   hint: 'Opens a signup popup on your store. New subscribers land in <a href="/dashboard/audience">Audience</a>.' },
     social:      { group: 'Grow',   label: 'Social link',       desc: 'A button to one of your profiles',     keywords: 'instagram youtube linkedin twitter x follow profile', cls: 'pz-type-grow',       icon: '<circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'e.g. instagram.com/yourname',
                    hint: 'Tip: add all your profiles as icons under Profile → Social links.' },
     testimonial: { group: 'Grow',   label: 'Testimonial',       desc: 'Show a quote from a happy customer',        keywords: 'review quote social proof feedback', cls: 'pz-type-grow',       icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'e.g. — Priya, landed a PM role' },
-    link:        { group: 'Basics', label: 'Link',              desc: 'Send visitors to any website',              keywords: 'url website button external', cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL' },
+    link:        { group: 'Basics', label: 'Link',              desc: 'Send visitors to any website',              keywords: 'url website button external', cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL — or #subscribe-12 to open a newsletter popup' },
     video:       { group: 'Basics', label: 'Video',             desc: 'Embed a YouTube or Vimeo video',            keywords: 'youtube vimeo embed reel clip', cls: 'pz-type-link',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m10 9 5 3-5 3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'Video URL' },
     text:        { group: 'Basics', label: 'Text',              desc: 'A heading with a short paragraph',          keywords: 'heading paragraph about section title', cls: 'pz-type-link',       icon: '<path d="M4 7V5h16v2M9 19h6M12 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'Paragraph text' },
   };
@@ -149,6 +149,7 @@
             ${priceField}
           </div>
           ${meta.hint ? `<p class="pz-block-hint">${meta.hint}</p>` : ''}
+          ${block.type === 'newsletter' ? popupLinkHTML(block) : ''}
         </div>
         <button type="button" class="pz-switch${block.visible ? ' on' : ''} toggle-visible" data-id="${block.id}" title="${block.visible ? 'Visible on your store' : 'Hidden from your store'}"></button>
         <div class="pz-kebab-wrap">
@@ -166,6 +167,23 @@
             </button>
           </div>
         </div>
+      </div>`;
+  }
+
+  // Every newsletter popup has its own link — the store URL + #subscribe-<id>
+  // (views/store.ejs) — that opens it straight away from anywhere: a bio,
+  // a WhatsApp message, or a Link block on the store itself.
+  function popupLinkFor(block) {
+    const handleNow = document.getElementById('switcherHandle').textContent.replace(/^@/, '');
+    return `${(window.__PZ_STORE_URL__ || '').replace('{handle}', handleNow)}/#subscribe-${block.id}`;
+  }
+  function popupLinkHTML(block) {
+    const url = popupLinkFor(block);
+    return `
+      <div class="pz-popup-link">
+        <span class="pz-popup-link-label">Popup link</span>
+        <code title="${escapeHTML(url)}">${escapeHTML(url.replace(/^https?:\/\//, ''))}</code>
+        <button type="button" class="pz-copy-btn copy-popup-link" data-url="${escapeHTML(url)}">Copy</button>
       </div>`;
   }
 
@@ -274,6 +292,17 @@
   }
 
   document.addEventListener('click', closeAllKebabMenus);
+
+  blocksList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.copy-popup-link');
+    if (!btn) return;
+    const done = (text) => {
+      btn.textContent = text;
+      clearTimeout(btn._reset);
+      btn._reset = setTimeout(() => { btn.textContent = 'Copy'; }, 1600);
+    };
+    navigator.clipboard.writeText(btn.dataset.url).then(() => done('Copied'), () => done('Couldn’t copy'));
+  });
 
   // --- add-content popup ----------------------------------------------
   // Every module, grouped, filtered by the search box.
@@ -496,7 +525,10 @@
     }).then((data) => {
       handleError.classList.remove('show');
       if (data && data.user) {
+        const handleChanged = switcherHandle.textContent !== `@${data.user.handle}`;
         switcherHandle.textContent = `@${data.user.handle}`;
+        // Newsletter popup links include the handle.
+        if (handleChanged && blocks.some((b) => b.type === 'newsletter')) render();
         previewUrl.textContent = `${data.user.handle}.${window.__PZ_SITE_DOMAIN__}`;
         const viewLiveBtn = document.getElementById('viewLiveBtn');
         if (viewLiveBtn && window.__PZ_STORE_URL__) {

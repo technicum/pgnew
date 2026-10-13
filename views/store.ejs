@@ -45,30 +45,15 @@
           <% if (block.sub) { %><figcaption><%= block.sub %></figcaption><% } %>
         </figure>
       <% } else if (block.type === 'newsletter') { %>
-        <%# Posts to the store home (lib/storefront.js newsletterSignup); the visitor lands in Audience. %>
-        <% var result = signup && signup.blockId === block.id ? signup : null; %>
-        <section class="store-newsletter" id="nl-<%= block.id %>">
-          <div class="store-newsletter-head">
-            <span class="store-newsletter-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-            </span>
-            <div>
-              <h2 class="store-newsletter-title"><%= block.title %></h2>
-              <% if (block.sub) { %><p class="store-newsletter-sub"><%= block.sub %></p><% } %>
-            </div>
-          </div>
-          <% if (result && result.ok) { %>
-            <p class="store-newsletter-done" role="status"><%= result.message %></p>
-          <% } else { %>
-            <form class="store-newsletter-form" method="post" action="/#nl-<%= block.id %>">
-              <input type="hidden" name="block" value="<%= block.id %>" />
-              <label class="store-sr" for="nl-email-<%= block.id %>">Email address</label>
-              <input class="store-input" id="nl-email-<%= block.id %>" type="email" name="email" required autocomplete="email" placeholder="you@example.com" value="<%= result ? result.email : '' %>"<% if (result) { %> aria-invalid="true" aria-describedby="nl-error-<%= block.id %>"<% } %> />
-              <button class="store-button" type="submit">Subscribe</button>
-            </form>
-            <% if (result) { %><p class="store-newsletter-error" id="nl-error-<%= block.id %>" role="alert"><%= result.message %></p><% } %>
-          <% } %>
-        </section>
+        <%# Opens this block's signup popup (below the list). Its link, /#subscribe-<id>, opens it from anywhere. %>
+        <a class="store-block store-block-link store-nl-trigger" href="#subscribe-<%= block.id %>" aria-haspopup="dialog">
+          <span class="store-nl-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+          <span class="store-block-body">
+            <span class="store-block-title"><%= block.title %></span>
+            <% if (block.sub) { %><span class="store-block-sub"><%= block.sub %></span><% } %>
+          </span>
+          <span class="store-nl-cta">Subscribe</span>
+        </a>
       <% } else if (block.href) { %>
         <%# Links off the store open in a new tab; the store's own pages (a booking block → /book) don't. %>
         <a class="store-block store-block-link" href="<%= block.href %>"<% if (/^https?:/.test(block.href)) { %> target="_blank" rel="noopener noreferrer nofollow"<% } %>>
@@ -91,6 +76,35 @@
     <% }) %>
   </div>
 
+  <%# Newsletter popups — opened by #subscribe-<id> (a block above, or a link shared anywhere). The form
+      posts to the store home (lib/storefront.js newsletterSignup); subscribers land in Audience. %>
+  <% blocks.filter(function (b) { return b.type === 'newsletter'; }).forEach(function (block) { %>
+    <% var pid = 'subscribe-' + block.id; var result = signup && signup.blockId === block.id ? signup : null; %>
+    <div class="store-popup<%= result ? ' is-open' : '' %>" id="<%= pid %>" role="dialog" aria-modal="true" aria-labelledby="<%= pid %>-title">
+      <a class="store-popup-backdrop" href="#" data-popup-close tabindex="-1" aria-hidden="true"></a>
+      <div class="store-popup-card">
+        <a class="store-popup-close" href="#" data-popup-close aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </a>
+        <span class="store-popup-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+        <h2 class="store-popup-title" id="<%= pid %>-title"><%= block.title %></h2>
+        <% if (block.sub) { %><p class="store-popup-sub"><%= block.sub %></p><% } %>
+        <% if (result && result.ok) { %>
+          <p class="store-newsletter-done" role="status"><%= result.message %></p>
+          <a class="store-button store-popup-done-btn" href="#" data-popup-close>Done</a>
+        <% } else { %>
+          <form class="store-newsletter-form" method="post" action="/#<%= pid %>">
+            <input type="hidden" name="block" value="<%= block.id %>" />
+            <label class="store-sr" for="<%= pid %>-email">Email address</label>
+            <input class="store-input" id="<%= pid %>-email" type="email" name="email" required autocomplete="email" placeholder="you@example.com" value="<%= result ? result.email : '' %>"<% if (result) { %> aria-invalid="true" aria-describedby="<%= pid %>-error"<% } %> />
+            <button class="store-button" type="submit">Subscribe</button>
+          </form>
+          <% if (result) { %><p class="store-newsletter-error" id="<%= pid %>-error" role="alert"><%= result.message %></p><% } %>
+        <% } %>
+      </div>
+    </div>
+  <% }) %>
+
   <% if (owner.showBadge) { %>
     <footer class="store-badge">
       <a href="<%= mainSiteUrl %>">Made with <strong><%= siteName %></strong></a>
@@ -98,5 +112,70 @@
   <% } %>
 </main>
 
+<script>
+// Popups (newsletter signup): any link to #<popup id> opens it, so
+// handle.site/#subscribe-12 opens straight into that form. Without this
+// script the same links still work through :target (store.css).
+(function () {
+  document.documentElement.classList.add('js');
+  var current = null;
+  var opener = null;
+  function popupFor(hash) {
+    var el = hash && hash.length > 1 ? document.getElementById(decodeURIComponent(hash.slice(1))) : null;
+    return el && el.classList.contains('store-popup') ? el : null;
+  }
+  // The address bar follows the popup, so it can be copied and shared.
+  // (Not available in every sandboxed frame — the builder's preview.)
+  function setHash(hash) {
+    var search = location.search.replace(/([?&])subscribed=\d+&?/, '$1').replace(/[?&]$/, '');
+    try { history.replaceState(null, '', location.pathname + search + hash); } catch (e) { /* preview */ }
+  }
+  function open(el, fromClick) {
+    if (current === el) return;
+    close(false);
+    current = el;
+    opener = fromClick ? document.activeElement : null;
+    el.classList.add('is-open');
+    document.body.classList.add('store-popup-open');
+    var focus = el.querySelector('input[type=email]') || el.querySelector('.store-popup-close');
+    setTimeout(function () { if (focus) focus.focus(); }, 40);
+    if (fromClick) setHash('#' + el.id);
+  }
+  function close(clearHash) {
+    if (!current) return;
+    current.classList.remove('is-open');
+    current = null;
+    document.body.classList.remove('store-popup-open');
+    if (clearHash) setHash('');
+    if (opener && opener.focus) opener.focus();
+    opener = null;
+  }
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!link) return;
+    if (link.hasAttribute('data-popup-close')) { e.preventDefault(); close(true); return; }
+    var el = popupFor(link.getAttribute('href'));
+    if (el) { e.preventDefault(); open(el, true); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!current) return;
+    if (e.key === 'Escape') { close(true); return; }
+    // Keep Tab inside the open popup.
+    if (e.key === 'Tab') {
+      var f = current.querySelectorAll('.store-popup-card a[href], .store-popup-card input:not([type=hidden]), .store-popup-card button');
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  window.addEventListener('hashchange', function () {
+    var el = popupFor(location.hash);
+    if (el) open(el, false); else close(false);
+  });
+  var initial = popupFor(location.hash) || document.querySelector('.store-popup.is-open');
+  if (initial) { initial.classList.remove('is-open'); open(initial, false); }
+})();
+</script>
 </body>
 </html>
