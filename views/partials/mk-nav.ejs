@@ -1,0 +1,12 @@
+<%# The main site's header on the marketplace-styled pages (explore.css). Pass active: 'explore' | 'blog' | 'about'. %>
+<header class="mk-nav">
+  <div class="mk-nav-in">
+    <a class="mk-brand" href="/"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
+    <nav class="mk-nav-links" aria-label="Main">
+      <a href="/explore"<%- active === 'explore' ? ' aria-current="page"' : '' %>>Explore</a>
+      <a href="/blog"<%- active === 'blog' ? ' aria-current="page"' : '' %>>Blog</a>
+      <a href="/about"<%- active === 'about' ? ' aria-current="page"' : '' %>>About</a>
+      <% if (currentUser) { %><a class="mk-cta" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Log in</a><a class="mk-cta" href="/signup">Start selling</a><% } %>
+    </nav>
+  </div>
+</header>

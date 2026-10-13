@@ -1,0 +1,54 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → App ideas (lib/appIdeas.js): what creators asked for from Explore apps. The status is
+    shown to the creator next to their idea; the note is only for admins. %>
+<% var total = Object.keys(counts).reduce(function (t, k) { return t + counts[k]; }, 0); %>
+
+<header class="adm-head">
+  <div>
+    <h1>App ideas</h1>
+    <p>Apps creators would like, sent from Explore apps. They see the status you set; the note stays private.</p>
+  </div>
+</header>
+
+<nav class="adm-filter" aria-label="Filter by status">
+  <a href="/admin/ideas"<%- !status ? ' aria-current="page"' : '' %>>All <span><%= total %></span></a>
+  <% Object.keys(statuses).forEach(function (k) { %>
+    <a href="/admin/ideas?status=<%= k %>"<%- status === k ? ' aria-current="page"' : '' %>><%= statuses[k] %> <span><%= counts[k] || 0 %></span></a>
+  <% }) %>
+</nav>
+
+<% if (ideas.length) { %>
+  <div class="adm-ideas">
+    <% ideas.forEach(function (i) { %>
+      <article class="adm-idea" id="idea-<%= i.id %>">
+        <div class="adm-idea-head">
+          <div>
+            <h2><%= i.title %></h2>
+            <p class="adm-idea-meta">
+              <% if (i.category) { %><span class="adm-pill"><%= i.category %></span> <% } %>
+              from <% if (i.user_name) { %><a href="/admin/users/<%= i.user_id %>"><%= i.user_name %></a><% } else { %>a deleted account<% } %>
+              · <%= new Date(i.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+            </p>
+          </div>
+          <span class="adm-pill adm-idea-status is-<%= i.status %>"><%= statuses[i.status] || statuses.new %></span>
+        </div>
+        <% if (i.description) { %><p class="adm-idea-desc"><%= i.description %></p><% } %>
+        <form method="POST" action="/admin/ideas/<%= i.id %>" class="adm-idea-form">
+          <input type="hidden" name="filter" value="<%= status %>" />
+          <select class="ax-input" name="status" aria-label="Status">
+            <% Object.keys(statuses).forEach(function (k) { %><option value="<%= k %>"<%= k === i.status ? ' selected' : '' %>><%= statuses[k] %></option><% }) %>
+          </select>
+          <input class="ax-input" name="admin_note" value="<%= i.admin_note %>" maxlength="500" placeholder="Private note — e.g. 3 other people asked for this" />
+          <button class="ax-btn">Save</button>
+        </form>
+        <form method="POST" action="/admin/ideas/<%= i.id %>/delete" class="adm-idea-delete">
+          <button class="ax-btn ax-btn-quiet adm-danger-text" data-confirm="Click again to delete">Delete</button>
+        </form>
+      </article>
+    <% }) %>
+  </div>
+<% } else { %>
+  <section class="ax-panel"><p class="ax-empty"><%= status ? 'No ideas with this status.' : 'No ideas yet — creators can send them from Explore apps in their dashboard.' %></p></section>
+<% } %>
+
+<%- include('partials/admin-bottom') %>

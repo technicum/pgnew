@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title><%= title %></title>
-<meta name="description" content="<%= siteName %> is one page for bookings, courses, events, digital products and payments — built by Abhishek Bhardwaj." />
-<meta property="og:title" content="About <%= siteName %>" />
-<meta property="og:description" content="One page for bookings, courses, events, digital products and payments — built by Abhishek Bhardwaj." />
+<%- include('partials/seo-meta') %>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -38,6 +35,7 @@ var svg = function (paths) { return '<svg viewBox="0 0 24 24" width="22" height=
       <a class="mk-brand" href="/"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
       <nav class="mk-nav-links" aria-label="Main">
         <a href="/explore">Explore</a>
+        <a href="/blog">Blog</a>
         <a href="/about" aria-current="page">About</a>
         <% if (currentUser) { %><a class="mk-cta" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Log in</a><a class="mk-cta" href="/signup">Start selling</a><% } %>
       </nav>
@@ -112,7 +110,7 @@ var svg = function (paths) { return '<svg viewBox="0 0 24 24" width="22" height=
 
   <footer class="mk-footer">
     <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/about">About</a><a href="mailto:<%= contact.email %>">Contact</a></nav>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="mailto:<%= contact.email %>">Contact</a></nav>
   </footer>
 </body>
 </html>

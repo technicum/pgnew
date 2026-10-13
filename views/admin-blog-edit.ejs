@@ -1,0 +1,123 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Blog → one post (lib/blog.js): writing, publishing, and its SEO. The body uses the
+    dashboard's formatting toolbar (lib/richText.js format) plus pictures from the media library. %>
+<% var p = post || {};
+   var local = function (d) { if (!d) return ''; var x = new Date(d); var z = function (n) { return String(n).padStart(2, '0'); };
+     return x.getFullYear() + '-' + z(x.getMonth() + 1) + '-' + z(x.getDate()) + 'T' + z(x.getHours()) + ':' + z(x.getMinutes()); }; %>
+
+<header class="adm-head">
+  <div>
+    <a class="adm-crumb" href="/admin/blog">← Blog</a>
+    <h1><%= post ? post.title : 'New post' %>
+      <% if (post) { %><% if (post.live) { %><span class="adm-pill is-used">Published</span><% } else if (post.status === 'published') { %><span class="adm-pill">Scheduled</span><% } else { %><span class="adm-pill">Draft</span><% } %><% } %>
+    </h1>
+  </div>
+  <% if (post) { %><a class="ax-btn" href="/blog/<%= post.slug %><%= post.live ? '' : '?preview=1' %>" target="_blank" rel="noopener"><%= post.live ? 'View post ↗' : 'Preview ↗' %></a><% } %>
+</header>
+
+<form method="POST" action="<%= post ? '/admin/blog/' + post.id : '/admin/blog' %>" class="adm-post-form" id="postForm">
+  <div class="adm-post-cols">
+    <div class="adm-post-main">
+      <section class="ax-panel">
+        <div class="ax-pad adm-form">
+          <label class="ax-field"><span>Title</span><input class="ax-input adm-title-input" name="title" value="<%= p.title || '' %>" required maxlength="200" placeholder="How to sell your first course" /></label>
+          <label class="ax-field"><span>Excerpt <small>shown in the blog list and as the description when SEO is blank</small></span>
+            <textarea class="ax-input" name="excerpt" rows="2" maxlength="400" placeholder="One or two sentences on what the post is about."><%= p.excerpt || '' %></textarea></label>
+          <%- include('partials/ax-rich-field', { name: 'body', label: 'Post', value: p.body || '', rows: 22, maxlength: maxBody, placeholder: 'Write your post…', extraClass: 'adm-body-field' }) %>
+          <button type="button" class="ax-btn" id="insertImage">
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+            Insert image
+          </button>
+          <small class="ax-hint">An image goes on its own line as <code>![caption](link)</code> — the button does that for you.</small>
+        </div>
+      </section>
+    </div>
+
+    <aside class="adm-post-side">
+      <section class="ax-panel">
+        <div class="ax-panel-head"><h2>Publish</h2></div>
+        <div class="ax-pad adm-form">
+          <label class="ax-field"><span>Status</span>
+            <select class="ax-input" name="status">
+              <option value="draft"<%= p.status !== 'published' ? ' selected' : '' %>>Draft — only admins see it</option>
+              <option value="published"<%= p.status === 'published' ? ' selected' : '' %>>Published</option>
+            </select></label>
+          <label class="ax-field"><span>Publish date <small>later = scheduled</small></span>
+            <input class="ax-input" type="datetime-local" name="published_at" value="<%= local(p.published_at) %>" />
+            <small>Blank: now, when published.</small></label>
+          <label class="ax-field"><span>Author</span><input class="ax-input" name="author_name" value="<%= p.author_name || user.name %>" maxlength="120" /></label>
+          <label class="ax-field"><span>Link</span>
+            <span class="adm-input-prefix"><em>/blog/</em><input class="ax-input" name="slug" value="<%= p.slug || '' %>" maxlength="100" placeholder="from the title" /></span></label>
+          <button class="ax-btn ax-btn-primary adm-save-btn">Save</button>
+        </div>
+      </section>
+
+      <section class="ax-panel">
+        <div class="ax-panel-head"><h2>Cover</h2></div>
+        <div class="ax-pad">
+          <%- include('partials/ax-image-field', { name: 'cover_url', label: 'Cover image', value: p.cover_url || '', hint: '1600 × 900 works well. Shown on the post and in the list.' }) %>
+        </div>
+      </section>
+
+      <section class="ax-panel">
+        <div class="ax-panel-head"><h2>SEO</h2></div>
+        <div class="ax-pad adm-form">
+          <label class="ax-field"><span>SEO title <small data-count-for="seo_title"></small></span>
+            <input class="ax-input" name="seo_title" value="<%= p.seo_title || '' %>" maxlength="70" placeholder="The post title" data-count /></label>
+          <label class="ax-field"><span>Meta description <small data-count-for="seo_description"></small></span>
+            <textarea class="ax-input" name="seo_description" rows="3" maxlength="160" placeholder="The excerpt" data-count><%= p.seo_description || '' %></textarea></label>
+          <%- include('partials/ax-image-field', { name: 'share_image', label: 'Share image', value: p.share_image || '', hint: 'For link previews — 1200 × 630. Blank: the cover.' }) %>
+          <div class="adm-serp" aria-label="Google preview">
+            <span class="adm-serp-url"><%= siteDomain %> › blog › <span data-serp-slug><%= p.slug || 'post' %></span></span>
+            <span class="adm-serp-title" data-serp-title></span>
+            <span class="adm-serp-desc" data-serp-desc></span>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</form>
+
+<% if (post) { %>
+  <form method="POST" action="/admin/blog/<%= post.id %>/delete" class="adm-delete-row">
+    <button class="ax-btn adm-danger" data-confirm="Click again to delete this post">Delete post</button>
+  </form>
+<% } %>
+
+<script>
+  // Insert image: pick from the media library (public/js/media-library.js), put ![](url) on its own line.
+  (function () {
+    var body = document.querySelector('#postForm textarea[name=body]');
+    document.getElementById('insertImage').addEventListener('click', async function () {
+      if (!window.mediaLibrary) return;
+      var url = await window.mediaLibrary.open({ kind: 'image' });
+      if (!url) return;
+      var at = body.selectionStart;
+      var before = body.value.slice(0, at);
+      var after = body.value.slice(body.selectionEnd);
+      var snippet = (before && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : '') + '![](' + url + ')\n\n';
+      body.value = before + snippet + after;
+      var caret = before.length + snippet.indexOf('](') - 0;
+      body.focus();
+      body.setSelectionRange(caret, caret); // between [ ] — type a caption
+    });
+
+    // Character counts and the Google preview.
+    var form = document.getElementById('postForm');
+    var get = function (n) { return form.querySelector('[name=' + n + ']'); };
+    function paint() {
+      form.querySelectorAll('[data-count]').forEach(function (el) {
+        var c = form.querySelector('[data-count-for=' + el.name + ']');
+        if (c) c.textContent = el.value.length + '/' + el.maxLength;
+      });
+      form.querySelector('[data-serp-title]').textContent = get('seo_title').value || get('title').value || 'Post title';
+      form.querySelector('[data-serp-desc]').textContent = get('seo_description').value || get('excerpt').value || 'Add an excerpt or a meta description.';
+      var slug = get('slug').value || get('title').value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      form.querySelector('[data-serp-slug]').textContent = slug || 'post';
+    }
+    form.addEventListener('input', paint);
+    paint();
+  })();
+</script>
+
+<%- include('partials/admin-bottom') %>

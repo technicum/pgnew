@@ -60,6 +60,39 @@
         </article>
         <% }) %>
       </div>
+
+      <%# Suggest an app (lib/appIdeas.js): goes to Platform admin → App ideas; the creator sees the status. %>
+      <section class="ap-ideas" id="ideas">
+        <div class="ap-ideas-form">
+          <h2>Suggest an app</h2>
+          <p>Missing something you need? Tell us what it would do — we read every idea.</p>
+          <% if (ideaSent) { %><div class="ap-idea-flash is-ok" role="status">Thanks — your idea is in. You’ll see its status below.</div><% } %>
+          <% if (ideaError) { %><div class="ap-idea-flash is-error" role="alert"><%= ideaError %></div><% } %>
+          <form method="POST" action="/dashboard/app-ideas">
+            <label><span>App idea</span><input name="title" maxlength="120" required placeholder="e.g. Instagram auto-replies" /></label>
+            <label><span>Area</span>
+              <select name="category">
+                <option value="">Pick one (optional)</option>
+                <% ideaCategories.forEach(function (c) { %><option><%= c %></option><% }) %>
+              </select></label>
+            <label class="ap-idea-wide"><span>What would it do for you?</span><textarea name="description" rows="4" maxlength="2000" required placeholder="Who it’s for, what it should do, and how you handle it today."></textarea></label>
+            <button type="submit">Send idea</button>
+          </form>
+        </div>
+        <div class="ap-ideas-mine">
+          <h3>Your ideas</h3>
+          <% if (ideas.length) { %>
+            <ul>
+              <% ideas.forEach(function (i) { %>
+                <li><span><b><%= i.title %></b><small><%= i.category ? i.category + ' · ' : '' %><%= new Date(i.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %></small></span>
+                  <em class="ap-idea-status is-<%= i.status %>"><%= i.statusLabel %></em></li>
+              <% }) %>
+            </ul>
+          <% } else { %>
+            <p class="ap-ideas-empty">Ideas you send show up here, with what we’re doing about them.</p>
+          <% } %>
+        </div>
+      </section>
     </div>
   </main>
 </div>

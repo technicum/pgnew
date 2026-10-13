@@ -1,0 +1,45 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Blog (lib/blog.js): every post, newest first. Public at /blog. %>
+
+<header class="adm-head">
+  <div>
+    <h1>Blog</h1>
+    <p>Posts on <a href="/blog" target="_blank" rel="noopener"><%= siteDomain %>/blog</a>. Drafts and posts scheduled for later are only visible to admins.</p>
+  </div>
+  <a class="ax-btn ax-btn-primary" href="/admin/blog/new">+ New post</a>
+</header>
+
+<section class="ax-panel">
+  <% if (posts.length) { %>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr><th>Post</th><th>Status</th><th>Date</th><th>Author</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          <% posts.forEach(function (p) { var scheduled = p.status === 'published' && !p.live; %>
+            <tr>
+              <td><a class="adm-owner" href="/admin/blog/<%= p.id %>"><%= p.title %></a><small>/blog/<%= p.slug %></small></td>
+              <td>
+                <% if (p.live) { %><span class="adm-pill is-used">Published</span>
+                <% } else if (scheduled) { %><span class="adm-pill">Scheduled</span>
+                <% } else { %><span class="adm-pill">Draft</span><% } %>
+              </td>
+              <td class="adm-num"><%= p.published_at ? new Date(p.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—' %></td>
+              <td><%= p.author_name || '—' %></td>
+              <td class="adm-row-actions">
+                <a class="ax-btn" href="/admin/blog/<%= p.id %>">Edit</a>
+                <a class="ax-btn ax-btn-quiet" href="/blog/<%= p.slug %><%= p.live ? '' : '?preview=1' %>" target="_blank" rel="noopener"><%= p.live ? 'View' : 'Preview' %></a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="adm-empty">
+      <p>No posts yet. Write the first one — guides, product news, creator stories.</p>
+      <a class="ax-btn ax-btn-primary" href="/admin/blog/new">Write a post</a>
+    </div>
+  <% } %>
+</section>
+
+<%- include('partials/admin-bottom') %>

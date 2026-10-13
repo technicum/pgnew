@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title><%= title %></title>
-<meta name="description" content="Find sessions, courses, events and products from creators, coaches, doctors and studios on <%= siteName %>." />
+<%- include('partials/seo-meta') %>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -29,6 +28,7 @@ var TAB_ICONS = {
       <a class="mk-brand" href="/"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
       <nav class="mk-nav-links" aria-label="Main">
         <a href="/explore" aria-current="page">Explore</a>
+        <a href="/blog">Blog</a>
         <a href="/about">About</a>
         <% if (currentUser) { %><a class="mk-cta" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Log in</a><a class="mk-cta" href="/signup">Start selling</a><% } %>
       </nav>
@@ -113,7 +113,7 @@ var TAB_ICONS = {
 
   <footer class="mk-footer">
     <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/about">About</a><a href="/signup">Sell on <%= siteName %></a></nav>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/signup">Sell on <%= siteName %></a></nav>
   </footer>
 </body>
 </html>

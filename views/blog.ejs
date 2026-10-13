@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<%- include('partials/seo-meta') %>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/blog.css?v=<%= assetVersion %>" />
+</head>
+<%# The blog (server.js GET /blog, lib/blog.js): live posts, newest first. Header and footer from the marketplace (explore.css). %>
+<body class="mk-page">
+  <%- include('partials/mk-nav', { active: 'blog' }) %>
+
+  <section class="mk-hero bl-hero">
+    <div class="mk-hero-glow" aria-hidden="true"></div>
+    <div class="mk-hero-in">
+      <span class="mk-pill">✦ The <%= siteName %> blog</span>
+      <h1>Ideas for <em>selling what you know.</em></h1>
+      <p>Guides, product news and stories from creators running their business on <%= siteName %>.</p>
+    </div>
+  </section>
+
+  <main class="bl-main">
+    <% if (!posts.length) { %>
+      <p class="bl-empty">No posts yet — check back soon.</p>
+    <% } else { %>
+      <% var lead = page === 1 ? posts[0] : null; var rest = lead ? posts.slice(1) : posts; %>
+      <% if (lead) { %>
+        <a class="bl-lead" href="/blog/<%= lead.slug %>">
+          <span class="bl-lead-img"<% if (lead.cover_url) { %> style="background-image:url('<%= lead.cover_url %>')"<% } %>></span>
+          <span class="bl-lead-body">
+            <span class="bl-meta"><%= new Date(lead.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) %> · <%= lead.minutes %> min read</span>
+            <span class="bl-lead-title"><%= lead.title %></span>
+            <% if (lead.excerpt) { %><span class="bl-excerpt"><%= lead.excerpt %></span><% } %>
+            <span class="bl-read">Read the post →</span>
+          </span>
+        </a>
+      <% } %>
+      <% if (rest.length) { %>
+        <div class="bl-grid">
+          <% rest.forEach(function (p) { %>
+            <a class="bl-card" href="/blog/<%= p.slug %>">
+              <span class="bl-card-img"<% if (p.cover_url) { %> style="background-image:url('<%= p.cover_url %>')"<% } %>></span>
+              <span class="bl-card-body">
+                <span class="bl-meta"><%= new Date(p.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %> · <%= p.minutes %> min</span>
+                <span class="bl-card-title"><%= p.title %></span>
+                <% if (p.excerpt) { %><span class="bl-excerpt"><%= p.excerpt %></span><% } %>
+              </span>
+            </a>
+          <% }) %>
+        </div>
+      <% } %>
+      <% if (pages > 1) { %>
+        <nav class="bl-pager" aria-label="Pages">
+          <% if (page > 1) { %><a href="/blog<%= page > 2 ? '?page=' + (page - 1) : '' %>">← Newer</a><% } %>
+          <span>Page <%= page %> of <%= pages %></span>
+          <% if (page < pages) { %><a href="/blog?page=<%= page + 1 %>">Older →</a><% } %>
+        </nav>
+      <% } %>
+    <% } %>
+  </main>
+
+  <footer class="mk-footer">
+    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a></nav>
+  </footer>
+</body>
+</html>

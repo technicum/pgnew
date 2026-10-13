@@ -1,0 +1,59 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → SEO (lib/seo.js): title, description and share image for the platform's own public
+    pages. Blank fields fall back to the built-in text (shown as the placeholder). Blog posts have their own
+    SEO in the post editor; creators' stores have theirs in their builder. %>
+
+<header class="adm-head">
+  <div>
+    <h1>SEO</h1>
+    <p>How <%= siteName %>’s own pages appear on Google and in link previews. Leave a field blank to use the text shown in grey. Each blog post has its own SEO in the post editor, and creators set their store’s SEO in their builder.</p>
+  </div>
+</header>
+
+<form method="POST" action="/admin/seo">
+  <% Object.keys(pages).forEach(function (key) { var pg = pages[key]; var s = saved[key]; var d = defaults[key]; %>
+    <section class="ax-panel">
+      <div class="ax-panel-head"><h2><%= pg.label %></h2><a class="ax-count" href="<%= pg.path %>" target="_blank" rel="noopener"><%= siteDomain %><%= pg.path === '/' ? '' : pg.path %> ↗</a></div>
+      <div class="adm-seo-row">
+        <div class="adm-form ax-pad">
+          <label class="ax-field"><span>Title <small data-count-for="<%= key %>_title"></small></span>
+            <input class="ax-input" name="<%= key %>_title" value="<%= s.title %>" maxlength="<%= limits.title %>" placeholder="<%= d.title %>" data-count data-page="<%= key %>" data-default="<%= d.title %>" /></label>
+          <label class="ax-field"><span>Description <small data-count-for="<%= key %>_description"></small></span>
+            <textarea class="ax-input" name="<%= key %>_description" rows="2" maxlength="<%= limits.description %>" placeholder="<%= d.description %>" data-count data-page="<%= key %>" data-default="<%= d.description %>"><%= s.description %></textarea></label>
+          <%- include('partials/ax-image-field', { name: key + '_image', label: 'Share image', value: s.image, hint: 'For link previews — 1200 × 630.' }) %>
+        </div>
+        <div class="adm-serp" data-serp="<%= key %>" aria-label="Google preview">
+          <span class="adm-serp-url"><%= siteDomain %><%= pg.path === '/' ? '' : ' › ' + pg.path.slice(1) %></span>
+          <span class="adm-serp-title"></span>
+          <span class="adm-serp-desc"></span>
+        </div>
+      </div>
+    </section>
+  <% }) %>
+  <section class="ax-panel ax-savebar">
+    <span class="ax-sub">Search engines also get <a href="/sitemap.xml" target="_blank" rel="noopener">sitemap.xml</a> and <a href="/robots.txt" target="_blank" rel="noopener">robots.txt</a>, kept up to date automatically.</span>
+    <button class="ax-btn ax-btn-primary">Save</button>
+  </section>
+</form>
+
+<script>
+  (function () {
+    function paint() {
+      document.querySelectorAll('[data-count]').forEach(function (el) {
+        var c = document.querySelector('[data-count-for="' + el.name + '"]');
+        if (c) c.textContent = el.value.length + '/' + el.maxLength;
+      });
+      document.querySelectorAll('[data-serp]').forEach(function (box) {
+        var key = box.getAttribute('data-serp');
+        var t = document.querySelector('[name="' + key + '_title"]');
+        var d = document.querySelector('[name="' + key + '_description"]');
+        box.querySelector('.adm-serp-title').textContent = t.value || t.getAttribute('data-default');
+        box.querySelector('.adm-serp-desc').textContent = d.value || d.getAttribute('data-default');
+      });
+    }
+    document.addEventListener('input', paint);
+    paint();
+  })();
+</script>
+
+<%- include('partials/admin-bottom') %>

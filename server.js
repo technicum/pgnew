@@ -71,6 +71,9 @@ const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials
 const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
 const { userMedia, deleteUserMedia } = require('./lib/adminMedia');
 const { installAdmin } = require('./lib/adminRoutes');
+const { metaFor } = require('./lib/seo');
+const blog = require('./lib/blog');
+const appIdeas = require('./lib/appIdeas');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
@@ -188,6 +191,7 @@ app.get('/', async (req, res, next) => {
     res.render('index', {
       title: `${SITE_NAME} — The Creator Business Toolkit`,
       featured,
+      seo: await metaFor('home', { siteName: SITE_NAME, origin: originOf(req) }),
     });
   } catch (err) {
     next(err);
@@ -195,8 +199,12 @@ app.get('/', async (req, res, next) => {
 });
 
 // About: what PageZaper is, who builds it, how to get in touch (views/about.ejs).
-app.get('/about', (req, res) => {
-  res.render('about', { title: `About — ${SITE_NAME}` });
+app.get('/about', async (req, res, next) => {
+  try {
+    res.render('about', { title: `About — ${SITE_NAME}`, seo: await metaFor('about', { siteName: SITE_NAME, origin: originOf(req) }) });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // The marketplace (lib/marketplace.js): everything creators chose to list.
@@ -211,13 +219,86 @@ app.get('/explore', async (req, res, next) => {
     const sections = !q && !type
       ? Object.keys(MARKET_TYPES).map((t) => ({ type: t, label: MARKET_TYPES[t], items: all.filter((i) => i.type === t).slice(0, 8), count: counts[t] })).filter((s) => s.items.length)
       : null;
+    const seo = await metaFor('explore', { siteName: SITE_NAME, origin: originOf(req) });
+    // A search page is its own thing; the canonical stays the main Explore page.
+    if (q) seo.title = `${q} — Explore — ${SITE_NAME}`;
     res.render('explore', {
+      seo,
       title: `${q ? `${q} — ` : ''}Explore — ${SITE_NAME}`,
       q, type, types: MARKET_TYPES, counts, total: all.length, items, sections,
     });
   } catch (err) {
     next(err);
   }
+});
+
+// This request's site address (https://pagezaper.com) — for canonical
+// links, link-preview images and the sitemap.
+function originOf(req) {
+  return `${req.protocol}://${req.get('host')}`;
+}
+
+// The blog (lib/blog.js; written in Platform admin → Blog).
+app.get('/blog', async (req, res, next) => {
+  try {
+    const result = await blog.listPublished({ page: req.query.page });
+    const seo = await metaFor('blog', { siteName: SITE_NAME, origin: originOf(req) });
+    if (result.page > 1) seo.url += `?page=${result.page}`;
+    res.render('blog', { title: seo.title, seo, ...result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/blog/:slug', async (req, res, next) => {
+  try {
+    // Admins can open drafts and scheduled posts (?preview=1, from the editor).
+    const preview = req.query.preview === '1' && isAdmin(req.session.user);
+    const post = await blog.getPostBySlug(req.params.slug, { includeDrafts: preview });
+    if (!post) return res.status(404).render('error', { title: `Not found — ${SITE_NAME}`, heading: 'Post not found', message: 'That post doesn’t exist, or isn’t published yet.' });
+    const origin = originOf(req);
+    const image = post.share_image || post.cover_url;
+    const seo = {
+      title: post.seo_title || `${post.title} — ${SITE_NAME}`,
+      description: post.seo_description || post.excerpt,
+      image: image && image.startsWith('/') ? origin + image : image,
+      url: `${origin}/blog/${post.slug}`,
+      type: 'article',
+    };
+    const more = (await blog.listPublished()).posts.filter((p) => p.id !== post.id).slice(0, 3);
+    res.render('blog-post', { title: seo.title, seo, post, more, preview: !post.live });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// For search engines: the platform's public pages and every live blog post.
+// Creators' stores live on their own subdomains, which aren't listed here.
+app.get('/sitemap.xml', async (req, res, next) => {
+  try {
+    const origin = originOf(req);
+    const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const urls = ['/', '/explore', '/about', '/blog'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
+    (await blog.sitemapPosts()).forEach((p) => {
+      urls.push(`<url><loc>${esc(`${origin}/blog/${p.slug}`)}</loc><lastmod>${new Date(p.updated_at).toISOString().slice(0, 10)}</lastmod></url>`);
+    });
+    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send([
+    'User-agent: *',
+    'Disallow: /dashboard',
+    'Disallow: /admin',
+    'Disallow: /login',
+    'Disallow: /signup',
+    '',
+    `Sitemap: ${originOf(req)}/sitemap.xml`,
+    '',
+  ].join('\n'));
 });
 
 // Platform admin panel (lib/adminRoutes.js). ADMIN_EMAILS only.
@@ -328,15 +409,35 @@ app.get('/dashboard', requireAuth, (req, res) => {
 // merchant's blocks or profile even by guessing an id.
 
 // Explore apps: the Store (always on) and the apps a creator can add.
-app.get('/dashboard/apps', requireAuth, (req, res) => {
-  res.render('apps', {
+app.get('/dashboard/apps', requireAuth, async (req, res, next) => {
+  try {
+    res.render('apps', {
     title: `Explore apps — ${SITE_NAME}`,
     user: req.session.user,
     apps: APPS,
     installed: res.locals.installedApps || [],
     // Arriving from an app's page before adding it: that app is highlighted.
     highlight: APP_BY_ID.has(req.query.add) ? req.query.add : null,
-  });
+    ideas: await appIdeas.listMyIdeas(req.session.user.id),
+    ideaCategories: appIdeas.CATEGORIES,
+    ideaSent: req.query.idea === 'sent',
+    ideaError: req.query.idea_error ? String(req.query.idea_error).slice(0, 200) : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// "Suggest an app" on Explore apps (lib/appIdeas.js) — admins see them in
+// Platform admin → App ideas.
+app.post('/dashboard/app-ideas', requireAuth, async (req, res, next) => {
+  try {
+    await appIdeas.submitIdea(req.session.user.id, req.body || {});
+    res.redirect(303, '/dashboard/apps?idea=sent#ideas');
+  } catch (err) {
+    if (err.code === 'INVALID_INPUT') return res.redirect(303, `/dashboard/apps?idea_error=${encodeURIComponent(err.message)}#ideas`);
+    next(err);
+  }
 });
 
 // Turn an app on or off — the switch on its Explore apps card. The page's

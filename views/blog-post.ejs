@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<%- include('partials/seo-meta') %>
+<% if (preview) { %><meta name="robots" content="noindex" /><% } %>
+<% if (post.published_at) { %><meta property="article:published_time" content="<%= new Date(post.published_at).toISOString() %>" /><% } %>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/blog.css?v=<%= assetVersion %>" />
+<script type="application/ld+json"><%- JSON.stringify({
+  '@context': 'https://schema.org', '@type': 'BlogPosting',
+  headline: post.title, description: seo.description || undefined, image: seo.image || undefined,
+  datePublished: post.published_at ? new Date(post.published_at).toISOString() : undefined,
+  dateModified: new Date(post.updated_at).toISOString(),
+  author: post.author_name ? { '@type': 'Person', name: post.author_name } : undefined,
+  publisher: { '@type': 'Organization', name: siteName },
+  mainEntityOfPage: seo.url || undefined,
+}).replace(/</g, '\\u003c') %></script>
+</head>
+<%# One blog post (server.js GET /blog/:slug, lib/blog.js). Body is lib/richText.js output (already safe HTML). %>
+<body class="mk-page">
+  <%- include('partials/mk-nav', { active: 'blog' }) %>
+
+  <% if (preview) { %><div class="bl-preview" role="status">Preview — this post isn’t live yet. Only admins can see it. <a href="/admin/blog/<%= post.id %>">Back to the editor</a></div><% } %>
+
+  <article class="bl-article">
+    <header class="bl-article-head">
+      <a class="bl-back" href="/blog">← All posts</a>
+      <h1><%= post.title %></h1>
+      <% if (post.excerpt) { %><p class="bl-standfirst"><%= post.excerpt %></p><% } %>
+      <p class="bl-meta"><% if (post.author_name) { %><b><%= post.author_name %></b> · <% } %><%= post.published_at ? new Date(post.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Not published yet' %> · <%= post.minutes %> min read</p>
+    </header>
+    <% if (post.cover_url) { %><img class="bl-cover" src="<%= post.cover_url %>" alt="" /><% } %>
+    <div class="bl-body"><%- post.html %></div>
+  </article>
+
+  <% if (more.length) { %>
+    <section class="bl-more">
+      <h2>More from the blog</h2>
+      <div class="bl-grid">
+        <% more.forEach(function (p) { %>
+          <a class="bl-card" href="/blog/<%= p.slug %>">
+            <span class="bl-card-img"<% if (p.cover_url) { %> style="background-image:url('<%= p.cover_url %>')"<% } %>></span>
+            <span class="bl-card-body">
+              <span class="bl-meta"><%= new Date(p.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %> · <%= p.minutes %> min</span>
+              <span class="bl-card-title"><%= p.title %></span>
+            </span>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <section class="bl-cta">
+    <h2>Sell what you know, <em>on one link.</em></h2>
+    <a class="mk-btn mk-btn-lime" href="<%= currentUser ? '/dashboard' : '/signup' %>"><%= currentUser ? 'Go to your dashboard →' : 'Start for free →' %></a>
+  </section>
+
+  <footer class="mk-footer">
+    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a></nav>
+  </footer>
+</body>
+</html>

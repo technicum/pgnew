@@ -3,12 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= title %></title>
-  <meta name="description" content="Grow your audience, sell digital products, automate conversations, and run your creator business from one beautiful page.">
-  <meta property="og:title" content="<%= siteName %> — The Creator Business Toolkit">
-  <meta property="og:description" content="One page to grow your audience and turn followers into customers.">
-  <meta property="og:type" content="website">
-  <meta name="twitter:card" content="summary_large_image">
+  <%- include('partials/seo-meta') %>
   <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxMjYxZWYiLz4KICA8cGF0aCBkPSJNMzYgOCAxNCAzNWgxNWwtMiAyMSAyMy0zMEgzNWwxLTE4WiIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4=" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,10 +26,10 @@
   <div class="announcement">✦ Launch your creator business in minutes <% if (signedIn) { %><a href="/dashboard">Go to dashboard →</a><% } else { %><a href="/signup">Start free →</a><% } %></div>
   <header class="nav">
     <a class="brand" href="#top"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
-    <nav class="navlinks" aria-label="Main navigation"><a href="/explore">Explore</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
+    <nav class="navlinks" aria-label="Main navigation"><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
     <div class="actions"><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard →</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free →</a><% } %></div>
     <button class="menu" type="button" aria-label="Toggle menu" aria-expanded="false">☰</button>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="/explore">Explore</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free</a><% } %></nav>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free</a><% } %></nav>
   </header>
 
   <main>
