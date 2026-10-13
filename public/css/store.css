@@ -374,20 +374,23 @@ body.theme-dark .store { box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .7), 0 0 0 
 body.buttons-square .store { border-radius: 6px; }
 
 /* Edge to edge across the top of the card. */
-.store > .store-announce { margin: -44px calc(-1 * var(--card-pad)) 28px; }
 .store.has-cover { padding-top: 0; }
-.store.has-cover > .store-announce { margin: 0 calc(-1 * var(--card-pad)); }
 .store.has-cover .store-cover { margin: 0 calc(-1 * var(--card-pad)); height: 200px; border-radius: 0; }
 .store.has-cover .store-avatar { margin-top: -52px; width: 104px; height: 104px; }
 
 .store-profile-share { top: 16px; right: 16px; }
 .store.has-cover .store-profile-share { top: 16px; right: 16px; background: rgba(255, 255, 255, .92); border-color: transparent; color: #12181f; }
-.store.has-announce .store-profile-share { top: 54px; }
 
 @media (max-width: 640px) {
   body { --card-pad: 16px; background: var(--bg); }
   .store-backdrop { display: none; }
   .store { margin: 0; min-height: 100vh; padding-top: 36px; border-radius: 0; box-shadow: none; }
-  .store > .store-announce { margin-top: -36px; }
   .store.has-cover .store-cover { height: 168px; }
+}
+
+/* Announcement bar: full width across the top of the page, above the card. */
+.store-announce { position: relative; z-index: 1; }
+.store-announce + .store { margin-top: 28px; }
+@media (max-width: 640px) {
+  .store-announce + .store { margin-top: 0; }
 }
