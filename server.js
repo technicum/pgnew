@@ -400,12 +400,13 @@ app.patch('/dashboard/builder/blocks/:id', requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid block id.' });
-    const { title, sub, price, visible } = req.body || {};
+    const { title, sub, price, visible, items } = req.body || {};
     const fields = {};
     if (title !== undefined) fields.title = title;
     if (sub !== undefined) fields.sub = sub;
     if (price !== undefined) fields.price = price;
     if (visible !== undefined) fields.visible = visible;
+    if (Array.isArray(items)) fields.items = items;
     await updateBlock(req.session.user.id, id, fields);
     res.json({ ok: true });
   } catch (err) {

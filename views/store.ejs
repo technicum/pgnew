@@ -82,10 +82,46 @@
           <% if (block.sub) { %><p><%= block.sub %></p><% } %>
         </section>
       <% } else if (block.type === 'testimonial') { %>
-        <figure class="store-quote">
-          <blockquote><%= block.title %></blockquote>
-          <% if (block.sub) { %><figcaption><%= block.sub %></figcaption><% } %>
-        </figure>
+        <%# Testimonials: a slider of the block's entries (lib/blocks.js items) — swipe, arrows or dots; the script below wires it. %>
+        <% if (block.items.length) { %>
+          <% var many = block.items.length > 1; %>
+          <section class="store-reviews" data-slider aria-roledescription="carousel" aria-label="<%= block.title || 'Testimonials' %>">
+            <% if (block.title) { %><h2 class="store-reviews-title"><%= block.title %></h2><% } %>
+            <div class="store-reviews-track" data-slider-track<% if (many) { %> tabindex="0"<% } %>>
+              <% block.items.forEach(function (item, i) { %>
+                <% var initials = (item.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join(''); %>
+                <figure class="store-review" aria-roledescription="slide" aria-label="<%= i + 1 %> of <%= block.items.length %>">
+                  <svg class="store-review-mark" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M10 7H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2H5v2h1a4 4 0 0 0 4-4V7zm10 0h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2h-1v2h1a4 4 0 0 0 4-4V7z" fill="currentColor"/></svg>
+                  <blockquote><%= item.quote %></blockquote>
+                  <% if (item.name || item.detail) { %>
+                    <figcaption>
+                      <% if (initials) { %><span class="store-review-avatar" aria-hidden="true"><%= initials %></span><% } %>
+                      <span>
+                        <% if (item.name) { %><strong><%= item.name %></strong><% } %>
+                        <% if (item.detail) { %><small><%= item.detail %></small><% } %>
+                      </span>
+                    </figcaption>
+                  <% } %>
+                </figure>
+              <% }) %>
+            </div>
+            <% if (many) { %>
+              <div class="store-reviews-nav">
+                <button type="button" class="store-reviews-arrow" data-slider-prev aria-label="Previous testimonial">
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="store-reviews-dots">
+                  <% block.items.forEach(function (item, i) { %>
+                    <button type="button" data-slider-dot="<%= i %>" aria-label="Show testimonial <%= i + 1 %>"<% if (i === 0) { %> aria-current="true"<% } %>></button>
+                  <% }) %>
+                </div>
+                <button type="button" class="store-reviews-arrow" data-slider-next aria-label="Next testimonial">
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+            <% } %>
+          </section>
+        <% } %>
       <% } else if (block.type === 'newsletter') { %>
         <%# Opens this block's signup popup (below the list). Its link, /#subscribe-<id>, opens it from anywhere. %>
         <a class="store-block store-block-link store-nl-trigger" href="#subscribe-<%= block.id %>" aria-haspopup="dialog">
@@ -217,6 +253,60 @@
   });
   var initial = popupFor(location.hash) || document.querySelector('.store-popup.is-open');
   if (initial) { initial.classList.remove('is-open'); open(initial, false); }
+})();
+</script>
+<script>
+// Testimonial sliders: the track scrolls (and snaps) on its own — swipe
+// works with no script — this adds arrows, dots, and a slow auto-advance
+// that stops for good once the visitor touches the slider, and never runs
+// for people who asked for reduced motion.
+(function () {
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('[data-slider]').forEach(function (slider) {
+    var track = slider.querySelector('[data-slider-track]');
+    var dots = slider.querySelectorAll('[data-slider-dot]');
+    var count = track.children.length;
+    if (count < 2) return;
+    function current() { return Math.round(track.scrollLeft / track.clientWidth); }
+    function go(i) {
+      var n = (i + count) % count;
+      track.scrollTo({ left: n * track.clientWidth, behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
+    function paint() {
+      var i = current();
+      dots.forEach(function (dot, d) {
+        if (d === i) dot.setAttribute('aria-current', 'true'); else dot.removeAttribute('aria-current');
+      });
+    }
+    var timer = null;
+    function stop() { clearInterval(timer); timer = null; }
+    slider.querySelector('[data-slider-prev]').addEventListener('click', function () { stop(); go(current() - 1); });
+    slider.querySelector('[data-slider-next]').addEventListener('click', function () { stop(); go(current() + 1); });
+    dots.forEach(function (dot) {
+      dot.addEventListener('click', function () { stop(); go(Number(dot.getAttribute('data-slider-dot'))); });
+    });
+    track.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(current() - 1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); stop(); go(current() + 1); }
+    });
+    var settle = null;
+    track.addEventListener('scroll', function () { clearTimeout(settle); settle = setTimeout(paint, 60); }, { passive: true });
+    ['pointerdown', 'touchstart', 'wheel', 'focusin'].forEach(function (type) {
+      slider.addEventListener(type, stop, { passive: true });
+    });
+    if (!reduceMotion) {
+      // Paused while the pointer rests on it (to read), and only runs
+      // while it's on screen with the tab visible.
+      var hovering = false;
+      slider.addEventListener('mouseenter', function () { hovering = true; });
+      slider.addEventListener('mouseleave', function () { hovering = false; });
+      timer = setInterval(function () {
+        var box = slider.getBoundingClientRect();
+        if (hovering || document.hidden || box.bottom < 0 || box.top > window.innerHeight) return;
+        go(current() + 1);
+      }, 6000);
+    }
+  });
 })();
 </script>
 </body>

@@ -62,12 +62,50 @@ body {
 .store-text h2 { font-family: var(--font-display); font-weight: 600; font-size: 19px; }
 .store-text p { color: var(--muted); font-size: 14px; margin-top: 4px; white-space: pre-line; }
 
-.store-quote {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  border-left: 3px solid var(--store-accent, #ff6b4a); padding: 16px 18px;
+/* Testimonials slider: one card per slide, scroll-snapped so swiping
+   works without the script; arrows and dots come from the page script. */
+.store-reviews { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.store-reviews-title { font-family: var(--font-display); font-weight: 600; font-size: 19px; padding: 4px 4px 0; }
+.store-reviews-track {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+  scrollbar-width: none; border-radius: var(--radius); outline: none;
 }
-.store-quote blockquote { font-size: 15px; font-style: italic; }
-.store-quote figcaption { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.store-reviews-track::-webkit-scrollbar { display: none; }
+.store-reviews-track:focus-visible { box-shadow: 0 0 0 2px var(--store-accent, #ff6b4a); }
+.store-review {
+  flex: 0 0 100%; scroll-snap-align: start; display: flex; flex-direction: column; gap: 12px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 20px 18px;
+}
+.store-review-mark { color: var(--store-accent, #ff6b4a); opacity: .9; }
+.store-review blockquote { font-size: 15.5px; line-height: 1.55; white-space: pre-line; overflow-wrap: anywhere; }
+.store-review figcaption { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.store-review figcaption span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.store-review figcaption strong { font-size: 14px; font-weight: 600; }
+.store-review figcaption small { font-size: 12.5px; color: var(--muted); }
+.store-review-avatar {
+  flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 13px; font-weight: 600; color: var(--store-accent, #ff6b4a);
+  background: color-mix(in oklab, var(--store-accent, #ff6b4a) 14%, transparent);
+}
+.store-reviews-nav { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.store-reviews-arrow {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  border: 1px solid var(--border); background: var(--card); color: var(--fg);
+}
+.store-reviews-arrow:hover { border-color: var(--store-accent, #ff6b4a); color: var(--store-accent, #ff6b4a); }
+.store-reviews-arrow:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 2px; }
+.store-reviews-dots { display: flex; gap: 6px; }
+.store-reviews-dots button {
+  width: 8px; height: 8px; padding: 0; border: none; border-radius: 999px; cursor: pointer;
+  background: var(--border); transition: width .2s ease, background-color .2s ease;
+}
+.store-reviews-dots button[aria-current="true"] { width: 20px; background: var(--store-accent, #ff6b4a); }
+.store-reviews-dots button:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .store-reviews-track { scroll-behavior: auto; }
+  .store-reviews-dots button { transition: none; }
+}
 
 .store-badge { margin-top: auto; padding-top: 40px; text-align: center; font-size: 12px; }
 .store-badge a { color: var(--muted); text-decoration: none; }
