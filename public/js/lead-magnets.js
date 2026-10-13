@@ -826,12 +826,13 @@
       button.classList.add('is-busy');
       label.textContent = 'Uploading…';
       try {
-        const { url } = await api('/dashboard/uploads', {
+        const data = await api('/dashboard/uploads', {
           method: 'POST',
           headers: { 'Content-Type': file.type },
           body: file,
         });
-        urlInput.value = url;
+        if (data.reused && window.mediaLibrary) window.mediaLibrary.toast('That file was already in your library — used the existing copy.');
+        urlInput.value = data.url;
         syncCoverPreview();
       } catch (err) {
         fail(err.message || 'Could not upload that file. Please try again.');
@@ -839,6 +840,12 @@
         button.classList.remove('is-busy');
         label.textContent = idleLabel;
       }
+    });
+    // Picked from the media library (public/js/media-library.js): same as an upload.
+    fileInput.addEventListener('media:pick', (e) => {
+      coverError.classList.remove('show');
+      urlInput.value = e.detail.url;
+      syncCoverPreview();
     });
   }
   wireCoverUpload(document.getElementById('magnetCoverImageFile'), coverImageInput, 'image');

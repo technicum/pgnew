@@ -1,0 +1,76 @@
+/* The creator's media library popup (public/js/media-library.js), and the
+   "Library" button it adds beside upload buttons. Uses the dashboard's tokens
+   (dashboard.css), with fallbacks so it works on any dashboard page. */
+html.ml-open { overflow: hidden; }
+
+.ml-open-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--border, #dce2ec); border-radius: calc(var(--radius, 10px) - 4px);
+  background: var(--card, #fff); color: var(--foreground, #111827); cursor: pointer;
+  font-family: var(--font-sans, inherit); font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.ml-open-btn:hover { background: var(--muted, #f1f3f6); }
+.ml-open-btn:focus-visible { outline: 2px solid var(--ring, #1261ef); outline-offset: 1px; }
+/* Beside a translucent chip (the store builder's cover), match it. */
+.ml-open-btn.pz-chip-btn { height: 30px; background: rgba(18, 24, 31, .6); color: #fff; border-color: rgba(255, 255, 255, .35); backdrop-filter: blur(4px); }
+.ml-open-btn.pz-chip-btn.is-solid { background: var(--card, #fff); color: var(--foreground, #111827); border-color: var(--border, #dce2ec); backdrop-filter: none; }
+.ml-open-btn.ax-btn { height: 32px; }
+
+.ml-backdrop {
+  position: fixed; inset: 0; z-index: 1000; background: rgba(18, 24, 31, .5);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.ml-backdrop[hidden] { display: none; }
+.ml-dialog {
+  width: 100%; max-width: 760px; max-height: 86vh; display: flex; flex-direction: column;
+  background: var(--card, #fff); color: var(--foreground, #111827); border-radius: var(--radius, 12px);
+  box-shadow: 0 24px 60px rgba(18, 24, 31, .3); overflow: hidden; font-family: var(--font-sans, inherit);
+  animation: ml-in .18s ease-out both;
+}
+@keyframes ml-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .ml-dialog { animation: none; } }
+.ml-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border, #dce2ec); }
+.ml-head > div { flex: 1; min-width: 0; }
+.ml-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.ml-sub { margin: 2px 0 0; font-size: 12.5px; color: var(--muted-foreground, #667085); }
+.ml-upload {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; cursor: pointer;
+  border-radius: calc(var(--radius, 10px) - 4px); background: var(--primary, #1261ef); color: var(--primary-foreground, #fff);
+  font-size: 13px; font-weight: 600;
+}
+.ml-upload { border: none; font-family: inherit; }
+.ml-upload:focus-visible { outline: 2px solid var(--ring, #1261ef); outline-offset: 2px; }
+.ml-close {
+  width: 34px; height: 34px; border-radius: 50%; border: none; background: none; cursor: pointer;
+  display: grid; place-items: center; color: var(--muted-foreground, #667085);
+}
+.ml-close:hover { background: var(--muted, #f1f3f6); color: var(--foreground, #111827); }
+.ml-note { margin: 0; padding: 9px 18px; font-size: 13px; background: var(--secondary, #e8f3ff); color: var(--secondary-foreground, #07134f); }
+.ml-note.is-error { background: color-mix(in oklab, var(--destructive, #d92d20) 10%, transparent); color: var(--destructive, #d92d20); }
+.ml-note[hidden] { display: none; }
+.ml-body { overflow-y: auto; padding: 16px 18px 18px; }
+.ml-empty { margin: 0; padding: 40px 12px; text-align: center; font-size: 13.5px; color: var(--muted-foreground, #667085); }
+
+.ml-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.ml-tile { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ml-pick {
+  position: relative; aspect-ratio: 4 / 3; padding: 0; border: 1px solid var(--border, #dce2ec);
+  border-radius: calc(var(--radius, 10px) - 2px); overflow: hidden; cursor: pointer; background: var(--muted, #f1f3f6);
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.ml-pick img, .ml-pick video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ml-pick:hover, .ml-pick:focus-visible { border-color: var(--primary, #1261ef); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary, #1261ef) 22%, transparent); outline: none; }
+.ml-play {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; padding-left: 2px; background: rgba(0, 0, 0, .6); color: #fff;
+}
+.ml-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11.5px; color: var(--muted-foreground, #667085); }
+.ml-used { font-weight: 700; color: #0e8a5f; }
+.ml-del { border: none; background: none; padding: 0; cursor: pointer; font: inherit; font-weight: 600; color: var(--muted-foreground, #667085); }
+.ml-del:hover, .ml-del.is-armed { color: var(--destructive, #d92d20); }
+
+.ml-toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 1001;
+  padding: 10px 16px; border-radius: 999px; background: #12181f; color: #fff; font-size: 13px; font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25); font-family: var(--font-sans, inherit);
+}

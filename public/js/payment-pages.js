@@ -222,7 +222,7 @@
         ${p.mediaType ? `
         <div class="pb-media-row">
           <label class="pz-card-btn pz-upload-btn">
-            <input type="file" data-media-file accept="${video ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp,image/gif'}" hidden />
+            <input type="file" data-media-file data-library="${video ? 'video' : 'image'}" accept="${video ? 'video/mp4,video/webm' : 'image/jpeg,image/png,image/webp,image/gif'}" hidden />
             ${UPLOAD_ICON}<span>Upload ${video ? 'video' : 'image'}</span>
           </label>
           <input type="text" class="pz-field-input" data-field="mediaUrl" maxlength="500" placeholder="${video ? '…or paste a YouTube / Vimeo / .mp4 link' : '…or paste an image link (https://…)'}" value="${escapeHTML(p.mediaUrl)}" />
@@ -581,15 +581,22 @@
       button.classList.add('is-busy');
       label.textContent = 'Uploading…';
       try {
-        const { url } = await api('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
-        urlInput.value = url;
-        onDone(url);
+        const data = await api('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
+        if (data.reused && window.mediaLibrary) window.mediaLibrary.toast('That file was already in your library — used the existing copy.');
+        urlInput.value = data.url;
+        onDone(data.url);
       } catch (err) {
         fail(err.message || 'Could not upload that file. Please try again.');
       } finally {
         button.classList.remove('is-busy');
         label.textContent = idle;
       }
+    });
+    // Picked from the media library (public/js/media-library.js): same as an upload.
+    fileInput.addEventListener('media:pick', (e) => {
+      errorEl.classList.remove('show');
+      urlInput.value = e.detail.url;
+      onDone(e.detail.url);
     });
   }
   wireUpload($('ppCoverImageFile'), coverImageInput, 'image', coverError, syncCover);

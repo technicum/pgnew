@@ -68,7 +68,7 @@ const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials');
 const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
-const { mediaReport, deleteMedia } = require('./lib/adminMedia');
+const { mediaReport, deleteMedia, userMedia, deleteUserMedia } = require('./lib/adminMedia');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
@@ -690,12 +690,36 @@ app.post('/dashboard/uploads', requireAuth, (req, res, next) => {
 }, async (req, res) => {
   try {
     const mime = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
-    const url = await saveUpload(req.session.user.id, mime, req.body);
-    res.status(201).json({ url });
+    // reused: this exact file was already in their library (lib/uploads.js).
+    const { url, reused } = await saveUpload(req.session.user.id, mime, req.body);
+    res.status(reused ? 200 : 201).json({ url, reused });
   } catch (err) {
     if (err.code === 'INVALID_UPLOAD') return res.status(400).json({ error: err.message });
     console.error('Upload failed:', err);
     res.status(500).json({ error: 'Could not upload that file. Please try again.' });
+  }
+});
+
+// A creator's media library (public/js/media-library.js): their uploads, to
+// reuse instead of uploading the same file again — and deleting ones that
+// nothing uses (lib/adminMedia.js).
+app.get('/dashboard/media', requireAuth, async (req, res) => {
+  try {
+    res.json({ files: await userMedia(req.session.user.id) });
+  } catch (err) {
+    console.error('Media library failed:', err);
+    res.status(500).json({ error: 'Could not load your media. Please try again.' });
+  }
+});
+
+app.post('/dashboard/media/delete', requireAuth, async (req, res) => {
+  try {
+    const result = await deleteUserMedia(req.session.user.id, req.body && req.body.url);
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    console.error('Media delete failed:', err);
+    res.status(500).json({ error: 'Could not delete that file. Please try again.' });
   }
 });
 

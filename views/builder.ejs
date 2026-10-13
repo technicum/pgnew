@@ -145,7 +145,7 @@
                   <div class="pz-cover-actions">
                     <label class="pz-chip-btn">
                       <span data-upload-label><%= settings.cover ? 'Change' : 'Upload cover' %></span>
-                      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload />
+                      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload data-library="image" />
                     </label>
                     <button type="button" class="pz-chip-btn" data-image-remove<%= settings.cover ? '' : ' hidden' %>>Remove</button>
                   </div>
@@ -157,7 +157,7 @@
                     <img src="<%= settings.photo %>" alt="" data-image-preview />
                     <label class="pz-photo-btn" title="Upload a profile photo" aria-label="Upload a profile photo">
                       <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload />
+                      <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload data-library="image" />
                     </label>
                     <button type="button" class="pz-photo-remove" data-image-remove<%= settings.photo ? '' : ' hidden' %>>Remove</button>
                   </div>
@@ -344,7 +344,7 @@
                     <div class="flex items-center gap-2 mt-2">
                       <label class="pz-chip-btn is-solid">
                         <span data-upload-label><%= settings.shareImage ? 'Change' : 'Upload image' %></span>
-                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload />
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-upload data-library="image" />
                       </label>
                       <button type="button" class="pz-chip-btn is-solid" data-image-remove<%= settings.shareImage ? '' : ' hidden' %>>Remove</button>
                     </div>
@@ -437,6 +437,7 @@
 </script>
 <script src="/js/live-preview.js?v=<%= assetVersion %>"></script>
 <script src="/js/studio.js?v=<%= assetVersion %>"></script>
+<script src="/js/media-library.js?v=<%= assetVersion %>"></script>
 <script src="/js/builder.js?v=<%= assetVersion %>"></script>
 </body>
 </html>

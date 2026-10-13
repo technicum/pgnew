@@ -1070,12 +1070,19 @@
       field.classList.add('is-uploading');
       try {
         const data = await api('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
+        if (data.reused && window.mediaLibrary) window.mediaLibrary.toast('That file was already in your library — used the existing copy.');
         settings[key] = data.url;
         paintImageField(field);
         settingChanged();
       } catch (err) { /* status already shown */ } finally {
         field.classList.remove('is-uploading');
       }
+    });
+    // Picked from the media library (public/js/media-library.js): same as an upload.
+    fileInput.addEventListener('media:pick', (e) => {
+      settings[key] = e.detail.url;
+      paintImageField(field);
+      settingChanged();
     });
     const remove = field.querySelector('[data-image-remove]');
     if (remove) {

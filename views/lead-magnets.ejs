@@ -146,7 +146,7 @@
               <div class="pz-cover-media" id="magnetCoverImagePanel" style="display:none;">
                 <div class="pz-cover-upload">
                   <label class="pz-card-btn pz-upload-btn">
-                    <input type="file" id="magnetCoverImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden />
+                    <input type="file" id="magnetCoverImageFile" accept="image/jpeg,image/png,image/webp,image/gif" hidden data-library="image" />
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M5 20h14"/></svg>
                     <span>Upload image</span>
                   </label>
@@ -158,7 +158,7 @@
               <div class="pz-cover-media" id="magnetCoverVideoPanel" style="display:none;">
                 <div class="pz-cover-upload">
                   <label class="pz-card-btn pz-upload-btn">
-                    <input type="file" id="magnetCoverVideoFile" accept="video/mp4,video/webm" hidden />
+                    <input type="file" id="magnetCoverVideoFile" accept="video/mp4,video/webm" hidden data-library="video" />
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m6 10 6-6 6 6"/><path d="M5 20h14"/></svg>
                     <span>Upload video</span>
                   </label>
@@ -260,6 +260,7 @@
 </script>
 <script src="/js/live-preview.js?v=<%= assetVersion %>"></script>
 <script src="/js/studio.js?v=<%= assetVersion %>"></script>
+<script src="/js/media-library.js?v=<%= assetVersion %>"></script>
 <script src="/js/lead-magnets.js?v=<%= assetVersion %>"></script>
 </body>
 </html>
