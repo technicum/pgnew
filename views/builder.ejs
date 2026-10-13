@@ -95,71 +95,90 @@
               <div id="emptyBlocks" class="text-sm text-muted-foreground" style="display:none; text-align:center; padding:32px 18px; border:1px dashed var(--border); border-radius:calc(var(--radius) - 2px); margin-top:10px;">
                 Nothing on your store yet — tap "Add content" to add a course, booking, download, link and more.
               </div>
-
-              <div class="pz-footer-toggle-row">
-                <div>
-                  <strong class="text-sm" style="display:block;">Show "Made with PageZaper" badge</strong>
-                  <span class="text-xs text-muted-foreground">Free plan stores carry a small badge at the bottom</span>
-                </div>
-                <button type="button" class="pz-switch<%= user.show_badge ? ' on' : '' %>" id="badgeToggle" aria-label="Toggle badge"></button>
-              </div>
             </article>
           </div>
 
           <!-- PROFILE TAB -->
           <div class="pz-tabpanel" id="tab-profile">
-            <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-              <h2 class="text-lg font-bold">Profile</h2>
-              <p class="mt-1 text-sm text-muted-foreground">How you're introduced at the top of your store</p>
+            <div class="pz-stack">
+              <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+                <h2 class="text-lg font-bold">Profile</h2>
+                <p class="mt-1 text-sm text-muted-foreground">How you're introduced at the top of your store</p>
 
-              <div class="mt-5" style="display:flex; gap:18px; align-items:flex-start;">
-                <div style="position:relative; flex:none;">
-                  <div class="font-display font-bold" id="avatarInitials" style="width:64px; height:64px; border-radius:50%; font-size:22px; background:var(--accent); color:var(--accent-foreground); display:flex; align-items:center; justify-content:center;"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></div>
-                </div>
-                <div style="flex:1; display:flex; flex-direction:column; gap:12px;">
-                  <div>
-                    <label class="text-xs font-semibold text-muted-foreground" style="display:block; margin-bottom:6px;" for="displayName">Display name</label>
-                    <input type="text" id="displayName" class="pz-field-input" value="<%= user.name %>" />
-                  </div>
-                  <div>
-                    <label class="text-xs font-semibold text-muted-foreground" style="display:block; margin-bottom:6px;" for="handle">Your link</label>
-                    <div style="display:flex; align-items:center; border:1px solid var(--border); border-radius:calc(var(--radius) - 4px); background:var(--background); overflow:hidden;">
-                      <input type="text" id="handle" value="<%= user.handle %>" style="border:none; background:transparent; height:36px; padding:0 0 0 11px; font-size:13.5px; width:100%;" />
-                      <span class="text-sm text-muted-foreground" style="padding:0 11px 0 2px; white-space:nowrap;">.<%= siteDomain %></span>
+                <div class="pz-profile-row mt-5">
+                  <div class="pz-profile-avatar font-display" id="avatarInitials"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></div>
+                  <div class="pz-profile-fields">
+                    <div>
+                      <label class="pz-label" for="displayName">Display name</label>
+                      <input type="text" id="displayName" class="pz-field-input" value="<%= user.name %>" maxlength="120" />
                     </div>
-                    <p class="pz-field-error" id="handleError"></p>
+                    <div>
+                      <label class="pz-label" for="handle">Your link</label>
+                      <div class="pz-input-group">
+                        <input type="text" id="handle" value="<%= user.handle %>" autocomplete="off" spellcheck="false" />
+                        <span class="pz-input-suffix">.<%= siteDomain %></span>
+                      </div>
+                      <p class="pz-field-error" id="handleError"></p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div class="mt-4">
-                <label class="text-xs font-semibold text-muted-foreground" style="display:block; margin-bottom:6px;" for="bio">Bio</label>
-                <textarea id="bio" rows="2" class="pz-field-input" style="height:auto; padding:9px 11px; resize:vertical;"><%= user.bio || '' %></textarea>
-              </div>
-            </article>
+                <div class="mt-4">
+                  <div class="pz-label-row">
+                    <label class="pz-label" for="bio">Bio</label>
+                    <span class="pz-counter" id="bioCount"><%= (user.bio || '').length %>/280</span>
+                  </div>
+                  <textarea id="bio" rows="3" maxlength="280" class="pz-field-input pz-textarea" placeholder="A line or two about who you are and what you offer"><%= user.bio || '' %></textarea>
+                </div>
+              </article>
+
+              <%# Social links: lib/socials.js — saved with the profile, shown as icons under the bio. %>
+              <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
+                <div class="flex items-center justify-between" style="gap:12px;">
+                  <div>
+                    <h2 class="text-lg font-bold">Social links</h2>
+                    <p class="mt-1 text-sm text-muted-foreground">Shown as icons under your bio. Paste a link or just your handle.</p>
+                  </div>
+                  <span class="pz-pill" id="socialCount"></span>
+                </div>
+                <div class="pz-social-list mt-5">
+                  <% socialPlatforms.forEach(function (p) { %>
+                    <label class="pz-social-row" for="social-<%= p.id %>">
+                      <span class="pz-social-icon">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true"><%- p.icon %></svg>
+                      </span>
+                      <span class="pz-social-name"><%= p.label %></span>
+                      <input type="<%= p.kind === 'email' ? 'email' : p.kind === 'phone' ? 'tel' : 'text' %>" class="pz-field-input" id="social-<%= p.id %>" data-social="<%= p.id %>" value="<%= socials[p.id] || '' %>" placeholder="<%= p.placeholder %>" maxlength="200" autocomplete="off" spellcheck="false" />
+                    </label>
+                  <% }) %>
+                </div>
+              </article>
+            </div>
           </div>
 
           <!-- DESIGN TAB -->
           <div class="pz-tabpanel" id="tab-design">
             <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
               <h2 class="text-lg font-bold">Design</h2>
-              <p class="mt-1 text-sm text-muted-foreground">Pick an accent color for your store</p>
-              <div class="pz-swatch-row mt-5" id="swatchRow">
-                <button type="button" class="pz-swatch" data-color="#ff6b4a" data-name="Coral">
-                  <span class="pz-swatch-dot" style="background:#ff6b4a;"></span> Coral
-                </button>
-                <button type="button" class="pz-swatch" data-color="#0f8b6c" data-name="Teal">
-                  <span class="pz-swatch-dot" style="background:#0f8b6c;"></span> Teal
-                </button>
-                <button type="button" class="pz-swatch" data-color="#2451c9" data-name="Ocean">
-                  <span class="pz-swatch-dot" style="background:#2451c9;"></span> Ocean
-                </button>
-                <button type="button" class="pz-swatch" data-color="#8b3fd6" data-name="Plum">
-                  <span class="pz-swatch-dot" style="background:#8b3fd6;"></span> Plum
-                </button>
-                <button type="button" class="pz-swatch" data-color="#12181f" data-name="Ink">
-                  <span class="pz-swatch-dot" style="background:#12181f;"></span> Ink
-                </button>
+              <p class="mt-1 text-sm text-muted-foreground">One accent color for the buttons, icons and highlights on your store</p>
+              <div class="pz-label mt-5">Accent color</div>
+              <div class="pz-swatch-row" id="swatchRow" role="radiogroup" aria-label="Accent color">
+                <% [['#ff6b4a','Coral'],['#0f8b6c','Teal'],['#2451c9','Ocean'],['#8b3fd6','Plum'],['#d6336c','Rose'],['#e08a00','Amber'],['#12181f','Ink']].forEach(function (c) { %>
+                  <button type="button" class="pz-swatch" role="radio" aria-checked="false" data-color="<%= c[0] %>" data-name="<%= c[1] %>">
+                    <span class="pz-swatch-dot" style="background:<%= c[0] %>;">
+                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true"><path d="M5 12.5 10 17l9-10" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                    <%= c[1] %>
+                  </button>
+                <% }) %>
+              </div>
+
+              <div class="pz-footer-toggle-row">
+                <div>
+                  <strong class="text-sm" style="display:block;">Show "Made with PageZaper" badge</strong>
+                  <span class="text-xs text-muted-foreground">Free plan stores carry a small badge at the bottom</span>
+                </div>
+                <button type="button" class="pz-switch<%= user.show_badge ? ' on' : '' %>" id="badgeToggle" role="switch" aria-checked="<%= user.show_badge ? 'true' : 'false' %>" aria-label="Show badge"></button>
               </div>
             </article>
           </div>

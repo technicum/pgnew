@@ -64,6 +64,7 @@ const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
 const { getFees, saveFees, isAdmin, ATTRIBUTION_DAYS } = require('./lib/platform');
 const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
+const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
@@ -371,6 +372,8 @@ app.get('/dashboard/builder', requireAuth, async (req, res, next) => {
       title: `Build your store — ${SITE_NAME}`,
       user,
       blocks,
+      socialPlatforms: SOCIAL_PLATFORMS,
+      socials: normalizeSocials(user.socials),
     });
   } catch (err) {
     next(err);
@@ -446,8 +449,8 @@ app.delete('/dashboard/builder/blocks/:id', requireAuth, async (req, res) => {
 
 app.post('/dashboard/builder/profile', requireAuth, async (req, res) => {
   try {
-    const { name, handle, bio } = req.body || {};
-    const updated = await updateProfile(req.session.user.id, { name, handle, bio });
+    const { name, handle, bio, socials } = req.body || {};
+    const updated = await updateProfile(req.session.user.id, { name, handle, bio, socials });
     req.session.user = toPublicUser(updated);
     res.json({ ok: true, user: { name: updated.name, handle: updated.handle, bio: updated.bio, initials: req.session.user.initials } });
   } catch (err) {

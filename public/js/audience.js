@@ -118,6 +118,7 @@
   // the list's newest-first order, so the most recently active is on top.
   const SOURCES = [
     { source: 'form', kind: 'Lead magnet', fallback: 'Lead magnet signups' },
+    { source: 'newsletter', kind: 'Newsletter', fallback: 'Newsletter subscribers' },
     { source: 'order', kind: 'Order', fallback: 'Orders' },
     { source: 'booking', kind: 'Booking', fallback: 'Bookings' },
     { source: 'event', kind: 'Event', fallback: 'Event RSVPs' },
@@ -266,7 +267,7 @@
   // the search / filters — newest first, with a BOM so Excel reads UTF-8.
   const exportBtn = document.getElementById('exportContacts');
   const exportLabel = document.getElementById('exportContactsLabel');
-  const SOURCE_NAMES = { form: 'Lead magnet', order: 'Order', booking: 'Booking', event: 'Event', course: 'Course', manual: 'Added by hand' };
+  const SOURCE_NAMES = { form: 'Lead magnet', newsletter: 'Newsletter', order: 'Order', booking: 'Booking', event: 'Event', course: 'Course', manual: 'Added by hand' };
 
   function shownContacts() {
     const visible = new Set();

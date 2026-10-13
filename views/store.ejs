@@ -17,6 +17,15 @@
     <div class="store-avatar" aria-hidden="true"><%= owner.initials %></div>
     <h1 class="store-name"><%= owner.name %></h1>
     <% if (owner.bio) { %><p class="store-bio"><%= owner.bio %></p><% } %>
+    <% if (owner.socials.length) { %>
+      <nav class="store-socials" aria-label="Find me on">
+        <% owner.socials.forEach(function (s) { %>
+          <a class="store-social" href="<%= s.href %>" title="<%= s.label %>" aria-label="<%= s.label %>"<% if (/^https?:/.test(s.href)) { %> target="_blank" rel="noopener noreferrer me"<% } %>>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="19" height="19" aria-hidden="true"><%- s.icon %></svg>
+          </a>
+        <% }) %>
+      </nav>
+    <% } %>
   </header>
 
   <% if (!blocks.length) { %>
@@ -35,6 +44,31 @@
           <blockquote><%= block.title %></blockquote>
           <% if (block.sub) { %><figcaption><%= block.sub %></figcaption><% } %>
         </figure>
+      <% } else if (block.type === 'newsletter') { %>
+        <%# Posts to the store home (lib/storefront.js newsletterSignup); the visitor lands in Audience. %>
+        <% var result = signup && signup.blockId === block.id ? signup : null; %>
+        <section class="store-newsletter" id="nl-<%= block.id %>">
+          <div class="store-newsletter-head">
+            <span class="store-newsletter-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            </span>
+            <div>
+              <h2 class="store-newsletter-title"><%= block.title %></h2>
+              <% if (block.sub) { %><p class="store-newsletter-sub"><%= block.sub %></p><% } %>
+            </div>
+          </div>
+          <% if (result && result.ok) { %>
+            <p class="store-newsletter-done" role="status"><%= result.message %></p>
+          <% } else { %>
+            <form class="store-newsletter-form" method="post" action="/#nl-<%= block.id %>">
+              <input type="hidden" name="block" value="<%= block.id %>" />
+              <label class="store-sr" for="nl-email-<%= block.id %>">Email address</label>
+              <input class="store-input" id="nl-email-<%= block.id %>" type="email" name="email" required autocomplete="email" placeholder="you@example.com" value="<%= result ? result.email : '' %>"<% if (result) { %> aria-invalid="true" aria-describedby="nl-error-<%= block.id %>"<% } %> />
+              <button class="store-button" type="submit">Subscribe</button>
+            </form>
+            <% if (result) { %><p class="store-newsletter-error" id="nl-error-<%= block.id %>" role="alert"><%= result.message %></p><% } %>
+          <% } %>
+        </section>
       <% } else if (block.href) { %>
         <%# Links off the store open in a new tab; the store's own pages (a booking block → /book) don't. %>
         <a class="store-block store-block-link" href="<%= block.href %>"<% if (/^https?:/.test(block.href)) { %> target="_blank" rel="noopener noreferrer nofollow"<% } %>>

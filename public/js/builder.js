@@ -14,8 +14,10 @@
     membership:  { group: 'Sell',   label: 'Membership',        desc: 'Recurring access to a private community',   keywords: 'subscription community recurring monthly club', cls: 'pz-type-membership', icon: '<path d="M17 20h5v-1a4 4 0 0 0-4-4M9 20H4v-1a4 4 0 0 1 4-4m5-3a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7-1a3 3 0 1 0 0-6" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. Private community · monthly' },
     event:       { group: 'Sell',   label: 'Webinar / Event',   desc: 'Tickets for a live session or workshop',    keywords: 'live workshop masterclass ticket seminar', cls: 'pz-type-booking',    icon: '<path d="m22 8-6 4 6 4V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/>', hasPrice: true, subPlaceholder: 'e.g. Live on Zoom · Sat 11am' },
     tip:         { group: 'Sell',   label: 'Tip jar',           desc: 'Let fans support you with any amount',      keywords: 'donation support pay what you want coffee', cls: 'pz-type-course',     icon: '<path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. Buy me a chai', pricePlaceholder: 'Min. amount' },
-    newsletter:  { group: 'Grow',   label: 'Newsletter signup', desc: 'Collect emails from visitors',              keywords: 'email subscribe list lead form', cls: 'pz-type-grow',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'e.g. Weekly career tips, no spam' },
-    social:      { group: 'Grow',   label: 'Social links',      desc: 'Instagram, YouTube, LinkedIn and more',     keywords: 'instagram youtube linkedin twitter x follow profile', cls: 'pz-type-grow',       icon: '<circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'e.g. instagram.com/yourname' },
+    newsletter:  { group: 'Grow',   label: 'Newsletter signup', desc: 'Collect emails from visitors',              keywords: 'email subscribe list lead form', cls: 'pz-type-grow',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, titlePlaceholder: 'Heading, e.g. Join my weekly newsletter', subPlaceholder: 'Short pitch, e.g. Career tips every Sunday, no spam',
+                   hint: 'Shows an email signup form on your store. New subscribers land in <a href="/dashboard/audience">Audience</a>.' },
+    social:      { group: 'Grow',   label: 'Social link',       desc: 'A button to one of your profiles',     keywords: 'instagram youtube linkedin twitter x follow profile', cls: 'pz-type-grow',       icon: '<circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'e.g. instagram.com/yourname',
+                   hint: 'Tip: add all your profiles as icons under Profile → Social links.' },
     testimonial: { group: 'Grow',   label: 'Testimonial',       desc: 'Show a quote from a happy customer',        keywords: 'review quote social proof feedback', cls: 'pz-type-grow',       icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'e.g. — Priya, landed a PM role' },
     link:        { group: 'Basics', label: 'Link',              desc: 'Send visitors to any website',              keywords: 'url website button external', cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL' },
     video:       { group: 'Basics', label: 'Video',             desc: 'Embed a YouTube or Vimeo video',            keywords: 'youtube vimeo embed reel clip', cls: 'pz-type-link',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m10 9 5 3-5 3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'Video URL' },
@@ -141,11 +143,12 @@
         </div>
         <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:7px;">
           <span class="text-xs font-semibold text-muted-foreground" style="text-transform:uppercase; letter-spacing:.03em;">${meta.label}</span>
-          <input type="text" class="pz-field-input pz-title" data-field="title" data-id="${block.id}" value="${escapeHTML(block.title)}" placeholder="Title" />
+          <input type="text" class="pz-field-input pz-title" data-field="title" data-id="${block.id}" value="${escapeHTML(block.title)}" placeholder="${meta.titlePlaceholder || 'Title'}" />
           <div style="display:flex; gap:8px;">
             <input type="text" class="pz-field-input" data-field="sub" data-id="${block.id}" value="${escapeHTML(block.sub)}" placeholder="${meta.subPlaceholder}" />
             ${priceField}
           </div>
+          ${meta.hint ? `<p class="pz-block-hint">${meta.hint}</p>` : ''}
         </div>
         <button type="button" class="pz-switch${block.visible ? ' on' : ''} toggle-visible" data-id="${block.id}" title="${block.visible ? 'Visible on your store' : 'Hidden from your store'}"></button>
         <div class="pz-kebab-wrap">
@@ -402,10 +405,16 @@
   const badgeToggle = document.getElementById('badgeToggle');
   let currentAccent = window.__PZ_ACCENT__ || '#ff6b4a';
   document.querySelectorAll('.pz-swatch').forEach((btn) => {
-    if (btn.dataset.color.toLowerCase() === currentAccent.toLowerCase()) btn.classList.add('active');
+    const isCurrent = btn.dataset.color.toLowerCase() === currentAccent.toLowerCase();
+    btn.classList.toggle('active', isCurrent);
+    btn.setAttribute('aria-checked', String(isCurrent));
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.pz-swatch').forEach((s) => s.classList.remove('active'));
+      document.querySelectorAll('.pz-swatch').forEach((s) => {
+        s.classList.remove('active');
+        s.setAttribute('aria-checked', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-checked', 'true');
       currentAccent = btn.dataset.color;
       renderPreviewOnly();
       api('/dashboard/builder/design', {
@@ -416,12 +425,13 @@
   });
   badgeToggle.addEventListener('click', () => {
     const on = badgeToggle.classList.toggle('on');
+    badgeToggle.setAttribute('aria-checked', String(on));
     renderPreviewOnly();
     api('/dashboard/builder/design', {
       method: 'POST',
       body: JSON.stringify({ accentColor: currentAccent, showBadge: on }),
     }).catch(() => {
-      badgeToggle.classList.toggle('on');
+      badgeToggle.setAttribute('aria-checked', String(badgeToggle.classList.toggle('on')));
       renderPreviewOnly();
     });
   });
@@ -447,12 +457,42 @@
   const switcherInitials = document.getElementById('switcherInitials');
   const switcherHandle = document.getElementById('switcherHandle');
   const previewUrl = document.getElementById('previewUrl');
+  const bioCount = document.getElementById('bioCount');
+  const socialInputs = [...document.querySelectorAll('input[data-social]')];
+  const socialCount = document.getElementById('socialCount');
+
+  // { platform: typed value } — the server turns these into links (lib/socials.js).
+  function collectSocials() {
+    const out = {};
+    socialInputs.forEach((input) => {
+      const value = input.value.trim();
+      if (value) out[input.dataset.social] = value;
+    });
+    return out;
+  }
+
+  function paintSocials() {
+    let filled = 0;
+    socialInputs.forEach((input) => {
+      const on = !!input.value.trim();
+      input.closest('.pz-social-row').classList.toggle('filled', on);
+      if (on) filled += 1;
+    });
+    socialCount.textContent = filled ? `${filled} added` : 'None yet';
+    socialCount.classList.toggle('on', filled > 0);
+  }
+
+  function paintBioCount() {
+    const n = bio.value.length;
+    bioCount.textContent = `${n}/280`;
+    bioCount.classList.toggle('near', n >= 250);
+  }
 
   function saveProfile() {
     profileSaveFailed = false;
     api('/dashboard/builder/profile', {
       method: 'POST',
-      body: JSON.stringify({ name: displayName.value, handle: handle.value, bio: bio.value }),
+      body: JSON.stringify({ name: displayName.value, handle: handle.value, bio: bio.value, socials: collectSocials() }),
     }).then((data) => {
       handleError.classList.remove('show');
       if (data && data.user) {
@@ -482,12 +522,21 @@
     debouncedProfileSave('profile');
   });
   bio.addEventListener('input', () => {
+    paintBioCount();
     renderPreviewOnly();
     debouncedProfileSave('profile');
   });
   handle.addEventListener('input', () => {
     debouncedProfileSave('profile');
   });
+  socialInputs.forEach((input) => {
+    input.addEventListener('input', () => {
+      paintSocials();
+      renderPreviewOnly();
+      debouncedProfileSave('profile');
+    });
+  });
+  paintSocials();
 
   // --- save button -------------------------------------------------------
   function saveNow() {
@@ -518,9 +567,10 @@
     body: JSON.stringify({
       name: displayName.value,
       bio: bio.value,
+      socials: collectSocials(),
       accent: currentAccent,
       showBadge: badgeToggle.classList.contains('on'),
-      blocks: blocks.map((b) => ({ type: b.type, title: b.title, sub: b.sub, price: b.price, visible: b.visible })),
+      blocks: blocks.map((b) => ({ id: b.id, type: b.type, title: b.title, sub: b.sub, price: b.price, visible: b.visible })),
     }),
   }));
 
