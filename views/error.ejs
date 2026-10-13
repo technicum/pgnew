@@ -26,7 +26,12 @@
     <h1><%= heading %></h1>
     <p class="auth-sub"><%= message %></p>
     <a href="/" class="btn btn-primary" style="width:100%; text-decoration:none;">Back to homepage</a>
+    <%# Store pages render this before currentUser is set, hence the typeof check. %>
+    <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+    <div class="auth-switch"><a href="/dashboard">Go to your dashboard</a></div>
+    <% } else { %>
     <div class="auth-switch"><a href="/login">Log in</a> · <a href="/signup">Create your store</a></div>
+    <% } %>
   </div>
 </div>
 

@@ -26,19 +26,21 @@
   </style>
 </head>
 <body id="top">
-  <div class="announcement">✦ Launch your creator business in minutes <a href="/signup">Start free →</a></div>
+<%# Signed in (server.js currentUser): the header and calls to action go to the dashboard, not sign-in / sign-up. %>
+<% var signedIn = typeof currentUser !== 'undefined' && currentUser; %>
+  <div class="announcement">✦ Launch your creator business in minutes <% if (signedIn) { %><a href="/dashboard">Go to dashboard →</a><% } else { %><a href="/signup">Start free →</a><% } %></div>
   <header class="nav">
     <a class="brand" href="#top"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
     <nav class="navlinks" aria-label="Main navigation"><a href="/explore">Explore</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
-    <div class="actions"><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free →</a></div>
+    <div class="actions"><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard →</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free →</a><% } %></div>
     <button class="menu" type="button" aria-label="Toggle menu" aria-expanded="false">☰</button>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="/explore">Explore</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a class="btn btn-blue" href="/signup">Start for free</a></nav>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="/explore">Explore</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free</a><% } %></nav>
   </header>
 
   <main>
     <section class="hero">
       <div class="hero-bg" aria-hidden="true"></div>
-      <div class="hero-copy"><span class="pill">Built for ambitious creators</span><h1>The one page that turns<br><em>attention into income.</em></h1><p>Grow your audience, sell what you know, and automate the busywork—without juggling five different tools.</p><div class="hero-actions"><a class="btn btn-white" href="/signup">Build my page →</a><a class="video-link" href="#tools">▶ &nbsp;See how it works</a></div></div>
+      <div class="hero-copy"><span class="pill">Built for ambitious creators</span><h1>The one page that turns<br><em>attention into income.</em></h1><p>Grow your audience, sell what you know, and automate the busywork—without juggling five different tools.</p><div class="hero-actions"><a class="btn btn-white" href="<%= signedIn ? '/dashboard/builder' : '/signup' %>"><%= signedIn ? 'Edit my page →' : 'Build my page →' %></a><a class="video-link" href="#tools">▶ &nbsp;See how it works</a></div></div>
       <div class="stage"><div class="browser">pagezaper.com/arjuncreates</div><div class="dashboard"><div class="dashhead"><div><span>Good morning, Arjun</span><strong>Your business is growing.</strong></div><div class="avatar">AC</div></div><div class="stats"><div class="stat"><small>PAGE VIEWS</small><strong>24.8K</strong><i>↗ 18.4%</i></div><div class="stat"><small>SALES</small><strong>₹48,290</strong><i>↗ 24.1%</i></div><div class="stat"><small>NEW LEADS</small><strong>1,284</strong><i>↗ 12.8%</i></div></div><div class="chart"><label>Revenue</label><div class="bars"><i style="height:28%"></i><i style="height:46%"></i><i style="height:38%"></i><i style="height:66%"></i><i style="height:54%"></i><i style="height:76%"></i><i style="height:62%"></i><i style="height:88%"></i><i style="height:72%"></i><i style="height:96%"></i></div></div></div><div class="sale"><b>🟢 New sale!</b>The Creator Playbook · ₹999</div></div>
     </section>
     <div class="proof"><small>EVERYTHING YOUR CREATOR BUSINESS NEEDS</small><div><span>NO-CODE SETUP</span><span>INSTANT PAYOUTS</span><span>SMART AUTOMATION</span><span>BEAUTIFUL STOREFRONTS</span></div></div>
@@ -71,7 +73,7 @@
 
     <section class="content wrap faq" id="faq"><div><span class="kicker">Good questions</span><h2>Everything you<br><em>need to know.</em></h2><p>Still curious? Write to <a href="mailto:hello@<%= siteDomain %>">hello@<%= siteDomain %></a></p></div><div><details open><summary>What is <%= siteName %>?</summary><p><%= siteName %> is an all-in-one toolkit for creators to grow an audience, sell digital products, automate social conversations, and manage their online business.</p></details><details><summary>Who is <%= siteName %> for?</summary><p>It is designed for creators, coaches, educators, freelancers, and anyone turning useful knowledge into a sustainable online business.</p></details><details><summary>Can I start for free?</summary><p>Yes. Create your page and explore the core tools for free. Upgrade only when you need more advanced growth and selling features.</p></details><details><summary>What can I sell?</summary><p>Sell guides, templates, courses, memberships, event tickets, coaching sessions, or any other digital experience you create.</p></details></div></section>
 
-    <section class="cta" id="start"><span class="kicker">Your audience is already waiting</span><h2>Make your next click<br><em>count.</em></h2><p>Start free. Build in minutes. Grow on your terms.</p><a class="btn btn-white" href="/signup">Start building for free →</a></section>
+    <section class="cta" id="start"><span class="kicker">Your audience is already waiting</span><h2>Make your next click<br><em>count.</em></h2><p>Start free. Build in minutes. Grow on your terms.</p><a class="btn btn-white" href="<%= signedIn ? '/dashboard' : '/signup' %>"><%= signedIn ? 'Go to your dashboard →' : 'Start building for free →' %></a></section>
   </main>
 
   <footer class="footer wrap"><div><a class="brand" href="#top"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a><p>The simpler way to grow and monetize your audience.</p></div><nav><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a href="/about">About</a></nav><div class="legal"><span>© <%= new Date().getFullYear() %> <%= siteName %>. All rights reserved.</span><span>Made for creators everywhere.</span></div></footer>
