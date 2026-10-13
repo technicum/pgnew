@@ -464,3 +464,29 @@ body.pz-modal-open { overflow: hidden; }
   font-size: 12px; font-weight: 500; padding: 8px 10px; border-radius: calc(var(--radius) - 4px);
   background: var(--warning-soft); color: var(--warning);
 }
+
+/* Module cards: a one-line summary (type, title, what's in it) until
+   clicked open — builder.js blockCardHTML. */
+.pz-block-card { align-items: center; padding: 10px 12px; }
+.pz-block-card.is-open { align-items: flex-start; padding: 12px; border-color: color-mix(in oklab, var(--primary) 35%, var(--border)); }
+.pz-block-card.is-open .pz-drag-handle { margin-top: 12px; align-self: flex-start; }
+.pz-block-card.is-open .pz-switch, .pz-block-card.is-open .pz-kebab-wrap { margin-top: 8px; }
+.pz-block-card .pz-switch, .pz-block-card .pz-kebab-wrap { margin-top: 0; }
+.pz-block-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.pz-block-summary {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "type chev" "name chev" "meta chev";
+  align-items: center; column-gap: 10px; width: 100%; padding: 4px 6px; margin: -4px -6px;
+  border: none; background: none; text-align: left; cursor: pointer; border-radius: calc(var(--radius) - 4px);
+  font-family: var(--font-sans); color: var(--foreground);
+}
+.pz-block-summary:hover { background: var(--muted); }
+.pz-block-summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.pz-block-type { grid-area: type; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-foreground); }
+.pz-block-name { grid-area: name; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-block-name em { font-style: normal; color: var(--muted-foreground); font-weight: 500; }
+.pz-block-meta { grid-area: meta; font-size: 12.5px; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-block-meta[hidden] { display: none; }
+.pz-block-chevron { grid-area: chev; color: var(--muted-foreground); transition: transform .15s ease; }
+.pz-block-card.is-open .pz-block-chevron { transform: rotate(180deg); }
+.pz-block-body { display: flex; flex-direction: column; gap: 7px; }
+@media (prefers-reduced-motion: reduce) { .pz-block-chevron { transition: none; } }

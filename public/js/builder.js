@@ -206,21 +206,44 @@
     debouncedFieldSave(`${block.id}:items`, block.id, 'items', JSON.parse(JSON.stringify(block.items)));
   }
 
+  // Cards are a one-line summary until clicked; the ones open now. A new
+  // or duplicated block opens straight away so it can be filled in.
+  const expanded = new Set();
+
+  // The grey line under a collapsed card's title: what's in it, briefly.
+  function blockSummary(block) {
+    const meta = TYPE_META[block.type];
+    const count = (block.items || []).length;
+    if (block.type === 'testimonial') return `${count} testimonial${count === 1 ? '' : 's'}`;
+    if (block.type === 'form') return `${count} field${count === 1 ? '' : 's'}${block.sub ? ` · ${block.sub}` : ''}`;
+    const sub = String(block.sub || '').trim();
+    if (meta.subPlaceholder && /url|link/i.test(meta.subPlaceholder) && sub) return sub.replace(/^https?:\/\//, '').replace(/^www\./, '');
+    return [sub, String(block.price || '').trim()].filter(Boolean).join(' · ');
+  }
+
   function blockCardHTML(block) {
     const meta = TYPE_META[block.type];
+    const open = expanded.has(block.id);
+    const summary = blockSummary(block);
     const priceField = meta.hasPrice
       ? `<input type="text" class="pz-field-input pz-price" data-field="price" data-id="${block.id}" value="${escapeHTML(block.price)}" placeholder="${meta.pricePlaceholder || 'Price'}" style="width:96px; flex:none;" />`
       : '';
     return `
-      <div class="pz-block-card${block.visible ? '' : ' pz-hidden'}" data-id="${block.id}">
+      <div class="pz-block-card${block.visible ? '' : ' pz-hidden'}${open ? ' is-open' : ''}" data-id="${block.id}">
         <div class="pz-drag-handle" title="Drag to reorder (coming soon)">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15"><circle cx="9" cy="6" r="1.4" fill="currentColor"/><circle cx="9" cy="12" r="1.4" fill="currentColor"/><circle cx="9" cy="18" r="1.4" fill="currentColor"/><circle cx="15" cy="6" r="1.4" fill="currentColor"/><circle cx="15" cy="12" r="1.4" fill="currentColor"/><circle cx="15" cy="18" r="1.4" fill="currentColor"/></svg>
         </div>
         <div class="grid size-10 place-items-center rounded-md shrink-0 ${meta.cls}">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">${meta.icon}</svg>
         </div>
-        <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:7px;">
-          <span class="text-xs font-semibold text-muted-foreground" style="text-transform:uppercase; letter-spacing:.03em;">${meta.label}</span>
+        <div class="pz-block-main">
+          <button type="button" class="pz-block-summary" data-toggle-id="${block.id}" aria-expanded="${open}" aria-controls="block-body-${block.id}">
+            <span class="pz-block-type">${meta.label}</span>
+            <span class="pz-block-name" data-summary-title>${escapeHTML(block.title) || `<em>${meta.titlePlaceholder ? 'Untitled' : meta.label}</em>`}</span>
+            <span class="pz-block-meta" data-summary-meta${open || !summary ? ' hidden' : ''}>${escapeHTML(summary)}</span>
+            <svg class="pz-block-chevron" viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          ${open ? `<div class="pz-block-body" id="block-body-${block.id}">
           <input type="text" class="pz-field-input pz-title" data-field="title" data-id="${block.id}" value="${escapeHTML(block.title)}" placeholder="${meta.titlePlaceholder || 'Title'}" />
           ${meta.hasItems && meta.keepSub ? `<input type="text" class="pz-field-input" data-field="sub" data-id="${block.id}" value="${escapeHTML(block.sub)}" placeholder="${meta.subPlaceholder}" />` : ''}
           ${meta.hasItems ? itemsEditorHTML(block) : `<div style="display:flex; gap:8px;">
@@ -229,6 +252,7 @@
           </div>`}
           ${meta.hint ? `<p class="pz-block-hint">${meta.hint}</p>` : ''}
           ${meta.popup ? popupLinkHTML(block) : ''}
+          </div>` : ''}
         </div>
         <button type="button" class="pz-switch${block.visible ? ' on' : ''} toggle-visible" data-id="${block.id}" title="${block.visible ? 'Visible on your store' : 'Hidden from your store'}"></button>
         <div class="pz-kebab-wrap">
@@ -302,6 +326,17 @@
   const debouncedFieldSave = debounce(saveField, 500);
 
   function attachBlockListeners() {
+    blocksList.querySelectorAll('[data-toggle-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.toggleId);
+        const opening = !expanded.has(id);
+        if (opening) expanded.add(id); else expanded.delete(id);
+        render();
+        const card = blocksList.querySelector(`.pz-block-card[data-id="${id}"]`);
+        const target = opening ? card.querySelector('.pz-block-body [data-field="title"]') : card.querySelector('[data-toggle-id]');
+        if (target) target.focus({ preventScroll: true });
+      });
+    });
     blocksList.querySelectorAll('input[data-field]').forEach((input) => {
       input.addEventListener('input', (e) => {
         const id = Number(e.target.dataset.id);
@@ -309,6 +344,11 @@
         const block = blocks.find((b) => b.id === id);
         if (!block) return;
         block[field] = e.target.value;
+        if (field === 'title') {
+          const name = e.target.closest('.pz-block-card').querySelector('[data-summary-title]');
+          if (block.title) name.textContent = block.title;
+          else name.innerHTML = '<em>Untitled</em>';
+        }
         renderPreviewOnly();
         debouncedFieldSave(`${id}:${field}`, id, field, e.target.value);
       });
@@ -347,6 +387,7 @@
           const created = await api(`/dashboard/builder/blocks/${id}/duplicate`, { method: 'POST' });
           if (created) {
             blocks.push({ ...created, visible: !!created.visible });
+            expanded.add(created.id);
             render();
           }
         } catch (err) { /* status already shown */ }
@@ -499,6 +540,7 @@
         body: JSON.stringify({ type }),
       });
       blocks.push({ ...created, visible: !!created.visible });
+      expanded.add(created.id);
       closeAddModal();
       render();
       requestAnimationFrame(() => {
