@@ -1,6 +1,6 @@
 // Payment pages dashboard (views/payment-pages.ejs). Same pattern as
-// lead-magnets.js: data starts from window.__PZ_PAYMENT_PAGES__ /
-// __PZ_COUPONS__, every change is a fetch() to the JSON endpoints in
+// lead-magnets.js: data starts from window.__PZ_PAYMENT_PAGES__, every
+// change is a fetch() to the JSON endpoints in
 // server.js, and the builder doubles as the editor (a page's Edit button
 // loads it back in).
 //
@@ -10,7 +10,6 @@
 // friendlier messages on the right tab.
 (function () {
   let pages = window.__PZ_PAYMENT_PAGES__ || [];
-  let coupons = window.__PZ_COUPONS__ || [];
   const storeUrl = window.__PZ_STORE_URL__ || '';
   const storeHost = storeUrl.replace(/^https?:\/\//, '');
   const DEFAULT_ACCENT = '#1261ef';
@@ -850,9 +849,6 @@
       }
       resetBuilder();
       renderPages();
-      // Coupon rows and the "applies to" picker show page titles.
-      renderCouponPageOptions();
-      renderCoupons();
     } catch (err) {
       showFormError(err.message || 'Could not save that payment page. Please try again.');
     }
@@ -961,12 +957,9 @@
         try {
           await api(`/dashboard/payment-pages/${id}`, { method: 'DELETE' });
           pages = pages.filter((p) => p.id !== id);
-          // Codes for just this page are deleted with it (lib/paymentPages.js).
-          coupons = coupons.filter((c) => c.page_id !== id);
+          // (Codes for just this page are deleted with it — lib/paymentPages.js.)
           if (editingId === id) resetBuilder();
           renderPages();
-          renderCouponPageOptions();
-          renderCoupons();
         } catch (err) { /* status shows the error */ }
       });
     });
@@ -992,109 +985,8 @@
     }));
   }
 
-  // --- coupons -------------------------------------------------------------------
-  const couponForm = $('couponForm');
-  const couponError = $('couponFormError');
-  const couponPageSelect = $('couponPage');
-
-  function renderCouponPageOptions() {
-    const current = couponPageSelect.value;
-    couponPageSelect.innerHTML = '<option value="">All payment pages</option>'
-      + pages.map((p) => `<option value="${p.id}">${escapeHTML(p.title)}</option>`).join('');
-    couponPageSelect.value = pages.some((p) => String(p.id) === current) ? current : '';
-  }
-
-  function couponRowHTML(c) {
-    const page = c.page_id ? pages.find((p) => p.id === c.page_id) : null;
-    const off = c.discount_type === 'percent' ? `${c.discount_value}% off` : `${formatINR(c.discount_value)} off`;
-    const uses = c.max_uses ? `${c.used_count} / ${c.max_uses} used` : `${c.used_count} used`;
-    const expired = c.expires_at && new Date(`${c.expires_at}T23:59:59`) < new Date();
-    const expiry = c.expires_at
-      ? `${expired ? 'Expired' : 'Until'} ${new Date(`${c.expires_at}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
-      : 'No expiry';
-    return `
-      <div class="pp-coupon-row${c.active ? '' : ' pp-off'}" data-id="${c.id}">
-        <span class="pp-coupon-code">${escapeHTML(c.code)}</span>
-        <span class="pp-coupon-info">
-          <strong>${escapeHTML(off)}</strong>
-          <span>${page ? escapeHTML(page.title) : 'All pages'}</span>
-          <span>${escapeHTML(uses)}</span>
-          <span>${escapeHTML(expiry)}</span>
-        </span>
-        <button type="button" class="pz-switch toggle-coupon${c.active ? ' on' : ''}" data-id="${c.id}" aria-label="Code active" aria-pressed="${c.active ? 'true' : 'false'}" title="${c.active ? 'Active' : 'Switched off'}"></button>
-        <button type="button" class="pz-card-btn danger remove-coupon" data-id="${c.id}" aria-label="Delete code ${escapeHTML(c.code)}">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
-        </button>
-      </div>`;
-  }
-
-  function renderCoupons() {
-    const list = $('couponsList');
-    list.innerHTML = coupons.map(couponRowHTML).join('');
-    $('emptyCoupons').hidden = coupons.length > 0;
-    list.querySelectorAll('.toggle-coupon').forEach((btn) => btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.id);
-      const coupon = coupons.find((c) => c.id === id);
-      if (!coupon) return;
-      const active = !coupon.active;
-      try {
-        await api(`/dashboard/coupons/${id}`, { method: 'PATCH', body: JSON.stringify({ active }) });
-        coupon.active = active ? 1 : 0;
-        renderCoupons();
-      } catch (err) { /* status shows the error */ }
-    }));
-    list.querySelectorAll('.remove-coupon').forEach((btn) => btn.addEventListener('click', async () => {
-      const id = Number(btn.dataset.id);
-      try {
-        await api(`/dashboard/coupons/${id}`, { method: 'DELETE' });
-        coupons = coupons.filter((c) => c.id !== id);
-        renderCoupons();
-      } catch (err) { /* status shows the error */ }
-    }));
-  }
-
-  couponForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    couponError.classList.remove('show');
-    const fail = (message) => {
-      couponError.textContent = message;
-      couponError.classList.add('show');
-    };
-    const type = $('couponType').value;
-    const rawValue = $('couponValue').value.trim();
-    let discountValue;
-    if (type === 'percent') {
-      discountValue = Number(rawValue);
-      if (!Number.isInteger(discountValue) || discountValue < 1 || discountValue > 100) return fail('A percentage discount needs to be a whole number from 1 to 100.');
-    } else {
-      discountValue = toPaise(rawValue);
-      if (!(discountValue >= 100)) return fail('A flat discount needs to be at least ₹1.');
-    }
-    try {
-      const created = await api('/dashboard/coupons', {
-        method: 'POST',
-        body: JSON.stringify({
-          code: $('couponCode').value,
-          discountType: type,
-          discountValue,
-          pageId: couponPageSelect.value || null,
-          maxUses: $('couponMaxUses').value || null,
-          expiresAt: $('couponExpires').value || null,
-        }),
-      });
-      coupons.unshift(created);
-      couponForm.reset();
-      renderCoupons();
-      $('couponCode').focus();
-    } catch (err) {
-      fail(err.message || 'Could not add that code. Please try again.');
-    }
-  });
-
   loadIntoBuilder(null);
   renderPages();
-  renderCouponPageOptions();
-  renderCoupons();
   // "Edit page" on a page's Analytics links back here as #edit-<id>.
   const editHash = location.hash.match(/^#edit-(\d+)$/);
   if (editHash) {

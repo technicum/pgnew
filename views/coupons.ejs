@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/lead-magnets.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/payments-dashboard.css?v=<%= assetVersion %>" />
+</head>
+<body>
+<%# Coupons (Payment pages app): discount codes buyers enter at checkout. The list and every
+    change go through the JSON endpoints in server.js — public/js/coupons.js. %>
+<div class="min-h-screen bg-background">
+
+  <%- include('partials/dashboard-sidebar', { navActive: '/dashboard/coupons' }) %>
+
+  <main class="lg:ml-64">
+    <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
+      <div>
+        <p class="text-sm font-semibold text-primary" style="line-height:1;">Coupons</p>
+      </div>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
+        <div class="mx-1 h-7 w-px bg-border"></div>
+        <div class="flex items-center gap-2 rounded-md p-1.5">
+          <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+
+      <section>
+        <p class="text-sm font-semibold text-primary">Sales</p>
+        <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Coupons</h1>
+        <p class="mt-2 text-sm text-muted-foreground">Discount codes buyers enter at checkout on your <a href="/dashboard/payment-pages" style="color:var(--primary); text-decoration:underline;">payment pages</a> — taken off the products, not shipping. A code counts as used once its order is paid.</p>
+      </section>
+
+      <section class="pp-order-stats" aria-label="Totals">
+        <div class="pp-order-stat"><p>Active codes</p><strong id="statActive">0</strong></div>
+        <div class="pp-order-stat"><p>Times used</p><strong id="statUses">0</strong></div>
+        <div class="pp-order-stat"><p>Switched off or expired</p><strong id="statOff">0</strong></div>
+      </section>
+
+      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
+        <div class="border-b border-border p-5 md:px-6">
+          <h2 class="text-lg font-bold">New coupon</h2>
+          <form id="couponForm" class="pp-coupon-form" novalidate>
+            <label class="pp-coupon-field">
+              <span>Code</span>
+              <input type="text" id="couponCode" class="pz-field-input" maxlength="30" placeholder="e.g. LAUNCH20" autocapitalize="characters" spellcheck="false" />
+            </label>
+            <label class="pp-coupon-field">
+              <span>Discount</span>
+              <span class="pp-coupon-discount">
+                <input type="text" inputmode="decimal" id="couponValue" class="pz-field-input" placeholder="20" aria-label="Discount amount" />
+                <select id="couponType" class="pz-field-input" aria-label="Discount type">
+                  <option value="percent">% off</option>
+                  <option value="flat">₹ off</option>
+                </select>
+              </span>
+            </label>
+            <label class="pp-coupon-field">
+              <span>Works on</span>
+              <select id="couponPage" class="pz-field-input">
+                <option value="">All payment pages</option>
+              </select>
+            </label>
+            <label class="pp-coupon-field">
+              <span>Max uses <em>optional</em></span>
+              <input type="number" id="couponMaxUses" class="pz-field-input" min="1" placeholder="Unlimited" />
+            </label>
+            <label class="pp-coupon-field">
+              <span>Expires <em>optional</em></span>
+              <input type="date" id="couponExpires" class="pz-field-input" />
+            </label>
+            <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-9 px-4">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+              Add code
+            </button>
+          </form>
+          <p class="pz-field-error" id="couponFormError"></p>
+        </div>
+
+        <div class="flex items-center justify-between border-b border-border p-5 md:px-6" style="gap:12px;">
+          <div>
+            <h2 class="text-lg font-bold">Your codes</h2>
+            <p class="mt-1 text-sm text-muted-foreground" id="couponCountLine"></p>
+          </div>
+          <div class="pp-orders-search" style="max-width:260px;">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+            <input type="search" id="couponSearch" class="pz-field-input" placeholder="Search codes" aria-label="Search codes" />
+          </div>
+        </div>
+        <div id="couponsList"><!-- injected --></div>
+        <div id="emptyCoupons" class="flex flex-col items-center justify-center gap-3" style="padding:48px 24px; text-align:center;" hidden>
+          <div class="grid size-10 place-items-center rounded-md bg-muted text-muted-foreground">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
+          </div>
+          <p class="text-sm text-muted-foreground" style="max-width:380px;" id="emptyCouponsText">No coupon codes yet — add one above, then share it with your audience.</p>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  window.__PZ_COUPONS__ = <%- JSON.stringify(coupons).replace(/</g, '\\u003c') %>;
+  window.__PZ_COUPON_PAGES__ = <%- JSON.stringify(pages).replace(/</g, '\\u003c') %>;
+</script>
+<script src="/js/coupons.js?v=<%= assetVersion %>"></script>
+</body>
+</html>

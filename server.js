@@ -714,12 +714,11 @@ function withStats(page, stats) {
 app.get('/dashboard/payment-pages', requireAuth, async (req, res, next) => {
   try {
     const userId = req.session.user.id;
-    const [pages, coupons, stats] = await Promise.all([listPaymentPages(userId), listCoupons(userId), orderStatsByPage(userId)]);
+    const [pages, stats] = await Promise.all([listPaymentPages(userId), orderStatsByPage(userId)]);
     res.render('payment-pages', {
       title: `Payment pages — ${SITE_NAME}`,
       user: req.session.user,
       pages: pages.map((p) => withStats(p, stats)),
-      coupons,
       paymentMode: paymentMode(),
     });
   } catch (err) {
@@ -812,6 +811,23 @@ app.delete('/dashboard/payment-pages/:id', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     sendPaymentError(res, err, 'Could not delete that payment page.');
+  }
+});
+
+// Coupons (Payment pages app): its own page; codes can be for every
+// payment page or just one, so the page list comes along for the picker.
+app.get('/dashboard/coupons', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.user.id;
+    const [coupons, pages] = await Promise.all([listCoupons(userId), listPaymentPages(userId)]);
+    res.render('coupons', {
+      title: `Coupons — ${SITE_NAME}`,
+      user: req.session.user,
+      coupons,
+      pages: pages.map((p) => ({ id: p.id, title: p.title })),
+    });
+  } catch (err) {
+    next(err);
   }
 });
 
