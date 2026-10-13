@@ -52,7 +52,7 @@
       </p>
     <% } %>
     <% if (owner.bio) { %><p class="store-bio"><%= owner.bio %></p><% } %>
-    <% if (owner.socials.length) { %>
+    <% if (store.socialsInHeader && owner.socials.length) { %>
       <nav class="store-socials" aria-label="Find me on">
         <% owner.socials.forEach(function (s) { %>
           <a class="store-social" href="<%= s.href %>" title="<%= s.label %>" aria-label="<%= s.label %>"<% if (/^https?:/.test(s.href)) { %> target="_blank" rel="noopener noreferrer me"<% } %>>
@@ -151,6 +151,20 @@
           </a>
           <% shareButton(hash, block.title) %>
         </div>
+      <% } else if (block.socials) { %>
+        <%# Social links module: the profile's icons (Profile → Social links), minus any switched off in the module. %>
+        <% if (block.socials.length) { %>
+          <section class="store-social-block">
+            <% if (block.title && block.title !== block.label) { %><h2 class="store-social-heading"><%= block.title %></h2><% } %>
+            <nav class="store-socials" aria-label="<%= block.title && block.title !== block.label ? block.title : 'Social links' %>">
+              <% block.socials.forEach(function (s) { %>
+                <a class="store-social" href="<%= s.href %>" title="<%= s.label %>" aria-label="<%= s.label %>"<% if (/^https?:/.test(s.href)) { %> target="_blank" rel="noopener noreferrer me"<% } %>>
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="19" height="19" aria-hidden="true"><%- s.icon %></svg>
+                </a>
+              <% }) %>
+            </nav>
+          </section>
+        <% } %>
       <% } else if (block.type === 'video' && block.embed) { %>
         <%# A YouTube / Vimeo video: plays in its popup (#video-<id>), not off the store. %>
         <div class="store-item">

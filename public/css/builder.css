@@ -490,3 +490,28 @@ body.pz-modal-open { overflow: hidden; }
 .pz-block-card.is-open .pz-block-chevron { transform: rotate(180deg); }
 .pz-block-body { display: flex; flex-direction: column; gap: 7px; }
 @media (prefers-reduced-motion: reduce) { .pz-block-chevron { transition: none; } }
+
+/* Profile → Social links: "Also show under my bio". */
+.pz-inline-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border-radius: calc(var(--radius) - 4px); background: var(--muted);
+}
+
+/* Social links module: one row per profile, each with its own switch. */
+.pz-social-toggles { display: flex; flex-direction: column; gap: 4px; }
+.pz-social-toggle {
+  display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 6px;
+  border: 1px solid var(--border); border-radius: calc(var(--radius) - 4px); background: var(--background);
+}
+.pz-social-toggle .pz-social-icon { width: 32px; height: 32px; background: var(--secondary); color: var(--secondary-foreground); }
+.pz-social-toggle.is-off .pz-social-icon { background: var(--muted); color: var(--muted-foreground); }
+.pz-social-toggle.is-off .pz-social-toggle-text { opacity: .55; }
+.pz-social-toggle-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pz-social-toggle-text strong { font-size: 13px; font-weight: 600; }
+.pz-social-toggle-text small { font-size: 12px; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pz-social-toggle .pz-switch { margin-top: 0; }
+.pz-social-empty {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  padding: 12px; border: 1px dashed var(--border); border-radius: calc(var(--radius) - 4px);
+  font-size: 13px; color: var(--muted-foreground);
+}

@@ -336,3 +336,9 @@ html:not(.js) .store-item > .store-block { padding-right: 18px; }
   .store-popup-video .store-popup-card { border-radius: 16px; padding-bottom: 16px; }
   @keyframes store-pop { from { opacity: 0; transform: translateY(40px); } }
 }
+
+/* Social links module: the icon row, wherever it sits in the list. */
+.store-social-block { padding: 4px 0; text-align: center; }
+.store-social-heading { font-family: var(--font-display); font-weight: 600; font-size: 17px; margin-bottom: 2px; }
+.store-social-block .store-socials { margin-top: 10px; gap: 10px; }
+.store-social-block .store-social { width: 44px; height: 44px; }

@@ -221,14 +221,22 @@
                 </div>
               </article>
 
-              <%# Social links: lib/socials.js — saved with the profile, shown as icons under the bio. %>
+              <%# Social links: lib/socials.js — saved with the profile. Shown by a Social links module
+                  (Content), and under the bio only if switched on below. %>
               <article class="rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
                 <div class="flex items-center justify-between" style="gap:12px;">
                   <div>
                     <h2 class="text-lg font-bold">Social links</h2>
-                    <p class="mt-1 text-sm text-muted-foreground">Shown as icons under your bio. Paste a link or just your handle.</p>
+                    <p class="mt-1 text-sm text-muted-foreground">Paste a link or just your handle. Add a Social links module in Content to show them on your store.</p>
                   </div>
                   <span class="pz-pill" id="socialCount"></span>
+                </div>
+                <div class="pz-inline-toggle mt-4">
+                  <div>
+                    <strong class="text-sm" style="display:block;">Also show under my bio</strong>
+                    <span class="text-xs text-muted-foreground">Icons at the top of your store, under your name</span>
+                  </div>
+                  <button type="button" class="pz-switch<%= settings.socialsInHeader ? ' on' : '' %>" data-setting-switch="socialsInHeader" role="switch" aria-checked="<%= settings.socialsInHeader %>" aria-label="Show social icons under my bio"></button>
                 </div>
                 <div class="pz-social-list mt-5">
                   <% socialPlatforms.forEach(function (p) { %>

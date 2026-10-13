@@ -19,8 +19,9 @@
     form:        { group: 'Grow',   label: 'Form',              desc: 'A popup form — messages, requests, enquiries', keywords: 'contact message enquiry custom form fields request popup', cls: 'pz-type-grow', icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', hasPrice: false, hasItems: true, keepSub: true, popup: 'form',
                    titlePlaceholder: 'Button text, e.g. Message me', subPlaceholder: 'Shown in the popup, e.g. I reply within a day',
                    hint: 'Opens your form in a popup. Replies land in <a href="/dashboard/audience">Audience</a>.' },
-    social:      { group: 'Grow',   label: 'Social link',       desc: 'A button to one of your profiles',     keywords: 'instagram youtube linkedin twitter x follow profile', cls: 'pz-type-grow',       icon: '<circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'e.g. instagram.com/yourname',
-                   hint: 'Tip: add all your profiles as icons under Profile → Social links.' },
+    social:      { group: 'Grow',   label: 'Social links',      desc: 'Your social profiles as a row of icons',  keywords: 'instagram youtube linkedin twitter x follow profile social icons', cls: 'pz-type-grow',       icon: '<circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, socialList: true,
+                   titlePlaceholder: 'Heading (optional), e.g. Follow me', subPlaceholder: 'Profile link',
+                   hint: 'Shows the profiles from Profile → Social links. Switch any icon off to leave it out here.' },
     testimonial: { group: 'Grow',   label: 'Testimonials',      desc: 'A slider of quotes from happy customers',   keywords: 'review quote social proof feedback slider carousel testimonial', cls: 'pz-type-grow',       icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, hasItems: true, titlePlaceholder: 'Heading (optional), e.g. What my clients say',
                    hint: 'Shows as a slider on your store — visitors swipe, or use the arrows and dots.' },
     link:        { group: 'Basics', label: 'Link',              desc: 'Send visitors to any website',              keywords: 'url website button external', cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL — or a popup link like #form-12' },
@@ -214,11 +215,61 @@
   function blockSummary(block) {
     const meta = TYPE_META[block.type];
     const count = (block.items || []).length;
+    if (block.type === 'social' && !block.sub) {
+      const profiles = socialProfiles();
+      if (!profiles.length) return 'No profiles yet — add them in Profile';
+      const shown = profiles.filter((pf) => socialOn(block, pf.id)).length;
+      return `${shown} of ${profiles.length} icons shown`;
+    }
     if (block.type === 'testimonial') return `${count} testimonial${count === 1 ? '' : 's'}`;
     if (block.type === 'form') return `${count} field${count === 1 ? '' : 's'}${block.sub ? ` · ${block.sub}` : ''}`;
     const sub = String(block.sub || '').trim();
     if (meta.subPlaceholder && /url|link/i.test(meta.subPlaceholder) && sub) return sub.replace(/^https?:\/\//, '').replace(/^www\./, '');
     return [sub, String(block.price || '').trim()].filter(Boolean).join(' · ');
+  }
+
+  // Social links module: the profiles filled in on the Profile tab (read
+  // from its fields, so it's always current), each with a switch. Only the
+  // ones switched off are saved (lib/blocks.js) — a profile added later
+  // shows up switched on.
+  function socialProfiles() {
+    return [...document.querySelectorAll('input[data-social]')]
+      .filter((input) => input.value.trim())
+      .map((input) => {
+        const row = input.closest('.pz-social-row');
+        return {
+          id: input.dataset.social,
+          label: row.querySelector('.pz-social-name').textContent.trim(),
+          icon: row.querySelector('.pz-social-icon svg').innerHTML,
+          value: input.value.trim(),
+        };
+      });
+  }
+  function socialOn(block, platform) {
+    return !(block.items || []).some((item) => item.platform === platform && !item.on);
+  }
+  function socialListHTML(block) {
+    const profiles = socialProfiles();
+    // An older Social block saved a single profile URL — kept editable.
+    const legacy = block.sub
+      ? `<input type="text" class="pz-field-input" data-field="sub" data-id="${block.id}" value="${escapeHTML(block.sub)}" placeholder="Profile link" />
+         <p class="pz-block-hint">This module links to one profile. Clear the link to show all your profile icons instead.</p>`
+      : '';
+    if (legacy) return legacy;
+    if (!profiles.length) {
+      return `<div class="pz-social-empty">
+          <span>No social profiles yet.</span>
+          <button type="button" class="pz-chip-btn is-solid" data-goto-tab="profile">Add them in Profile</button>
+        </div>`;
+    }
+    return `<div class="pz-social-toggles">${profiles.map((pf) => {
+      const on = socialOn(block, pf.id);
+      return `<div class="pz-social-toggle${on ? '' : ' is-off'}">
+          <span class="pz-social-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="17" height="17" aria-hidden="true">${pf.icon}</svg></span>
+          <span class="pz-social-toggle-text"><strong>${escapeHTML(pf.label)}</strong><small>${escapeHTML(pf.value)}</small></span>
+          <button type="button" class="pz-switch${on ? ' on' : ''}" role="switch" aria-checked="${on}" aria-label="Show ${escapeHTML(pf.label)}" data-social-toggle="${pf.id}" data-id="${block.id}"></button>
+        </div>`;
+    }).join('')}</div>`;
   }
 
   function blockCardHTML(block) {
@@ -246,7 +297,7 @@
           ${open ? `<div class="pz-block-body" id="block-body-${block.id}">
           <input type="text" class="pz-field-input pz-title" data-field="title" data-id="${block.id}" value="${escapeHTML(block.title)}" placeholder="${meta.titlePlaceholder || 'Title'}" />
           ${meta.hasItems && meta.keepSub ? `<input type="text" class="pz-field-input" data-field="sub" data-id="${block.id}" value="${escapeHTML(block.sub)}" placeholder="${meta.subPlaceholder}" />` : ''}
-          ${meta.hasItems ? itemsEditorHTML(block) : `<div style="display:flex; gap:8px;">
+          ${meta.socialList ? socialListHTML(block) : meta.hasItems ? itemsEditorHTML(block) : `<div style="display:flex; gap:8px;">
             <input type="text" class="pz-field-input" data-field="sub" data-id="${block.id}" value="${escapeHTML(block.sub)}" placeholder="${meta.subPlaceholder}" />
             ${priceField}
           </div>`}
@@ -432,6 +483,29 @@
     }
   });
   blocksList.addEventListener('click', (e) => {
+    const toggle = e.target.closest('[data-social-toggle]');
+    if (toggle) {
+      const block = blocks.find((b) => b.id === Number(toggle.dataset.id));
+      if (!block) return;
+      const platform = toggle.dataset.socialToggle;
+      const on = !socialOn(block, platform);
+      // Only the switched-off ones are kept.
+      block.items = (block.items || []).filter((item) => item.platform !== platform);
+      if (!on) block.items.push({ platform, on: false });
+      render();
+      renderPreviewOnly();
+      queueItemsSave(block);
+      const again = blocksList.querySelector(`[data-social-toggle="${platform}"][data-id="${block.id}"]`);
+      if (again) again.focus();
+      return;
+    }
+    const goto = e.target.closest('[data-goto-tab]');
+    if (goto) {
+      document.querySelector(`.pz-rail-btn[data-tab="${goto.dataset.gotoTab}"]`).click();
+      const first = document.querySelector('input[data-social]');
+      if (first) first.focus();
+      return;
+    }
     const btn = e.target.closest('[data-item-action]');
     if (!btn || btn.disabled) return;
     const block = blocks.find((b) => b.id === Number(btn.dataset.id));
@@ -737,6 +811,7 @@
   socialInputs.forEach((input) => {
     input.addEventListener('input', () => {
       paintSocials();
+      if (blocks.some((b) => b.type === 'social')) render();
       renderPreviewOnly();
       debouncedProfileSave('profile');
     });
@@ -814,6 +889,17 @@
     contactValue.type = email ? 'email' : 'tel';
     contactLabel.placeholder = email ? 'Email me' : 'Message me on WhatsApp';
   }
+
+  // Plain on/off settings: <button data-setting-switch="key">.
+  document.querySelectorAll('[data-setting-switch]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.settingSwitch;
+      settings[key] = !settings[key];
+      btn.classList.toggle('on', settings[key]);
+      btn.setAttribute('aria-checked', String(settings[key]));
+      settingChanged();
+    });
+  });
 
   const announceToggle = document.getElementById('announceToggle');
   announceToggle.addEventListener('click', () => {
