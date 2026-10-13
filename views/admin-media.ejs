@@ -1,79 +1,59 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="robots" content="noindex" />
-<title><%= title %></title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
-<link rel="stylesheet" href="/css/app-dashboard.css?v=<%= assetVersion %>" />
-</head>
-<%# Platform admin → Media (server.js /admin/media, lib/adminMedia.js) — only for ADMIN_EMAILS.
-    Every creator's uploaded files; ones nothing uses can be deleted once they're old enough (unusedDays).
-    The list, filters and deleting are public/js/admin-media.js. %>
-<body>
-<div class="min-h-screen bg-background">
-  <%- include('partials/dashboard-sidebar', { navActive: '/admin/settings' }) %>
-  <main class="lg:ml-64">
-    <div class="mx-auto max-w-[1180px] px-4 py-7 md:px-8 md:py-9">
-      <p class="text-sm font-semibold text-primary">Admin</p>
-      <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Media</h1>
-      <p class="mt-2 text-sm text-muted-foreground">Every file creators have uploaded. A file nothing on the platform uses any more can be deleted once it’s <b><%= unusedDays %> days</b> old — newer ones may belong to a page that isn’t saved yet. Before each delete the server checks again that the file is still unused.</p>
-      <%- include('partials/admin-tabs', { tab: 'media' }) %>
+<%- include('partials/admin-top') %>
+<%# Platform admin → Media (lib/adminMedia.js): every creator's uploaded files; ones nothing uses can be
+    deleted once they're old enough (unusedDays). The list, filters and deleting are public/js/admin-media.js. %>
+<header class="adm-head">
+  <div>
+    <h1>Media</h1>
+    <p>Every file creators have uploaded. A file nothing on the platform uses any more can be deleted once it’s <b><%= unusedDays %> days</b> old — newer ones may belong to a page that isn’t saved yet. Before each delete the server checks again that the file is still unused.</p>
+  </div>
+</header>
 
-      <div class="ax-flash" id="mediaFlash" role="status" hidden></div>
+<div class="ax-flash" id="mediaFlash" role="status" hidden></div>
 
-      <section class="adm-stats" aria-label="Totals">
-        <div class="adm-stat"><p>All files</p><strong id="statAll">0</strong><small id="statAllSize"></small></div>
-        <div class="adm-stat"><p>In use</p><strong id="statUsed">0</strong><small id="statUsedSize"></small></div>
-        <div class="adm-stat"><p>Unused, waiting</p><strong id="statWaiting">0</strong><small>under <%= unusedDays %> days old</small></div>
-        <div class="adm-stat is-accent"><p>Ready to delete</p><strong id="statReady">0</strong><small id="statReadySize"></small></div>
-      </section>
+<section class="adm-stats" aria-label="Totals">
+  <div class="adm-stat"><p>All files</p><strong id="statAll">0</strong><small id="statAllSize"></small></div>
+  <div class="adm-stat"><p>In use</p><strong id="statUsed">0</strong><small id="statUsedSize"></small></div>
+  <div class="adm-stat"><p>Unused, waiting</p><strong id="statWaiting">0</strong><small>under <%= unusedDays %> days old</small></div>
+  <div class="adm-stat is-accent"><p>Ready to delete</p><strong id="statReady">0</strong><small id="statReadySize"></small></div>
+</section>
 
-      <section class="ax-panel">
-        <div class="adm-tools">
-          <div class="adm-search">
-            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
-            <input type="search" class="ax-input" id="mediaSearch" placeholder="Search file, creator, email" aria-label="Search media" />
-          </div>
-          <select class="ax-input" id="mediaStatus" aria-label="Show">
-            <option value="deletable">Ready to delete</option>
-            <option value="unused">Unused, waiting</option>
-            <option value="used">In use</option>
-            <option value="">All files</option>
-          </select>
-          <select class="ax-input" id="mediaOwner" aria-label="Creator">
-            <option value="">All creators</option>
-          </select>
-          <select class="ax-input" id="mediaKind" aria-label="Type">
-            <option value="">All types</option>
-            <option value="image">Images</option>
-            <option value="video">Videos</option>
-            <option value="file">Files</option>
-          </select>
-          <button type="button" class="ax-btn adm-delete-all" id="deleteAllBtn" disabled>Delete all ready</button>
-        </div>
-
-        <div class="adm-table-wrap">
-          <table class="adm-table">
-            <thead>
-              <tr><th></th><th>File</th><th>Creator</th><th>Size</th><th>Uploaded</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr>
-            </thead>
-            <tbody id="mediaRows"></tbody>
-          </table>
-        </div>
-        <p class="ax-empty" id="mediaEmpty" hidden></p>
-      </section>
+<section class="ax-panel">
+  <div class="adm-tools">
+    <div class="adm-search">
+      <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+      <input type="search" class="ax-input" id="mediaSearch" placeholder="Search file, creator, email" aria-label="Search media" />
     </div>
-  </main>
-</div>
+    <select class="ax-input" id="mediaStatus" aria-label="Show">
+      <option value="deletable">Ready to delete</option>
+      <option value="unused">Unused, waiting</option>
+      <option value="used">In use</option>
+      <option value="">All files</option>
+    </select>
+    <select class="ax-input" id="mediaOwner" aria-label="Creator">
+      <option value="">All creators</option>
+    </select>
+    <select class="ax-input" id="mediaKind" aria-label="Type">
+      <option value="">All types</option>
+      <option value="image">Images</option>
+      <option value="video">Videos</option>
+      <option value="file">Files</option>
+    </select>
+    <button type="button" class="ax-btn adm-delete-all" id="deleteAllBtn" disabled>Delete all ready</button>
+  </div>
+
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead>
+        <tr><th></th><th>File</th><th>Creator</th><th>Size</th><th>Uploaded</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr>
+      </thead>
+      <tbody id="mediaRows"></tbody>
+    </table>
+  </div>
+  <p class="ax-empty" id="mediaEmpty" hidden></p>
+</section>
 <script>
   window.__PZ_MEDIA__ = <%- JSON.stringify(files).replace(/</g, '\\u003c') %>;
   window.__PZ_UNUSED_DAYS__ = <%- JSON.stringify(unusedDays) %>;
 </script>
 <script src="/js/admin-media.js?v=<%= assetVersion %>"></script>
-</body>
-</html>
+<%- include('partials/admin-bottom') %>

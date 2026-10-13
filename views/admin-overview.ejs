@@ -1,0 +1,73 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Overview (lib/admin.js overview). %>
+<% var t = data.totals; var paid = t.marketplace.count + t.direct.count; var sales = t.marketplace.sales + t.direct.sales; var earned = t.marketplace.fees + t.direct.fees;
+   var maxDay = Math.max(1, Math.max.apply(null, data.signups.map(function (d) { return d.n; }))); %>
+
+<header class="adm-head">
+  <div>
+    <h1>Overview</h1>
+    <p>How the platform is doing.</p>
+  </div>
+</header>
+
+<section class="adm-stats">
+  <a class="adm-stat" href="/admin/users"><p>Creators</p><strong><%= data.users %></strong><small>+<%= data.new7 %> this week · +<%= data.new30 %> in 30 days</small></a>
+  <a class="adm-stat" href="/admin/users?status=suspended"><p>Suspended</p><strong><%= data.suspended %></strong><small>accounts offline</small></a>
+  <div class="adm-stat"><p>Paid orders</p><strong><%= paid %></strong><small><%= formatINR(sales) %> in sales</small></div>
+  <a class="adm-stat is-accent" href="/admin/fees"><p>Platform earnings</p><strong><%= formatINR(earned) %></strong><small>from transaction fees</small></a>
+</section>
+
+<div class="adm-cols">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Sign-ups</h2><span class="ax-count">Last 14 days</span></div>
+    <div class="adm-bars" role="img" aria-label="Sign-ups per day for the last 14 days">
+      <% data.signups.forEach(function (d) { %>
+        <span class="adm-bar" style="--h: <%= Math.round((d.n / maxDay) * 100) %>%;" title="<%= d.day %>: <%= d.n %>"><i></i><small><%= Number(d.day.slice(8)) %></small></span>
+      <% }) %>
+    </div>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Plans</h2><a class="ax-count" href="/admin/plans">Manage →</a></div>
+    <ul class="adm-list">
+      <% data.plans.forEach(function (p) { %>
+        <li>
+          <a href="/admin/users?plan=<%= p.id %>"><b><%= p.name %></b><% if (p.is_default) { %> <span class="adm-pill">Default</span><% } %></a>
+          <span><%= p.users %> creator<%= p.users === 1 ? '' : 's' %></span>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+</div>
+
+<div class="adm-cols">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Newest creators</h2><a class="ax-count" href="/admin/users">All users →</a></div>
+    <ul class="adm-list">
+      <% data.recent.forEach(function (u) { %>
+        <li>
+          <a href="/admin/users/<%= u.id %>"><b><%= u.name %></b><small><%= u.email %></small></a>
+          <span><% if (u.status === 'suspended') { %><span class="adm-pill is-bad">Suspended</span> <% } %><%= new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %></span>
+        </li>
+      <% }) %>
+    </ul>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Top sellers</h2><span class="ax-count">Payment pages, paid orders</span></div>
+    <% if (data.topSellers.length) { %>
+      <ul class="adm-list">
+        <% data.topSellers.forEach(function (s) { %>
+          <li>
+            <a href="/admin/users/<%= s.id %>"><b><%= s.name %></b><small><%= s.paid_orders %> order<%= Number(s.paid_orders) === 1 ? '' : 's' %> · <%= formatINR(Number(s.fees)) %> in fees</small></a>
+            <span><%= formatINR(Number(s.revenue)) %></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p class="ax-empty">No paid orders yet.</p>
+    <% } %>
+  </section>
+</div>
+
+<%- include('partials/admin-bottom') %>

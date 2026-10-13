@@ -1,0 +1,79 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Plans (lib/plans.js): the plans creators can be on, their prices and features,
+    and fees that override the platform's. ?edit=<id> opens one for editing. %>
+<% var rupees = function (paise) { return paise ? String(paise / 100) : ''; };
+   var pct = function (v) { return v === null ? '' : String(v); }; %>
+
+<header class="adm-head">
+  <div>
+    <h1>Plans</h1>
+    <p>Put creators on a plan from their page in Users. A plan’s fees replace the platform’s (now <%= platformFees.direct_pct %>% direct, <%= platformFees.marketplace_pct %>% marketplace) — leave them blank to use the platform’s.</p>
+  </div>
+</header>
+
+<% function planForm(p) { var action = p ? '/admin/plans/' + p.id : '/admin/plans'; %>
+  <form method="POST" action="<%= action %>" class="adm-plan-form">
+    <div class="ax-grid">
+      <label class="ax-field"><span>Name</span><input class="ax-input" name="name" value="<%= p ? p.name : '' %>" required maxlength="60" placeholder="Pro" /></label>
+      <label class="ax-field"><span>Monthly price (₹)</span><input class="ax-input" name="price_month" value="<%= p ? rupees(p.price_month) : '' %>" inputmode="decimal" placeholder="0 = free" /></label>
+      <label class="ax-field"><span>Yearly price (₹)</span><input class="ax-input" name="price_year" value="<%= p ? rupees(p.price_year) : '' %>" inputmode="decimal" placeholder="optional" /></label>
+    </div>
+    <div class="ax-grid">
+      <label class="ax-field"><span>Direct sales fee (%)</span><input class="ax-input" name="direct_pct" value="<%= p ? pct(p.direct_pct) : '' %>" inputmode="decimal" placeholder="<%= platformFees.direct_pct %> (platform)" /><small>Buyer came from the creator’s own link.</small></label>
+      <label class="ax-field"><span>Marketplace sales fee (%)</span><input class="ax-input" name="marketplace_pct" value="<%= p ? pct(p.marketplace_pct) : '' %>" inputmode="decimal" placeholder="<%= platformFees.marketplace_pct %> (platform)" /><small>Buyer came from Explore.</small></label>
+      <label class="ax-field"><span>Order</span><input class="ax-input" name="sort_order" value="<%= p ? p.sort_order : 0 %>" inputmode="numeric" /><small>Lower shows first.</small></label>
+    </div>
+    <div class="ax-grid adm-grid-2">
+      <label class="ax-field"><span>Description</span><textarea class="ax-input" name="description" rows="3" maxlength="300" placeholder="For creators selling every week."><%= p ? p.description : '' %></textarea></label>
+      <label class="ax-field"><span>Features <small>one per line</small></span><textarea class="ax-input" name="features" rows="3" placeholder="Custom domain&#10;No PageZaper badge"><%= p ? p.features.join('\n') : '' %></textarea></label>
+    </div>
+    <div class="adm-form-foot">
+      <label class="ax-check"><input type="checkbox" name="active" value="1"<%= !p || p.active ? ' checked' : '' %><%= p && p.is_default ? ' disabled' : '' %> /> Offered to creators<%= p && p.is_default ? ' (the default plan always is)' : '' %></label>
+      <% if (p && p.is_default) { %><input type="hidden" name="active" value="1" /><% } %>
+      <div class="adm-form-actions">
+        <% if (p) { %><a class="ax-btn ax-btn-quiet" href="/admin/plans">Cancel</a><% } %>
+        <button class="ax-btn ax-btn-primary"><%= p ? 'Save plan' : 'Create plan' %></button>
+      </div>
+    </div>
+  </form>
+<% } %>
+
+<section class="adm-plans">
+  <% plans.forEach(function (p) { %>
+    <article class="adm-plan<%= p.is_default ? ' is-default' : '' %><%= p.active ? '' : ' is-off' %>">
+      <% if (editing === p.id) { %>
+        <h2 class="adm-plan-editing">Editing “<%= p.name %>”</h2>
+        <% planForm(p) %>
+      <% } else { %>
+        <div class="adm-plan-head">
+          <div>
+            <h2><%= p.name %> <% if (p.is_default) { %><span class="adm-pill is-used">Default</span><% } %><% if (!p.active) { %><span class="adm-pill">Not offered</span><% } %></h2>
+            <p class="adm-plan-price"><%= p.price_month ? formatINR(p.price_month) + ' / month' : 'Free' %><% if (p.price_year) { %> · <%= formatINR(p.price_year) %> / year<% } %></p>
+          </div>
+          <div class="adm-plan-actions">
+            <a class="ax-btn" href="/admin/plans?edit=<%= p.id %>">Edit</a>
+            <% if (!p.is_default) { %>
+              <form method="POST" action="/admin/plans/<%= p.id %>/default"><button class="ax-btn ax-btn-quiet">Make default</button></form>
+              <form method="POST" action="/admin/plans/<%= p.id %>/delete"><button class="ax-btn ax-btn-quiet adm-danger-text" data-confirm="Click again to remove">Remove</button></form>
+            <% } %>
+          </div>
+        </div>
+        <% if (p.description) { %><p class="adm-plan-desc"><%= p.description %></p><% } %>
+        <% if (p.features.length) { %><ul class="adm-plan-features"><% p.features.forEach(function (f) { %><li><%= f %></li><% }) %></ul><% } %>
+        <div class="adm-plan-meta">
+          <span>Fees: direct <b><%= p.direct_pct === null ? platformFees.direct_pct + '%' : p.direct_pct + '%' %></b><%= p.direct_pct === null ? ' (platform)' : '' %> · marketplace <b><%= p.marketplace_pct === null ? platformFees.marketplace_pct + '%' : p.marketplace_pct + '%' %></b><%= p.marketplace_pct === null ? ' (platform)' : '' %></span>
+          <a href="/admin/users?plan=<%= p.id %>"><%= p.users %> creator<%= p.users === 1 ? '' : 's' %> →</a>
+        </div>
+      <% } %>
+    </article>
+  <% }) %>
+</section>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>New plan</h2></div>
+  <div class="ax-pad"><% planForm(null) %></div>
+</section>
+
+<p class="ax-hint adm-note">Plans are assigned by an admin for now — creators aren’t charged for them automatically yet, and features listed here aren’t switched on or off by the plan.</p>
+
+<%- include('partials/admin-bottom') %>

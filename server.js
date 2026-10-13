@@ -19,6 +19,7 @@ const {
   updateProfile,
   updateStoreSettings,
   updateDesign,
+  isSuspended,
 } = require('./lib/users');
 const {
   listBlocks,
@@ -60,15 +61,16 @@ const { listAbandoned, dismissDraft } = require('./lib/checkoutDrafts');
 const { abandonedView, markContacted, dismissAbandoned, ABANDONED_AFTER_MINUTES } = require('./lib/abandoned');
 const customDomains = require('./lib/customDomains');
 const { APPS, APP_BY_ID, installedApps, setAppInstalled, appForPath } = require('./lib/apps');
-const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder, platformTotals } = require('./lib/orders');
+const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode, handleCashfreeWebhook } = require('./lib/payments');
 const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
-const { getFees, saveFees, isAdmin, ATTRIBUTION_DAYS } = require('./lib/platform');
+const { isAdmin } = require('./lib/platform');
 const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials');
 const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
-const { mediaReport, deleteMedia, userMedia, deleteUserMedia } = require('./lib/adminMedia');
+const { userMedia, deleteUserMedia } = require('./lib/adminMedia');
+const { installAdmin } = require('./lib/adminRoutes');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
@@ -159,14 +161,24 @@ app.use('/dashboard', async (req, res, next) => {
   }
 });
 
+const SUSPENDED_MESSAGE = 'This account has been suspended. If you think this is a mistake, contact support.';
+
 function redirectIfLoggedIn(req, res, next) {
   if (req.session.user) return res.redirect('/dashboard');
   next();
 }
 
+// Signed in — and not suspended (Platform admin → Users). A suspended
+// account is signed out on its next request.
 function requireAuth(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
-  next();
+  isSuspended(req.session.user.id).then((suspended) => {
+    if (!suspended) return next();
+    req.session.destroy(() => {
+      if (req.accepts(['html', 'json']) === 'json') return res.status(401).json({ error: 'This account has been suspended.' });
+      res.redirect('/login?suspended=1');
+    });
+  }).catch(next);
 }
 
 app.get('/', async (req, res, next) => {
@@ -208,63 +220,15 @@ app.get('/explore', async (req, res, next) => {
   }
 });
 
-// Platform admin (lib/platform.js): commission rates. ADMIN_EMAILS only.
+// Platform admin panel (lib/adminRoutes.js). ADMIN_EMAILS only.
 function requireAdmin(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
   if (!isAdmin(req.session.user)) return res.status(404).render('error', { title: `Not found — ${SITE_NAME}`, heading: 'Page not found', message: 'This page doesn’t exist.' });
   next();
 }
 
-async function renderAdminSettings(req, res, { status = 200, error = null, saved = false } = {}) {
-  const [fees, totals] = await Promise.all([getFees(), platformTotals()]);
-  const money = (t) => ({ count: t.count, sales: formatINR(t.sales), fee: formatINR(t.fees) });
-  res.status(status).render('admin-settings', {
-    title: `Platform settings — ${SITE_NAME}`,
-    user: req.session.user,
-    fees, error, saved,
-    totals: { marketplace: money(totals.marketplace), direct: money(totals.direct) },
-    attributionDays: ATTRIBUTION_DAYS,
-  });
-}
-
-app.get('/admin/settings', requireAdmin, (req, res, next) => {
-  renderAdminSettings(req, res, { saved: req.query.saved === '1' }).catch(next);
-});
-
-app.post('/admin/settings', requireAdmin, async (req, res, next) => {
-  try {
-    await saveFees(req.body || {});
-    res.redirect(303, '/admin/settings?saved=1');
-  } catch (err) {
-    if (err.code === 'INVALID_INPUT') return renderAdminSettings(req, res, { status: 400, error: err.message }).catch(next);
-    next(err);
-  }
-});
-
-// Platform admin → Media (lib/adminMedia.js): every creator's uploads, what
-// uses them, and deleting ones nothing has used for UNUSED_DAYS.
-app.get('/admin/media', requireAdmin, async (req, res, next) => {
-  try {
-    const report = await mediaReport();
-    res.render('admin-media', {
-      title: `Media — ${SITE_NAME}`,
-      user: req.session.user,
-      files: report.files,
-      unusedDays: report.unusedDays,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.post('/admin/media/delete', requireAdmin, async (req, res) => {
-  try {
-    res.json(await deleteMedia(req.body && req.body.keys));
-  } catch (err) {
-    console.error('Media delete failed:', err);
-    res.status(500).json({ error: 'Could not delete those files. Please try again.' });
-  }
-});
+// The admin panel itself: overview, users, plans, fees, media.
+installAdmin(app, { requireAdmin, siteName: SITE_NAME });
 
 app.get('/signup', redirectIfLoggedIn, (req, res) => {
   res.render('signup', {
@@ -309,7 +273,7 @@ app.post('/signup', redirectIfLoggedIn, async (req, res) => {
 app.get('/login', redirectIfLoggedIn, (req, res) => {
   res.render('login', {
     title: `Log in — ${SITE_NAME}`,
-    error: null,
+    error: req.query.suspended ? SUSPENDED_MESSAGE : null,
     values: { email: '' },
   });
 });
@@ -330,6 +294,7 @@ app.post('/login', redirectIfLoggedIn, async (req, res) => {
     const user = await findUserByEmail(email);
     const ok = user && await verifyPassword(user, password);
     if (!ok) return rerender('That email and password don’t match an account.');
+    if (user.status === 'suspended') return rerender(SUSPENDED_MESSAGE);
 
     req.session.user = toPublicUser(user);
     res.redirect('/dashboard');

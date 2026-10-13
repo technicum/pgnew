@@ -1,0 +1,112 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Users → one creator (lib/admin.js userDetail): account, plan, status, what they've
+    built and their sales. Each form posts to lib/adminRoutes.js and comes back here. %>
+<% var suspended = creator.status === 'suspended';
+   var feeLabel = function (planPct, platformPct) { return planPct === null ? platformPct + '% (platform default)' : planPct + '% (plan)'; }; %>
+
+<header class="adm-head">
+  <div>
+    <a class="adm-crumb" href="/admin/users">← Users</a>
+    <h1><%= creator.name %> <% if (suspended) { %><span class="adm-pill is-bad">Suspended</span><% } %></h1>
+    <p><%= creator.email %> · <a href="<%= storeUrlFor(creator.handle) %>" target="_blank" rel="noopener"><%= storeUrlFor(creator.handle).replace(/^https?:\/\//, '') %></a> · joined <%= new Date(creator.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %></p>
+  </div>
+</header>
+
+<% if (suspended) { %>
+  <div class="adm-banner" role="status">
+    <b>This account is suspended</b><% if (creator.suspended_at) { %> since <%= new Date(creator.suspended_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %><% } %>.
+    They can’t sign in, and their store is offline.<% if (creator.suspended_reason) { %> Reason: “<%= creator.suspended_reason %>”<% } %>
+  </div>
+<% } %>
+
+<section class="adm-stats">
+  <div class="adm-stat"><p>Sales</p><strong><%= formatINR(sales.revenue) %></strong><small><%= sales.paid_orders %> paid order<%= sales.paid_orders === 1 ? '' : 's' %></small></div>
+  <div class="adm-stat"><p>Fees earned</p><strong><%= formatINR(sales.fees) %></strong><small>from their orders</small></div>
+  <div class="adm-stat"><p>Audience</p><strong><%= counts.contacts %></strong><small>contacts</small></div>
+  <div class="adm-stat"><p>Plan</p><strong class="adm-stat-text"><%= plan.name %></strong><small>direct <%= feeLabel(plan.direct_pct, platformFees.direct_pct) %></small></div>
+</section>
+
+<div class="adm-cols">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Account</h2></div>
+    <form method="POST" action="/admin/users/<%= creator.id %>/account" class="ax-pad adm-form">
+      <label class="ax-field"><span>Name</span><input class="ax-input" name="name" value="<%= creator.name %>" required maxlength="120" /></label>
+      <label class="ax-field"><span>Email</span><input class="ax-input" type="email" name="email" value="<%= creator.email %>" required maxlength="190" /></label>
+      <label class="ax-field"><span>Store link</span>
+        <span class="adm-input-suffix"><input class="ax-input" name="handle" value="<%= creator.handle %>" required maxlength="64" /><em>.<%= siteDomain %></em></span>
+        <small>Changing it changes their store’s address — old links stop working.</small></label>
+      <button class="ax-btn ax-btn-primary">Save account</button>
+    </form>
+  </section>
+
+  <div class="adm-stack">
+    <section class="ax-panel">
+      <div class="ax-panel-head"><h2>Plan</h2><a class="ax-count" href="/admin/plans">Manage plans →</a></div>
+      <form method="POST" action="/admin/users/<%= creator.id %>/plan" class="ax-pad adm-form">
+        <label class="ax-field"><span>Plan</span>
+          <select class="ax-input" name="plan_id">
+            <% plans.forEach(function (p) { %>
+              <option value="<%= p.id %>"<%= p.id === plan.id ? ' selected' : '' %>><%= p.name %><%= p.price_month ? ' — ' + formatINR(p.price_month) + '/mo' : '' %><%= p.is_default ? ' (default)' : '' %><%= p.active ? '' : ' (not offered)' %></option>
+            <% }) %>
+          </select>
+          <small>Transaction fees: direct <%= feeLabel(plan.direct_pct, platformFees.direct_pct) %> · marketplace <%= feeLabel(plan.marketplace_pct, platformFees.marketplace_pct) %>. New orders use the new plan’s fees.</small>
+        </label>
+        <button class="ax-btn">Change plan</button>
+      </form>
+    </section>
+
+    <section class="ax-panel">
+      <div class="ax-panel-head"><h2>Status</h2></div>
+      <% if (isSelf || isAdminUser) { %>
+        <p class="ax-pad ax-hint">Admin accounts can’t be suspended.</p>
+      <% } else if (suspended) { %>
+        <form method="POST" action="/admin/users/<%= creator.id %>/status" class="ax-pad adm-form">
+          <input type="hidden" name="status" value="active" />
+          <p class="ax-hint">Reactivating lets them sign in again and brings their store back online.</p>
+          <button class="ax-btn ax-btn-primary">Reactivate account</button>
+        </form>
+      <% } else { %>
+        <form method="POST" action="/admin/users/<%= creator.id %>/status" class="ax-pad adm-form">
+          <input type="hidden" name="status" value="suspended" />
+          <label class="ax-field"><span>Reason <small>optional, only admins see it</small></span><input class="ax-input" name="reason" maxlength="300" placeholder="e.g. Selling prohibited items" /></label>
+          <p class="ax-hint">They’re signed out, can’t sign in, and their store and listings go offline. Nothing is deleted — you can reactivate them any time.</p>
+          <button class="ax-btn adm-danger" data-confirm="Click again to suspend">Suspend account</button>
+        </form>
+      <% } %>
+    </section>
+  </div>
+</div>
+
+<div class="adm-cols">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>What they’ve built</h2></div>
+    <ul class="adm-list adm-list-grid">
+      <li><span>Store modules</span><b><%= counts.blocks %></b></li>
+      <li><span>Payment pages</span><b><%= counts.pages %></b></li>
+      <li><span>Lead magnets</span><b><%= counts.magnets %></b></li>
+      <li><span>Booking services</span><b><%= counts.services %></b></li>
+      <li><span>Bookings</span><b><%= counts.bookings %></b></li>
+      <li><span>Events</span><b><%= counts.events %></b></li>
+      <li><span>Courses</span><b><%= counts.courses %></b></li>
+      <li><span>Audience</span><b><%= counts.contacts %></b></li>
+    </ul>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Recent orders</h2><span class="ax-count">Payment pages</span></div>
+    <% if (recentOrders.length) { %>
+      <ul class="adm-list">
+        <% recentOrders.forEach(function (o) { %>
+          <li>
+            <span><b>#<%= o.id %> · <%= o.buyer_name || o.buyer_email %></b><small><%= new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) %> · <%= o.source === 'marketplace' ? 'Marketplace' : 'Direct' %> · fee <%= formatINR(o.platform_fee) %></small></span>
+            <span><%= formatINR(o.total) %> <span class="adm-pill<%= o.status === 'paid' ? ' is-used' : '' %>"><%= o.status %></span></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <p class="ax-empty">No orders yet.</p>
+    <% } %>
+  </section>
+</div>
+
+<%- include('partials/admin-bottom') %>

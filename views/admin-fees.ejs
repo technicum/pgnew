@@ -1,0 +1,54 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Transaction fees (lib/platform.js): the platform's commission. Plans can set their
+    own (lib/plans.js) — listed below. %>
+
+<header class="adm-head">
+  <div>
+    <h1>Transaction fees</h1>
+    <p>Taken on each paid order. Changes apply to new orders; past orders keep the fee they were placed with.</p>
+  </div>
+</header>
+
+<form method="POST" action="/admin/fees">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Platform default</h2><span class="ax-count">For every plan that doesn’t set its own</span></div>
+    <div class="ax-grid">
+      <label class="ax-field"><span>Marketplace sales (%)</span><input class="ax-input" name="marketplace_pct" value="<%= fees.marketplace_pct %>" inputmode="decimal" required />
+        <small>Buyer came from Explore or the homepage search.</small></label>
+      <label class="ax-field"><span>Direct sales (%)</span><input class="ax-input" name="direct_pct" value="<%= fees.direct_pct %>" inputmode="decimal" required />
+        <small>Buyer came from the creator’s own link.</small></label>
+      <span></span>
+    </div>
+    <p class="ax-hint ax-pad">
+      Example: a ₹250 product earns <b>₹<%= (250 * fees.direct_pct / 100).toFixed(2).replace(/\.00$/, '') %></b> direct, or <b>₹<%= (250 * fees.marketplace_pct / 100).toFixed(2).replace(/\.00$/, '') %></b> through the marketplace.
+      Sessions paid at the appointment take this commission as their online advance.
+      A marketplace visit counts for <%= attributionDays %> days on that creator’s store.
+    </p>
+    <div class="ax-savebar ax-pad"><span class="ax-sub">Admins: ADMIN_EMAILS in .env</span><button class="ax-btn ax-btn-primary">Save</button></div>
+  </section>
+</form>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Plans with their own fees</h2><a class="ax-count" href="/admin/plans">Manage plans →</a></div>
+  <% if (plans.length) { %>
+    <ul class="adm-list">
+      <% plans.forEach(function (p) { %>
+        <li><a href="/admin/plans?edit=<%= p.id %>"><b><%= p.name %></b></a>
+          <span>direct <%= p.direct_pct === null ? fees.direct_pct + '% (default)' : p.direct_pct + '%' %> · marketplace <%= p.marketplace_pct === null ? fees.marketplace_pct + '% (default)' : p.marketplace_pct + '%' %></span></li>
+      <% }) %>
+    </ul>
+  <% } else { %>
+    <p class="ax-empty">Every plan uses the platform default.</p>
+  <% } %>
+</section>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Earned so far</h2><span class="ax-count">Payment pages, paid orders</span></div>
+  <div class="ax-grid">
+    <div class="ax-field"><span>Marketplace</span><b style="font-size:20px;"><%= totals.marketplace.fee %></b><small>on <%= totals.marketplace.sales %> of sales · <%= totals.marketplace.count %> orders</small></div>
+    <div class="ax-field"><span>Direct</span><b style="font-size:20px;"><%= totals.direct.fee %></b><small>on <%= totals.direct.sales %> of sales · <%= totals.direct.count %> orders</small></div>
+    <span></span>
+  </div>
+</section>
+
+<%- include('partials/admin-bottom') %>

@@ -1,0 +1,68 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Users (lib/admin.js listUsers): search, plan and status filters, PER_PAGE a page. %>
+<% var planName = {}; plans.forEach(function (p) { planName[p.id] = p.name; });
+   var qs = function (extra) {
+     var o = { q: filters.q, plan: filters.plan, status: filters.status };
+     Object.keys(extra).forEach(function (k) { o[k] = extra[k]; });
+     return Object.keys(o).filter(function (k) { return o[k]; }).map(function (k) { return k + '=' + encodeURIComponent(o[k]); }).join('&');
+   }; %>
+
+<header class="adm-head">
+  <div>
+    <h1>Users</h1>
+    <p><%= total %> creator<%= total === 1 ? '' : 's' %><%= filters.q || filters.plan || filters.status ? ' match' : '' %>.</p>
+  </div>
+</header>
+
+<section class="ax-panel">
+  <form class="adm-tools" method="GET" action="/admin/users">
+    <div class="adm-search">
+      <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+      <input type="search" class="ax-input" name="q" value="<%= filters.q %>" placeholder="Search name, email or store link" aria-label="Search users" />
+    </div>
+    <select class="ax-input" name="plan" aria-label="Plan" onchange="this.form.submit()">
+      <option value="">All plans</option>
+      <% plans.forEach(function (p) { %><option value="<%= p.id %>"<%= String(p.id) === filters.plan ? ' selected' : '' %>><%= p.name %></option><% }) %>
+    </select>
+    <select class="ax-input" name="status" aria-label="Status" onchange="this.form.submit()">
+      <option value="">Any status</option>
+      <option value="active"<%= filters.status === 'active' ? ' selected' : '' %>>Active</option>
+      <option value="suspended"<%= filters.status === 'suspended' ? ' selected' : '' %>>Suspended</option>
+    </select>
+    <button class="ax-btn">Search</button>
+    <% if (filters.q || filters.plan || filters.status) { %><a class="ax-btn ax-btn-quiet" href="/admin/users">Clear</a><% } %>
+  </form>
+
+  <% if (users.length) { %>
+  <div class="adm-table-wrap">
+    <table class="adm-table">
+      <thead><tr><th>Creator</th><th>Store</th><th>Plan</th><th>Sales</th><th>Joined</th><th>Status</th><th><span class="sr-only">Open</span></th></tr></thead>
+      <tbody>
+        <% users.forEach(function (u) { var planId = u.plan_id && planName[u.plan_id] ? u.plan_id : defaultPlanId; %>
+          <tr>
+            <td><a class="adm-owner" href="/admin/users/<%= u.id %>"><%= u.name %></a><small><%= u.email %></small></td>
+            <td><a href="<%= storeUrlFor(u.handle) %>" target="_blank" rel="noopener"><%= u.handle %></a></td>
+            <td><%= planName[planId] %></td>
+            <td class="adm-num"><%= formatINR(Number(u.revenue)) %><small><%= u.paid_orders %> paid order<%= Number(u.paid_orders) === 1 ? '' : 's' %></small></td>
+            <td class="adm-num"><%= new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %></td>
+            <td><% if (u.status === 'suspended') { %><span class="adm-pill is-bad">Suspended</span><% } else { %><span class="adm-pill is-used">Active</span><% } %></td>
+            <td><a class="ax-btn" href="/admin/users/<%= u.id %>">Manage</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
+    <p class="ax-empty">No creators match.</p>
+  <% } %>
+
+  <% if (pages > 1) { %>
+    <nav class="adm-pager" aria-label="Pages">
+      <% if (page > 1) { %><a class="ax-btn" href="/admin/users?<%= qs({ page: page - 1 }) %>">← Newer</a><% } %>
+      <span>Page <%= page %> of <%= pages %></span>
+      <% if (page < pages) { %><a class="ax-btn" href="/admin/users?<%= qs({ page: page + 1 }) %>">Older →</a><% } %>
+    </nav>
+  <% } %>
+</section>
+
+<%- include('partials/admin-bottom') %>

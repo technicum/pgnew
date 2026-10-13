@@ -1,0 +1,127 @@
+/* Platform admin panel (views/admin-*.ejs, partials/admin-top): its own
+   sidebar and page pieces, on dashboard.css's tokens and app-dashboard.css's
+   ax-* panels and fields. (The stats, table and pills come from there too.) */
+.adm-body { background: var(--background); }
+.adm-shell { display: flex; min-height: 100vh; }
+
+.adm-side {
+  position: sticky; top: 0; height: 100vh; flex: none; width: 236px; display: flex; flex-direction: column;
+  background: #0b1020; color: #e7eaf3; padding: 18px 12px;
+}
+.adm-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 18px; color: inherit; text-decoration: none; }
+.adm-brand-mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #ef4444; color: #fff; }
+.adm-brand b { display: block; font-family: var(--font-display); font-size: 16px; line-height: 1.1; }
+.adm-brand small { display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #fca5a5; }
+.adm-nav { display: flex; flex-direction: column; gap: 2px; }
+.adm-nav a {
+  display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 8px;
+  color: rgba(231, 234, 243, .72); text-decoration: none; font-size: 14px; font-weight: 500;
+}
+.adm-nav a:hover { background: rgba(255, 255, 255, .06); color: #fff; }
+.adm-nav a.is-on { background: rgba(255, 255, 255, .1); color: #fff; }
+.adm-nav a.is-on svg { color: #fca5a5; }
+.adm-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 8px 0; border-top: 1px solid rgba(255, 255, 255, .1); }
+.adm-side-foot a { display: flex; align-items: center; gap: 6px; color: rgba(231, 234, 243, .8); text-decoration: none; font-size: 13px; font-weight: 600; }
+.adm-side-foot a:hover { color: #fff; }
+.adm-who { font-size: 13px; font-weight: 600; overflow: hidden; }
+.adm-who small { display: block; font-weight: 400; font-size: 12px; color: rgba(231, 234, 243, .55); overflow: hidden; text-overflow: ellipsis; }
+
+.adm-main { flex: 1; min-width: 0; max-width: 1180px; padding: 28px 32px 48px; }
+.adm-main > .ax-flash { margin: 0 0 16px; }
+.adm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+.adm-head h1 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.adm-head p { margin: 6px 0 0; font-size: 14px; color: var(--muted-foreground); max-width: 760px; }
+.adm-head p a { color: var(--primary); }
+.adm-crumb { display: inline-block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted-foreground); text-decoration: none; }
+.adm-crumb:hover { color: var(--foreground); }
+
+a.adm-stat { color: inherit; text-decoration: none; }
+a.adm-stat:hover { border-color: color-mix(in oklab, var(--primary) 40%, var(--border)); }
+.adm-stat-text { font-size: 20px !important; }
+.adm-stat.is-accent strong { color: var(--success); }
+.adm-stat.is-accent { border-color: color-mix(in oklab, var(--success) 30%, var(--border)); }
+
+.adm-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.adm-cols > .ax-panel, .adm-stack > .ax-panel { margin-top: 16px; }
+.adm-stack { display: flex; flex-direction: column; }
+@media (max-width: 980px) { .adm-cols { grid-template-columns: minmax(0, 1fr); } }
+
+.adm-list { list-style: none; margin: 0; padding: 0; }
+.adm-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 20px; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.adm-list li:last-child { border-bottom: none; }
+.adm-list li > a, .adm-list li > span:first-child { min-width: 0; color: inherit; text-decoration: none; }
+.adm-list li > a:hover b { color: var(--primary); }
+.adm-list b { font-weight: 600; }
+.adm-list small { display: block; font-size: 12px; color: var(--muted-foreground); margin-top: 1px; }
+.adm-list li > span:last-child { flex: none; color: var(--muted-foreground); font-variant-numeric: tabular-nums; text-align: right; }
+.adm-list-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adm-list-grid li { border-right: 1px solid var(--border); }
+.adm-list-grid li:nth-child(2n) { border-right: none; }
+.adm-list-grid li:nth-last-child(-n+2) { border-bottom: none; }
+.adm-list-grid b { font-family: var(--font-display); font-size: 18px; }
+
+.adm-pill.is-bad { background: color-mix(in oklab, var(--destructive) 12%, transparent); color: var(--destructive); }
+
+/* Sign-ups chart. */
+.adm-bars { display: flex; align-items: flex-end; gap: 6px; height: 150px; padding: 16px 20px 12px; }
+.adm-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.adm-bar i { display: block; width: 100%; max-width: 28px; height: max(var(--h), 3px); border-radius: 4px 4px 0 0; background: var(--primary); opacity: .85; }
+.adm-bar small { font-size: 10.5px; color: var(--muted-foreground); }
+
+/* Users list. */
+.adm-tools form, form.adm-tools { margin: 0; }
+.adm-pager { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 14px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted-foreground); }
+.adm-table td a.adm-owner { color: var(--foreground); text-decoration: none; }
+.adm-table td a.adm-owner:hover { color: var(--primary); }
+.adm-table td a { color: var(--primary); }
+
+/* One user. */
+.adm-banner {
+  margin: 16px 0 0; padding: 12px 16px; border-radius: var(--radius); font-size: 13.5px;
+  background: color-mix(in oklab, var(--destructive) 9%, var(--card)); color: var(--foreground);
+  border: 1px solid color-mix(in oklab, var(--destructive) 30%, var(--border));
+}
+.adm-form { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.adm-form .ax-field { width: 100%; }
+.adm-input-suffix { display: flex; align-items: center; gap: 6px; }
+.adm-input-suffix em { font-style: normal; font-size: 13px; color: var(--muted-foreground); white-space: nowrap; }
+.adm-danger { color: var(--destructive); border-color: color-mix(in oklab, var(--destructive) 40%, var(--border)); }
+.adm-danger.is-armed { background: var(--destructive); border-color: var(--destructive); color: #fff; }
+.adm-danger-text { color: var(--destructive); }
+.ax-pad.adm-form { padding: 16px 20px 18px; }
+p.ax-pad.ax-hint { padding: 16px 20px; margin: 0; }
+
+/* Plans. */
+.adm-plans { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 18px; }
+.adm-plan { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.adm-plan.is-default { border-color: color-mix(in oklab, var(--success) 40%, var(--border)); }
+.adm-plan.is-off { opacity: .75; }
+.adm-plan:has(.adm-plan-form) { grid-column: 1 / -1; }
+.adm-plan-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.adm-plan h2 { margin: 0; font-family: var(--font-display); font-size: 19px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.adm-plan-price { margin: 4px 0 0; font-size: 14px; font-weight: 600; color: var(--primary); }
+.adm-plan-actions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.adm-plan-actions form { margin: 0; }
+.adm-plan-desc { margin: 0; font-size: 13.5px; color: var(--muted-foreground); }
+.adm-plan-features { margin: 0; padding-left: 18px; font-size: 13.5px; display: flex; flex-direction: column; gap: 3px; }
+.adm-plan-meta { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted-foreground); }
+.adm-plan-meta a { color: var(--primary); text-decoration: none; font-weight: 600; }
+.adm-plan-editing { font-size: 16px !important; }
+.adm-plan-form .ax-grid { padding: 0; margin-bottom: 12px; }
+.adm-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.adm-plan-form textarea.ax-input { height: auto; padding: 8px 10px; resize: vertical; }
+.adm-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.adm-form-actions { display: flex; gap: 8px; }
+.ax-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
+.adm-note { margin-top: 16px; }
+
+@media (max-width: 860px) {
+  .adm-shell { flex-direction: column; }
+  .adm-side { position: static; width: auto; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .adm-brand { padding: 0 8px 0 0; }
+  .adm-nav { flex-direction: row; flex-wrap: wrap; }
+  .adm-side-foot { margin: 0 0 0 auto; padding: 0; border: none; flex-direction: row; }
+  .adm-who { display: none; }
+  .adm-main { padding: 20px 16px 40px; }
+  .adm-grid-2 { grid-template-columns: minmax(0, 1fr) !important; }
+}
