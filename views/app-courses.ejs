@@ -15,8 +15,7 @@
         <span class="ax-sub ax-block"><%= c.priceLabel %> · <%= c.contentLabel %> · <%= c.student_count %> student<%= c.student_count === 1 ? '' : 's' %><%= c.visible ? '' : ' · Hidden' %></span>
         <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
       </div>
-      <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
-      <a class="ax-btn" href="/dashboard/courses/<%= c.id %>">Edit</a>
+      <%- include('partials/ax-row-menu', { label: c.title, editHref: '/dashboard/courses/' + c.id, link: link, base: '/dashboard/courses/' + c.id, visible: c.visible }) %>
     </li>
     <% }) %>
   </ul>

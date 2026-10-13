@@ -297,25 +297,74 @@
   });
 
   // Copy buttons for public links, and a second click to confirm deletes.
+  // A button with an icon keeps it: only its [data-label] part changes.
   document.addEventListener('click', function (e) {
     var copy = e.target.closest('[data-copy]');
     if (copy) {
+      var copyText = copy.querySelector('[data-label]') || copy;
       navigator.clipboard.writeText(copy.getAttribute('data-copy')).then(function () {
-        var was = copy.textContent;
-        copy.textContent = 'Copied';
-        setTimeout(function () { copy.textContent = was; }, 1200);
+        var was = copyText.textContent;
+        copyText.textContent = 'Copied';
+        setTimeout(function () { copyText.textContent = was; }, 1200);
       });
     }
     var confirmBtn = e.target.closest('[data-confirm]');
     if (confirmBtn && !confirmBtn.classList.contains('is-armed')) {
       e.preventDefault();
+      var confirmText = confirmBtn.querySelector('[data-label]') || confirmBtn;
       confirmBtn.classList.add('is-armed');
-      confirmBtn.dataset.label = confirmBtn.textContent;
-      confirmBtn.textContent = confirmBtn.getAttribute('data-confirm');
+      confirmBtn.dataset.label = confirmText.textContent;
+      confirmText.textContent = confirmBtn.getAttribute('data-confirm');
       setTimeout(function () {
         confirmBtn.classList.remove('is-armed');
-        confirmBtn.textContent = confirmBtn.dataset.label;
+        confirmText.textContent = confirmBtn.dataset.label;
       }, 3000);
+    }
+  });
+
+  // ⋯ menus on list rows (partials/ax-row-menu): one open at a time; a
+  // click outside or Esc closes it. Copying keeps it open long enough to
+  // see "Copied"; arming Delete keeps it open for the second click.
+  var openMenu = null;
+  function closeMenu(focusButton) {
+    if (!openMenu) return;
+    var btn = openMenu.querySelector('.ax-menu-btn');
+    openMenu.querySelector('.ax-menu-pop').hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    openMenu.classList.remove('is-open');
+    if (focusButton) btn.focus();
+    openMenu = null;
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.ax-menu-btn');
+    if (btn) {
+      var menu = btn.closest('[data-menu]');
+      var wasOpen = menu === openMenu;
+      closeMenu(false);
+      if (wasOpen) return;
+      var pop = menu.querySelector('.ax-menu-pop');
+      pop.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      menu.classList.add('is-open');
+      // Open upward when there's no room below.
+      var room = window.innerHeight - btn.getBoundingClientRect().bottom;
+      menu.classList.toggle('opens-up', room < pop.offsetHeight + 16);
+      openMenu = menu;
+      var first = pop.querySelector('[role=menuitem]');
+      if (first) first.focus();
+      return;
+    }
+    if (openMenu && !openMenu.contains(e.target)) closeMenu(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!openMenu) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeMenu(true); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      var items = Array.prototype.slice.call(openMenu.querySelectorAll('[role=menuitem]'));
+      var i = items.indexOf(document.activeElement);
+      e.preventDefault();
+      var next = e.key === 'ArrowDown' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+      items[next].focus();
     }
   });
 </script>

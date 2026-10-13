@@ -252,3 +252,31 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .ax-video-status:empty { display: none; }
 .ax-meter { display: inline-block; width: 80px; height: 6px; margin-right: 6px; border-radius: 999px; background: var(--muted); vertical-align: middle; overflow: hidden; }
 .ax-meter span { display: block; height: 100%; background: var(--success); }
+
+/* A list row's ⋯ menu (partials/ax-row-menu): every action for the item. */
+.ax-row.is-off > .ax-menu { opacity: 1; }
+.ax-menu { position: relative; flex: none; margin-left: auto; }
+.ax-menu-btn {
+  width: 34px; height: 34px; border-radius: calc(var(--radius) - 4px); display: grid; place-items: center;
+  border: 1px solid transparent; background: none; color: var(--muted-foreground); cursor: pointer;
+}
+.ax-menu-btn:hover, .ax-menu.is-open .ax-menu-btn { background: var(--muted); color: var(--foreground); border-color: var(--border); }
+.ax-menu-btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.ax-menu-pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 190px; padding: 5px;
+  background: var(--card); border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px);
+  box-shadow: 0 10px 30px rgba(18, 24, 31, .14); display: flex; flex-direction: column;
+}
+.ax-menu-pop[hidden] { display: none; }
+.ax-menu.opens-up .ax-menu-pop { top: auto; bottom: calc(100% + 6px); }
+.ax-menu-pop form { margin: 0; display: contents; }
+.ax-menu-pop [role=menuitem] {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border: none; background: none;
+  border-radius: calc(var(--radius) - 5px); cursor: pointer; text-align: left; text-decoration: none;
+  font-family: var(--font-sans); font-size: 13.5px; font-weight: 500; color: var(--foreground);
+}
+.ax-menu-pop [role=menuitem] svg { flex: none; color: var(--muted-foreground); }
+.ax-menu-pop [role=menuitem]:hover, .ax-menu-pop [role=menuitem]:focus-visible { background: var(--muted); outline: none; }
+.ax-menu-pop .is-danger { color: var(--destructive); margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 calc(var(--radius) - 5px) calc(var(--radius) - 5px); padding-top: 10px; }
+.ax-menu-pop .is-danger svg { color: var(--destructive); }
+.ax-menu-pop .is-danger.is-armed { background: color-mix(in oklab, var(--destructive) 10%, transparent); font-weight: 600; }

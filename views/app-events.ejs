@@ -10,8 +10,7 @@ function eventRow(e) { var link = storeUrl + '/event/' + e.slug; %>
         <span class="ax-sub ax-block"><%= e.priceLabel %> · <%= e.mode === 'online' ? 'Online' : (e.location || 'Venue') %> · <%= e.going %><%= e.capacity ? ' / ' + e.capacity : '' %> going<%= e.visible ? '' : ' · Hidden' %></span>
         <span class="ax-link"><a href="<%= link %>" target="_blank" rel="noopener"><%= link.replace(/^https?:\/\//, '') %></a></span>
       </div>
-      <button type="button" class="ax-btn ax-btn-quiet" data-copy="<%= link %>">Copy link</button>
-      <a class="ax-btn" href="/dashboard/events/<%= e.id %>">Edit</a>
+      <%- include('partials/ax-row-menu', { label: e.title, editHref: '/dashboard/events/' + e.id, link: link, base: '/dashboard/events/' + e.id, visible: e.visible }) %>
     </li>
 <% } %>
 
