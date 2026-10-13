@@ -421,10 +421,6 @@ body.buttons-square .store-popup .store-popup-card { border-radius: 6px 6px 0 0;
 .store-popup.store-popup-video .store-popup-card::before { display: none; }
 @media (prefers-reduced-motion: reduce) { .store-popup .store-popup-card { animation: none; } }
 
-/* Testimonials card on the page: stacked initials, title, count + first quote. */
-.store-reviews-trigger { justify-content: flex-start; }
-.store-reviews-trigger .store-block-body { flex: 1; }
-.store-reviews-trigger .store-block-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .store-reviews-faces { display: flex; flex: none; }
 .store-reviews-faces span {
   width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
@@ -434,7 +430,60 @@ body.buttons-square .store-popup .store-popup-card { border-radius: 6px 6px 0 0;
 }
 .store-reviews-faces span + span { margin-left: -10px; }
 
-/* Testimonials popup: the slider, left-aligned under the title. */
-.store-popup-reviews-title { text-align: left; padding-right: 40px; margin-bottom: 14px; }
-.store-popup .store-reviews { text-align: left; }
-.store-popup .store-review { background: var(--bg); }
+
+/* --- Testimonials -----------------------------------------------------------
+   On the page: a featured-quote card (heading + count, the first quote,
+   then who said it and "Read all"). In the popup: a counter by the title,
+   roomy slides with the next one peeking in, arrows and dots below. */
+.store-reviews-card {
+  flex-direction: column; align-items: stretch; gap: 12px; padding: 16px 18px;
+  background:
+    linear-gradient(160deg, color-mix(in oklab, var(--store-accent, #ff6b4a) 7%, var(--card)), var(--card) 55%);
+}
+.store-item > .store-reviews-card { padding-right: 18px; }
+.store-reviews-card-head { display: flex; align-items: baseline; gap: 8px; padding-right: 34px; }
+.store-reviews-card-title { font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.3; }
+.store-reviews-card-count {
+  margin-left: auto; flex: none; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  color: var(--store-accent, #ff6b4a); background: color-mix(in oklab, var(--store-accent, #ff6b4a) 12%, transparent);
+}
+.store-reviews-card-quote { display: flex; gap: 8px; align-items: flex-start; }
+.store-reviews-card-quote svg { flex: none; color: var(--store-accent, #ff6b4a); margin-top: 1px; }
+.store-reviews-card-quote span {
+  font-size: 15px; line-height: 1.5; color: var(--fg);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.store-reviews-card-foot { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.store-reviews-card-foot .store-reviews-faces span { width: 28px; height: 28px; font-size: 11px; }
+.store-reviews-card-who { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-reviews-card-who strong { color: var(--fg); font-weight: 600; }
+.store-reviews-card-cta {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 13px; font-weight: 600; color: var(--store-accent, #ff6b4a);
+}
+.store-reviews-card:hover .store-reviews-card-cta svg { transform: translateX(2px); }
+.store-reviews-card-cta svg { transition: transform .15s ease; }
+/* Its share button sits by the title, not halfway down. */
+.store-item-top > .store-share-btn { top: 12px; transform: none; }
+
+/* Popup. */
+.store-popup-reviews-head { display: flex; align-items: center; gap: 10px; padding-right: 40px; margin-bottom: 16px; text-align: left; }
+.store-popup-reviews-title { flex: 1; min-width: 0; }
+.store-reviews-counter { flex: none; font-size: 12.5px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.store-popup .store-reviews { text-align: left; gap: 14px; }
+.store-reviews.is-many .store-reviews-track { gap: 12px; }
+.store-reviews.is-many .store-review { flex-basis: 86%; }
+.store-popup .store-review {
+  position: relative; gap: 16px; padding: 22px 22px 18px; background: var(--bg); border-color: transparent;
+}
+.store-popup .store-review-mark { opacity: .25; margin-bottom: -6px; }
+.store-popup .store-review blockquote {
+  font-family: var(--font-display); font-size: 18px; line-height: 1.5; font-weight: 500;
+}
+body.font-serif .store-popup .store-review blockquote { font-weight: 600; font-size: 17.5px; }
+.store-popup .store-review figcaption { padding-top: 14px; border-top: 1px solid var(--border); }
+.store-popup .store-review-avatar { width: 40px; height: 40px; font-size: 14px; }
+.store-popup .store-reviews-nav { justify-content: space-between; }
+.store-popup .store-reviews-dots { flex: 1; justify-content: center; }
+.store-popup .store-reviews-arrow { width: 38px; height: 38px; }
+.store-reviews-card-foot .store-reviews-faces span + span { margin-left: -5px; }

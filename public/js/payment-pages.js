@@ -234,11 +234,11 @@
   }
 
   // What kind of page this is — picked in the "Create payment page" popup
-  // (or, when editing, read off its products):
+  // and saved with the page (pages from before that: read off products):
   //   'single'   — one digital or physical product
   //   'multiple' — up to MAX_PRODUCTS, digital and physical in any mix
   //   'coffee'   — just a buy-me-a-coffee button
-  // It only shapes the builder; the server sees a plain product list.
+  // It shapes the builder, and the public page's layout (lib/paymentStorefront.js).
   let pageKind = 'single';
   function kindOf(list) {
     if (list.length > 1) return 'multiple';
@@ -618,7 +618,7 @@
     if (page && page.products.length) products = page.products.map(fromStored);
     else products = [kind === 'coffee' ? blankProduct({ type: 'coffee', pricing: 'qty' }) : blankProduct()];
     nextPid = Math.max(...products.map((p) => p.id)) + 1;
-    pageKind = !page && kind ? kind : kindOf(products);
+    pageKind = !page && kind ? kind : (page && page.kind) || kindOf(products);
     // Older single-product pages may have left the headline to the product.
     if (pageKind !== 'multiple' && !titleInput.value.trim()) titleInput.value = products[0].title;
     renderKind();
@@ -804,7 +804,7 @@
       return { error: collected.error, tab: pageKind === 'multiple' ? 'products' : 'page', focus: productInput(collected.product, collected.field) };
     }
     let standIns = collected.standIns;
-    if (!headline.trim() && collected.products.length > 1) {
+    if (!headline.trim() && pageKind === 'multiple') {
       if (!draft) return { error: 'Give the page a headline, like “Complete Starter Bundle”.', tab: 'page', focus: titleInput };
       headline = 'Your payment page';
       standIns = true;
@@ -820,6 +820,7 @@
       about: aboutInput.value,
       successMessage: successInput.value,
       marketplace: pageKind !== 'coffee' && marketplaceInput.checked,
+      kind: pageKind,
       products: collected.products,
       accentColor: accent,
       showCover,
@@ -870,7 +871,7 @@
     trash: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>',
   };
   function pageKindLabel(page) {
-    if (page.products.length > 1) return `${page.products.length} products`;
+    if (page.kind === 'multiple') return `${page.products.length} product${page.products.length === 1 ? '' : 's'}`;
     const p = page.products[0];
     if (!p) return '';
     return p.type === 'coffee' ? 'Buy me a coffee' : (p.type === 'physical' ? 'Physical' : 'Digital');
