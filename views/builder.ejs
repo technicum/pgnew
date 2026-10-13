@@ -67,7 +67,9 @@
       <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
       <div class="ml-auto flex items-center gap-2">
         <a href="<%= storeUrlFor(user.handle) %>" id="viewLiveBtn" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;" target="_blank" rel="noopener">View live</a>
-        <button type="button" class="pz-save-btn inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted active:translate-y-px h-10 px-4" id="saveBtn" title="Save now (Ctrl+S)" disabled>
+        <%# Nothing saves on its own: edits wait here until Save (or Ctrl+S); Discard drops them. %>
+        <button type="button" class="pz-discard-btn inline-flex items-center justify-center rounded-md text-sm font-semibold text-muted-foreground hover:bg-muted h-10 px-3" id="discardBtn" hidden>Discard</button>
+        <button type="button" class="pz-save-btn inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted active:translate-y-px h-10 px-4" id="saveBtn" title="Save changes (Ctrl+S)" disabled>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
           Save
         </button>

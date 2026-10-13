@@ -192,6 +192,13 @@ body.pz-sorting, body.pz-sorting * { user-select: none; cursor: grabbing !import
 body.pz-modal-open { overflow: hidden; }
 
 .pz-save-btn:disabled { opacity: .5; cursor: default; }
+/* Unsaved changes: Save becomes the main button until they're saved. */
+.pz-save-btn.is-dirty:not(:disabled) {
+  background: var(--primary); color: var(--primary-foreground); border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent);
+}
+.pz-save-btn.is-dirty:not(:disabled):hover { background: color-mix(in oklab, var(--primary) 90%, black); }
+.pz-discard-btn[hidden] { display: none; }
 
 .pz-swatch-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .pz-swatch {

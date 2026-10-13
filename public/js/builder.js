@@ -1,8 +1,8 @@
 // Store builder — talks to the real /dashboard/builder/* JSON endpoints
 // (server.js). Blocks start from window.__PZ_INITIAL_BLOCKS__ (rendered
-// server-side from PDZ_blocks) and every edit here is followed by a
-// fetch() to persist it; nothing is purely client-side state past the
-// first paint.
+// server-side from PDZ_blocks). Nothing saves on its own: every edit
+// updates the screen and the live preview and is noted as unsaved, and
+// Save (or Ctrl+S) sends them all. Discard drops them.
 (function () {
   // Every module the "Add content" popup offers, in display order. group
   // sets the popup section; desc and keywords feed the search. Keys must
@@ -47,35 +47,60 @@
   }
 
   // --- save status + fetch helper --------------------------------------
-  // Edits autosave after a short pause (see debounce below). The Save
-  // button sends anything still waiting right away, and retries edits
-  // whose save failed. "Unsaved" means: typed but not sent yet, or sent
-  // and failed.
+  // What's unsaved, by kind. New and duplicated blocks have a negative id
+  // until Save creates them on the server.
   const saveBtn = document.getElementById('saveBtn');
+  const discardBtn = document.getElementById('discardBtn');
   let pending = 0;             // requests in flight
   let errorMessage = null;     // last failure, shown for a few seconds
   let clearErrorTimer = null;
-  const failedFieldSaves = new Map(); // "id:field" -> [id, field, value]
-  let profileSaveFailed = false;
-  let settingsSaveFailed = false;
+  let justSaved = false;       // "All changes saved" for a moment after a save
+  let justSavedTimer = null;
+  const dirty = {
+    blocks: new Map(),         // saved block id -> Set of changed fields
+    deleted: new Set(),        // saved block ids removed on screen
+    order: false,
+    profile: false,
+    settings: false,
+    design: false,
+  };
+  let tempIds = 0;
+  const nextTempId = () => -(++tempIds);
 
   function unsavedCount() {
-    return debouncedFieldSave.pendingCount()
-      + debouncedProfileSave.pendingCount()
-      + debouncedSettingsSave.pendingCount()
-      + failedFieldSaves.size
-      + (profileSaveFailed ? 1 : 0)
-      + (settingsSaveFailed ? 1 : 0);
+    return blocks.filter((b) => b.id < 0).length
+      + dirty.blocks.size
+      + dirty.deleted.size
+      + (dirty.order ? 1 : 0)
+      + (dirty.profile ? 1 : 0)
+      + (dirty.settings ? 1 : 0)
+      + (dirty.design ? 1 : 0);
+  }
+
+  function markBlock(id, field) {
+    if (id > 0) {
+      if (!dirty.blocks.has(id)) dirty.blocks.set(id, new Set());
+      dirty.blocks.get(id).add(field);
+    }
+    paintSaveStatus();
+  }
+  function markDirty(kind) {
+    dirty[kind] = true;
+    paintSaveStatus();
   }
 
   function paintSaveStatus() {
     const unsaved = unsavedCount();
-    saveBtn.disabled = unsaved === 0;
+    if (unsaved) justSaved = false;
+    saveBtn.disabled = unsaved === 0 || pending > 0;
+    saveBtn.classList.toggle('is-dirty', unsaved > 0);
+    discardBtn.hidden = unsaved === 0 || pending > 0;
     saveStatus.classList.toggle('error', !!errorMessage && pending === 0);
     saveStatus.classList.toggle('saving', pending > 0 || (unsaved > 0 && !errorMessage));
     saveStatusText.textContent = pending > 0 ? 'Saving…'
       : errorMessage ? errorMessage
       : unsaved > 0 ? 'Unsaved changes'
+      : justSaved ? 'All changes saved'
       : 'Saved';
   }
 
@@ -97,7 +122,7 @@
       // fetch follows and gets back a 200 HTML page — that must count as
       // a failure, not a successful save.
       if (res.redirected && new URL(res.url).pathname === '/login') {
-        throw new Error('You’ve been logged out — log in again to keep saving');
+        throw new Error('You’ve been logged out — log in again to save');
       }
       let data = null;
       try { data = await res.json(); } catch (e) { /* no body */ }
@@ -110,30 +135,6 @@
       pending -= 1;
       paintSaveStatus();
     }
-  }
-
-  // Per-key debounce with flush(), so the Save button can send queued
-  // edits immediately instead of waiting out the timer.
-  function debounce(fn, wait) {
-    const timers = {};
-    const queuedArgs = {};
-    function run(key) {
-      clearTimeout(timers[key]);
-      delete timers[key];
-      const args = queuedArgs[key];
-      delete queuedArgs[key];
-      fn(key, ...args);
-    }
-    function debounced(key, ...args) {
-      clearTimeout(timers[key]);
-      queuedArgs[key] = args;
-      timers[key] = setTimeout(() => run(key), wait);
-      paintSaveStatus();
-    }
-    debounced.flush = () => Object.keys(timers).forEach(run);
-    debounced.pendingCount = () => Object.keys(timers).length;
-    debounced.has = (key) => key in timers;
-    return debounced;
   }
 
   // --- rendering ---------------------------------------------------------
@@ -203,8 +204,7 @@
   }
 
   function queueItemsSave(block) {
-    // A copy, so a retry after a failed save sends what was there then.
-    debouncedFieldSave(`${block.id}:items`, block.id, 'items', JSON.parse(JSON.stringify(block.items)));
+    markBlock(block.id, 'items');
   }
 
   // Cards are a one-line summary until clicked; the ones open now. A new
@@ -333,6 +333,9 @@
     return `${(window.__PZ_STORE_URL__ || '').replace('{handle}', handleNow)}/#${TYPE_META[block.type].popup}-${block.id}`;
   }
   function popupLinkHTML(block) {
+    if (block.id < 0) {
+      return '<div class="pz-popup-link"><span class="pz-popup-link-label">Popup link</span><code>Save to get this popup’s link</code></div>';
+    }
     const url = popupLinkFor(block);
     return `
       <div class="pz-popup-link">
@@ -360,22 +363,6 @@
     if (refreshPreview) refreshPreview.soon();
   }
 
-  function saveField(key, id, field, value) {
-    failedFieldSaves.delete(key);
-    api(`/dashboard/builder/blocks/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ [field]: value }),
-    }).catch(() => {
-      // Keep it for the Save button to retry — unless a newer edit to the
-      // same field is already queued, or the block was deleted since.
-      if (!debouncedFieldSave.has(key) && blocks.some((b) => b.id === id)) {
-        failedFieldSaves.set(key, [id, field, value]);
-      }
-      paintSaveStatus();
-    });
-  }
-  const debouncedFieldSave = debounce(saveField, 500);
-
   function attachBlockListeners() {
     blocksList.querySelectorAll('[data-toggle-id]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -401,7 +388,7 @@
           else name.innerHTML = '<em>Untitled</em>';
         }
         renderPreviewOnly();
-        debouncedFieldSave(`${id}:${field}`, id, field, e.target.value);
+        markBlock(id, field);
       });
     });
     blocksList.querySelectorAll('.toggle-visible').forEach((btn) => {
@@ -411,13 +398,8 @@
         if (!block) return;
         block.visible = !block.visible;
         render();
-        api(`/dashboard/builder/blocks/${id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ visible: block.visible }),
-        }).catch(() => {
-          block.visible = !block.visible;
-          render();
-        });
+        renderPreviewOnly();
+        markBlock(id, 'visible');
       });
     });
     blocksList.querySelectorAll('.kebab-btn').forEach((btn) => {
@@ -431,34 +413,34 @@
       });
     });
     blocksList.querySelectorAll('.duplicate-block').forEach((btn) => {
-      btn.addEventListener('click', async (e) => {
+      btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
         closeAllKebabMenus();
-        try {
-          const created = await api(`/dashboard/builder/blocks/${id}/duplicate`, { method: 'POST' });
-          if (created) {
-            blocks.push({ ...created, visible: !!created.visible });
-            expanded.add(created.id);
-            render();
-          }
-        } catch (err) { /* status already shown */ }
+        const source = blocks.find((b) => b.id === id);
+        if (!source) return;
+        // The copy goes right under the original; it's created on Save.
+        const copy = JSON.parse(JSON.stringify(source));
+        copy.id = nextTempId();
+        copy.title = source.title ? `${source.title} (copy)` : '';
+        blocks.splice(blocks.indexOf(source) + 1, 0, copy);
+        expanded.add(copy.id);
+        dirty.order = true;
+        render();
+        renderPreviewOnly();
+        paintSaveStatus();
       });
     });
     blocksList.querySelectorAll('.remove-block').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
         closeAllKebabMenus();
-        const previous = blocks;
         blocks = blocks.filter((b) => b.id !== id);
-        // Nothing left to retry for a block that's gone.
-        for (const key of failedFieldSaves.keys()) {
-          if (key.startsWith(`${id}:`)) failedFieldSaves.delete(key);
-        }
+        dirty.blocks.delete(id);
+        // A saved block is deleted on Save; an unsaved one just goes.
+        if (id > 0) dirty.deleted.add(id);
         render();
-        api(`/dashboard/builder/blocks/${id}`, { method: 'DELETE' }).catch(() => {
-          blocks = previous;
-          render();
-        });
+        renderPreviewOnly();
+        paintSaveStatus();
       });
     });
   }
@@ -468,22 +450,16 @@
   // --- reordering ---------------------------------------------------------
   // Drag a card by its handle (mouse, pen or touch — pointer events), or
   // focus the handle and use ↑ ↓. The card follows the pointer, the others
-  // slide out of its way, the page scrolls near the edges, and the new
-  // order is saved on drop (POST /dashboard/builder/blocks/reorder).
+  // slide out of its way, and the page scrolls near the edges. The new
+  // order is saved with everything else on Save.
   const liveRegion = document.createElement('div');
   liveRegion.className = 'sr-only';
   liveRegion.setAttribute('aria-live', 'polite');
   document.body.appendChild(liveRegion);
 
-  function saveOrder(previous) {
+  function saveOrder() {
     renderPreviewOnly();
-    api('/dashboard/builder/blocks/reorder', {
-      method: 'POST',
-      body: JSON.stringify({ order: blocks.map((b) => b.id) }),
-    }).catch(() => {
-      blocks = previous;
-      render();
-    });
+    markDirty('order');
   }
 
   // Slides cards from where they were to where they are now (FLIP).
@@ -616,7 +592,7 @@
     const moved = blocksList.querySelector(`.pz-drag-handle[data-drag-id="${card.dataset.id}"]`);
     if (moved) moved.focus({ preventScroll: true });
     liveRegion.textContent = `Moved to position ${order.indexOf(Number(card.dataset.id)) + 1} of ${order.length}`;
-    saveOrder(previous);
+    saveOrder();
   }
 
   // Keyboard: ↑ / ↓ on a focused handle moves that block one place.
@@ -628,7 +604,6 @@
     const i = blocks.findIndex((b) => b.id === id);
     const j = e.key === 'ArrowUp' ? i - 1 : i + 1;
     if (i < 0 || j < 0 || j >= blocks.length) return;
-    const previous = blocks;
     blocks = blocks.slice();
     [blocks[i], blocks[j]] = [blocks[j], blocks[i]];
     const tops = cardTops();
@@ -641,7 +616,7 @@
     animateFrom(mapped);
     blocksList.querySelector(`.pz-drag-handle[data-drag-id="${id}"]`).focus();
     liveRegion.textContent = `Moved to position ${j + 1} of ${blocks.length}`;
-    saveOrder(previous);
+    saveOrder();
   });
 
   blocksList.addEventListener('input', (e) => {
@@ -735,7 +710,6 @@
   const addModal = document.getElementById('addModal');
   const moduleSearch = document.getElementById('moduleSearch');
   const moduleList = document.getElementById('moduleList');
-  let adding = false;
 
   function moduleMatches(meta, query) {
     if (!query) return true;
@@ -783,29 +757,24 @@
     addMenuBtn.focus();
   }
 
-  async function addBlock(type) {
-    if (adding) return; // one click = one block, even on a slow request
-    adding = true;
-    moduleList.querySelectorAll('.pz-module-card').forEach((c) => { c.disabled = true; });
-    try {
-      const created = await api('/dashboard/builder/blocks', {
-        method: 'POST',
-        body: JSON.stringify({ type }),
-      });
-      blocks.push({ ...created, visible: !!created.visible });
-      expanded.add(created.id);
-      closeAddModal();
-      render();
-      requestAnimationFrame(() => {
-        const last = blocksList.querySelector('.pz-block-card:last-child .pz-title');
-        if (last) { last.focus(); last.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
-      });
-    } catch (err) {
-      // Status bar shows the error; leave the popup open so they can retry.
-      moduleList.querySelectorAll('.pz-module-card').forEach((c) => { c.disabled = false; });
-    } finally {
-      adding = false;
-    }
+  // A new block appears on screen at once; Save creates it on the server.
+  function addBlock(type) {
+    const starter = (window.__PZ_STARTERS__ || {})[type] || { title: '', items: [] };
+    const block = {
+      id: nextTempId(), type,
+      title: starter.title, sub: '', price: '', visible: true,
+      items: JSON.parse(JSON.stringify(starter.items || [])),
+    };
+    blocks.push(block);
+    expanded.add(block.id);
+    closeAddModal();
+    render();
+    renderPreviewOnly();
+    paintSaveStatus();
+    requestAnimationFrame(() => {
+      const last = blocksList.querySelector('.pz-block-card:last-child .pz-title');
+      if (last) { last.focus(); last.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    });
   }
 
   addMenuBtn.addEventListener('click', openAddModal);
@@ -872,23 +841,14 @@
       btn.setAttribute('aria-checked', 'true');
       currentAccent = btn.dataset.color;
       renderPreviewOnly();
-      api('/dashboard/builder/design', {
-        method: 'POST',
-        body: JSON.stringify({ accentColor: currentAccent, showBadge: badgeToggle.classList.contains('on') }),
-      }).catch(() => {});
+      markDirty('design');
     });
   });
   badgeToggle.addEventListener('click', () => {
     const on = badgeToggle.classList.toggle('on');
     badgeToggle.setAttribute('aria-checked', String(on));
     renderPreviewOnly();
-    api('/dashboard/builder/design', {
-      method: 'POST',
-      body: JSON.stringify({ accentColor: currentAccent, showBadge: on }),
-    }).catch(() => {
-      badgeToggle.setAttribute('aria-checked', String(badgeToggle.classList.toggle('on')));
-      renderPreviewOnly();
-    });
+    markDirty('design');
   });
 
   // --- promo bar dismiss --------------------------------------------
@@ -944,8 +904,7 @@
   }
 
   function saveProfile() {
-    profileSaveFailed = false;
-    api('/dashboard/builder/profile', {
+    return api('/dashboard/builder/profile', {
       method: 'POST',
       body: JSON.stringify({ name: displayName.value, handle: handle.value, bio: bio.value, socials: collectSocials() }),
     }).then((data) => {
@@ -962,37 +921,35 @@
         }
       }
     }).catch((err) => {
-      if (!debouncedProfileSave.has('profile')) profileSaveFailed = true;
       if (String(err.message || '').toLowerCase().includes('handle')) {
         handleError.textContent = err.message;
         handleError.classList.add('show');
       }
-      paintSaveStatus();
+      throw err;
     });
   }
-  const debouncedProfileSave = debounce(() => saveProfile(), 700);
 
   displayName.addEventListener('input', () => {
     const i = initials(displayName.value);
     avatarInitials.textContent = i;
     switcherInitials.textContent = i;
     renderPreviewOnly();
-    debouncedProfileSave('profile');
+    markDirty('profile');
   });
   bio.addEventListener('input', () => {
     paintBioCount();
     renderPreviewOnly();
-    debouncedProfileSave('profile');
+    markDirty('profile');
   });
   handle.addEventListener('input', () => {
-    debouncedProfileSave('profile');
+    markDirty('profile');
   });
   socialInputs.forEach((input) => {
     input.addEventListener('input', () => {
       paintSocials();
       if (blocks.some((b) => b.type === 'social')) render();
       renderPreviewOnly();
-      debouncedProfileSave('profile');
+      markDirty('profile');
     });
   });
   paintSocials();
@@ -1000,25 +957,21 @@
   // --- store settings ----------------------------------------------------
   // Photo, cover, tagline, location, contact button, announcement bar,
   // theme and SEO (lib/storeSettings.js) — one object, sent whole to
-  // /dashboard/builder/settings a moment after each change.
+  // /dashboard/builder/settings on Save. (An image uploads as soon as it's
+  // picked, but using it is a change like any other.)
   const settings = { ...(window.__PZ_SETTINGS__ || {}) };
 
   function saveSettings() {
-    settingsSaveFailed = false;
-    api('/dashboard/builder/settings', {
+    return api('/dashboard/builder/settings', {
       method: 'POST',
       body: JSON.stringify({ settings }),
-    }).catch(() => {
-      if (!debouncedSettingsSave.has('settings')) settingsSaveFailed = true;
-      paintSaveStatus();
     });
   }
-  const debouncedSettingsSave = debounce(() => saveSettings(), 600);
 
   function settingChanged() {
     renderPreviewOnly();
     paintSeoPreview();
-    debouncedSettingsSave('settings');
+    markDirty('settings');
   }
 
   // "12/80" beside fields with a limit.
@@ -1154,14 +1107,87 @@
   [displayName, bio, handle].forEach((input) => input.addEventListener('input', paintSeoPreview));
   paintSeoPreview();
 
-  // --- save button -------------------------------------------------------
-  function saveNow() {
-    debouncedFieldSave.flush();
-    debouncedProfileSave.flush();
-    debouncedSettingsSave.flush();
-    for (const [key, [id, field, value]] of [...failedFieldSaves]) saveField(key, id, field, value);
-    if (profileSaveFailed) saveProfile();
-    if (settingsSaveFailed) saveSettings();
+  // --- save / discard ----------------------------------------------------
+  // Save sends everything unsaved, in order: new blocks (created, then
+  // filled in), edits, deletions, the order, then profile, settings and
+  // design. A part that fails stays unsaved for the next try; edits made
+  // while saving stay unsaved too.
+  let saving = false;
+  async function saveNow() {
+    if (saving || unsavedCount() === 0) return;
+    saving = true;
+    let failed = false;
+    const attempt = async (send, undo) => {
+      try { await send(); } catch (err) { failed = true; if (undo) undo(); }
+    };
+
+    for (const block of blocks.filter((b) => b.id < 0)) {
+      await attempt(async () => {
+        const created = await api('/dashboard/builder/blocks', { method: 'POST', body: JSON.stringify({ type: block.type }) });
+        const oldId = block.id;
+        block.id = created.id;
+        if (expanded.delete(oldId)) expanded.add(created.id);
+        // Its content goes out with the edits below; its place with the order.
+        dirty.blocks.set(created.id, new Set(['title', 'sub', 'price', 'visible', 'items']));
+        dirty.order = true;
+      });
+    }
+
+    for (const [id, fields] of [...dirty.blocks]) {
+      const block = blocks.find((b) => b.id === id);
+      dirty.blocks.delete(id);
+      if (!block) continue;
+      const body = {};
+      fields.forEach((field) => {
+        body[field] = field === 'visible' ? !!block.visible
+          : field === 'items' ? (block.items || [])
+          : block[field] ?? '';
+      });
+      await attempt(
+        () => api(`/dashboard/builder/blocks/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+        () => {
+          const again = dirty.blocks.get(id) || new Set();
+          fields.forEach((field) => again.add(field));
+          dirty.blocks.set(id, again);
+        },
+      );
+    }
+
+    for (const id of [...dirty.deleted]) {
+      dirty.deleted.delete(id);
+      await attempt(() => api(`/dashboard/builder/blocks/${id}`, { method: 'DELETE' }), () => dirty.deleted.add(id));
+    }
+
+    // The order can only go once every block on screen exists on the server.
+    if (dirty.order && !blocks.some((b) => b.id < 0)) {
+      dirty.order = false;
+      await attempt(
+        () => api('/dashboard/builder/blocks/reorder', { method: 'POST', body: JSON.stringify({ order: blocks.map((b) => b.id) }) }),
+        () => { dirty.order = true; },
+      );
+    }
+
+    const kinds = [
+      ['profile', saveProfile],
+      ['settings', saveSettings],
+      ['design', () => api('/dashboard/builder/design', {
+        method: 'POST',
+        body: JSON.stringify({ accentColor: currentAccent, showBadge: badgeToggle.classList.contains('on') }),
+      })],
+    ];
+    for (const [kind, send] of kinds) {
+      if (!dirty[kind]) continue;
+      dirty[kind] = false;
+      await attempt(send, () => { dirty[kind] = true; });
+    }
+
+    saving = false;
+    render(); // new blocks have their real ids (and popup links) now
+    if (!failed && unsavedCount() === 0) {
+      justSaved = true;
+      clearTimeout(justSavedTimer);
+      justSavedTimer = setTimeout(() => { justSaved = false; paintSaveStatus(); }, 2500);
+    }
     paintSaveStatus();
   }
   saveBtn.addEventListener('click', saveNow);
@@ -1171,7 +1197,16 @@
       saveNow();
     }
   });
+
+  // Discard: back to what's saved, by reloading the page.
+  let discarding = false;
+  discardBtn.addEventListener('click', () => {
+    if (!window.confirm('Discard your unsaved changes? This can’t be undone.')) return;
+    discarding = true;
+    window.location.reload();
+  });
   window.addEventListener('beforeunload', (e) => {
+    if (discarding) return;
     if (unsavedCount() > 0 || pending > 0) { e.preventDefault(); e.returnValue = ''; }
   });
 
