@@ -251,3 +251,88 @@ a.store-announce:hover span { text-decoration: underline; text-underline-offset:
 }
 .store-contact:hover { filter: brightness(.94); transform: translateY(-1px); }
 .store-contact:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 2px; }
+
+/* --- Popups everywhere: share buttons, video and form popups ----------- */
+
+/* A card with a share button on its right (the button sits beside the
+   link, not inside it). Without the script there's nothing to open, so
+   share buttons are hidden. */
+.store-item { position: relative; }
+.store-item > .store-block { padding-right: 52px; }
+.store-share-btn {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+  display: grid; place-items: center; background: transparent; color: var(--muted);
+}
+.store-share-btn:hover { background: var(--bg); color: var(--fg); }
+.store-share-btn:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 1px; }
+html:not(.js) .store-share-btn { display: none; }
+html:not(.js) .store-item > .store-block { padding-right: 18px; }
+
+/* The profile's share button, top right of the page. */
+.store { position: relative; }
+.store-profile-share {
+  top: 14px; right: 16px; transform: none; z-index: 2; width: 38px; height: 38px;
+  background: var(--card); border: 1px solid var(--border); color: var(--fg);
+}
+.store.has-cover .store-profile-share { top: 26px; right: 26px; }
+
+/* Video card: thumbnail with a play button. */
+.store-video { justify-content: flex-start; }
+.store-video-thumb {
+  flex: none; position: relative; width: 88px; aspect-ratio: 16 / 9; border-radius: calc(var(--radius) - 4px);
+  background: center / cover no-repeat var(--bg); display: grid; place-items: center; overflow: hidden;
+}
+.store-video-play {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; padding-left: 2px;
+  background: rgba(0, 0, 0, .62); color: #fff;
+}
+.store-video:hover .store-video-play { background: var(--store-accent, #ff6b4a); }
+
+/* Video popup: wide, the player at 16:9. */
+.store-popup-video .store-popup-card { max-width: 760px; padding: 16px; text-align: left; }
+.store-popup-video-title { font-size: 16px; padding: 4px 44px 12px 4px; }
+.store-video-frame { position: relative; aspect-ratio: 16 / 9; border-radius: calc(var(--radius) - 4px); overflow: hidden; background: #000; }
+.store-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* Form popup: the merchant's fields, stacked. */
+.store-form { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; text-align: left; }
+.store-field { display: flex; flex-direction: column; gap: 6px; }
+.store-field > span { font-size: 13px; font-weight: 600; }
+.store-field em { font-style: normal; font-weight: 500; color: var(--muted); font-size: 12px; margin-left: 2px; }
+.store-field .store-input { width: 100%; flex: none; }
+.store-textarea { height: auto; min-height: 96px; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+.store-form .store-newsletter-error { margin-top: 0; }
+.store-form-submit { width: 100%; height: 44px; margin-top: 4px; }
+.store-form-fine { color: var(--muted); font-size: 12px; text-align: center; }
+
+/* Share sheet. */
+.store-share .store-popup-sub { overflow-wrap: anywhere; }
+.store-share-link {
+  display: flex; align-items: center; gap: 8px; margin-top: 16px; padding: 6px 6px 6px 12px;
+  border: 1px solid var(--border); border-radius: var(--btn-radius, 10px); background: var(--bg); text-align: left;
+}
+.store-share-link span { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-share-link .store-button { height: 34px; padding: 0 14px; font-size: 13px; }
+.store-share-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.store-share-grid a, .store-share-grid button {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px;
+  border: none; border-radius: var(--radius); background: none; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 500; color: var(--fg); text-decoration: none;
+}
+.store-share-grid a:hover, .store-share-grid button:hover { background: var(--bg); }
+.store-share-grid a:focus-visible, .store-share-grid button:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); }
+.store-share-grid [hidden] { display: none; }
+.store-share-icon {
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bg); border: 1px solid var(--border);
+}
+
+/* On phones, popups rise from the bottom like a sheet. */
+@media (max-width: 520px) {
+  .store-popup { align-items: flex-end; padding: 0; }
+  .store-popup .store-popup-card { max-width: none; border-radius: 20px 20px 0 0; max-height: 88vh; padding-bottom: 28px; }
+  .store-popup-video { align-items: center; padding: 12px; }
+  .store-popup-video .store-popup-card { border-radius: 16px; padding-bottom: 16px; }
+  @keyframes store-pop { from { opacity: 0; transform: translateY(40px); } }
+}

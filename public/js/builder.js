@@ -15,13 +15,17 @@
     event:       { group: 'Sell',   label: 'Webinar / Event',   desc: 'Tickets for a live session or workshop',    keywords: 'live workshop masterclass ticket seminar', cls: 'pz-type-booking',    icon: '<path d="m22 8-6 4 6 4V8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/>', hasPrice: true, subPlaceholder: 'e.g. Live on Zoom · Sat 11am' },
     tip:         { group: 'Sell',   label: 'Tip jar',           desc: 'Let fans support you with any amount',      keywords: 'donation support pay what you want coffee', cls: 'pz-type-course',     icon: '<path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8zM6 1v3M10 1v3M14 1v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', hasPrice: true, subPlaceholder: 'e.g. Buy me a chai', pricePlaceholder: 'Min. amount' },
     newsletter:  { group: 'Grow',   label: 'Newsletter signup', desc: 'Collect emails from visitors',              keywords: 'email subscribe list lead form', cls: 'pz-type-grow',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m22 7-10 6L2 7" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, titlePlaceholder: 'Heading, e.g. Join my weekly newsletter', subPlaceholder: 'Short pitch, e.g. Career tips every Sunday, no spam',
-                   hint: 'Opens a signup popup on your store. New subscribers land in <a href="/dashboard/audience">Audience</a>.' },
+                   hint: 'Opens a signup popup on your store. New subscribers land in <a href="/dashboard/audience">Audience</a>.', popup: 'subscribe' },
+    form:        { group: 'Grow',   label: 'Form',              desc: 'A popup form — messages, requests, enquiries', keywords: 'contact message enquiry custom form fields request popup', cls: 'pz-type-grow', icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9h8M8 13h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>', hasPrice: false, hasItems: true, keepSub: true, popup: 'form',
+                   titlePlaceholder: 'Button text, e.g. Message me', subPlaceholder: 'Shown in the popup, e.g. I reply within a day',
+                   hint: 'Opens your form in a popup. Replies land in <a href="/dashboard/audience">Audience</a>.' },
     social:      { group: 'Grow',   label: 'Social link',       desc: 'A button to one of your profiles',     keywords: 'instagram youtube linkedin twitter x follow profile', cls: 'pz-type-grow',       icon: '<circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.8"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'e.g. instagram.com/yourname',
                    hint: 'Tip: add all your profiles as icons under Profile → Social links.' },
     testimonial: { group: 'Grow',   label: 'Testimonials',      desc: 'A slider of quotes from happy customers',   keywords: 'review quote social proof feedback slider carousel testimonial', cls: 'pz-type-grow',       icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, hasItems: true, titlePlaceholder: 'Heading (optional), e.g. What my clients say',
                    hint: 'Shows as a slider on your store — visitors swipe, or use the arrows and dots.' },
-    link:        { group: 'Basics', label: 'Link',              desc: 'Send visitors to any website',              keywords: 'url website button external', cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL — or #subscribe-12 to open a newsletter popup' },
-    video:       { group: 'Basics', label: 'Video',             desc: 'Embed a YouTube or Vimeo video',            keywords: 'youtube vimeo embed reel clip', cls: 'pz-type-link',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m10 9 5 3-5 3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'Video URL' },
+    link:        { group: 'Basics', label: 'Link',              desc: 'Send visitors to any website',              keywords: 'url website button external', cls: 'pz-type-link',       icon: '<path d="M9 17H7A5 5 0 0 1 7 7h2" stroke="currentColor" stroke-width="1.8"/><path d="M15 7h2a5 5 0 1 1 0 10h-2" stroke="currentColor" stroke-width="1.8"/><line x1="8" x2="16" y1="12" y2="12" stroke="currentColor" stroke-width="1.8"/>', hasPrice: false, subPlaceholder: 'Link URL — or a popup link like #form-12' },
+    video:       { group: 'Basics', label: 'Video',             desc: 'A YouTube or Vimeo video that plays in a popup', keywords: 'youtube vimeo embed reel clip popup play', cls: 'pz-type-link',       icon: '<rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="m10 9 5 3-5 3V9z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'YouTube or Vimeo link', popup: 'video',
+                   hint: 'YouTube and Vimeo links play in a popup on your store; other links open as a normal link.' },
     text:        { group: 'Basics', label: 'Text',              desc: 'A heading with a short paragraph',          keywords: 'heading paragraph about section title', cls: 'pz-type-link',       icon: '<path d="M4 7V5h16v2M9 19h6M12 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>', hasPrice: false, subPlaceholder: 'Paragraph text' },
   };
   const MODULE_GROUPS = ['Sell', 'Grow', 'Basics'];
@@ -132,39 +136,68 @@
   }
 
   // --- rendering ---------------------------------------------------------
-  // A Testimonials block's entries (lib/blocks.js items): each one a
-  // quote, a name and an optional detail, in slider order. Edits save like
-  // any other field — the whole list, a moment after the last change.
-  const MAX_ITEMS = 12;
+  // Blocks with a list of entries (lib/blocks.js items): a Testimonials
+  // block's quotes and a Form block's fields. Each row has move up/down and
+  // remove; edits save like any other field — the whole list, a moment
+  // after the last change.
+  const ITEM_LISTS = {
+    testimonial: {
+      max: 12, noun: 'testimonial', title: 'Testimonial',
+      blank: () => ({ quote: '', name: '', detail: '' }),
+      body: (block, item, i) => `
+        <textarea class="pz-field-input pz-textarea" rows="3" maxlength="500" data-item-field="quote" data-id="${block.id}" data-index="${i}" placeholder="What they said, e.g. “The mock interviews got me my first PM offer.”">${escapeHTML(item.quote || '')}</textarea>
+        <div class="pz-grid-2">
+          <input type="text" class="pz-field-input" maxlength="80" data-item-field="name" data-id="${block.id}" data-index="${i}" value="${escapeHTML(item.name || '')}" placeholder="Name, e.g. Priya S." />
+          <input type="text" class="pz-field-input" maxlength="80" data-item-field="detail" data-id="${block.id}" data-index="${i}" value="${escapeHTML(item.detail || '')}" placeholder="Detail, e.g. PM at Swiggy" />
+        </div>`,
+    },
+    form: {
+      max: 8, noun: 'field', title: 'Field',
+      blank: () => ({ label: '', kind: 'text', required: false }),
+      body: (block, item, i) => `
+        <div class="pz-field-row">
+          <input type="text" class="pz-field-input" maxlength="80" data-item-field="label" data-id="${block.id}" data-index="${i}" value="${escapeHTML(item.label || '')}" placeholder="Question, e.g. What do you need help with?" aria-label="Field ${i + 1} label" />
+          <select class="pz-field-input pz-select" data-item-field="kind" data-id="${block.id}" data-index="${i}" aria-label="Field ${i + 1} type">
+            ${FIELD_KINDS.map(([value, label]) => `<option value="${value}"${item.kind === value ? ' selected' : ''}>${label}</option>`).join('')}
+          </select>
+        </div>
+        <label class="pz-check">
+          <input type="checkbox" data-item-field="required" data-id="${block.id}" data-index="${i}"${item.required ? ' checked' : ''} />
+          Required
+        </label>`,
+    },
+  };
+  const FIELD_KINDS = [['text', 'Short text'], ['textarea', 'Long text'], ['email', 'Email'], ['phone', 'Phone'], ['number', 'Number']];
+
   function itemsEditorHTML(block) {
+    const list = ITEM_LISTS[block.type];
     const items = block.items || [];
     const rows = items.map((item, i) => `
       <div class="pz-item" data-item-index="${i}">
         <div class="pz-item-head">
           <span class="pz-item-num">${i + 1}</span>
-          <span class="pz-item-label">Testimonial ${i + 1}</span>
+          <span class="pz-item-label">${list.title} ${i + 1}</span>
           <button type="button" class="pz-icon-btn" data-item-action="up" data-id="${block.id}" data-index="${i}" aria-label="Move up"${i === 0 ? ' disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14" aria-hidden="true"><path d="m18 15-6-6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <button type="button" class="pz-icon-btn" data-item-action="down" data-id="${block.id}" data-index="${i}" aria-label="Move down"${i === items.length - 1 ? ' disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button type="button" class="pz-icon-btn pz-item-remove" data-item-action="remove" data-id="${block.id}" data-index="${i}" aria-label="Remove testimonial ${i + 1}"${items.length === 1 ? ' disabled' : ''}>
+          <button type="button" class="pz-icon-btn pz-item-remove" data-item-action="remove" data-id="${block.id}" data-index="${i}" aria-label="Remove ${list.noun} ${i + 1}"${items.length === 1 ? ' disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
           </button>
         </div>
-        <textarea class="pz-field-input pz-textarea" rows="3" maxlength="500" data-item-field="quote" data-id="${block.id}" data-index="${i}" placeholder="What they said, e.g. “The mock interviews got me my first PM offer.”">${escapeHTML(item.quote || '')}</textarea>
-        <div class="pz-grid-2">
-          <input type="text" class="pz-field-input" maxlength="80" data-item-field="name" data-id="${block.id}" data-index="${i}" value="${escapeHTML(item.name || '')}" placeholder="Name, e.g. Priya S." />
-          <input type="text" class="pz-field-input" maxlength="80" data-item-field="detail" data-id="${block.id}" data-index="${i}" value="${escapeHTML(item.detail || '')}" placeholder="Detail, e.g. PM at Swiggy" />
-        </div>
+        ${list.body(block, item, i)}
       </div>`).join('');
-    const full = items.length >= MAX_ITEMS;
+    const full = items.length >= list.max;
+    // A form's replies are saved as people in Audience, who need an email or a phone.
+    const noReplyField = block.type === 'form' && !items.some((f) => f.kind === 'email' || f.kind === 'phone');
     return `
       <div class="pz-items">${rows}</div>
+      ${noReplyField ? '<p class="pz-block-warn" role="status">Add an Email or Phone field — without one, replies can’t be saved.</p>' : ''}
       <button type="button" class="pz-add-item" data-item-action="add" data-id="${block.id}"${full ? ' disabled' : ''}>
         <svg viewBox="0 0 24 24" fill="none" width="15" height="15" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        ${full ? `Up to ${MAX_ITEMS} testimonials` : 'Add testimonial'}
+        ${full ? `Up to ${list.max} ${list.noun}s` : `Add ${list.noun}`}
       </button>`;
   }
 
@@ -189,12 +222,13 @@
         <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:7px;">
           <span class="text-xs font-semibold text-muted-foreground" style="text-transform:uppercase; letter-spacing:.03em;">${meta.label}</span>
           <input type="text" class="pz-field-input pz-title" data-field="title" data-id="${block.id}" value="${escapeHTML(block.title)}" placeholder="${meta.titlePlaceholder || 'Title'}" />
+          ${meta.hasItems && meta.keepSub ? `<input type="text" class="pz-field-input" data-field="sub" data-id="${block.id}" value="${escapeHTML(block.sub)}" placeholder="${meta.subPlaceholder}" />` : ''}
           ${meta.hasItems ? itemsEditorHTML(block) : `<div style="display:flex; gap:8px;">
             <input type="text" class="pz-field-input" data-field="sub" data-id="${block.id}" value="${escapeHTML(block.sub)}" placeholder="${meta.subPlaceholder}" />
             ${priceField}
           </div>`}
           ${meta.hint ? `<p class="pz-block-hint">${meta.hint}</p>` : ''}
-          ${block.type === 'newsletter' ? popupLinkHTML(block) : ''}
+          ${meta.popup ? popupLinkHTML(block) : ''}
         </div>
         <button type="button" class="pz-switch${block.visible ? ' on' : ''} toggle-visible" data-id="${block.id}" title="${block.visible ? 'Visible on your store' : 'Hidden from your store'}"></button>
         <div class="pz-kebab-wrap">
@@ -215,12 +249,13 @@
       </div>`;
   }
 
-  // Every newsletter popup has its own link — the store URL + #subscribe-<id>
-  // (views/store.ejs) — that opens it straight away from anywhere: a bio,
-  // a WhatsApp message, or a Link block on the store itself.
+  // Every popup has its own link — the store URL + #subscribe-<id>,
+  // #form-<id> or #video-<id> (views/store.ejs) — that opens it straight
+  // away from anywhere: a bio, a WhatsApp message, or a Link block on the
+  // store itself.
   function popupLinkFor(block) {
     const handleNow = document.getElementById('switcherHandle').textContent.replace(/^@/, '');
-    return `${(window.__PZ_STORE_URL__ || '').replace('{handle}', handleNow)}/#subscribe-${block.id}`;
+    return `${(window.__PZ_STORE_URL__ || '').replace('{handle}', handleNow)}/#${TYPE_META[block.type].popup}-${block.id}`;
   }
   function popupLinkHTML(block) {
     const url = popupLinkFor(block);
@@ -344,9 +379,16 @@
     const block = blocks.find((b) => b.id === Number(el.dataset.id));
     const item = block && block.items && block.items[Number(el.dataset.index)];
     if (!item) return;
-    item[el.dataset.itemField] = el.value;
+    const field = el.dataset.itemField;
+    item[field] = el.type === 'checkbox' ? el.checked : el.value;
     renderPreviewOnly();
     queueItemsSave(block);
+    // A field's type decides whether the "no Email or Phone" note shows.
+    if (field === 'kind') {
+      render();
+      const again = blocksList.querySelector(`[data-item-field="kind"][data-id="${block.id}"][data-index="${el.dataset.index}"]`);
+      if (again) again.focus();
+    }
   });
   blocksList.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-item-action]');
@@ -357,8 +399,9 @@
     const i = Number(btn.dataset.index);
     const action = btn.dataset.itemAction;
     let focusIndex = null;
-    if (action === 'add' && items.length < MAX_ITEMS) {
-      items.push({ quote: '', name: '', detail: '' });
+    const list = ITEM_LISTS[block.type];
+    if (action === 'add' && list && items.length < list.max) {
+      items.push(list.blank());
       focusIndex = items.length - 1;
     } else if (action === 'remove' && items.length > 1) {
       items.splice(i, 1);
@@ -374,10 +417,10 @@
     if (focusIndex !== null) {
       const card = blocksList.querySelector(`.pz-block-card[data-id="${block.id}"]`);
       const target = action === 'add'
-        ? card.querySelector(`[data-item-field="quote"][data-index="${focusIndex}"]`)
+        ? card.querySelector(`[data-item-index="${focusIndex}"] [data-item-field]`)
         : card.querySelector(`[data-item-action="${action}"][data-index="${focusIndex}"]`);
       if (target && !target.disabled) target.focus();
-      else if (target) card.querySelector(`[data-item-field="quote"][data-index="${focusIndex}"]`).focus();
+      else if (target) card.querySelector(`[data-item-index="${focusIndex}"] [data-item-field]`).focus();
     }
   });
 
