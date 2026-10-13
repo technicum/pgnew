@@ -94,45 +94,24 @@
           <% if (block.sub) { %><p><%= block.sub %></p><% } %>
         </section>
       <% } else if (block.type === 'testimonial') { %>
-        <%# Testimonials: a slider of the block's entries (lib/blocks.js items) — swipe, arrows or dots; the script below wires it. %>
+        <%# Testimonials: a card here; the slider opens in its popup (#reviews-<id>, below the list). %>
         <% if (block.items.length) { %>
-          <% var many = block.items.length > 1; %>
-          <section class="store-reviews" data-slider aria-roledescription="carousel" aria-label="<%= block.title || 'Testimonials' %>">
-            <% if (block.title) { %><h2 class="store-reviews-title"><%= block.title %></h2><% } %>
-            <div class="store-reviews-track" data-slider-track<% if (many) { %> tabindex="0"<% } %>>
-              <% block.items.forEach(function (item, i) { %>
-                <% var initials = (item.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join(''); %>
-                <figure class="store-review" aria-roledescription="slide" aria-label="<%= i + 1 %> of <%= block.items.length %>">
-                  <svg class="store-review-mark" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M10 7H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2H5v2h1a4 4 0 0 0 4-4V7zm10 0h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2h-1v2h1a4 4 0 0 0 4-4V7z" fill="currentColor"/></svg>
-                  <blockquote><%= item.quote %></blockquote>
-                  <% if (item.name || item.detail) { %>
-                    <figcaption>
-                      <% if (initials) { %><span class="store-review-avatar" aria-hidden="true"><%= initials %></span><% } %>
-                      <span>
-                        <% if (item.name) { %><strong><%= item.name %></strong><% } %>
-                        <% if (item.detail) { %><small><%= item.detail %></small><% } %>
-                      </span>
-                    </figcaption>
-                  <% } %>
-                </figure>
-              <% }) %>
-            </div>
-            <% if (many) { %>
-              <div class="store-reviews-nav">
-                <button type="button" class="store-reviews-arrow" data-slider-prev aria-label="Previous testimonial">
-                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-                <div class="store-reviews-dots">
-                  <% block.items.forEach(function (item, i) { %>
-                    <button type="button" data-slider-dot="<%= i %>" aria-label="Show testimonial <%= i + 1 %>"<% if (i === 0) { %> aria-current="true"<% } %>></button>
-                  <% }) %>
-                </div>
-                <button type="button" class="store-reviews-arrow" data-slider-next aria-label="Next testimonial">
-                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </button>
-              </div>
-            <% } %>
-          </section>
+          <% var n = block.items.length; %>
+          <div class="store-item">
+            <a class="store-block store-block-link store-reviews-trigger" href="#reviews-<%= block.id %>" aria-haspopup="dialog">
+              <span class="store-reviews-faces" aria-hidden="true">
+                <% block.items.slice(0, 3).forEach(function (item) { %>
+                  <% var ini = (item.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join('') || '“'; %>
+                  <span><%= ini %></span>
+                <% }) %>
+              </span>
+              <span class="store-block-body">
+                <span class="store-block-title"><%= block.title || 'What people say' %></span>
+                <span class="store-block-sub"><%= n %> testimonial<%= n === 1 ? '' : 's' %> · “<%= block.items[0].quote %>”</span>
+              </span>
+            </a>
+            <% shareButton('#reviews-' + block.id, block.title || 'Testimonials') %>
+          </div>
         <% } %>
       <% } else if (block.type === 'newsletter' || block.type === 'form') { %>
         <%# Opens this block's popup (below the list). Its own link, /#subscribe-<id> or /#form-<id>, opens it from anywhere. %>
@@ -207,12 +186,13 @@
     <% }) %>
   </div>
 
-  <%# Popups — each opened by its own link: #subscribe-<id> (newsletter), #form-<id>, #video-<id>,
+  <%# Popups — each opened by its own link: #subscribe-<id> (newsletter), #form-<id>, #video-<id>, #reviews-<id>,
       from a block above or from anywhere the link is shared. Newsletter and form popups post to the
       store home (lib/storefront.js newsletterSignup / formSubmit); people land in Audience. %>
   <% blocks.forEach(function (block) { %>
-    <% if (block.type !== 'newsletter' && block.type !== 'form' && !(block.type === 'video' && block.embed)) return; %>
-    <% var kind = block.type === 'newsletter' ? 'subscribe' : block.type; %>
+    <% var isReviews = block.type === 'testimonial' && block.items.length; %>
+    <% if (block.type !== 'newsletter' && block.type !== 'form' && !(block.type === 'video' && block.embed) && !isReviews) return; %>
+    <% var kind = block.type === 'newsletter' ? 'subscribe' : isReviews ? 'reviews' : block.type; %>
     <% var pid = kind + '-' + block.id; var result = signup && signup.blockId === block.id ? signup : null; %>
     <div class="store-popup<%= kind === 'video' ? ' store-popup-video' : '' %><%= result ? ' is-open' : '' %>" id="<%= pid %>" role="dialog" aria-modal="true" aria-labelledby="<%= pid %>-title">
       <a class="store-popup-backdrop" href="#" data-popup-close tabindex="-1" aria-hidden="true"></a>
@@ -220,7 +200,45 @@
         <a class="store-popup-close" href="#" data-popup-close aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </a>
-        <% if (kind === 'video') { %>
+        <% if (kind === 'reviews') { %>
+          <h2 class="store-popup-title store-popup-reviews-title" id="<%= pid %>-title"><%= block.title || 'What people say' %></h2>
+          <% var many = block.items.length > 1; %>
+        <section class="store-reviews" data-slider aria-roledescription="carousel" aria-label="<%= block.title || 'Testimonials' %>">
+          <div class="store-reviews-track" data-slider-track<% if (many) { %> tabindex="0"<% } %>>
+            <% block.items.forEach(function (item, i) { %>
+              <% var initials = (item.name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join(''); %>
+              <figure class="store-review" aria-roledescription="slide" aria-label="<%= i + 1 %> of <%= block.items.length %>">
+                <svg class="store-review-mark" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M10 7H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2H5v2h1a4 4 0 0 0 4-4V7zm10 0h-4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2v1a2 2 0 0 1-2 2h-1v2h1a4 4 0 0 0 4-4V7z" fill="currentColor"/></svg>
+                <blockquote><%= item.quote %></blockquote>
+                <% if (item.name || item.detail) { %>
+                  <figcaption>
+                    <% if (initials) { %><span class="store-review-avatar" aria-hidden="true"><%= initials %></span><% } %>
+                    <span>
+                      <% if (item.name) { %><strong><%= item.name %></strong><% } %>
+                      <% if (item.detail) { %><small><%= item.detail %></small><% } %>
+                    </span>
+                  </figcaption>
+                <% } %>
+              </figure>
+            <% }) %>
+          </div>
+          <% if (many) { %>
+            <div class="store-reviews-nav">
+              <button type="button" class="store-reviews-arrow" data-slider-prev aria-label="Previous testimonial">
+                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div class="store-reviews-dots">
+                <% block.items.forEach(function (item, i) { %>
+                  <button type="button" data-slider-dot="<%= i %>" aria-label="Show testimonial <%= i + 1 %>"<% if (i === 0) { %> aria-current="true"<% } %>></button>
+                <% }) %>
+              </div>
+              <button type="button" class="store-reviews-arrow" data-slider-next aria-label="Next testimonial">
+                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true"><path d="m9 18 6-6-6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          <% } %>
+        </section>
+        <% } else if (kind === 'video') { %>
           <h2 class="store-popup-title store-popup-video-title" id="<%= pid %>-title"><%= block.title %></h2>
           <%# The player only loads when the popup opens (data-src), and is unloaded on close so it stops playing. %>
           <div class="store-video-frame">
@@ -331,6 +349,8 @@
     el.classList.add('is-open');
     var frame = el.querySelector('iframe[data-src]');
     if (frame) frame.src = frame.getAttribute('data-src');
+    // Lets what's inside get ready (a testimonials slider goes back to the start).
+    el.dispatchEvent(new CustomEvent('store:popup-open'));
     document.body.classList.add('store-popup-open');
     var focus = el.querySelector('.store-popup-card input:not([type=hidden]), .store-popup-card textarea, [data-share-copy]') || el.querySelector('.store-popup-close');
     setTimeout(function () { if (focus) focus.focus(); }, 40);
@@ -436,7 +456,7 @@
 })();
 </script>
 <script>
-// Testimonial sliders: the track scrolls (and snaps) on its own — swipe
+// Testimonial sliders (in their popups): the track scrolls (and snaps) on its own — swipe
 // works with no script — this adds arrows, dots, and a slow auto-advance
 // that stops for good once the visitor touches the slider, and never runs
 // for people who asked for reduced motion.
@@ -447,34 +467,84 @@
     var dots = slider.querySelectorAll('[data-slider-dot]');
     var count = track.children.length;
     if (count < 2) return;
-    function current() { return Math.round(track.scrollLeft / track.clientWidth); }
+    // In a closed popup the track has no width yet: that's slide 0.
+    function current() { return track.clientWidth ? Math.round(track.scrollLeft / track.clientWidth) : 0; }
+    // Where it's headed, so a quick second click goes one further even
+    // while the first slide is still moving (current() would lag behind).
+    // Arrows, dots and keys glide to a slide with our own short animation
+    // (the browser's smooth scroll stalls on a snapping track, and a second
+    // click mid-way would land short); snapping is paused while it runs.
+    // While it runs, the slide it's headed to counts; a swipe takes over.
+    var index = 0;
+    var moving = false;
+    var raf = null;
+    function settle() {
+      cancelAnimationFrame(raf);
+      track.style.scrollSnapType = '';
+      track.style.scrollBehavior = '';
+      moving = false;
+    }
     function go(i) {
-      var n = (i + count) % count;
-      track.scrollTo({ left: n * track.clientWidth, behavior: reduceMotion ? 'auto' : 'smooth' });
+      index = (i + count) % count;
+      var to = index * track.clientWidth;
+      cancelAnimationFrame(raf);
+      moving = true;
+      paint();
+      if (reduceMotion) { track.scrollLeft = to; settle(); return; }
+      var from = track.scrollLeft;
+      var start = performance.now();
+      track.style.scrollSnapType = 'none';
+      track.style.scrollBehavior = 'auto';
+      (function step(now) {
+        var t = Math.min(1, (now - start) / 320);
+        track.scrollLeft = from + (to - from) * (1 - Math.pow(1 - t, 3));
+        if (t < 1) raf = requestAnimationFrame(step);
+        else { settle(); paint(); }
+      })(start);
     }
     function paint() {
-      var i = current();
+      var i = moving ? index : current();
+      index = i;
       dots.forEach(function (dot, d) {
         if (d === i) dot.setAttribute('aria-current', 'true'); else dot.removeAttribute('aria-current');
       });
     }
     var timer = null;
     function stop() { clearInterval(timer); timer = null; }
-    slider.querySelector('[data-slider-prev]').addEventListener('click', function () { stop(); go(current() - 1); });
-    slider.querySelector('[data-slider-next]').addEventListener('click', function () { stop(); go(current() + 1); });
+    slider.querySelector('[data-slider-prev]').addEventListener('click', function () { stop(); go(index - 1); });
+    slider.querySelector('[data-slider-next]').addEventListener('click', function () { stop(); go(index + 1); });
     dots.forEach(function (dot) {
       dot.addEventListener('click', function () { stop(); go(Number(dot.getAttribute('data-slider-dot'))); });
     });
     track.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(current() - 1); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); stop(); go(current() + 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(index - 1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); stop(); go(index + 1); }
     });
-    var settle = null;
-    track.addEventListener('scroll', function () { clearTimeout(settle); settle = setTimeout(paint, 60); }, { passive: true });
+    var scrollStopTimer = null;
+    track.addEventListener('scroll', function () { clearTimeout(scrollStopTimer); scrollStopTimer = setTimeout(paint, 60); }, { passive: true });
     ['pointerdown', 'touchstart', 'wheel', 'focusin'].forEach(function (type) {
       slider.addEventListener(type, stop, { passive: true });
     });
-    if (!reduceMotion) {
+    // A swipe or wheel on the track takes over from a scripted move.
+    ['touchstart', 'wheel'].forEach(function (type) {
+      track.addEventListener(type, function () { if (moving) settle(); }, { passive: true });
+    });
+    // In a popup: start from the first testimonial each time it opens, and
+    // don't auto-advance — the visitor opened it to read.
+    var popup = slider.closest('.store-popup');
+    if (popup) {
+      // The popup is already showing when this fires, so it can be done at
+      // once (waiting a frame could undo a click made right after opening).
+      popup.addEventListener('store:popup-open', function () {
+        if (moving) settle();
+        track.style.scrollBehavior = 'auto';
+        track.scrollLeft = 0;
+        track.style.scrollBehavior = '';
+        index = 0;
+        paint();
+      });
+    }
+    if (!reduceMotion && !popup) {
       // Paused while the pointer rests on it (to read), and only runs
       // while it's on screen with the tab visible.
       var hovering = false;
@@ -482,8 +552,8 @@
       slider.addEventListener('mouseleave', function () { hovering = false; });
       timer = setInterval(function () {
         var box = slider.getBoundingClientRect();
-        if (hovering || document.hidden || box.bottom < 0 || box.top > window.innerHeight) return;
-        go(current() + 1);
+        if (hovering || document.hidden || !box.width || box.bottom < 0 || box.top > window.innerHeight) return;
+        go(index + 1);
       }, 6000);
     }
   });

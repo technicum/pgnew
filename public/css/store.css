@@ -394,3 +394,47 @@ body.buttons-square .store { border-radius: 6px; }
 @media (max-width: 640px) {
   .store-announce + .store { margin-top: 0; }
 }
+
+/* --- Popups are bottom sheets, on every screen ---------------------------
+   They rise from the bottom with rounded top corners, as wide as the store
+   card (full width on phones), with a grab bar on top. A video stays a
+   centered player so it isn't squeezed. */
+.store-popup { align-items: flex-end; justify-content: center; padding: 0; }
+.store-popup .store-popup-card {
+  width: 100%; max-width: 580px; max-height: 88vh;
+  border-radius: 24px 24px 0 0; padding: 30px 24px 28px;
+  animation: store-sheet-up .26s cubic-bezier(.2, .8, .2, 1) both;
+}
+.store-popup .store-popup-card::before {
+  content: ''; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 4px; border-radius: 999px; background: var(--border);
+}
+.store-popup .store-popup-close { top: 14px; right: 14px; }
+@keyframes store-sheet-up { from { transform: translateY(100%); } }
+body.buttons-square .store-popup .store-popup-card { border-radius: 6px 6px 0 0; }
+
+.store-popup.store-popup-video { align-items: center; padding: 16px; }
+.store-popup.store-popup-video .store-popup-card {
+  max-width: 760px; border-radius: 16px; padding: 16px;
+  animation: store-pop .22s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+.store-popup.store-popup-video .store-popup-card::before { display: none; }
+@media (prefers-reduced-motion: reduce) { .store-popup .store-popup-card { animation: none; } }
+
+/* Testimonials card on the page: stacked initials, title, count + first quote. */
+.store-reviews-trigger { justify-content: flex-start; }
+.store-reviews-trigger .store-block-body { flex: 1; }
+.store-reviews-trigger .store-block-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.store-reviews-faces { display: flex; flex: none; }
+.store-reviews-faces span {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 600; color: var(--store-accent, #ff6b4a);
+  background: color-mix(in oklab, var(--store-accent, #ff6b4a) 14%, var(--card));
+  box-shadow: 0 0 0 2px var(--card);
+}
+.store-reviews-faces span + span { margin-left: -10px; }
+
+/* Testimonials popup: the slider, left-aligned under the title. */
+.store-popup-reviews-title { text-align: left; padding-right: 40px; margin-bottom: 14px; }
+.store-popup .store-reviews { text-align: left; }
+.store-popup .store-review { background: var(--bg); }
