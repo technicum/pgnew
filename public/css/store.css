@@ -342,3 +342,52 @@ html:not(.js) .store-item > .store-block { padding-right: 18px; }
 .store-social-heading { font-family: var(--font-display); font-weight: 600; font-size: 17px; margin-bottom: 2px; }
 .store-social-block .store-socials { margin-top: 10px; gap: 10px; }
 .store-social-block .store-social { width: 44px; height: 44px; }
+
+/* --- The store as a card on a backdrop -----------------------------------
+   Wide screens: the page is a rounded card floating on a soft backdrop (a
+   blur of the cover, or a glow of the accent); the cover and announcement
+   bar run edge to edge across the card's top. Phones: the card is the
+   whole screen. */
+body { --page: color-mix(in oklab, var(--store-accent, #ff6b4a) 10%, #e4e7e2); --card-pad: 28px; background: var(--page); }
+body.theme-tinted { --page: color-mix(in oklab, var(--store-accent, #ff6b4a) 22%, #e9ebe7); }
+body.theme-dark { --page: #070a0d; }
+
+.store-backdrop {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 15% 0%, color-mix(in oklab, var(--store-accent, #ff6b4a) 30%, transparent), transparent 70%),
+    radial-gradient(50% 45% at 100% 100%, color-mix(in oklab, var(--store-accent, #ff6b4a) 22%, transparent), transparent 70%);
+}
+.store-backdrop.has-image {
+  background-position: center; background-size: cover;
+  filter: blur(56px) saturate(1.25); transform: scale(1.25); opacity: .55;
+}
+body.theme-dark .store-backdrop.has-image { opacity: .35; }
+
+.store {
+  max-width: 580px; margin: 40px auto; padding: 44px var(--card-pad) 28px;
+  min-height: calc(100vh - 80px);
+  background: var(--bg); border-radius: 28px; overflow: hidden;
+  box-shadow: 0 30px 80px -20px rgba(18, 24, 31, .28), 0 0 0 1px rgba(18, 24, 31, .05);
+}
+body.theme-dark .store { box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .06); }
+body.buttons-square .store { border-radius: 6px; }
+
+/* Edge to edge across the top of the card. */
+.store > .store-announce { margin: -44px calc(-1 * var(--card-pad)) 28px; }
+.store.has-cover { padding-top: 0; }
+.store.has-cover > .store-announce { margin: 0 calc(-1 * var(--card-pad)); }
+.store.has-cover .store-cover { margin: 0 calc(-1 * var(--card-pad)); height: 200px; border-radius: 0; }
+.store.has-cover .store-avatar { margin-top: -52px; width: 104px; height: 104px; }
+
+.store-profile-share { top: 16px; right: 16px; }
+.store.has-cover .store-profile-share { top: 16px; right: 16px; background: rgba(255, 255, 255, .92); border-color: transparent; color: #12181f; }
+.store.has-announce .store-profile-share { top: 54px; }
+
+@media (max-width: 640px) {
+  body { --card-pad: 16px; background: var(--bg); }
+  .store-backdrop { display: none; }
+  .store { margin: 0; min-height: 100vh; padding-top: 36px; border-radius: 0; box-shadow: none; }
+  .store > .store-announce { margin-top: -36px; }
+  .store.has-cover .store-cover { height: 168px; }
+}
