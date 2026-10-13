@@ -68,6 +68,7 @@ const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials');
 const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
+const { mediaReport, deleteMedia } = require('./lib/adminMedia');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
@@ -237,6 +238,31 @@ app.post('/admin/settings', requireAdmin, async (req, res, next) => {
   } catch (err) {
     if (err.code === 'INVALID_INPUT') return renderAdminSettings(req, res, { status: 400, error: err.message }).catch(next);
     next(err);
+  }
+});
+
+// Platform admin → Media (lib/adminMedia.js): every creator's uploads, what
+// uses them, and deleting ones nothing has used for UNUSED_DAYS.
+app.get('/admin/media', requireAdmin, async (req, res, next) => {
+  try {
+    const report = await mediaReport();
+    res.render('admin-media', {
+      title: `Media — ${SITE_NAME}`,
+      user: req.session.user,
+      files: report.files,
+      unusedDays: report.unusedDays,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/admin/media/delete', requireAdmin, async (req, res) => {
+  try {
+    res.json(await deleteMedia(req.body && req.body.keys));
+  } catch (err) {
+    console.error('Media delete failed:', err);
+    res.status(500).json({ error: 'Could not delete those files. Please try again.' });
   }
 });
 

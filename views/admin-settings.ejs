@@ -20,6 +20,7 @@
       <p class="text-sm font-semibold text-primary">Admin</p>
       <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Platform settings</h1>
       <p class="mt-2 text-sm text-muted-foreground">Only admins see this page. Changes apply to new orders; past orders keep the commission they were placed with.</p>
+      <%- include('partials/admin-tabs', { tab: 'settings' }) %>
 
       <% if (error) { %><div class="ax-flash ax-flash-error" role="alert" style="margin-top:18px;"><%= error %></div><% } %>
       <% if (saved) { %><div class="ax-flash ax-flash-ok" role="status" style="margin-top:18px;">Saved.</div><% } %>
