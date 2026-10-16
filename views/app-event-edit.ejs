@@ -49,7 +49,7 @@ var online = event.mode !== 'venue'; %>
             </div>
             <p class="ax-hint" data-pricing-show="paid" style="margin-top:10px">
               <% if (paymentMode === 'test') { %><b>Test mode</b> — buyers see a “Complete test payment” step and nothing is charged.
-              <% } else if (paymentMode === 'cashfree') { %><b>Collected online</b> — buyers pay through Cashfree and get their ticket straight away.
+              <% } else if (paymentMode === 'cashfree' || paymentMode === 'razorpay') { %><b>Collected online</b> — buyers pay through <%= paymentMode === 'razorpay' ? 'Razorpay' : 'Cashfree' %> and get their ticket straight away.
               <% } else { %><b>Manual payments</b> — the seat is held while they pay you; mark it paid under Attendees.<% } %>
               Unpaid seats are freed after 30 minutes.
             </p>
@@ -90,7 +90,7 @@ var online = event.mode !== 'venue'; %>
                 <span class="ax-pill">Cancelled</span>
                 <% } else if (r.status === 'pending') { %>
                 <span class="ax-pill ax-pill-warn">Awaiting <%= formatINR(r.amount) %></span>
-                <% if (paymentMode !== 'cashfree') { %><button class="ax-btn" form="rsvpAction" formaction="<%= base %>/rsvps/<%= r.id %>/paid" data-confirm="Paid? Confirm">Mark paid</button><% } %>
+                <% if (paymentMode !== 'cashfree' && paymentMode !== 'razorpay') { %><button class="ax-btn" form="rsvpAction" formaction="<%= base %>/rsvps/<%= r.id %>/paid" data-confirm="Paid? Confirm">Mark paid</button><% } %>
                 <button class="ax-btn ax-btn-quiet" form="rsvpAction" formaction="<%= base %>/rsvps/<%= r.id %>/cancel" data-confirm="Cancel it?">Cancel</button>
                 <% } else { %>
                 <% if (r.order_id) { %><span class="ax-pill">Paid <%= formatINR(r.amount) %></span><% } %>

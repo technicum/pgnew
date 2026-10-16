@@ -1,0 +1,72 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Payments (lib/razorpay.js): Razorpay's test and live keys, and the switch for which
+    one checkout uses. Secrets are never sent back to the page — a blank secret field keeps the saved one. %>
+
+<%
+var modeLabels = { razorpay: 'Razorpay (' + (razorpay.active === 'live' ? 'live' : 'test') + ')', cashfree: 'Cashfree (from .env)', test: 'Simulated test checkout', manual: 'Manual — creators mark orders paid' };
+var sets = [
+  { key: 'test', title: 'Test keys', hint: 'From Razorpay Dashboard → Test mode → Account & Settings → API keys. No real money moves.' },
+  { key: 'live', title: 'Live keys', hint: 'From Razorpay Dashboard → Live mode → Account & Settings → API keys. Buyers are charged for real.' },
+];
+%>
+
+<header class="adm-head">
+  <div>
+    <h1>Payments</h1>
+    <p>Razorpay keys for checkout on payment pages, bookings, courses and events. Checkout right now: <b><%= modeLabels[currentMode] || currentMode %></b>.</p>
+  </div>
+</header>
+
+<form method="POST" action="/admin/payments" autocomplete="off">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Razorpay mode</h2><span class="ax-count">Which keys checkout uses</span></div>
+    <div class="ax-pad ax-pad-top">
+      <div class="adm-switch" role="radiogroup" aria-label="Razorpay mode">
+        <label><input type="radio" name="razorpay_mode" value="off"<%= razorpay.mode === 'off' ? ' checked' : '' %> /><span>Off</span></label>
+        <label><input type="radio" name="razorpay_mode" value="test"<%= razorpay.mode === 'test' ? ' checked' : '' %> /><span>Test</span></label>
+        <label class="adm-switch-live"><input type="radio" name="razorpay_mode" value="live"<%= razorpay.mode === 'live' ? ' checked' : '' %> /><span>Live</span></label>
+      </div>
+      <p class="ax-hint adm-switch-hint">
+        <b>Off</b> — checkout falls back to .env (PAYMENTS_MODE: Cashfree, test or manual).
+        <b>Test</b> — Razorpay with the test keys; use Razorpay’s test cards and UPI IDs.
+        <b>Live</b> — Razorpay with the live keys; real payments.
+        Switching on checks the keys with Razorpay first.
+      </p>
+    </div>
+  </section>
+
+  <% sets.forEach(function (set) { var v = razorpay[set.key]; %>
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2><%= set.title %></h2>
+      <span class="ax-count"><%= v.key_id && v.key_secret ? 'Saved' : 'Not set' %><%= razorpay.active === set.key ? ' · in use' : '' %></span></div>
+    <div class="ax-grid">
+      <label class="ax-field"><span>Key ID</span>
+        <input class="ax-input" name="<%= set.key %>_key_id" value="<%= v.key_id %>" placeholder="rzp_<%= set.key %>_…" spellcheck="false" /></label>
+      <label class="ax-field"><span>Key secret</span>
+        <input class="ax-input" type="password" name="<%= set.key %>_key_secret" placeholder="<%= v.key_secret ? 'Saved (' + v.key_secret + ') — blank keeps it' : 'Paste the key secret' %>" autocomplete="new-password" /></label>
+      <label class="ax-field"><span>Webhook secret</span>
+        <input class="ax-input" type="password" name="<%= set.key %>_webhook_secret" placeholder="<%= v.webhook_secret ? 'Saved (' + v.webhook_secret + ') — blank keeps it' : 'Optional — see below' %>" autocomplete="new-password" /></label>
+    </div>
+    <p class="ax-hint ax-pad">
+      <%= set.hint %>
+      <% if (v.key_id || v.key_secret || v.webhook_secret) { %><br /><label class="ax-check"><input type="checkbox" name="<%= set.key %>_clear" value="1" /> Remove the saved <%= set.key %> keys</label><% } %>
+    </p>
+  </section>
+  <% }) %>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Webhook</h2><span class="ax-count">Recommended</span></div>
+    <p class="ax-hint ax-pad ax-pad-top">
+      Orders are confirmed when the buyer comes back from checkout. A webhook also confirms them if the buyer closes the tab first.
+      In Razorpay Dashboard → Webhooks (in each of Test and Live mode), add <code><%= webhookUrl %></code>
+      with the events <code>payment.captured</code> and <code>order.paid</code>, and paste the secret you set there above.
+    </p>
+  </section>
+
+  <section class="ax-panel ax-savebar">
+    <span class="ax-sub">Keys are stored on the server and never shown again in full.</span>
+    <button class="ax-btn ax-btn-primary">Save</button>
+  </section>
+</form>
+
+<%- include('partials/admin-bottom') %>

@@ -40,7 +40,7 @@ var quizzes = lessons.filter(function (l) { return l.kind === 'quiz'; }); %>
               <% if (course.price) { %>
               <p class="ax-hint" style="margin-top:10px">
                 <% if (paymentMode === 'test') { %><b>Test mode</b> — students see a “Complete test payment” step and nothing is charged.
-                <% } else if (paymentMode === 'cashfree') { %><b>Paid online</b> — students pay through Cashfree and their lessons unlock as soon as it goes through.
+                <% } else if (paymentMode === 'cashfree' || paymentMode === 'razorpay') { %><b>Paid online</b> — students pay through <%= paymentMode === 'razorpay' ? 'Razorpay' : 'Cashfree' %> and their lessons unlock as soon as it goes through.
                 <% } else { %><b>Manual payments</b> — a student’s lessons unlock when you mark their order paid in <a href="/dashboard/orders">Orders</a>.<% } %>
               </p>
               <% } %>

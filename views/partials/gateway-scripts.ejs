@@ -1,0 +1,8 @@
+<%# Loads the checkout script for partials/gateway-pay's button. Pass gateway. %>
+<% if (gateway.provider === 'razorpay') { %>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="/js/razorpay-checkout.js?v=<%= assetVersion %>"></script>
+<% } else { %>
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<script src="/js/cashfree-checkout.js?v=<%= assetVersion %>"></script>
+<% } %>

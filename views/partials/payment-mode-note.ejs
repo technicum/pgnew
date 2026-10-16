@@ -6,6 +6,8 @@
   <p><strong>Test mode.</strong> No payment gateway is connected yet, so checkout is simulated — buyers see a “Complete test payment” step and nothing is charged. Use it to try the whole flow end to end.</p>
   <% } else if (paymentMode === 'cashfree') { %>
   <p><strong>Online payments (Cashfree).</strong> Buyers pay on Cashfree’s checkout — UPI, cards, net banking, wallets — and their order is marked paid automatically.</p>
+  <% } else if (paymentMode === 'razorpay') { %>
+  <p><strong>Online payments (Razorpay).</strong> Buyers pay on Razorpay’s checkout — UPI, cards, net banking, wallets — and their order is marked paid automatically.</p>
   <% } else { %>
   <p><strong>Manual payments.</strong> No payment gateway is connected yet. Orders are placed as <em>pending</em>; once you’ve been paid (UPI, bank transfer), mark them paid in <a href="/dashboard/orders">Orders</a> and the buyer’s purchase unlocks.</p>
   <% } %>

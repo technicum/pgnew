@@ -78,7 +78,7 @@ var base = '/dashboard/bookings/services/' + service.id; %>
             </div>
             <p class="ax-hint" style="margin-top:10px">
               <% if (paymentMode === 'test') { %><b>Test mode</b> — bookers see a “Complete test payment” step and nothing is charged.
-              <% } else if (paymentMode === 'cashfree') { %><b>Collected online</b> — bookers pay through Cashfree and the booking confirms itself.
+              <% } else if (paymentMode === 'cashfree' || paymentMode === 'razorpay') { %><b>Collected online</b> — bookers pay through <%= paymentMode === 'razorpay' ? 'Razorpay' : 'Cashfree' %> and the booking confirms itself.
               <% } else { %><b>Manual payments</b> — the slot is held until you mark it paid. Tell bookers how to pay in <a href="/dashboard/bookings/settings/payments">Settings</a>.<% } %>
             </p>
           </section>

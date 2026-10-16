@@ -509,7 +509,7 @@ textarea.pb-prod-desc { margin-bottom: 10px; height: auto; padding: 8px 11px; re
   .pa-ab-cart { grid-column: 1 / -1; grid-row: 2; }
   .pa-ab-actions { grid-column: 1 / -1; justify-content: flex-start; }
 }
-.pp-mode-cashfree { background: #ecfdf3; border: 1px solid #abefc6; color: #067647; }
+.pp-mode-cashfree, .pp-mode-razorpay { background: #ecfdf3; border: 1px solid #abefc6; color: #067647; }
 
 /* Coupons page (views/coupons.ejs): labelled fields, and per code a copy
    button and a status pill. */

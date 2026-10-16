@@ -24,21 +24,20 @@
         <button class="btn btn-primary" name="action" value="pay">Complete test payment · <%= amountLabel %></button>
         <button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button>
       </form>
-      <% } else if (paymentMode === 'cashfree') { %>
+      <% } else if (paymentMode === 'cashfree' || paymentMode === 'razorpay') { %>
       <% if (gatewayError || retry) { %><div class="bk-test" role="alert"><%= gatewayError || 'The payment didn’t go through and nothing was charged. You can try again.' %></div><% } %>
-      <p class="ax-note">You’ll pay securely on Cashfree — UPI, cards, net banking or wallets. Your ticket shows right after.</p>
+      <p class="ax-note">You’ll pay securely on <%= paymentMode === 'razorpay' ? 'Razorpay' : 'Cashfree' %> — UPI, cards, net banking or wallets. Your ticket shows right after.</p>
       <div class="bk-actions">
         <% if (gateway) { %>
-        <button type="button" id="cfPay" class="btn btn-primary" data-session="<%= gateway.sessionId %>" data-env="<%= gateway.env %>" data-auto="<%= gateway.auto ? '1' : '' %>">Pay <%= amountLabel %></button>
+        <%- include('partials/gateway-pay', { gateway: gateway, label: amountLabel }) %>
         <% } else { %>
         <a class="btn btn-primary" href="<%= base %>">Try again</a>
         <% } %>
         <form method="POST" action="<%= base %>" style="display:contents"><button class="btn bk-btn-ghost" name="action" value="cancel">Cancel</button></form>
       </div>
       <% if (gateway) { %>
-      <% if (gateway.env === 'sandbox') { %><p class="ax-note">Cashfree sandbox: no real money moves.</p><% } %>
-      <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
-      <script src="/js/cashfree-checkout.js?v=<%= assetVersion %>"></script>
+      <% if (gateway.sandbox) { %><p class="ax-note"><%= gateway.provider === 'razorpay' ? 'Razorpay test mode' : 'Cashfree sandbox' %>: no real money moves.</p><% } %>
+      <%- include('partials/gateway-scripts', { gateway: gateway }) %>
       <% } %>
       <% } else { %>
       <div class="bk-test">Pay <b><%= amountLabel %></b> to <%= owner.name %> the way they’ve shared with you (UPI or bank transfer). Your ticket is confirmed here as soon as they mark it paid.</div>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10150f">
+  <meta name="description" content="A quick, touch-friendly Snake game. Eat fruit, grow longer, and beat your high score.">
+  <title>Snake — Pocket Arcade</title>
+  <style>
+    :root{color-scheme:dark;--bg:#10150f;--panel:#191f17;--line:#2e382a;--ink:#eff4e9;--muted:#9aa591;--green:#b8f45b;--orange:#ff9e62;--tile:#151b13}
+    *{box-sizing:border-box}body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 50% 12%,#26311f 0,#10150f 55%);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,Segoe UI,sans-serif;display:flex;justify-content:center;align-items:center;padding:20px 16px calc(18px + env(safe-area-inset-bottom));user-select:none;-webkit-tap-highlight-color:transparent}
+    .shell{width:min(100%,440px)}header{display:flex;align-items:center;justify-content:space-between;margin:0 2px 18px}.brand{display:flex;align-items:center;gap:11px}.mark{width:42px;height:42px;border-radius:14px;background:var(--green);display:grid;place-items:center;color:#17200e;box-shadow:0 5px 25px #b8f45b25}.mark svg{width:25px}.eyebrow{font-size:10px;letter-spacing:.19em;text-transform:uppercase;color:var(--muted);font-weight:800}.brand h1{font-size:20px;letter-spacing:-.04em;margin:1px 0 0}.icon-btn{border:1px solid var(--line);background:#171d15;color:#dbe3d3;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;cursor:pointer}.icon-btn:active,.pad button:active{transform:scale(.94)}
+    .scorebar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.score{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:11px 15px;display:flex;justify-content:space-between;align-items:center}.score span{font-size:11px;color:var(--muted);letter-spacing:.11em;font-weight:750}.score strong{font-size:23px;letter-spacing:-.05em;font-variant-numeric:tabular-nums}.score.best strong{color:var(--green)}
+    .board-wrap{position:relative;padding:9px;border-radius:23px;background:#1a2118;border:1px solid #34402f;box-shadow:0 15px 45px #0005}.board{display:block;width:100%;aspect-ratio:1;border-radius:15px;background:var(--tile);touch-action:none}.overlay{position:absolute;inset:9px;border-radius:15px;background:#0c110dbd;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;backdrop-filter:blur(5px)}.overlay.hidden{display:none}.overlay-card{max-width:255px}.fruit-icon{font-size:34px;margin-bottom:8px;filter:drop-shadow(0 4px 15px #ff9e6266)}.overlay h2{font-size:25px;letter-spacing:-.04em;margin:0 0 7px}.overlay p{font-size:13px;line-height:1.55;color:#b1bbaa;margin:0 0 18px}.primary{border:0;border-radius:13px;background:var(--green);color:#17200e;font:800 14px inherit;padding:13px 24px;cursor:pointer;box-shadow:0 5px 18px #b8f45b25}.primary:active{transform:scale(.97)}
+    .controls{display:flex;align-items:center;justify-content:space-between;margin:14px 3px 0}.hint{font-size:11px;color:var(--muted);line-height:1.55}.hint b{color:#d6ddcf}.pad{width:142px;height:118px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);gap:4px}.pad button{border:1px solid #35412f;background:var(--panel);color:#e7eddf;border-radius:12px;font-size:19px;cursor:pointer;touch-action:manipulation}.pad button:nth-child(1){grid-area:1/2}.pad button:nth-child(2){grid-area:2/1}.pad button:nth-child(3){grid-area:2/2}.pad button:nth-child(4){grid-area:2/3}.pad button:nth-child(5){grid-area:3/2}.pad .empty{visibility:hidden}footer{margin:14px 3px 0;display:flex;justify-content:space-between;align-items:center;color:#75806e;font-size:10px;letter-spacing:.03em}.mode{display:flex;gap:5px}.mode button{background:transparent;border:1px solid transparent;border-radius:8px;color:#84907d;padding:5px 8px;font-size:10px;font-weight:750;cursor:pointer}.mode button.active{border-color:#3b4933;color:var(--green);background:#222c1d}
+    @media(min-height:850px){.shell{width:min(100%,460px)}.board-wrap{padding:11px}.controls{margin-top:18px}.pad{width:150px;height:124px}}@media(max-height:690px){body{padding-top:8px;padding-bottom:8px}.shell{width:min(100%,min(390px, calc(100svh - 235px)))}header{margin-bottom:10px}.mark,.icon-btn{width:36px;height:36px}.scorebar{margin-bottom:8px}.score{padding:7px 12px}.score strong{font-size:20px}.board-wrap{padding:7px}.controls{margin-top:7px}.pad{height:91px;width:112px}.hint{font-size:10px}footer{margin-top:5px}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+  </style>
+</head>
+<body>
+<main class="shell" aria-label="Snake game">
+  <header><div class="brand"><div class="mark" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none"><path d="M5 8h9a4 4 0 0 1 4 4v4a4 4 0 0 0 4 4h1" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><circle cx="8" cy="8" r="1.2" fill="#b8f45b"/></svg></div><div><div class="eyebrow">Pocket arcade</div><h1>Snake</h1></div></div><button class="icon-btn" id="pauseBtn" aria-label="Pause game" title="Pause / resume"><svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M6 4h3v12H6zM12 4h3v12h-3z"/></svg></button></header>
+  <div class="scorebar"><div class="score"><span>SCORE</span><strong id="score">00</strong></div><div class="score best"><span>BEST</span><strong id="best">00</strong></div></div>
+  <section class="board-wrap" aria-label="Game board"><canvas class="board" id="board" width="420" height="420" aria-label="Snake game board"></canvas><div class="overlay" id="overlay"><div class="overlay-card"><div class="fruit-icon" id="overlayIcon">🍊</div><h2 id="overlayTitle">Ready to play?</h2><p id="overlayText">Collect fruit, grow your snake, and stay clear of the walls.</p><button class="primary" id="startBtn">Start game&nbsp; →</button></div></div></section>
+  <div class="controls"><div class="hint"><b>Swipe</b> or tap the arrows<br>to change direction.<br><span style="color:#778270">Space to pause</span></div><div class="pad" aria-label="Direction controls"><button data-dir="up" aria-label="Up">↑</button><button class="empty" tabindex="-1"></button><button class="empty" tabindex="-1"></button><button data-dir="left" aria-label="Left">←</button><button data-dir="down" aria-label="Down">↓</button><button data-dir="right" aria-label="Right">→</button></div></div>
+  <footer><span>CLASSIC SNAKE · MADE FOR THE MOMENT</span><div class="mode"><button class="active" data-speed="easy">CHILL</button><button data-speed="classic">CLASSIC</button><button data-speed="fast">QUICK</button></div></footer>
+</main>
+<script>
+(()=>{
+  const canvas=document.querySelector('#board'),ctx=canvas.getContext('2d'),overlay=document.querySelector('#overlay');
+  const scoreEl=document.querySelector('#score'),bestEl=document.querySelector('#best');
+  const N=21,step=20,colors={bg:'#151b13',grid:'#20281d',snake:'#b8f45b',head:'#d5ff8c',fruit:'#ff9e62'};
+  let snake,food,dir,nextDir,timer=null,playing=false,paused=false,score=0,speed='easy',touchStart=null;
+  let best=Number(localStorage.getItem('pocketSnakeBest')||0); bestEl.textContent=String(best).padStart(2,'0');
+  function draw(){
+    ctx.fillStyle=colors.bg;ctx.fillRect(0,0,420,420);
+    ctx.strokeStyle=colors.grid;ctx.lineWidth=1;
+    for(let i=1;i<N;i++){let p=i*step;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,420);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(420,p);ctx.stroke()}
+    if(food){ctx.save();ctx.shadowColor=colors.fruit;ctx.shadowBlur=14;ctx.fillStyle=colors.fruit;ctx.beginPath();ctx.arc(food.x*step+10,food.y*step+10,7,0,Math.PI*2);ctx.fill();ctx.restore();ctx.fillStyle='#ffe2bb';ctx.beginPath();ctx.arc(food.x*step+7,food.y*step+7,2,0,Math.PI*2);ctx.fill()}
+    if(!snake)return;
+    snake.forEach((s,i)=>{let inset=i===0?2:3,x=s.x*step+inset,y=s.y*step+inset,size=step-inset*2;ctx.fillStyle=i===0?colors.head:colors.snake;ctx.beginPath();ctx.roundRect(x,y,size,size,i===0?6:5);ctx.fill();if(i===0){ctx.fillStyle='#35452b';const eyes=dir.x===1?[[12,6],[12,13]]:dir.x===-1?[[5,6],[5,13]]:dir.y===-1?[[6,5],[13,5]]:[[6,12],[13,12]];for(const [ex,ey] of eyes){ctx.beginPath();ctx.arc(x+ex,y+ey,1.5,0,7);ctx.fill()}}});
+  }
+  function placeFood(){do{food={x:Math.floor(Math.random()*N),y:Math.floor(Math.random()*N)}}while(snake.some(s=>s.x===food.x&&s.y===food.y))}
+  function reset(){snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];dir={x:1,y:0};nextDir=dir;score=0;scoreEl.textContent='00';placeFood();draw()}
+  function show(title,text,icon='🍊',button='Play again'){document.querySelector('#overlayTitle').textContent=title;document.querySelector('#overlayText').textContent=text;document.querySelector('#overlayIcon').textContent=icon;document.querySelector('#startBtn').textContent=button+'  →';overlay.classList.remove('hidden')}
+  function start(){clearInterval(timer);reset();playing=true;paused=false;overlay.classList.add('hidden');document.querySelector('#pauseBtn').setAttribute('aria-label','Pause game');timer=setInterval(tick,interval())}
+  function interval(){return speed==='fast'?95:speed==='classic'?135:175}
+  function end(){playing=false;clearInterval(timer);if(score>best){best=score;localStorage.setItem('pocketSnakeBest',best);bestEl.textContent=String(best).padStart(2,'0')}show('Game over',score?'You scored '+score+'. Fancy another round?':'That was a close one. Try again?','💥')}
+  function tick(){dir=nextDir;const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};if(head.x<0||head.y<0||head.x>=N||head.y>=N||snake.slice(0,-1).some(s=>s.x===head.x&&s.y===head.y)){end();return}snake.unshift(head);if(head.x===food.x&&head.y===food.y){score++;scoreEl.textContent=String(score).padStart(2,'0');placeFood();if(score%5===0&&speed!=='fast'){clearInterval(timer);timer=setInterval(tick,Math.max(75,interval()-Math.floor(score/5)*5))}}else snake.pop();draw()}
+  function turn(x,y){if(!playing||paused)return;if(x===-dir.x&&y===-dir.y)return;nextDir={x,y}}
+  function pause(){if(!playing)return;paused=!paused;if(paused){clearInterval(timer);show('Taking a breather?','Your game is paused. Pick up where you left off.','⏸','Resume')}else{overlay.classList.add('hidden');timer=setInterval(tick,interval())}}
+  document.querySelector('#startBtn').addEventListener('click',()=>{if(playing&&paused){paused=false;overlay.classList.add('hidden');timer=setInterval(tick,interval())}else start()});
+  document.querySelector('#pauseBtn').addEventListener('click',pause);
+  document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();const d=b.dataset.dir;turn(d==='left'?-1:d==='right'?1:0,d==='up'?-1:d==='down'?1:0)}));
+  document.querySelectorAll('[data-speed]').forEach(b=>b.addEventListener('click',()=>{speed=b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>x.classList.toggle('active',x===b));if(playing&&!paused){clearInterval(timer);timer=setInterval(tick,interval())}}));
+  addEventListener('keydown',e=>{const map={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};if(map[e.key]){e.preventDefault();turn(...map[e.key])}if(e.code==='Space'){e.preventDefault();pause()}if(e.key==='Enter'&&!playing)start()});
+  canvas.addEventListener('pointerdown',e=>{touchStart={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId)});
+  canvas.addEventListener('pointerup',e=>{if(!touchStart)return;const dx=e.clientX-touchStart.x,dy=e.clientY-touchStart.y;if(Math.max(Math.abs(dx),Math.abs(dy))>18){if(Math.abs(dx)>Math.abs(dy))turn(Math.sign(dx),0);else turn(0,Math.sign(dy))}touchStart=null});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing&&!paused)pause()});
+  reset();
+})();
+</script>
+</body>
+</html>

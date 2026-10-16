@@ -62,7 +62,7 @@ const { abandonedView, markContacted, dismissAbandoned, ABANDONED_AFTER_MINUTES 
 const customDomains = require('./lib/customDomains');
 const { APPS, APP_BY_ID, installedApps, setAppInstalled, appForPath } = require('./lib/apps');
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
-const { paymentMode, handleCashfreeWebhook } = require('./lib/payments');
+const { paymentMode, handleCashfreeWebhook, handleRazorpayWebhook, loadGatewaySettings } = require('./lib/payments');
 const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
 const { isAdmin } = require('./lib/platform');
 const { installStorefront } = require('./lib/storefront');
@@ -90,11 +90,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: true }));
 // Only the builder's fetch()-based endpoints send JSON bodies — everything
 // else (signup/login) still posts as a normal HTML form.
-// The raw bytes are kept for the Cashfree webhook's signature check.
+// The raw bytes are kept for the payment webhooks' signature checks.
 app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Cashfree payment events (lib/payments.js) — signed, no session needed.
 app.post('/webhooks/cashfree', (req, res, next) => handleCashfreeWebhook(req, res).catch(next));
+// Razorpay payment events (lib/razorpay.js; keys and webhook secrets set at /admin/payments).
+app.post('/webhooks/razorpay', (req, res, next) => handleRazorpayWebhook(req, res).catch(next));
 
 app.use(session({
   // Falls back to a fixed dev secret so `node server.js` works with no
@@ -1189,6 +1191,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`${SITE_NAME} running on port ${PORT}`);
-});
+// Razorpay's admin settings are loaded before the first request, so
+// checkout uses the right gateway from the start.
+loadGatewaySettings()
+  .catch((err) => console.error('Loading Razorpay settings failed:', err.message))
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`${SITE_NAME} running on port ${PORT}`);
+    });
+  });

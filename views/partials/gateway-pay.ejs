@@ -1,0 +1,7 @@
+<%# The Pay button for a gateway checkout (lib/payments.js startGatewayCheckout) — Cashfree's or
+    Razorpay's, per gateway.provider. Pass gateway and label; partials/gateway-scripts opens it. %>
+<% if (gateway.provider === 'razorpay') { %>
+<button type="button" id="rzpPay" class="btn btn-primary" data-key="<%= gateway.keyId %>" data-order="<%= gateway.orderId %>" data-amount="<%= gateway.amount %>" data-currency="<%= gateway.currency %>" data-merchant="<%= owner.name %>" data-description="<%= gateway.description %>" data-name="<%= gateway.name %>" data-email="<%= gateway.email %>" data-contact="<%= gateway.contact %>" data-return="<%= gateway.returnUrl %>" data-auto="<%= gateway.auto ? '1' : '' %>">Pay <%= label %></button>
+<% } else { %>
+<button type="button" id="cfPay" class="btn btn-primary" data-session="<%= gateway.sessionId %>" data-env="<%= gateway.env %>" data-auto="<%= gateway.auto ? '1' : '' %>">Pay <%= label %></button>
+<% } %>
