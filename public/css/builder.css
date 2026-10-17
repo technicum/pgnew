@@ -191,14 +191,42 @@ body.pz-sorting, body.pz-sorting * { user-select: none; cursor: grabbing !import
 .pz-module-empty { text-align: center; color: var(--muted-foreground); font-size: 13px; padding: 36px 12px; }
 body.pz-modal-open { overflow: hidden; }
 
-.pz-save-btn:disabled { opacity: .5; cursor: default; }
-/* Unsaved changes: Save becomes the main button until they're saved. */
-.pz-save-btn.is-dirty:not(:disabled) {
-  background: var(--primary); color: var(--primary-foreground); border-color: var(--primary);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent);
+/* Builder v2 top bar: auto-save status, "N changes abhi live nahi", Undo, Publish. */
+.pz-publish-btn:disabled { opacity: .5; cursor: default; }
+.pz-publish-btn:focus-visible, .pz-undo-btn:focus-visible, .pz-pending-pill:focus-visible, .pz-pending-discard:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 2px;
 }
-.pz-save-btn.is-dirty:not(:disabled):hover { background: color-mix(in oklab, var(--primary) 90%, black); }
-.pz-discard-btn[hidden] { display: none; }
+.pz-undo-btn {
+  display: grid; place-items: center; width: 40px; height: 40px; border-radius: calc(var(--radius) - 4px);
+  border: 1px solid var(--border); background: var(--background); color: var(--foreground); cursor: pointer;
+}
+.pz-undo-btn:hover:not(:disabled) { background: var(--muted); }
+.pz-undo-btn:disabled { opacity: .4; cursor: default; }
+.pz-pending-wrap { position: relative; }
+.pz-pending-pill {
+  font: 600 12px/1 var(--font-sans); padding: 7px 11px; border-radius: 999px; white-space: nowrap;
+  border: 1px solid transparent; cursor: pointer;
+}
+.pz-pending-pill[hidden] { display: none; }
+.pz-pending-pill.is-pending { background: #fff4e0; color: #8a4b00; border-color: #f3d9a6; }
+.pz-pending-pill.is-pending::after { content: ' ▾'; }
+.pz-pending-pill.is-live { background: var(--success-soft, #e9f9cf); color: var(--success, #12733f); cursor: default; }
+.pz-pending-list {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; width: 280px; max-height: 340px; overflow: auto;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgb(7 19 79 / .14); padding: 12px;
+}
+.pz-pending-list[hidden] { display: none; }
+.pz-pending-list-head { font-size: 12px; font-weight: 700; color: var(--muted-foreground); margin-bottom: 6px; }
+.pz-pending-list ul { list-style: none; margin: 0 0 10px; padding: 0; font-size: 13px; }
+.pz-pending-list li { padding: 5px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.pz-pending-list li:last-child { border-bottom: none; }
+.pz-pending-discard {
+  width: 100%; height: 36px; border-radius: calc(var(--radius) - 4px); border: 1px solid var(--border);
+  background: var(--background); color: var(--destructive); font: 600 13px var(--font-sans); cursor: pointer;
+}
+.pz-pending-discard:hover { background: var(--muted); }
+@media (max-width: 640px) { .pz-save-status #saveStatusText { display: none; } }
 
 .pz-swatch-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .pz-swatch {

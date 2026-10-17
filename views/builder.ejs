@@ -64,16 +64,23 @@
         <span class="pz-topbar-avatar" id="switcherInitials"><%= user.name.split(/\s+/).filter(Boolean).slice(0,2).map(function(p){return p[0].toUpperCase();}).join('') || 'U' %></span>
         <span class="text-sm font-semibold" id="switcherHandle">@<%= user.handle %></span>
       </div>
-      <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
+      <%# Builder v2: every edit auto-saves to the draft (lib/storeDraft.js); the
+          live page only changes on Publish. The pill counts what's not live yet. %>
+      <span class="pz-save-status" id="saveStatus" role="status" aria-live="polite"><span class="dot"></span><span id="saveStatusText">Auto-saved</span></span>
+      <div class="pz-pending-wrap">
+        <button type="button" class="pz-pending-pill" id="pendingPill" aria-expanded="false" aria-controls="pendingList" hidden></button>
+        <div class="pz-pending-list" id="pendingList" hidden>
+          <p class="pz-pending-list-head">Ye changes abhi live nahi hain</p>
+          <ul id="pendingItems"></ul>
+          <button type="button" class="pz-pending-discard" id="discardBtn">Discard changes</button>
+        </div>
+      </div>
       <div class="ml-auto flex items-center gap-2">
-        <a href="<%= storeUrlFor(user.handle) %>" id="viewLiveBtn" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;" target="_blank" rel="noopener">View live</a>
-        <%# Nothing saves on its own: edits wait here until Save (or Ctrl+S); Discard drops them. %>
-        <button type="button" class="pz-discard-btn inline-flex items-center justify-center rounded-md text-sm font-semibold text-muted-foreground hover:bg-muted h-10 px-3" id="discardBtn" hidden>Discard</button>
-        <button type="button" class="pz-save-btn inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted active:translate-y-px h-10 px-4" id="saveBtn" title="Save changes (Ctrl+S)" disabled>
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
-          Save
+        <button type="button" class="pz-undo-btn" id="undoBtn" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
         </button>
-        <button type="button" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:translate-y-px h-10 px-4">Publish</button>
+        <a href="<%= storeUrlFor(user.handle) %>" id="viewLiveBtn" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;" target="_blank" rel="noopener">View live</a>
+        <button type="button" class="pz-publish-btn inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:translate-y-px h-10 px-4" id="publishBtn">Publish</button>
       </div>
     </header>
 
@@ -169,7 +176,7 @@
                     <div>
                       <label class="pz-label" for="handle">Your link</label>
                       <div class="pz-input-group">
-                        <input type="text" id="handle" value="<%= user.handle %>" autocomplete="off" spellcheck="false" />
+                        <input type="text" id="handle" value="<%= draftHandle %>" autocomplete="off" spellcheck="false" />
                         <span class="pz-input-suffix">.<%= siteDomain %></span>
                       </div>
                       <p class="pz-field-error" id="handleError"></p>
@@ -429,7 +436,10 @@
   window.__PZ_INITIAL_BLOCKS__ = <%- JSON.stringify(blocks).replace(/</g, '\\u003c') %>;
   window.__PZ_ACCENT__ = <%- JSON.stringify(user.accent_color || '#ff6b4a') %>;
   window.__PZ_SETTINGS__ = <%- JSON.stringify(settings).replace(/</g, '\\u003c') %>;
-  window.__PZ_STARTERS__ = <%- JSON.stringify(starters).replace(/</g, '\\u003c') %>;
+  // The draft's version (0: none yet, the page is what's live) and what it changes.
+  window.__PZ_DRAFT__ = <%- JSON.stringify(draft).replace(/</g, '\\u003c') %>;
+  window.__PZ_LIVE_HANDLE__ = <%- JSON.stringify(user.handle) %>;
+  window.__PZ_STARTERS__ =<%- JSON.stringify(starters).replace(/</g, '\\u003c') %>;
   window.__PZ_SITE_NAME__ = <%- JSON.stringify(siteName) %>;
   window.__PZ_SITE_DOMAIN__ = <%- JSON.stringify(siteDomain) %>;
   // "{handle}" is swapped for the new handle after a profile save.

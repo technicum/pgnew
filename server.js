@@ -31,6 +31,7 @@ const {
   starterFor,
   TYPES: BLOCK_TYPES,
 } = require('./lib/blocks');
+const storeDraft = require('./lib/storeDraft');
 const {
   listContacts,
   countContacts,
@@ -91,6 +92,9 @@ app.use(express.urlencoded({ extended: true }));
 // Only the builder's fetch()-based endpoints send JSON bodies — everything
 // else (signup/login) still posts as a normal HTML form.
 // The raw bytes are kept for the payment webhooks' signature checks.
+// The store builder's draft and its preview carry the whole page (up to
+// lib/storeDraft.js MAX_BLOCKS blocks), so they get more room than 100 kB.
+app.use(['/dashboard/builder/draft', '/dashboard/builder/preview'], express.json({ limit: '1mb' }));
 app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Cashfree payment events (lib/payments.js) — signed, no session needed.
@@ -460,20 +464,29 @@ app.post('/dashboard/apps/:id', requireAuth, async (req, res, next) => {
 
 app.get('/dashboard/builder', requireAuth, async (req, res, next) => {
   try {
-    const [user, blocks] = await Promise.all([
-      findUserById(req.session.user.id),
-      listBlocks(req.session.user.id),
-    ]);
-    if (!user) return res.redirect('/login');
+    // The draft if there is one, else the live page (lib/storeDraft.js).
+    const loaded = await storeDraft.loadState(req.session.user.id);
+    if (!loaded) return res.redirect('/login');
+    const { user, state } = loaded;
     res.render('builder', {
       title: `Build your store — ${SITE_NAME}`,
-      user,
-      blocks,
+      // The live account (its handle is what "View live" opens), with the
+      // draft's profile and design on top for the editor's fields.
+      user: {
+        ...user,
+        name: state.profile.name,
+        bio: state.profile.bio,
+        accent_color: state.design.accent,
+        show_badge: state.design.showBadge,
+      },
+      draftHandle: state.profile.handle,
+      blocks: state.blocks,
       socialPlatforms: SOCIAL_PLATFORMS,
-      socials: normalizeSocials(user.socials),
-      settings: normalizeStoreSettings(user.store_settings),
+      socials: state.profile.socials,
+      settings: state.settings,
       limits: STORE_LIMITS,
-      // New blocks are added on screen and created on Save (public/js/builder.js).
+      draft: { version: loaded.version, changes: loaded.changes, maxBlocks: storeDraft.MAX_BLOCKS },
+      // New blocks are added on screen and created on Publish (public/js/builder.js).
       starters: Object.fromEntries([...BLOCK_TYPES].map((type) => [type, starterFor(type)])),
     });
   } catch (err) {
@@ -582,6 +595,46 @@ app.post('/dashboard/builder/design', requireAuth, async (req, res) => {
   } catch (err) {
     console.error('Update design failed:', err);
     res.status(500).json({ error: 'Could not save your design. Please try again.' });
+  }
+});
+
+// Builder v2 (lib/storeDraft.js): every edit auto-saves the whole state to
+// the draft; Publish puts it on the live page; Discard drops it. The old
+// per-part endpoints above still work but the builder no longer uses them.
+app.put('/dashboard/builder/draft', requireAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const saved = await storeDraft.saveDraft(req.session.user.id, body.state, body.version);
+    res.json({ ok: true, ...saved });
+  } catch (err) {
+    if (err.code === 'DRAFT_CONFLICT') return res.status(409).json({ error: err.message, code: err.code });
+    console.error('Save draft failed:', err);
+    res.status(500).json({ error: 'Save nahi hua. Dobara try kar rahe hain…' });
+  }
+});
+
+app.post('/dashboard/builder/publish', requireAuth, async (req, res) => {
+  try {
+    const result = await storeDraft.publish(req.session.user.id);
+    const loaded = await storeDraft.loadState(req.session.user.id);
+    req.session.user = toPublicUser(loaded.user);
+    res.json({ ok: true, published: result.published, ids: result.ids || {}, state: loaded.state, handle: loaded.user.handle });
+  } catch (err) {
+    if (['INVALID_INPUT', 'HANDLE_TAKEN', 'BUSY'].includes(err.code)) {
+      return res.status(err.code === 'BUSY' ? 409 : 422).json({ error: err.message, field: err.field || null });
+    }
+    console.error('Publish failed:', err);
+    res.status(500).json({ error: 'Publish nahi hua — kuch bhi live nahi badla. Dobara try karein.' });
+  }
+});
+
+app.post('/dashboard/builder/discard', requireAuth, async (req, res) => {
+  try {
+    await storeDraft.discard(req.session.user.id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Discard draft failed:', err);
+    res.status(500).json({ error: 'Changes discard nahi hue. Dobara try karein.' });
   }
 });
 

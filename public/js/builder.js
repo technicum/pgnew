@@ -1,8 +1,10 @@
-// Store builder — talks to the real /dashboard/builder/* JSON endpoints
-// (server.js). Blocks start from window.__PZ_INITIAL_BLOCKS__ (rendered
-// server-side from PDZ_blocks). Nothing saves on its own: every edit
-// updates the screen and the live preview and is noted as unsaved, and
-// Save (or Ctrl+S) sends them all. Discard drops them.
+// Store builder (Builder v2). The page opens on the draft if there is one,
+// else on what's live (lib/storeDraft.js); blocks start from
+// window.__PZ_INITIAL_BLOCKS__. Every edit updates the screen and the live
+// preview and auto-saves the whole state to the draft a moment later
+// (PUT /dashboard/builder/draft). Nothing on the public page changes until
+// Publish; "Discard changes" drops the draft. Undo (Ctrl/Cmd+Z) steps back
+// through the last 20 states.
 (function () {
   // Every module the "Add content" popup offers, in display order. group
   // sets the popup section; desc and keywords feed the search. Keys must
@@ -46,95 +48,193 @@
     return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  // --- save status + fetch helper --------------------------------------
-  // What's unsaved, by kind. New and duplicated blocks have a negative id
-  // until Save creates them on the server.
-  const saveBtn = document.getElementById('saveBtn');
-  const discardBtn = document.getElementById('discardBtn');
-  let pending = 0;             // requests in flight
-  let errorMessage = null;     // last failure, shown for a few seconds
-  let clearErrorTimer = null;
-  let justSaved = false;       // "All changes saved" for a moment after a save
-  let justSavedTimer = null;
-  const dirty = {
-    blocks: new Map(),         // saved block id -> Set of changed fields
-    deleted: new Set(),        // saved block ids removed on screen
-    order: false,
-    profile: false,
-    settings: false,
-    design: false,
-  };
-  let tempIds = 0;
+  // --- draft: auto-save, status, undo -----------------------------------
+  // The whole state goes to the draft ~800 ms after the last edit; a save
+  // that fails is retried with a growing wait. version is the draft's (0:
+  // none yet) — another tab saving in between answers 409 and auto-save
+  // stops rather than overwrite it. changes: what the draft changes on the
+  // live page, as the server counted it on the last save.
+  const draftInfo = window.__PZ_DRAFT__ || { version: 0, changes: [] };
+  let version = draftInfo.version || 0;
+  let changes = draftInfo.changes || [];
+  let unsent = false;          // edits not sent yet
+  let inFlight = null;         // the save on its way, if any
+  let saveTimer = null;
+  let retryWait = 0;
+  let syncState = 'saved';     // saved | retrying | conflict | error
+  let syncMessage = '';
+  let publishing = false;
+  let discarding = false;
+  let justPublished = false;
+  let flash = null;            // a one-off message (an upload, a publish problem)
+  let flashTimer = null;
+  // New and duplicated blocks have a negative id until Publish creates them.
+  let tempIds = Math.max(0, ...blocks.map((b) => -b.id));
   const nextTempId = () => -(++tempIds);
 
-  function unsavedCount() {
-    return blocks.filter((b) => b.id < 0).length
-      + dirty.blocks.size
-      + dirty.deleted.size
-      + (dirty.order ? 1 : 0)
-      + (dirty.profile ? 1 : 0)
-      + (dirty.settings ? 1 : 0)
-      + (dirty.design ? 1 : 0);
-  }
-
-  function markBlock(id, field) {
-    if (id > 0) {
-      if (!dirty.blocks.has(id)) dirty.blocks.set(id, new Set());
-      dirty.blocks.get(id).add(field);
-    }
-    paintSaveStatus();
-  }
-  function markDirty(kind) {
-    dirty[kind] = true;
-    paintSaveStatus();
-  }
+  const publishBtn = document.getElementById('publishBtn');
+  const discardBtn = document.getElementById('discardBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const pendingPill = document.getElementById('pendingPill');
+  const pendingList = document.getElementById('pendingList');
+  const pendingItems = document.getElementById('pendingItems');
 
   function paintSaveStatus() {
-    const unsaved = unsavedCount();
-    if (unsaved) justSaved = false;
-    saveBtn.disabled = unsaved === 0 || pending > 0;
-    saveBtn.classList.toggle('is-dirty', unsaved > 0);
-    discardBtn.hidden = unsaved === 0 || pending > 0;
-    saveStatus.classList.toggle('error', !!errorMessage && pending === 0);
-    saveStatus.classList.toggle('saving', pending > 0 || (unsaved > 0 && !errorMessage));
-    saveStatusText.textContent = pending > 0 ? 'Saving…'
-      : errorMessage ? errorMessage
-      : unsaved > 0 ? 'Unsaved changes'
-      : justSaved ? 'All changes saved'
-      : 'Saved';
+    const busy = unsent || !!inFlight;
+    const bad = syncState === 'conflict' || syncState === 'error' || syncState === 'retrying';
+    saveStatus.classList.toggle('error', bad || !!flash);
+    saveStatus.classList.toggle('saving', busy && !bad && !flash);
+    saveStatusText.textContent = flash
+      || (syncState === 'retrying' ? 'Save nahi hua, dobara try kar rahe hain…'
+        : bad ? syncMessage
+        : busy ? 'Saving…'
+        : 'Auto-saved ✓');
+
+    const count = changes.length;
+    pendingPill.hidden = false;
+    pendingPill.classList.toggle('is-pending', count > 0);
+    pendingPill.classList.toggle('is-live', count === 0);
+    pendingPill.textContent = count ? `${count} change${count === 1 ? '' : 's'} abhi live nahi`
+      : justPublished ? 'Live ✓' : 'Sab live hai ✓';
+    pendingPill.disabled = count === 0;
+    if (!count) closePendingList();
+    pendingItems.innerHTML = changes.map((c) => `<li>${escapeHTML(c)}</li>`).join('');
+
+    publishBtn.disabled = publishing || discarding || syncState === 'conflict' || (count === 0 && !busy);
+    publishBtn.textContent = publishing ? 'Publishing…' : 'Publish';
+    undoBtn.disabled = !undoStack.length || publishing || discarding;
   }
 
   function setError(message) {
-    errorMessage = message || 'Couldn’t save';
-    clearTimeout(clearErrorTimer);
-    clearErrorTimer = setTimeout(() => { errorMessage = null; paintSaveStatus(); }, 4000);
+    flash = message || 'Kuch galat ho gaya';
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { flash = null; paintSaveStatus(); }, 5000);
+    paintSaveStatus();
   }
 
-  async function api(url, options) {
-    pending += 1;
+  // Every edit ends here: one undo step (a run of typing in one field is
+  // one step), then an auto-save a moment later.
+  function changed(key) {
+    renderPreviewOnly();
+    recordUndo(key);
+    unsent = true;
+    justPublished = false;
+    scheduleSave(800);
+    paintSaveStatus();
+  }
+  function markBlock(id, field) { changed(`block:${id}:${field}`); }
+  function markDirty(kind) { changed(kind); }
+
+  function scheduleSave(wait) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { flushSave(); }, wait);
+  }
+
+  async function flushSave(forPublish) {
+    clearTimeout(saveTimer);
+    if (discarding || syncState === 'conflict') return;
+    // Publish has its own turn: an edit made meanwhile waits for it.
+    if (publishing && !forPublish) { scheduleSave(800); return; }
+    if (inFlight) await inFlight.catch(() => {});
+    if (!unsent || inFlight) return;
+    unsent = false;
+    const body = JSON.stringify({ state: collectState(), version });
+    inFlight = (async () => {
+      const res = await fetch('/dashboard/builder/draft', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body,
+      });
+      // An expired session redirects to /login — a 200 HTML page, not a save.
+      if (res.redirected && new URL(res.url).pathname === '/login') {
+        throw Object.assign(new Error('Aap logout ho gaye — save ke liye dobara login karein.'), { stop: true });
+      }
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* no body */ }
+      if (res.status === 409) throw Object.assign(new Error((data && data.error) || 'Ye page kisi aur tab mein badla gaya hai — reload karein.'), { conflict: true });
+      if (!res.ok) throw Object.assign(new Error((data && data.error) || 'Save nahi hua.'), { stop: res.status < 500 && res.status !== 429 });
+      return data;
+    })();
     paintSaveStatus();
     try {
-      const res = await fetch(url, {
-        headers: { 'Content-Type': 'application/json' },
-        ...options,
-      });
-      // An expired session makes requireAuth redirect to /login, which
-      // fetch follows and gets back a 200 HTML page — that must count as
-      // a failure, not a successful save.
+      const data = await inFlight;
+      version = data.version;
+      changes = data.changes || [];
+      showProblems(data.problems || {});
+      retryWait = 0;
+      syncState = 'saved';
+    } catch (err) {
+      unsent = true; // still not in the draft
+      if (err.conflict) {
+        syncState = 'conflict';
+        syncMessage = err.message;
+      } else if (err.stop) {
+        syncState = 'error';
+        syncMessage = err.message;
+      } else {
+        syncState = 'retrying';
+        retryWait = Math.min(30000, retryWait ? retryWait * 2 : 2000);
+        scheduleSave(retryWait);
+      }
+    } finally {
+      inFlight = null;
+      paintSaveStatus();
+    }
+  }
+
+  // Name / link problems from the last save (Publish would refuse them).
+  function showProblems(problems) {
+    const el = document.getElementById('handleError');
+    const message = problems.handle || problems.name || '';
+    el.textContent = message;
+    el.classList.toggle('show', !!message);
+  }
+
+  // Uploads (images): a plain JSON fetch, with the problem shown in the status.
+  async function api(url, options) {
+    try {
+      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
       if (res.redirected && new URL(res.url).pathname === '/login') {
-        throw new Error('You’ve been logged out — log in again to save');
+        throw new Error('Aap logout ho gaye — dobara login karein.');
       }
       let data = null;
       try { data = await res.json(); } catch (e) { /* no body */ }
       if (!res.ok) throw new Error((data && data.error) || `Request failed (${res.status})`);
       return data;
     } catch (err) {
-      setError(err instanceof TypeError ? 'Couldn’t reach the server' : err.message);
+      setError(err instanceof TypeError ? 'Server tak nahi pahunch paaye' : err.message);
       throw err;
-    } finally {
-      pending -= 1;
-      paintSaveStatus();
     }
+  }
+
+  // Undo: the state before each step, newest last (up to 20).
+  const UNDO_LIMIT = 20;
+  const undoStack = [];
+  let lastSnapshot = null;     // the state after the last step
+  let lastKey = null;
+  let lastAt = 0;
+  function recordUndo(key) {
+    const now = Date.now();
+    if (lastSnapshot && !(key === lastKey && now - lastAt < 1200)) {
+      undoStack.push(lastSnapshot);
+      if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    }
+    lastKey = key;
+    lastAt = now;
+    lastSnapshot = JSON.stringify(collectState());
+  }
+  function undo() {
+    if (!undoStack.length || publishing || discarding) return;
+    const previous = undoStack.pop();
+    applyState(JSON.parse(previous));
+    lastSnapshot = previous;
+    lastKey = null;
+    unsent = true;
+    justPublished = false;
+    scheduleSave(300);
+    paintSaveStatus();
+    liveRegion.textContent = 'Undo kiya';
   }
 
   // --- rendering ---------------------------------------------------------
@@ -334,7 +434,7 @@
   }
   function popupLinkHTML(block) {
     if (block.id < 0) {
-      return '<div class="pz-popup-link"><span class="pz-popup-link-label">Popup link</span><code>Save to get this popup’s link</code></div>';
+      return '<div class="pz-popup-link"><span class="pz-popup-link-label">Popup link</span><code>Publish karke is popup ka link milega</code></div>';
     }
     const url = popupLinkFor(block);
     return `
@@ -418,29 +518,24 @@
         closeAllKebabMenus();
         const source = blocks.find((b) => b.id === id);
         if (!source) return;
-        // The copy goes right under the original; it's created on Save.
+        // The copy goes right under the original; it's created on Publish.
         const copy = JSON.parse(JSON.stringify(source));
         copy.id = nextTempId();
         copy.title = source.title ? `${source.title} (copy)` : '';
         blocks.splice(blocks.indexOf(source) + 1, 0, copy);
         expanded.add(copy.id);
-        dirty.order = true;
         render();
-        renderPreviewOnly();
-        paintSaveStatus();
+        changed('structure');
       });
     });
     blocksList.querySelectorAll('.remove-block').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         const id = Number(e.currentTarget.dataset.id);
         closeAllKebabMenus();
+        // Gone from the draft; a live block is deleted on Publish (and Undo brings it back).
         blocks = blocks.filter((b) => b.id !== id);
-        dirty.blocks.delete(id);
-        // A saved block is deleted on Save; an unsaved one just goes.
-        if (id > 0) dirty.deleted.add(id);
         render();
-        renderPreviewOnly();
-        paintSaveStatus();
+        changed('structure');
       });
     });
   }
@@ -757,8 +852,13 @@
     addMenuBtn.focus();
   }
 
-  // A new block appears on screen at once; Save creates it on the server.
+  // A new block goes into the draft at once; Publish creates it on the live page.
   function addBlock(type) {
+    if (blocks.length >= ((window.__PZ_DRAFT__ || {}).maxBlocks || 100)) {
+      closeAddModal();
+      setError('Page par aur sections nahi jod sakte — pehle koi hatayein.');
+      return;
+    }
     const starter = (window.__PZ_STARTERS__ || {})[type] || { title: '', items: [] };
     const block = {
       id: nextTempId(), type,
@@ -769,8 +869,7 @@
     expanded.add(block.id);
     closeAddModal();
     render();
-    renderPreviewOnly();
-    paintSaveStatus();
+    changed('structure');
     requestAnimationFrame(() => {
       const last = blocksList.querySelector('.pz-block-card:last-child .pz-title');
       if (last) { last.focus(); last.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
@@ -828,27 +927,27 @@
   // --- design tab -------------------------------------------------------
   const badgeToggle = document.getElementById('badgeToggle');
   let currentAccent = window.__PZ_ACCENT__ || '#ff6b4a';
+  function paintSwatches() {
+    document.querySelectorAll('.pz-swatch').forEach((btn) => {
+      const isCurrent = btn.dataset.color.toLowerCase() === currentAccent.toLowerCase();
+      btn.classList.toggle('active', isCurrent);
+      btn.setAttribute('aria-checked', String(isCurrent));
+    });
+  }
+  paintSwatches();
   document.querySelectorAll('.pz-swatch').forEach((btn) => {
-    const isCurrent = btn.dataset.color.toLowerCase() === currentAccent.toLowerCase();
-    btn.classList.toggle('active', isCurrent);
-    btn.setAttribute('aria-checked', String(isCurrent));
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.pz-swatch').forEach((s) => {
-        s.classList.remove('active');
-        s.setAttribute('aria-checked', 'false');
-      });
-      btn.classList.add('active');
-      btn.setAttribute('aria-checked', 'true');
       currentAccent = btn.dataset.color;
+      paintSwatches();
       renderPreviewOnly();
-      markDirty('design');
+      markDirty('accent');
     });
   });
   badgeToggle.addEventListener('click', () => {
     const on = badgeToggle.classList.toggle('on');
     badgeToggle.setAttribute('aria-checked', String(on));
     renderPreviewOnly();
-    markDirty('design');
+    markDirty('badge');
   });
 
   // --- promo bar dismiss --------------------------------------------
@@ -867,7 +966,6 @@
   const displayName = document.getElementById('displayName');
   const bio = document.getElementById('bio');
   const handle = document.getElementById('handle');
-  const handleError = document.getElementById('handleError');
   const avatarInitials = document.getElementById('avatarInitials');
   const switcherInitials = document.getElementById('switcherInitials');
   const switcherHandle = document.getElementById('switcherHandle');
@@ -903,30 +1001,17 @@
     bioCount.classList.toggle('near', n >= 250);
   }
 
-  function saveProfile() {
-    return api('/dashboard/builder/profile', {
-      method: 'POST',
-      body: JSON.stringify({ name: displayName.value, handle: handle.value, bio: bio.value, socials: collectSocials() }),
-    }).then((data) => {
-      handleError.classList.remove('show');
-      if (data && data.user) {
-        const handleChanged = switcherHandle.textContent !== `@${data.user.handle}`;
-        switcherHandle.textContent = `@${data.user.handle}`;
-        // Newsletter popup links include the handle.
-        if (handleChanged && blocks.some((b) => b.type === 'newsletter')) render();
-        previewUrl.textContent = `${data.user.handle}.${window.__PZ_SITE_DOMAIN__}`;
-        const viewLiveBtn = document.getElementById('viewLiveBtn');
-        if (viewLiveBtn && window.__PZ_STORE_URL__) {
-          viewLiveBtn.href = window.__PZ_STORE_URL__.replace('{handle}', data.user.handle);
-        }
-      }
-    }).catch((err) => {
-      if (String(err.message || '').toLowerCase().includes('handle')) {
-        handleError.textContent = err.message;
-        handleError.classList.add('show');
-      }
-      throw err;
-    });
+  // The live handle (the header, "View live", popup links) changes on
+  // Publish; the preview's address bar shows the draft's.
+  function paintLiveHandle(liveHandle) {
+    const handleChanged = switcherHandle.textContent !== `@${liveHandle}`;
+    switcherHandle.textContent = `@${liveHandle}`;
+    if (handleChanged) render(); // popup links include the handle
+    const viewLiveBtn = document.getElementById('viewLiveBtn');
+    if (viewLiveBtn && window.__PZ_STORE_URL__) viewLiveBtn.href = window.__PZ_STORE_URL__.replace('{handle}', liveHandle);
+  }
+  function paintPreviewUrl() {
+    previewUrl.textContent = `${handle.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '') || 'yourname'}.${window.__PZ_SITE_DOMAIN__}`;
   }
 
   displayName.addEventListener('input', () => {
@@ -942,7 +1027,8 @@
     markDirty('profile');
   });
   handle.addEventListener('input', () => {
-    markDirty('profile');
+    paintPreviewUrl();
+    markDirty('handle');
   });
   socialInputs.forEach((input) => {
     input.addEventListener('input', () => {
@@ -956,22 +1042,15 @@
 
   // --- store settings ----------------------------------------------------
   // Photo, cover, tagline, location, contact button, announcement bar,
-  // theme and SEO (lib/storeSettings.js) — one object, sent whole to
-  // /dashboard/builder/settings on Save. (An image uploads as soon as it's
-  // picked, but using it is a change like any other.)
+  // theme and SEO (lib/storeSettings.js) — one object in the draft. (An
+  // image uploads as soon as it's picked, but using it is a change like
+  // any other: live only on Publish.)
   const settings = { ...(window.__PZ_SETTINGS__ || {}) };
 
-  function saveSettings() {
-    return api('/dashboard/builder/settings', {
-      method: 'POST',
-      body: JSON.stringify({ settings }),
-    });
-  }
-
-  function settingChanged() {
+  function settingChanged(key) {
     renderPreviewOnly();
     paintSeoPreview();
-    markDirty('settings');
+    markDirty(`setting:${key || 'any'}`);
   }
 
   // "12/80" beside fields with a limit.
@@ -988,7 +1067,7 @@
     input.addEventListener('input', () => {
       settings[input.dataset.setting] = input.value;
       paintCounter(input);
-      settingChanged();
+      settingChanged(input.dataset.setting);
     });
   });
 
@@ -1065,8 +1144,8 @@
       const file = fileInput.files[0];
       fileInput.value = '';
       if (!file) return;
-      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError('Upload a JPG, PNG or WebP image'); paintSaveStatus(); return; }
-      if (file.size > 5 * 1024 * 1024) { setError('Keep images under 5 MB'); paintSaveStatus(); return; }
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError('JPG, PNG ya WebP image chunein'); return; }
+      if (file.size > 5 * 1024 * 1024) { setError('Image 5 MB se chhoti rakhein'); return; }
       field.classList.add('is-uploading');
       try {
         const data = await api('/dashboard/uploads', { method: 'POST', headers: { 'Content-Type': file.type }, body: file });
@@ -1114,107 +1193,161 @@
   [displayName, bio, handle].forEach((input) => input.addEventListener('input', paintSeoPreview));
   paintSeoPreview();
 
-  // --- save / discard ----------------------------------------------------
-  // Save sends everything unsaved, in order: new blocks (created, then
-  // filled in), edits, deletions, the order, then profile, settings and
-  // design. A part that fails stays unsaved for the next try; edits made
-  // while saving stay unsaved too.
-  let saving = false;
-  async function saveNow() {
-    if (saving || unsavedCount() === 0) return;
-    saving = true;
-    let failed = false;
-    const attempt = async (send, undo) => {
-      try { await send(); } catch (err) { failed = true; if (undo) undo(); }
+  // --- the whole state: read from / written to the screen -----------------
+  // What the draft holds (lib/storeDraft.js cleanState): auto-save sends
+  // it, Undo puts an earlier one back.
+  function collectState() {
+    return {
+      profile: { name: displayName.value, handle: handle.value, bio: bio.value, socials: collectSocials() },
+      settings: { ...settings },
+      design: { accent: currentAccent, showBadge: badgeToggle.classList.contains('on') },
+      blocks: blocks.map((b) => ({
+        id: b.id, type: b.type, title: b.title, sub: b.sub, price: b.price, visible: !!b.visible,
+        items: JSON.parse(JSON.stringify(b.items || [])),
+      })),
     };
-
-    for (const block of blocks.filter((b) => b.id < 0)) {
-      await attempt(async () => {
-        const created = await api('/dashboard/builder/blocks', { method: 'POST', body: JSON.stringify({ type: block.type }) });
-        const oldId = block.id;
-        block.id = created.id;
-        if (expanded.delete(oldId)) expanded.add(created.id);
-        // Its content goes out with the edits below; its place with the order.
-        dirty.blocks.set(created.id, new Set(['title', 'sub', 'price', 'visible', 'items']));
-        dirty.order = true;
-      });
-    }
-
-    for (const [id, fields] of [...dirty.blocks]) {
-      const block = blocks.find((b) => b.id === id);
-      dirty.blocks.delete(id);
-      if (!block) continue;
-      const body = {};
-      fields.forEach((field) => {
-        body[field] = field === 'visible' ? !!block.visible
-          : field === 'items' ? (block.items || [])
-          : block[field] ?? '';
-      });
-      await attempt(
-        () => api(`/dashboard/builder/blocks/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-        () => {
-          const again = dirty.blocks.get(id) || new Set();
-          fields.forEach((field) => again.add(field));
-          dirty.blocks.set(id, again);
-        },
-      );
-    }
-
-    for (const id of [...dirty.deleted]) {
-      dirty.deleted.delete(id);
-      await attempt(() => api(`/dashboard/builder/blocks/${id}`, { method: 'DELETE' }), () => dirty.deleted.add(id));
-    }
-
-    // The order can only go once every block on screen exists on the server.
-    if (dirty.order && !blocks.some((b) => b.id < 0)) {
-      dirty.order = false;
-      await attempt(
-        () => api('/dashboard/builder/blocks/reorder', { method: 'POST', body: JSON.stringify({ order: blocks.map((b) => b.id) }) }),
-        () => { dirty.order = true; },
-      );
-    }
-
-    const kinds = [
-      ['profile', saveProfile],
-      ['settings', saveSettings],
-      ['design', () => api('/dashboard/builder/design', {
-        method: 'POST',
-        body: JSON.stringify({ accentColor: currentAccent, showBadge: badgeToggle.classList.contains('on') }),
-      })],
-    ];
-    for (const [kind, send] of kinds) {
-      if (!dirty[kind]) continue;
-      dirty[kind] = false;
-      await attempt(send, () => { dirty[kind] = true; });
-    }
-
-    saving = false;
-    render(); // new blocks have their real ids (and popup links) now
-    if (!failed && unsavedCount() === 0) {
-      justSaved = true;
-      clearTimeout(justSavedTimer);
-      justSavedTimer = setTimeout(() => { justSaved = false; paintSaveStatus(); }, 2500);
-    }
-    paintSaveStatus();
   }
-  saveBtn.addEventListener('click', saveNow);
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-      e.preventDefault(); // stop the browser's "Save page as…"
-      saveNow();
+
+  function applyState(state) {
+    displayName.value = state.profile.name;
+    handle.value = state.profile.handle;
+    bio.value = state.profile.bio;
+    const i = initials(displayName.value);
+    avatarInitials.textContent = i;
+    switcherInitials.textContent = i;
+    paintBioCount();
+    paintPreviewUrl();
+    socialInputs.forEach((input) => { input.value = state.profile.socials[input.dataset.social] || ''; });
+    paintSocials();
+
+    Object.keys(settings).forEach((key) => { delete settings[key]; });
+    Object.assign(settings, state.settings);
+    document.querySelectorAll('[data-setting]').forEach((input) => {
+      input.value = settings[input.dataset.setting] ?? '';
+      paintCounter(input);
+    });
+    ['contactType', 'theme', 'font', 'buttons'].forEach(paintChoices);
+    paintContactFields();
+    document.querySelectorAll('[data-setting-switch]').forEach((btn) => {
+      const on = !!settings[btn.dataset.settingSwitch];
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-checked', String(on));
+    });
+    announceToggle.classList.toggle('on', !!settings.announceOn);
+    announceToggle.setAttribute('aria-checked', String(!!settings.announceOn));
+    document.getElementById('announceFields').hidden = !settings.announceOn;
+    document.querySelectorAll('[data-image-field]').forEach(paintImageField);
+
+    currentAccent = state.design.accent;
+    paintSwatches();
+    badgeToggle.classList.toggle('on', !!state.design.showBadge);
+    badgeToggle.setAttribute('aria-checked', String(!!state.design.showBadge));
+
+    blocks = state.blocks.filter((b) => TYPE_META[b.type]).map((b) => ({ ...b, visible: !!b.visible }));
+    render();
+    paintSeoPreview();
+  }
+
+  // --- publish / discard -------------------------------------------------
+  // Publish: the last edits reach the draft first, then the server puts
+  // the draft on the live page in one go (or not at all).
+  async function publishNow() {
+    if (publishing || discarding) return;
+    publishing = true;
+    paintSaveStatus();
+    try {
+      while (unsent || inFlight) {
+        await flushSave(true);
+        if (syncState !== 'saved') throw new Error(syncMessage || 'Changes save nahi ho paaye — thodi der mein Publish karein.');
+      }
+      const res = await fetch('/dashboard/builder/publish', {
+        method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' },
+      });
+      if (res.redirected && new URL(res.url).pathname === '/login') throw new Error('Aap logout ho gaye — dobara login karein.');
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* no body */ }
+      if (!res.ok) {
+        if (data && data.field) showProblems({ [data.field]: data.error });
+        throw new Error((data && data.error) || 'Publish nahi hua — dobara try karein.');
+      }
+      // New blocks have their real ids (and popup links) now.
+      const ids = data.ids || {};
+      blocks.forEach((b) => {
+        const real = ids[String(b.id)];
+        if (real && real !== b.id) {
+          if (expanded.delete(b.id)) expanded.add(real);
+          b.id = real;
+        }
+      });
+      version = 0; // the draft is gone; the next edit starts a new one
+      changes = [];
+      justPublished = true;
+      // Undo steps hold the old stand-in ids, so they end here.
+      undoStack.length = 0;
+      lastSnapshot = JSON.stringify(collectState());
+      lastKey = null;
+      showProblems({});
+      paintLiveHandle(data.handle);
+      render();
+      liveRegion.textContent = 'Page live ho gaya';
+    } catch (err) {
+      setError(err instanceof TypeError ? 'Server tak nahi pahunch paaye — Publish nahi hua' : err.message);
+    } finally {
+      publishing = false;
+      paintSaveStatus();
+    }
+  }
+  publishBtn.addEventListener('click', publishNow);
+
+  // Discard: the draft goes and the page reloads on what's live.
+  discardBtn.addEventListener('click', async () => {
+    if (!window.confirm('Saare unpublished changes hata dein? Page wapas live jaisa ho jayega.')) return;
+    discarding = true;
+    clearTimeout(saveTimer);
+    closePendingList();
+    paintSaveStatus();
+    try {
+      if (inFlight) await inFlight.catch(() => {});
+      const res = await fetch('/dashboard/builder/discard', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' } });
+      if (!res.ok) throw new Error('Changes discard nahi hue — dobara try karein.');
+      window.location.reload();
+    } catch (err) {
+      discarding = false;
+      setError(err instanceof TypeError ? 'Server tak nahi pahunch paaye' : err.message);
     }
   });
 
-  // Discard: back to what's saved, by reloading the page.
-  let discarding = false;
-  discardBtn.addEventListener('click', () => {
-    if (!window.confirm('Discard your unsaved changes? This can’t be undone.')) return;
-    discarding = true;
-    window.location.reload();
+  // "N changes abhi live nahi": opens the list of them.
+  function closePendingList() {
+    if (pendingList.hidden) return;
+    pendingList.hidden = true;
+    pendingPill.setAttribute('aria-expanded', 'false');
+  }
+  pendingPill.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = pendingList.hidden;
+    pendingList.hidden = !open;
+    pendingPill.setAttribute('aria-expanded', String(open));
+  });
+  pendingList.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', closePendingList);
+
+  undoBtn.addEventListener('click', undo);
+  document.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (e.key === 'Escape' && !pendingList.hidden) { closePendingList(); pendingPill.focus(); return; }
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    if (key === 's') {
+      e.preventDefault(); // stop the browser's "Save page as…"
+      flushSave();
+    } else if (key === 'z' && !e.shiftKey && addModal.hidden) {
+      e.preventDefault();
+      undo();
+    }
   });
   window.addEventListener('beforeunload', (e) => {
     if (discarding) return;
-    if (unsavedCount() > 0 || pending > 0) { e.preventDefault(); e.returnValue = ''; }
+    if (unsent || inFlight) { e.preventDefault(); e.returnValue = ''; }
   });
 
   // --- live preview ------------------------------------------------------
@@ -1237,5 +1370,7 @@
 
   render();
   refreshPreview();
+  paintPreviewUrl();
+  lastSnapshot = JSON.stringify(collectState());
   paintSaveStatus();
 })();
