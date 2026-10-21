@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#fbfaf6" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="<%= siteName %>" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/icons/app-icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/icons/app-icon.svg" />
 <title><%= title %></title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,6 +23,10 @@
 
   <main class="lg:ml-64">
     <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8">
+      <a href="/dashboard" class="dash-m-brand">
+        <span><svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span><%= siteName %></span>
+      </a>
       <div class="relative hidden max-w-md flex-1 sm:block">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
         <input class="h-10 w-full rounded-md border border-border bg-card pl-10 text-sm" style="outline:none;" placeholder="Search products, orders, customers…" />
@@ -33,13 +44,24 @@
 
     <div class="mx-auto max-w-[1500px] px-4 py-7 md:px-8 md:py-9">
 
+      <% if (typeof onboardingStep !== 'undefined' && onboardingStep) { %>
+        <%# Onboarding not finished (lib/onboarding.js): a way back to it, never a forced redirect. %>
+        <a href="/onboarding" class="rounded-lg border border-border bg-card p-4 shadow-sm" style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px; text-decoration:none; color:inherit; border-left:4px solid var(--primary);">
+          <span>
+            <strong class="text-sm" style="display:block;">Finish setting up your page (step <%= onboardingStep %> of <%= onboardingSteps %>)</strong>
+            <span class="text-sm text-muted-foreground">Add your services and hours so people can book you.</span>
+          </span>
+          <span class="inline-flex items-center justify-center rounded-md text-sm font-semibold bg-primary text-primary-foreground h-10 px-4" style="flex:none;">Continue</span>
+        </a>
+      <% } %>
+
       <section class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p class="text-sm font-semibold text-primary"><%= todayLabel %></p>
           <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Welcome, <%= user.name.split(' ')[0] %></h1>
           <p class="mt-2 text-sm text-muted-foreground">Your store is live at <%= siteDomain %>/<%= user.handle %> — here's how it's doing.</p>
         </div>
-        <div class="flex gap-2" style="flex-wrap:wrap;">
+        <div class="dash-hero-actions flex gap-2" style="flex-wrap:wrap;">
           <a href="#" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-background text-foreground hover:bg-muted h-10 px-4" style="text-decoration:none;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>
             View my store
@@ -51,7 +73,7 @@
         </div>
       </section>
 
-      <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section class="dash-stats mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <article class="animate-rise-in rounded-lg border border-border bg-card p-5 shadow-sm">
           <div class="grid size-10 place-items-center rounded-md bg-success-soft text-success">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>

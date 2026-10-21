@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title><%= title %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Nunito:wght@600;700&display=swap" />
+<link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/auth.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/onboarding.css?v=<%= assetVersion %>" />
+</head>
+<%# Onboarding steps 2–7 (lib/onboarding.js). Every step is a plain form post to /onboarding/step/<n>;
+    what's inside comes from the business type's preset (lib/presets.js). %>
+<body class="ob-page">
+
+<header class="ob-top">
+  <a href="/dashboard" class="logo ob-logo">
+    <span class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+    <%= siteName %>
+  </a>
+  <div class="ob-top-progress">
+    <div class="ob-progress" aria-hidden="true"><% for (var i = 1; i <= steps; i++) { %><span<%= i <= step ? ' class=on' : '' %>></span><% } %></div>
+    <p class="ob-stepcount">Step <%= step %> of <%= steps %></p>
+  </div>
+</header>
+
+<main class="ob-main">
+  <form class="ob-card ob-step-<%= step %>" method="POST" action="/onboarding/step/<%= step %>" novalidate data-ob-step="<%= step %>">
+
+    <% if (step === 2) { %>
+      <h1 class="ob-title">What kind of business is it?</h1>
+      <p class="ob-sub">We’ll set up your page to suit it. You can change anything later.</p>
+    <% } else if (step === 3) { %>
+      <h1 class="ob-title">Tell us the basics</h1>
+      <p class="ob-sub">This is what people see at the top of your page.</p>
+    <% } else if (step === 4) { %>
+      <h1 class="ob-title"><%= preset.offerTitle %></h1>
+      <p class="ob-sub"><%= preset.offerSubtitle %></p>
+    <% } else if (step === 5) { %>
+      <h1 class="ob-title">When are you open?</h1>
+      <p class="ob-sub">People can only book inside these hours. Times are India time (IST).</p>
+    <% } else if (step === 6) { %>
+      <h1 class="ob-title">Pick a look</h1>
+      <p class="ob-sub">You can change colours and fonts any time in the Store builder.</p>
+    <% } else { %>
+      <h1 class="ob-title">Your page is live!</h1>
+      <p class="ob-sub">Share it with your customers — on WhatsApp, Instagram, or print the QR code.</p>
+    <% } %>
+
+    <% if (error) { %>
+      <div class="auth-error ob-error" role="alert"><%= error %></div>
+    <% } %>
+
+    <% if (step === 2) { %>
+      <fieldset class="ob-types">
+        <legend class="sr-only">Business type</legend>
+        <% presets.forEach(function (p) { %>
+          <label class="ob-type">
+            <input type="radio" name="type" value="<%= p.key %>"<%= values.type === p.key ? ' checked' : '' %> required />
+            <span class="ob-type-body">
+              <strong><%= p.label %></strong>
+              <small><%= p.description %></small>
+            </span>
+          </label>
+        <% }) %>
+      </fieldset>
+
+    <% } else if (step === 3) { %>
+      <div class="field">
+        <label for="businessName">Business name</label>
+        <input type="text" id="businessName" name="businessName" value="<%= values.businessName %>" placeholder="e.g. <%= preset.exampleName %>" maxlength="120" autocomplete="organization" required />
+      </div>
+      <div class="field">
+        <label for="handle">Your page link</label>
+        <div class="ob-input-group">
+          <input type="text" id="handle" name="handle" value="<%= values.handle %>" placeholder="yourbusiness" maxlength="24" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="handleStatus" />
+          <span class="ob-input-suffix">.<%= siteDomain %></span>
+        </div>
+        <p class="field-hint ob-handle-status" id="handleStatus" aria-live="polite" data-domain="<%= siteDomain %>">Letters and numbers only. Leave it blank and we’ll make one from your business name.</p>
+      </div>
+      <div class="ob-row-2">
+        <div class="field">
+          <label for="area">Area <span class="ob-optional">optional</span></label>
+          <input type="text" id="area" name="area" value="<%= values.area %>" placeholder="e.g. Indiranagar" maxlength="28" autocomplete="address-level3" />
+        </div>
+        <div class="field">
+          <label for="city">City <span class="ob-optional">optional</span></label>
+          <input type="text" id="city" name="city" value="<%= values.city %>" placeholder="e.g. Bengaluru" maxlength="28" autocomplete="address-level2" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="whatsapp">WhatsApp number <span class="ob-optional">optional</span></label>
+        <div class="ob-input-group is-prefix">
+          <span class="ob-input-prefix">+91</span>
+          <input type="tel" id="whatsapp" name="whatsapp" value="<%= values.whatsapp %>" placeholder="98765 43210" maxlength="20" inputmode="numeric" autocomplete="tel-national" aria-describedby="whatsappHint" />
+        </div>
+        <p class="field-hint" id="whatsappHint">Adds a “Message on WhatsApp” button to your page.</p>
+      </div>
+
+    <% } else if (step === 4) { %>
+      <% var KIND_LABELS = { download: 'PDF download', course: 'Online course', event: 'Live workshop' }; %>
+      <div class="ob-offer" data-offer data-max-custom="<%= maxCustom %>">
+        <% values.rows.forEach(function (row, i) { %>
+          <% var item = preset.items.find(function (it) { return it.key === row.key; }); var kind = item ? item.kind : 'service'; %>
+          <div class="ob-offer-row<%= row.on ? '' : ' is-off' %>" data-offer-row>
+            <input type="hidden" name="rows[<%= i %>][key]" value="<%= row.key %>" />
+            <label class="ob-check" title="Offer this">
+              <input type="checkbox" name="rows[<%= i %>][on]" value="1"<%= row.on ? ' checked' : '' %> aria-label="Offer <%= row.name || 'this' %>" data-offer-on />
+            </label>
+            <div class="ob-offer-name">
+              <input type="text" name="rows[<%= i %>][name]" value="<%= row.name %>" maxlength="80" placeholder="<%= item ? item.name : 'Add your own, e.g. Bridal makeup' %>" aria-label="Name" />
+            </div>
+            <div class="ob-offer-kind">
+              <% if (kind === 'service') { %>
+                <label class="ob-mini">
+                  <input type="text" name="rows[<%= i %>][minutes]" value="<%= row.minutes %>" inputmode="numeric" maxlength="3" aria-label="Minutes" />
+                  <span>min</span>
+                </label>
+              <% } else { %>
+                <span class="ob-kind-tag"><%= KIND_LABELS[kind] || kind %></span>
+              <% } %>
+            </div>
+            <label class="ob-price">
+              <span aria-hidden="true">₹</span>
+              <input type="text" name="rows[<%= i %>][price]" value="<%= row.price %>" inputmode="decimal" maxlength="12" placeholder="Price" aria-label="Price in rupees (0 for free)" />
+            </label>
+          </div>
+        <% }) %>
+        <template data-offer-template>
+          <div class="ob-offer-row" data-offer-row>
+            <input type="hidden" name="rows[__i__][key]" value="__key__" />
+            <label class="ob-check" title="Offer this"><input type="checkbox" name="rows[__i__][on]" value="1" checked aria-label="Offer this" data-offer-on /></label>
+            <div class="ob-offer-name"><input type="text" name="rows[__i__][name]" value="" maxlength="80" placeholder="Add your own" aria-label="Name" /></div>
+            <div class="ob-offer-kind"><label class="ob-mini"><input type="text" name="rows[__i__][minutes]" value="30" inputmode="numeric" maxlength="3" aria-label="Minutes" /><span>min</span></label></div>
+            <label class="ob-price"><span aria-hidden="true">₹</span><input type="text" name="rows[__i__][price]" value="" inputmode="decimal" maxlength="12" placeholder="Price" aria-label="Price in rupees (0 for free)" /></label>
+          </div>
+        </template>
+      </div>
+      <button type="button" class="ob-add-row" data-offer-add hidden>+ Add your own</button>
+      <p class="field-hint">Enter 0 for free. Anything without a price stays hidden until you add one.</p>
+
+    <% } else if (step === 5) { %>
+      <fieldset class="ob-fieldset">
+        <legend class="ob-legend">Open on</legend>
+        <div class="ob-days">
+          <% ['S','M','T','W','T','F','S'].forEach(function (letter, d) { %>
+            <% var names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; %>
+            <label class="ob-day">
+              <input type="checkbox" name="day_<%= d %>" value="1"<%= values.days.indexOf(d) !== -1 ? ' checked' : '' %> />
+              <span aria-hidden="true"><%= letter %></span>
+              <span class="sr-only"><%= names[d] %></span>
+            </label>
+          <% }) %>
+        </div>
+      </fieldset>
+      <div class="ob-row-2">
+        <div class="field">
+          <label for="opens">Opens at</label>
+          <input type="time" id="opens" name="opens" value="<%= values.opens %>" required />
+        </div>
+        <div class="field">
+          <label for="closes">Closes at</label>
+          <input type="time" id="closes" name="closes" value="<%= values.closes %>" required />
+        </div>
+      </div>
+      <label class="ob-switch-row">
+        <input type="checkbox" name="lunch" value="1"<%= values.lunch ? ' checked' : '' %> data-lunch-toggle />
+        <span>Lunch break</span>
+      </label>
+      <div class="ob-row-2" data-lunch-fields>
+        <div class="field">
+          <label for="lunchFrom">Break from</label>
+          <input type="time" id="lunchFrom" name="lunchFrom" value="<%= values.lunchFrom %>" />
+        </div>
+        <div class="field">
+          <label for="lunchTo">Break until</label>
+          <input type="time" id="lunchTo" name="lunchTo" value="<%= values.lunchTo %>" />
+        </div>
+      </div>
+
+    <% } else if (step === 6) { %>
+      <fieldset class="ob-templates">
+        <legend class="sr-only">Look</legend>
+        <% templates.forEach(function (t) { %>
+          <label class="ob-template">
+            <input type="radio" name="template" value="<%= t.key %>"<%= values.template === t.key ? ' checked' : '' %> />
+            <%# A small preview of the page in this look: name, location, main button, first two offerings. %>
+            <span class="ob-mock theme-<%= t.settings.theme %> font-<%= t.settings.font %> buttons-<%= t.settings.buttons %>" style="--mock-accent: <%= t.accent %>;" aria-hidden="true">
+              <span class="ob-mock-avatar"><%= sample.initials %></span>
+              <span class="ob-mock-name"><%= sample.name %></span>
+              <% if (sample.location) { %><span class="ob-mock-loc"><%= sample.location %></span><% } %>
+              <span class="ob-mock-cta"><%= sample.cta %></span>
+              <% sample.offered.forEach(function (o) { %>
+                <span class="ob-mock-item"><span><%= o.name %></span><% if (o.price) { %><b><%= o.price %></b><% } %></span>
+              <% }) %>
+            </span>
+            <span class="ob-template-label"><strong><%= t.label %></strong> · <%= t.description %></span>
+          </label>
+        <% }) %>
+      </fieldset>
+
+    <% } else { %>
+      <div class="ob-live">
+        <div class="ob-live-link">
+          <span class="ob-live-host"><%= live.host %></span>
+          <a href="<%= live.url %>" target="_blank" rel="noopener">Open page</a>
+        </div>
+        <div class="ob-qr" role="img" aria-label="QR code for your page"><%- live.qr %></div>
+        <div class="ob-share">
+          <a class="ob-secondary ob-wa" href="<%= live.whatsapp %>" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" width="18" height="18" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+            Share on WhatsApp
+          </a>
+          <button type="button" class="ob-secondary" data-copy="<%= live.url %>" hidden>Copy link</button>
+        </div>
+        <label class="field ob-copy-field">
+          <span class="sr-only">Your page link</span>
+          <input type="text" value="<%= live.url %>" readonly data-copy-field />
+        </label>
+        <h2 class="ob-h2">Next steps</h2>
+        <ul class="ob-checklist">
+          <% nextSteps.forEach(function (s) { %><li><%= s %></li><% }) %>
+        </ul>
+      </div>
+    <% } %>
+
+    <div class="ob-actions">
+      <%# The main button comes first, so Enter in a field submits it (not Skip). %>
+      <button type="submit" class="ob-primary"><%= step === 6 ? 'Create my page' : step === 7 ? 'Go to dashboard' : 'Continue' %></button>
+      <% if (canSkip) { %><button type="submit" class="ob-skip" name="skip" value="1" formnovalidate>Skip</button><% } %>
+      <% if (back) { %><a class="ob-back" href="/onboarding?step=<%= back %>">Back</a><% } %>
+    </div>
+  </form>
+</main>
+
+<script src="/js/onboarding.js?v=<%= assetVersion %>"></script>
+</body>
+</html>

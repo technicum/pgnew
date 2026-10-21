@@ -171,6 +171,14 @@
           </a>
           <% shareButton('#video-' + block.id, block.title) %>
         </div>
+      <% } else if (block.type === 'button') { %>
+        <%# Button module: one full-width button in the accent colour — a website, a WhatsApp link or a popup (#form-12).
+            Without a usable link yet it's drawn but goes nowhere. %>
+        <% if (block.href) { %>
+          <a class="store-button-block" href="<%= block.href %>"<% if (/^https?:/.test(block.href)) { %> target="_blank" rel="noopener noreferrer nofollow"<% } %><% if (block.href.charAt(0) === '#') { %> aria-haspopup="dialog"<% } %>><%= block.title %></a>
+        <% } else { %>
+          <span class="store-button-block is-inert"><%= block.title %></span>
+        <% } %>
       <% } else if (block.href) { %>
         <%# Links off the store open in a new tab; the store's own pages (a booking block → /book) don't. %>
         <div class="store-item">

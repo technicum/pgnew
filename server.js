@@ -32,6 +32,8 @@ const {
   TYPES: BLOCK_TYPES,
 } = require('./lib/blocks');
 const storeDraft = require('./lib/storeDraft');
+const onboarding = require('./lib/onboarding');
+const QRCode = require('qrcode');
 const {
   listContacts,
   countContacts,
@@ -326,10 +328,9 @@ app.get('/signup', redirectIfLoggedIn, (req, res) => {
 });
 
 app.post('/signup', redirectIfLoggedIn, async (req, res) => {
-  const name = (req.body.name || '').trim();
+  const name = (req.body.name || '').trim().slice(0, 120);
   const email = (req.body.email || '').trim();
   const password = req.body.password || '';
-  const confirm = req.body.confirm || '';
 
   const rerender = (error) => res.status(400).render('signup', {
     title: `Create your store — ${SITE_NAME}`,
@@ -338,17 +339,20 @@ app.post('/signup', redirectIfLoggedIn, async (req, res) => {
   });
 
   if (!name || !email || !password) return rerender('Fill in your name, email and a password to continue.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return rerender('That email address doesn’t look right.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 190) return rerender('That email address doesn’t look right.');
   if (password.length < 8) return rerender('Use at least 8 characters for your password.');
-  if (password !== confirm) return rerender('Those passwords don’t match.');
+  if (password.length > 200) return rerender('Keep your password under 200 characters.');
 
   try {
-    await createUser({ name, email, password });
-    // Deliberately not logging them in here — signup just confirms the
-    // account was created and sends them to log in with it, rather than
-    // starting a session automatically.
-    res.render('signup-success', {
-      title: `Account created — ${SITE_NAME}`,
+    const user = await createUser({ name, email, password });
+    // Step 1 of onboarding (lib/onboarding.js) is this form: the account
+    // is logged in straight away — a new session id, as on Google sign-in
+    // — and goes on to step 2.
+    await onboarding.start(user.id);
+    req.session.regenerate((err) => {
+      if (err) return rerender('Your account was created, but we couldn’t log you in — please log in.');
+      req.session.user = toPublicUser(user);
+      req.session.save((saveErr) => (saveErr ? rerender('Your account was created, but we couldn’t log you in — please log in.') : res.redirect(303, '/onboarding')));
     });
   } catch (err) {
     if (err.code === 'EMAIL_TAKEN') return rerender('An account with that email already exists — try logging in instead.');
@@ -384,7 +388,8 @@ app.post('/login', redirectIfLoggedIn, async (req, res) => {
     if (user.status === 'suspended') return rerender(SUSPENDED_MESSAGE);
 
     req.session.user = toPublicUser(user);
-    res.redirect('/dashboard');
+    // Unfinished onboarding picks up where it was left.
+    res.redirect(await onboarding.homeFor(user.id));
   } catch (err) {
     console.error('Login failed:', err);
     rerender('Something went wrong logging you in. Please try again.');
@@ -395,14 +400,99 @@ app.post('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-app.get('/dashboard', requireAuth, (req, res) => {
-  const user = req.session.user;
-  const today = new Date();
-  res.render('dashboard', {
-    title: `Overview — ${SITE_NAME}`,
+app.get('/dashboard', requireAuth, async (req, res, next) => {
+  try {
+    const user = req.session.user;
+    const today = new Date();
+    // Unfinished onboarding: a banner back to it (never a forced redirect).
+    const progress = await onboarding.getProgress(user.id);
+    res.render('dashboard', {
+      title: `Overview — ${SITE_NAME}`,
+      user,
+      todayLabel: today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+      onboardingStep: progress && !progress.completed ? progress.step : null,
+      onboardingSteps: onboarding.STEPS,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Onboarding (lib/onboarding.js) ------------------------------------
+// Steps 2–7 after signup. Each step is a plain form post that saves it and
+// redirects to the next (public/js/onboarding.js only adds the link check
+// and niceties), so it all works without JavaScript.
+async function renderOnboardingStep(req, res, user, view, status = 200) {
+  const locals = {
+    title: `Set up your page — ${SITE_NAME}`,
     user,
-    todayLabel: today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
-  });
+    ...view,
+  };
+  if (view.step === 7) {
+    const url = res.locals.storeUrlFor(user.handle);
+    locals.live = {
+      url,
+      host: `${user.handle}.${SITE_DOMAIN}`,
+      qr: await QRCode.toString(url, { type: 'svg', margin: 1, color: { dark: '#07134f', light: '#ffffff' } }),
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(`${user.name} is now online — see what we offer and book here: ${url}`)}`,
+    };
+  }
+  res.status(status).render('onboarding', locals);
+}
+
+app.get('/onboarding', requireAuth, async (req, res, next) => {
+  try {
+    const progress = await onboarding.getProgress(req.session.user.id);
+    if (!progress || progress.completed) return res.redirect('/dashboard');
+    const user = await findUserById(req.session.user.id);
+    if (!user) return res.redirect('/login');
+    const preset = onboarding.presetFor(progress.data.type || user.business_type);
+    const step = onboarding.stepToShow(progress, req.query.step, preset);
+    await renderOnboardingStep(req, res, user, await onboarding.stepView(user, progress, step));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/onboarding/step/:n', requireAuth, async (req, res, next) => {
+  try {
+    const n = Number(req.params.n);
+    const progress = await onboarding.getProgress(req.session.user.id);
+    if (!progress || progress.completed) return res.redirect(303, '/dashboard');
+    // A step not reached yet: back to the one that's due.
+    if (!Number.isInteger(n) || n < onboarding.FIRST || n > progress.step) return res.redirect(303, '/onboarding');
+    const user = await findUserById(req.session.user.id);
+    if (!user) return res.redirect(303, '/login');
+    try {
+      const next = await onboarding.saveStep(user, n, req.body || {}, { skip: req.body && req.body.skip === '1' });
+      // Name and link may have changed (step 3).
+      req.session.user = toPublicUser(await findUserById(user.id));
+      return res.redirect(303, next ? `/onboarding?step=${next}` : '/dashboard');
+    } catch (err) {
+      if (err.code !== 'INVALID_INPUT') throw err;
+      const view = await onboarding.stepView(user, progress, n);
+      return renderOnboardingStep(req, res, user, { ...view, error: err.message, values: err.values || view.values }, 422);
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Step 3's link field: is it free (and a free one close to it if not).
+// Lightly rate-limited per account.
+const handleChecks = new Map();
+app.get('/onboarding/handle', requireAuth, async (req, res, next) => {
+  try {
+    const id = req.session.user.id;
+    const now = Date.now();
+    const bucket = handleChecks.get(id);
+    if (!bucket || now - bucket.start > 60000) handleChecks.set(id, { start: now, count: 1 });
+    else if (++bucket.count > 40) return res.status(429).json({ error: 'Too many checks — wait a moment.' });
+    if (handleChecks.size > 5000) handleChecks.clear();
+    res.json(await onboarding.checkHandle(String(req.query.value || '').slice(0, 120), id));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // --- Store builder ----------------------------------------------------

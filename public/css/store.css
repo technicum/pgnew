@@ -252,6 +252,18 @@ a.store-announce:hover span { text-decoration: underline; text-underline-offset:
 .store-contact:hover { filter: brightness(.94); transform: translateY(-1px); }
 .store-contact:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 2px; }
 
+/* Button module (lib/blocks.js "button"): a full-width accent button in the list. */
+.store-button-block {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; padding: 10px 20px;
+  border-radius: var(--btn-radius, 10px); background: var(--store-accent, #ff6b4a); color: #fff;
+  font-weight: 600; font-size: 15px; text-align: center; text-decoration: none; overflow-wrap: anywhere;
+  transition: filter .15s ease, transform .15s ease;
+}
+a.store-button-block:hover { filter: brightness(.94); transform: translateY(-1px); }
+.store-button-block:focus-visible { outline: 2px solid var(--store-accent, #ff6b4a); outline-offset: 2px; }
+.store-button-block.is-inert { opacity: .85; }
+@media (prefers-reduced-motion: reduce) { .store-button-block { transition: none; } }
+
 /* --- Popups everywhere: share buttons, video and form popups ----------- */
 
 /* A card with a share button on its right (the button sits beside the

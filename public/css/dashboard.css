@@ -451,3 +451,118 @@
 
 body { font-family: var(--font-sans); }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
+
+/* ---------------------------------------------------------------------
+   Phone / tablet layout (< 1024px). The sidebar partial
+   (views/partials/dashboard-sidebar.ejs) adds .dash-side, a bottom tab
+   bar and a scrim; below lg the sidebar becomes a slide-in drawer behind
+   the tab bar's "More" button, so the panel reads like a native app.
+   Scoped to pages that include the sidebar (.dash-side ~ main).
+   --------------------------------------------------------------------- */
+.dash-tabbar, .dash-scrim, .dash-side-close { display: none; }
+
+@media (width < 64rem) {
+  html { -webkit-text-size-adjust: 100%; }
+  html.dash-locked { overflow: hidden; }
+  body { overscroll-behavior-y: none; }
+
+  /* Drawer */
+  .dash-side {
+    width: min(84vw, 300px);
+    translate: -100% 0;
+    transition: translate .28s cubic-bezier(.32, .72, 0, 1), box-shadow .28s;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 60;
+  }
+  .dash-side.is-open { translate: 0 0; box-shadow: 0 0 60px rgba(7, 19, 79, .45); }
+  .dash-side > div:first-child { height: 64px; padding: 0 12px 0 20px; }
+  .dash-side nav a, .dash-side form button { height: 48px; }
+  .dash-side-close {
+    display: grid; place-items: center; width: 40px; height: 40px;
+    border: 0; border-radius: 999px; background: var(--sidebar-accent);
+    color: var(--sidebar-foreground); cursor: pointer;
+  }
+  .dash-scrim {
+    display: block; position: fixed; inset: 0; z-index: 55;
+    background: rgba(7, 19, 79, .45);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+    animation: dash-fade .2s ease-out;
+  }
+  .dash-scrim[hidden] { display: none; }
+
+  /* Bottom tab bar */
+  .dash-tabbar {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--card) 92%, transparent);
+    -webkit-backdrop-filter: saturate(180%) blur(16px); backdrop-filter: saturate(180%) blur(16px);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 24px rgba(17, 24, 39, .06);
+  }
+  .dash-tab {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    min-height: 52px; padding: 4px 0; border: 0; background: none; cursor: pointer;
+    font: inherit; font-size: 11px; font-weight: 600; letter-spacing: .01em;
+    color: var(--muted-foreground); text-decoration: none;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .dash-tab-icon {
+    display: grid; place-items: center; width: 56px; height: 30px; border-radius: 999px;
+    transition: background-color .2s, color .2s, transform .15s;
+  }
+  .dash-tab:active .dash-tab-icon { transform: scale(.92); }
+  .dash-tab.is-on { color: var(--primary); }
+  .dash-tab.is-on .dash-tab-icon { background: var(--secondary); }
+
+  /* Page chrome */
+  .dash-side ~ main {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    overflow-x: clip;
+  }
+  .dash-side ~ main > header.sticky {
+    height: calc(60px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .dash-side ~ main > header.sticky > div:first-child > p,
+  .dash-side ~ main > header.sticky > p {
+    font-family: var(--font-display); font-size: 1.125rem; color: var(--foreground);
+  }
+  /* 16px stops iOS Safari zooming in on focus. */
+  .dash-side ~ main :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { font-size: 16px; }
+  .dash-side ~ main :is(a, button) { -webkit-tap-highlight-color: transparent; }
+}
+
+@media (width < 40rem) {
+  .dash-side ~ main > div.mx-auto { padding: 18px 16px 24px; }
+  .dash-side ~ main h1.text-3xl { font-size: 1.625rem; line-height: 1.2; }
+  .dash-side ~ main .rounded-lg { border-radius: 16px; }
+
+  /* Overview */
+  .dash-hero-actions { display: grid !important; grid-template-columns: 1fr 1fr; }
+  .dash-hero-actions > a { height: 44px; padding: 0 10px; }
+  .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .dash-stats > article { padding: 14px; }
+  .dash-stats > article > p { margin-top: 12px; font-size: 12px; }
+  .dash-stats > article > div:first-child { width: 36px; height: 36px; }
+}
+
+.dash-m-brand { display: none; }
+@media (width < 64rem) {
+  .dash-m-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-display); font-size: 1.125rem; font-weight: 700;
+    color: var(--foreground); text-decoration: none;
+  }
+  .dash-m-brand > span:first-child {
+    display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
+    background: var(--sidebar); color: var(--sidebar-primary);
+  }
+}
+
+@keyframes dash-fade { from { opacity: 0; } to { opacity: 1; } }
