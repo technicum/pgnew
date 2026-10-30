@@ -1,6 +1,6 @@
 <%- include('partials/admin-top') %>
-<%# Platform admin → SEO (lib/seo.js): title, description and share image for the platform's own public
-    pages. Blank fields fall back to the built-in text (shown as the placeholder). Blog posts have their own
+<%# Platform admin → SEO (lib/seo.js): Google Search Console and Analytics, then the title, description
+    and share image for the platform's own public pages. Blank fields fall back to the built-in text (shown as the placeholder). Blog posts have their own
     SEO in the post editor; creators' stores have theirs in their builder. %>
 
 <header class="adm-head">
@@ -11,6 +11,17 @@
 </header>
 
 <form method="POST" action="/admin/seo">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Google</h2></div>
+    <div class="adm-form ax-pad">
+      <label class="ax-field"><span>Search Console verification</span>
+        <input class="ax-input" name="google_verification" value="<%= saved.google.verification %>" maxlength="300" placeholder="Paste the HTML tag from Search Console" autocomplete="off" spellcheck="false" /></label>
+      <p class="ax-hint">In <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Search Console</a>, add <%= siteDomain %> as a URL prefix property and choose the HTML tag method. Paste it here, save, then press Verify. Keep it here afterwards, or Google will un-verify the site.</p>
+      <label class="ax-field"><span>Google Analytics measurement ID</span>
+        <input class="ax-input" name="google_analytics" value="<%= saved.google.analytics %>" maxlength="300" placeholder="G-XXXXXXXXXX" autocomplete="off" spellcheck="false" /></label>
+      <p class="ax-hint">In <a href="https://analytics.google.com" target="_blank" rel="noopener">Google Analytics</a>: Admin → Data streams → your web stream. Tracks the homepage, Explore, About and the blog — not dashboards, creators’ stores or checkouts. Leave blank to turn it off.</p>
+    </div>
+  </section>
   <% Object.keys(pages).forEach(function (key) { var pg = pages[key]; var s = saved[key]; var d = defaults[key]; %>
     <section class="ax-panel">
       <div class="ax-panel-head"><h2><%= pg.label %></h2><a class="ax-count" href="<%= pg.path %>" target="_blank" rel="noopener"><%= siteDomain %><%= pg.path === '/' ? '' : pg.path %> ↗</a></div>

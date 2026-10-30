@@ -74,7 +74,7 @@ const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials
 const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
 const { userMedia, deleteUserMedia } = require('./lib/adminMedia');
 const { installAdmin } = require('./lib/adminRoutes');
-const { metaFor } = require('./lib/seo');
+const { metaFor, googleTags } = require('./lib/seo');
 const blog = require('./lib/blog');
 const appIdeas = require('./lib/appIdeas');
 const { installLivePreview } = require('./lib/livePreview');
@@ -272,6 +272,7 @@ app.get('/blog/:slug', async (req, res, next) => {
       image: image && image.startsWith('/') ? origin + image : image,
       url: `${origin}/blog/${post.slug}`,
       type: 'article',
+      google: await googleTags(),
     };
     const more = (await blog.listPublished()).posts.filter((p) => p.id !== post.id).slice(0, 3);
     res.render('blog-post', { title: seo.title, seo, post, more, preview: !post.live });

@@ -1,5 +1,6 @@
 <%# A public platform page's title and SEO / link-preview tags. Pass seo: { title, description, image, url,
-    type } — from lib/seo.js metaFor (the platform pages) or a blog post (server.js). %>
+    type, google } — from lib/seo.js metaFor (the platform pages) or a blog post (server.js). google holds the
+    Search Console code and Analytics ID from Platform admin → SEO; both are validated when saved. %>
 <title><%= seo.title %></title>
 <% if (seo.description) { %><meta name="description" content="<%= seo.description %>" /><% } %>
 <meta property="og:site_name" content="<%= siteName %>" />
@@ -8,3 +9,14 @@
 <% if (seo.description) { %><meta property="og:description" content="<%= seo.description %>" /><% } %>
 <% if (seo.url) { %><meta property="og:url" content="<%= seo.url %>" /><link rel="canonical" href="<%= seo.url %>" /><% } %>
 <% if (seo.image) { %><meta property="og:image" content="<%= seo.image %>" /><meta name="twitter:card" content="summary_large_image" /><% } else { %><meta name="twitter:card" content="summary" /><% } %>
+<% var google = seo.google || {}; %>
+<% if (google.verification) { %><meta name="google-site-verification" content="<%= google.verification %>" /><% } %>
+<% if (google.analytics) { %>
+<script async src="https://www.googletagmanager.com/gtag/js?id=<%= google.analytics %>"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '<%= google.analytics %>');
+</script>
+<% } %>
