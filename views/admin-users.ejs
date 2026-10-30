@@ -1,5 +1,5 @@
 <%- include('partials/admin-top') %>
-<%# Platform admin → Users (lib/admin.js listUsers): search, plan and status filters, PER_PAGE a page. %>
+<%# Platform admin → Users (lib/admin.js listUsers): search, plan and status filters, PER_PAGE a page. Export (usersCsv) takes the same filters. %>
 <% var planName = {}; plans.forEach(function (p) { planName[p.id] = p.name; });
    var qs = function (extra) {
      var o = { q: filters.q, plan: filters.plan, status: filters.status };
@@ -12,6 +12,7 @@
     <h1>Users</h1>
     <p><%= total %> creator<%= total === 1 ? '' : 's' %><%= filters.q || filters.plan || filters.status ? ' match' : '' %>.</p>
   </div>
+  <% if (total) { %><a class="ax-btn" href="/admin/users/export?<%= qs({}) %>"><%= filters.q || filters.plan || filters.status ? 'Export ' + total + ' to CSV' : 'Export CSV' %></a><% } %>
 </header>
 
 <section class="ax-panel">

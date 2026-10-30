@@ -17,6 +17,9 @@
       <label class="ax-field"><span>Search Console verification</span>
         <input class="ax-input" name="google_verification" value="<%= saved.google.verification %>" maxlength="300" placeholder="Paste the HTML tag from Search Console" autocomplete="off" spellcheck="false" /></label>
       <p class="ax-hint">In <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Search Console</a>, add <%= siteDomain %> as a URL prefix property and choose the HTML tag method. Paste it here, save, then press Verify. Keep it here afterwards, or Google will un-verify the site.</p>
+      <label class="ax-field"><span>Sitemap</span>
+        <input class="ax-input" value="https://<%= siteDomain %>/sitemap.xml" readonly /></label>
+      <p class="ax-hint">Built automatically, with new blog posts added as they go live — <a href="/sitemap.xml" target="_blank" rel="noopener">view it</a>. Once the site is verified, open Sitemaps in Search Console, enter <b>sitemap.xml</b> and press Submit. You only need to do this once.</p>
       <label class="ax-field"><span>Google Analytics measurement ID</span>
         <input class="ax-input" name="google_analytics" value="<%= saved.google.analytics %>" maxlength="300" placeholder="G-XXXXXXXXXX" autocomplete="off" spellcheck="false" /></label>
       <p class="ax-hint">In <a href="https://analytics.google.com" target="_blank" rel="noopener">Google Analytics</a>: Admin → Data streams → your web stream. Tracks the homepage, Explore, About and the blog — not dashboards, creators’ stores or checkouts. Leave blank to turn it off.</p>
