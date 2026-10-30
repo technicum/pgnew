@@ -74,6 +74,11 @@ a.adm-stat:hover { border-color: color-mix(in oklab, var(--primary) 40%, var(--b
 .adm-table td a.adm-owner { color: var(--foreground); text-decoration: none; }
 .adm-table td a.adm-owner:hover { color: var(--primary); }
 .adm-table td a { color: var(--primary); }
+.adm-table .adm-pick { width: 36px; padding-right: 0; }
+.adm-bulk { border-top: 1px solid var(--border); }
+
+/* Emails. */
+.adm-email-preview { display: block; width: 100%; height: 520px; border: 0; background: #f5f5f4; border-radius: 0 0 var(--radius) var(--radius); }
 
 /* One user. */
 .adm-banner {

@@ -1,0 +1,55 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Send email: the step between the Users list and sending. Shows who it's going to and
+    the template filled in for the first of them. audience is the Users list's selection, carried along. %>
+
+<header class="adm-head">
+  <div>
+    <a class="adm-crumb" href="/admin/users">← Users</a>
+    <h1>Send email</h1>
+    <p>To <b><%= count %></b> user<%= count === 1 ? '' : 's' %><% if (skipped) { %> · <%= skipped %> left out (unsubscribed or suspended)<% } %>.</p>
+  </div>
+</header>
+
+<% if (!configured) { %>
+  <div class="adm-banner">Emails can’t go out yet. <a href="/admin/emails/settings">Add your SMTP details</a> first.</div>
+<% } %>
+
+<section class="ax-panel">
+  <form class="adm-tools" method="GET" action="/admin/emails/send">
+    <% Object.keys(audience).forEach(function (k) { %><input type="hidden" name="<%= k %>" value="<%= audience[k] %>" /><% }) %>
+    <select class="ax-input" name="template_id" aria-label="Template" onchange="this.form.submit()">
+      <option value="">Pick a template…</option>
+      <% templates.forEach(function (t) { %><option value="<%= t.id %>"<%= template && template.id === t.id ? ' selected' : '' %>><%= t.name %></option><% }) %>
+    </select>
+    <noscript><button class="ax-btn">Preview</button></noscript>
+    <a class="ax-btn ax-btn-quiet" href="/admin/emails/templates/new">New template</a>
+  </form>
+  <% if (recipients.length) { %>
+    <p class="ax-hint ax-pad">
+      <%= recipients.map(function (r) { return r.name; }).join(', ') %><%= count > recipients.length ? ' and ' + (count - recipients.length) + ' more' : '' %>
+    </p>
+  <% } %>
+</section>
+
+<% if (template) { %>
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2><%= preview.subject %></h2><span class="ax-count">Preview for <%= sample.name %></span></div>
+    <iframe class="adm-email-preview" title="Email preview" sandbox srcdoc="<%= preview.html %>"></iframe>
+  </section>
+
+  <section class="ax-panel ax-savebar">
+    <form method="POST" action="/admin/emails/test">
+      <input type="hidden" name="template_id" value="<%= template.id %>" />
+      <input type="hidden" name="back" value="<%= selfPath %>" />
+      <button class="ax-btn"<%= configured ? '' : ' disabled' %>>Send a test to <%= user.email %></button>
+    </form>
+    <form method="POST" action="/admin/emails/send">
+      <input type="hidden" name="template_id" value="<%= template.id %>" />
+      <input type="hidden" name="send_key" value="<%= sendKey %>" />
+      <% Object.keys(audience).forEach(function (k) { %><input type="hidden" name="<%= k %>" value="<%= audience[k] %>" /><% }) %>
+      <button class="ax-btn ax-btn-primary" data-confirm="Click again to send to <%= count %>"<%= configured && count ? '' : ' disabled' %>>Send to <%= count %> user<%= count === 1 ? '' : 's' %></button>
+    </form>
+  </section>
+<% } %>
+
+<%- include('partials/admin-bottom') %>

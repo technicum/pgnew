@@ -1,0 +1,71 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Emails (lib/emails.js): templates, and what's been sent. Sending starts from the
+    Users list: tick people (or filter), pick a template. %>
+<% var when = function (d) { return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); };
+   var statusLabel = { queuing: 'Starting', sending: 'Sending', paused: 'Paused', done: 'Sent', cancelled: 'Cancelled' }; %>
+
+<header class="adm-head">
+  <div>
+    <h1>Emails</h1>
+    <p>Write templates here, then send one from <a href="/admin/users">Users</a>: tick people, or filter the list, and pick a template.</p>
+  </div>
+  <div class="adm-row-actions">
+    <a class="ax-btn" href="/admin/emails/settings">Settings</a>
+    <a class="ax-btn ax-btn-primary" href="/admin/emails/templates/new">+ New template</a>
+  </div>
+</header>
+
+<% if (!configured) { %>
+  <div class="adm-banner">Emails can’t go out yet. <a href="/admin/emails/settings">Add your SMTP details</a> first.</div>
+<% } %>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Templates</h2><span class="ax-count"><%= templates.length %></span></div>
+  <% if (templates.length) { %>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr><th>Template</th><th>Last edited</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          <% templates.forEach(function (t) { %>
+            <tr>
+              <td><a class="adm-owner" href="/admin/emails/templates/<%= t.id %>"><%= t.name %></a><small><%= t.subject %></small></td>
+              <td class="adm-num"><%= when(t.updated_at) %></td>
+              <td class="adm-row-actions"><a class="ax-btn" href="/admin/emails/templates/<%= t.id %>">Edit</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="adm-empty">
+      <p>No templates yet. Write one once and send it to as many people as you like.</p>
+      <a class="ax-btn ax-btn-primary" href="/admin/emails/templates/new">Write a template</a>
+    </div>
+  <% } %>
+</section>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Sent</h2><span class="ax-count">Latest 50</span></div>
+  <% if (campaigns.length) { %>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr><th>Email</th><th>Status</th><th>Sent</th><th>Failed</th><th>Date</th></tr></thead>
+        <tbody>
+          <% campaigns.forEach(function (c) { %>
+            <tr>
+              <td><a class="adm-owner" href="/admin/emails/campaigns/<%= c.id %>"><%= c.subject %></a><small><%= c.template_name %></small></td>
+              <td><span class="adm-pill<%= c.status === 'done' ? ' is-used' : c.status === 'paused' ? ' is-bad' : '' %>"><%= statusLabel[c.status] || c.status %></span></td>
+              <td class="adm-num"><%= c.counts.sent %> of <%= c.counts.total %></td>
+              <td class="adm-num"><%= c.counts.failed %></td>
+              <td class="adm-num"><%= when(c.created_at) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <p class="ax-empty">Nothing sent yet.</p>
+  <% } %>
+</section>
+
+<%- include('partials/admin-bottom') %>

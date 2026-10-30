@@ -74,6 +74,7 @@ const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials
 const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
 const { userMedia, deleteUserMedia } = require('./lib/adminMedia');
 const { installAdmin } = require('./lib/adminRoutes');
+const { startEmails, validUnsubscribe, unsubscribe } = require('./lib/emails');
 const { metaFor, googleTags } = require('./lib/seo');
 const blog = require('./lib/blog');
 const appIdeas = require('./lib/appIdeas');
@@ -308,6 +309,31 @@ app.get('/robots.txt', (req, res) => {
     `Sitemap: ${originOf(req)}/sitemap.xml`,
     '',
   ].join('\n'));
+});
+
+// The Unsubscribe link in platform emails (lib/emails.js). Opening it asks
+// first, because mail scanners open links; mail apps' one-click unsubscribe
+// POSTs to the same address. Either way the signed link is the only credential.
+const unsubscribePage = (req, res, done) => {
+  const url = `/unsubscribe?u=${Number(req.query.u)}&t=${encodeURIComponent(String(req.query.t || ''))}`;
+  res.render('unsubscribe', { title: `Unsubscribe — ${SITE_NAME}`, done, url });
+};
+const badUnsubscribeLink = (res) => res.status(404).render('error', {
+  title: `Not found — ${SITE_NAME}`,
+  heading: 'That link doesn’t work',
+  message: 'Use the Unsubscribe link at the bottom of the email.',
+});
+app.get('/unsubscribe', (req, res) => {
+  if (!validUnsubscribe(Number(req.query.u), req.query.t)) return badUnsubscribeLink(res);
+  unsubscribePage(req, res, false);
+});
+app.post('/unsubscribe', async (req, res, next) => {
+  try {
+    if (!(await unsubscribe(Number(req.query.u), req.query.t))) return badUnsubscribeLink(res);
+    unsubscribePage(req, res, true);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Platform admin panel (lib/adminRoutes.js). ADMIN_EMAILS only.
@@ -1342,5 +1368,6 @@ loadGatewaySettings()
   .finally(() => {
     app.listen(PORT, () => {
       console.log(`${SITE_NAME} running on port ${PORT}`);
+      startEmails({ siteName: SITE_NAME, siteDomain: SITE_DOMAIN }).catch((err) => console.error('Starting the email queue failed:', err.message));
     });
   });

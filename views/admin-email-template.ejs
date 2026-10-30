@@ -1,0 +1,52 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Emails → one template (lib/emails.js). saved is the stored template (null while new);
+    template is what the form shows, so a mistake doesn't lose what was typed. %>
+
+<header class="adm-head">
+  <div>
+    <a class="adm-crumb" href="/admin/emails">← Emails</a>
+    <h1><%= saved ? saved.name : 'New template' %></h1>
+  </div>
+</header>
+
+<form method="POST" action="<%= saved ? '/admin/emails/templates/' + saved.id : '/admin/emails/templates' %>">
+  <section class="ax-panel">
+    <div class="ax-pad ax-pad-top adm-form">
+      <label class="ax-field"><span>Template name <small>only you see this</small></span>
+        <input class="ax-input" name="name" value="<%= template.name || '' %>" required maxlength="120" placeholder="Finish setting up your page" /></label>
+      <label class="ax-field"><span>Subject</span>
+        <input class="ax-input" name="subject" value="<%= template.subject || '' %>" required maxlength="200" placeholder="{{first_name}}, your page is almost ready" /></label>
+      <%- include('partials/ax-rich-field', { name: 'body', label: 'Email', value: template.body || '', rows: 16, maxlength: maxBody, placeholder: 'Hi {{first_name}},', extraClass: 'adm-body-field' }) %>
+    </div>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Placeholders</h2><span class="ax-count">Filled in for each person</span></div>
+    <ul class="adm-list-grid">
+      <% Object.keys(placeholders).forEach(function (k) { %>
+        <li><span><%= placeholders[k] %></span><code>{{<%= k %>}}</code></li>
+      <% }) %>
+    </ul>
+    <p class="ax-hint ax-pad">Links work with the link button or as <code>[Open your dashboard]({{dashboard_link}})</code>. An unsubscribe link is added to every email for you.</p>
+  </section>
+
+  <section class="ax-panel ax-savebar">
+    <span class="ax-sub">Sends already started aren’t affected by edits.</span>
+    <button class="ax-btn ax-btn-primary">Save template</button>
+  </section>
+</form>
+
+<% if (saved) { %>
+  <section class="ax-panel ax-savebar">
+    <form method="POST" action="/admin/emails/test">
+      <input type="hidden" name="template_id" value="<%= saved.id %>" />
+      <input type="hidden" name="back" value="/admin/emails/templates/<%= saved.id %>" />
+      <button class="ax-btn">Send a test to <%= user.email %></button>
+    </form>
+    <form method="POST" action="/admin/emails/templates/<%= saved.id %>/delete">
+      <button class="ax-btn ax-btn-quiet adm-danger-text" data-confirm="Click again to delete">Delete template</button>
+    </form>
+  </section>
+<% } %>
+
+<%- include('partials/admin-bottom') %>

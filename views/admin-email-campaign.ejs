@@ -1,0 +1,63 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Emails → one send (lib/emails.js): how far it's got. Refreshes itself while sending. %>
+<% var c = campaign.counts, active = campaign.status === 'sending' || campaign.status === 'queuing';
+   var statusLabel = { queuing: 'Starting', sending: 'Sending', paused: 'Paused', done: 'Sent', cancelled: 'Cancelled' };
+   var waiting = c.queued + c.sending; %>
+
+<header class="adm-head">
+  <div>
+    <a class="adm-crumb" href="/admin/emails">← Emails</a>
+    <h1><%= campaign.subject %> <span class="adm-pill<%= campaign.status === 'done' ? ' is-used' : campaign.status === 'paused' ? ' is-bad' : '' %>"><%= statusLabel[campaign.status] || campaign.status %></span></h1>
+    <p>From the template “<%= campaign.template_name %>”, started by <%= campaign.sent_by %> on <%= new Date(campaign.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) %>.</p>
+  </div>
+</header>
+
+<% if (campaign.status === 'paused' && campaign.last_error) { %>
+  <div class="adm-banner">Sending stopped: <%= campaign.last_error %>. Fix it in <a href="/admin/emails/settings">Settings</a> if needed, then resume — nobody who already got it is emailed again.</div>
+<% } %>
+
+<section class="ax-panel">
+  <ul class="adm-list-grid">
+    <li><span>Sent</span><b><%= c.sent %> of <%= c.total %></b></li>
+    <li><span>Waiting</span><b><%= waiting %></b></li>
+    <li><span>Failed</span><b><%= c.failed %></b></li>
+    <li><span>Skipped</span><b><%= c.skipped %></b></li>
+  </ul>
+</section>
+
+<% if (active || campaign.status === 'paused') { %>
+  <section class="ax-panel ax-savebar">
+    <% if (campaign.status === 'paused') { %>
+      <form method="POST" action="/admin/emails/campaigns/<%= campaign.id %>/resume"><button class="ax-btn ax-btn-primary">Resume</button></form>
+    <% } else { %>
+      <form method="POST" action="/admin/emails/campaigns/<%= campaign.id %>/pause"><button class="ax-btn">Pause</button></form>
+    <% } %>
+    <form method="POST" action="/admin/emails/campaigns/<%= campaign.id %>/cancel">
+      <button class="ax-btn ax-btn-quiet adm-danger-text" data-confirm="Click again to cancel">Cancel the rest</button>
+    </form>
+  </section>
+<% } %>
+
+<% if (campaign.problems.length) { %>
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Not delivered</h2><span class="ax-count"><%= campaign.problems.length %><%= campaign.problems.length === 200 ? ' shown' : '' %></span></div>
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr><th>User</th><th>Status</th><th>Why</th></tr></thead>
+        <tbody>
+          <% campaign.problems.forEach(function (p) { %>
+            <tr>
+              <td><a class="adm-owner" href="/admin/users/<%= p.user_id %>"><%= p.name || 'Deleted account' %></a><small><%= p.email %></small></td>
+              <td><span class="adm-pill<%= p.status === 'failed' ? ' is-bad' : '' %>"><%= p.status === 'failed' ? 'Failed' : 'Skipped' %></span></td>
+              <td><%= p.error %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% } %>
+
+<% if (active) { %><script>setTimeout(function () { location.replace(location.pathname); }, 5000);</script><% } %>
+
+<%- include('partials/admin-bottom') %>
