@@ -9,11 +9,14 @@
     <h1>Emails</h1>
     <p>Write templates here, then send one from <a href="/admin/users">Users</a>: tick people, or filter the list, and pick a template.</p>
   </div>
-  <a class="ax-btn ax-btn-primary" href="/admin/emails/templates/new">+ New template</a>
+  <div class="adm-row-actions">
+    <a class="ax-btn" href="/admin/emails/settings">Settings</a>
+    <a class="ax-btn ax-btn-primary" href="/admin/emails/templates/new">+ New template</a>
+  </div>
 </header>
 
 <% if (!configured) { %>
-  <div class="adm-banner">Emails can’t go out yet. Add <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code> and <code>SMTP_PASS</code> to the server’s <code>.env</code> and restart the app.</div>
+  <div class="adm-banner">Emails can’t go out yet. <a href="/admin/emails/settings">Add your SMTP details</a> first.</div>
 <% } %>
 
 <section class="ax-panel">
