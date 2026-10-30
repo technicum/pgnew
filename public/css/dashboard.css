@@ -461,6 +461,11 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
    --------------------------------------------------------------------- */
 .dash-tabbar, .dash-scrim, .dash-side-close { display: none; }
 
+/* On short screens the nav scrolls so the footer (Log out) stays in view;
+   on very short ones the whole sidebar scrolls. */
+.dash-side { overflow-y: auto; }
+.dash-side > nav { min-height: 120px; overflow-y: auto; }
+
 @media (width < 64rem) {
   html { -webkit-text-size-adjust: 100%; }
   html.dash-locked { overflow: hidden; }
