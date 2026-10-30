@@ -74,7 +74,7 @@ const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials
 const { normalizeStoreSettings, LIMITS: STORE_LIMITS } = require('./lib/storeSettings');
 const { userMedia, deleteUserMedia } = require('./lib/adminMedia');
 const { installAdmin } = require('./lib/adminRoutes');
-const { startEmails, validUnsubscribe, unsubscribe } = require('./lib/emails');
+const { startEmails, validUnsubscribe, unsubscribe, recordOpen } = require('./lib/emails');
 const { metaFor, googleTags } = require('./lib/seo');
 const blog = require('./lib/blog');
 const appIdeas = require('./lib/appIdeas');
@@ -334,6 +334,15 @@ app.post('/unsubscribe', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// The invisible image in platform emails: loading it counts as an open
+// (lib/emails.js). Always answers with the image, so a problem here never
+// shows as a broken picture in someone's inbox.
+const OPEN_PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+app.get('/email/open/:id/:token.gif', (req, res) => {
+  recordOpen(Number(req.params.id), req.params.token).catch((err) => console.error('Recording an email open failed:', err.message));
+  res.set('Cache-Control', 'no-store, private').type('image/gif').send(OPEN_PIXEL);
 });
 
 // Platform admin panel (lib/adminRoutes.js). ADMIN_EMAILS only.

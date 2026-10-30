@@ -49,13 +49,14 @@
   <% if (campaigns.length) { %>
     <div class="adm-table-wrap">
       <table class="adm-table">
-        <thead><tr><th>Email</th><th>Status</th><th>Sent</th><th>Failed</th><th>Date</th></tr></thead>
+        <thead><tr><th>Email</th><th>Status</th><th>Sent</th><th>Opened</th><th>Failed</th><th>Date</th></tr></thead>
         <tbody>
           <% campaigns.forEach(function (c) { %>
             <tr>
               <td><a class="adm-owner" href="/admin/emails/campaigns/<%= c.id %>"><%= c.subject %></a><small><%= c.template_name %></small></td>
               <td><span class="adm-pill<%= c.status === 'done' ? ' is-used' : c.status === 'paused' ? ' is-bad' : '' %>"><%= statusLabel[c.status] || c.status %></span></td>
               <td class="adm-num"><%= c.counts.sent %> of <%= c.counts.total %></td>
+              <td class="adm-num"><%= c.counts.opened %><% if (c.counts.sent) { %><small><%= Math.round(c.counts.opened / c.counts.sent * 100) %>%</small><% } %></td>
               <td class="adm-num"><%= c.counts.failed %></td>
               <td class="adm-num"><%= when(c.created_at) %></td>
             </tr>

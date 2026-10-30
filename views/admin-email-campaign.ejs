@@ -19,10 +19,12 @@
 <section class="ax-panel">
   <ul class="adm-list-grid">
     <li><span>Sent</span><b><%= c.sent %> of <%= c.total %></b></li>
+    <li><span>Opened</span><b><%= c.opened %><%= c.sent ? ' (' + Math.round(c.opened / c.sent * 100) + '%)' : '' %></b></li>
     <li><span>Waiting</span><b><%= waiting %></b></li>
     <li><span>Failed</span><b><%= c.failed %></b></li>
     <li><span>Skipped</span><b><%= c.skipped %></b></li>
   </ul>
+  <p class="ax-hint ax-pad">Opens are an estimate: mail apps that block images aren’t counted, and Apple Mail can count as opened even if it wasn’t read.</p>
 </section>
 
 <% if (active || campaign.status === 'paused') { %>
