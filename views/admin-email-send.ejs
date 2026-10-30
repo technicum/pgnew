@@ -11,7 +11,7 @@
 </header>
 
 <% if (!configured) { %>
-  <div class="adm-banner">Emails can’t go out yet. <a href="/admin/emails/settings">Add your SMTP details</a> first.</div>
+  <div class="adm-banner">Emails can’t go out yet. Add <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code> and <code>SMTP_PASS</code> to the server’s <code>.env</code> and restart the app.</div>
 <% } %>
 
 <section class="ax-panel">

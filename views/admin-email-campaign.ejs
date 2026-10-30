@@ -13,7 +13,7 @@
 </header>
 
 <% if (campaign.status === 'paused' && campaign.last_error) { %>
-  <div class="adm-banner">Sending stopped: <%= campaign.last_error %>. Fix it in <a href="/admin/emails/settings">Settings</a> if needed, then resume — nobody who already got it is emailed again.</div>
+  <div class="adm-banner">Sending stopped: <%= campaign.last_error %>. Fix the cause, then resume — nobody who already got it is emailed again.</div>
 <% } %>
 
 <section class="ax-panel">
