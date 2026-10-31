@@ -69,7 +69,7 @@ const { APPS, APP_BY_ID, visibleApps, installedApps, setAppInstalled, appForPath
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode, handleCashfreeWebhook, handleRazorpayWebhook, loadGatewaySettings } = require('./lib/payments');
 const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
-const { isAdmin } = require('./lib/platform');
+const { isAdminAccount } = require('./lib/platform');
 const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials');
@@ -139,8 +139,11 @@ app.use((req, res, next) => {
   res.locals.siteName = SITE_NAME;
   res.locals.siteDomain = SITE_DOMAIN;
   res.locals.currentUser = req.session.user || null;
-  res.locals.isAdmin = isAdmin(req.session.user);
-  next();
+  // A failed check only hides the admin link; /admin checks again itself.
+  isAdminAccount(req.session.user).catch(() => false).then((admin) => {
+    res.locals.isAdmin = admin;
+    next();
+  });
 });
 
 const SELLING_APPS = ['payment-pages', 'courses', 'bookings'];
@@ -264,7 +267,7 @@ app.get('/blog', async (req, res, next) => {
 app.get('/blog/:slug', async (req, res, next) => {
   try {
     // Admins can open drafts and scheduled posts (?preview=1, from the editor).
-    const preview = req.query.preview === '1' && isAdmin(req.session.user);
+    const preview = req.query.preview === '1' && res.locals.isAdmin;
     const post = await blog.getPostBySlug(req.params.slug, { includeDrafts: preview });
     if (!post) return res.status(404).render('error', { title: `Not found — ${SITE_NAME}`, heading: 'Post not found', message: 'That post doesn’t exist, or isn’t published yet.' });
     const origin = originOf(req);
@@ -350,7 +353,7 @@ app.get('/email/open/:id/:token.gif', (req, res) => {
 // Platform admin panel (lib/adminRoutes.js). ADMIN_EMAILS only.
 function requireAdmin(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
-  if (!isAdmin(req.session.user)) return res.status(404).render('error', { title: `Not found — ${SITE_NAME}`, heading: 'Page not found', message: 'This page doesn’t exist.' });
+  if (!res.locals.isAdmin) return res.status(404).render('error', { title: `Not found — ${SITE_NAME}`, heading: 'Page not found', message: 'This page doesn’t exist.' });
   next();
 }
 

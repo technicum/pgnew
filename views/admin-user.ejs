@@ -7,7 +7,7 @@
 <header class="adm-head">
   <div>
     <a class="adm-crumb" href="/admin/users">← Users</a>
-    <h1><%= creator.name %> <% if (suspended) { %><span class="adm-pill is-bad">Suspended</span><% } %></h1>
+    <h1><%= creator.name %> <% if (suspended) { %><span class="adm-pill is-bad">Suspended</span><% } %><% if (isAdminUser) { %> <span class="adm-pill"><%= isOwnerUser ? 'Owner' : 'Admin' %></span><% } %></h1>
     <p><%= creator.email %> · <a href="<%= storeUrlFor(creator.handle) %>" target="_blank" rel="noopener"><%= storeUrlFor(creator.handle).replace(/^https?:\/\//, '') %></a> · joined <%= new Date(creator.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %></p>
   </div>
 </header>
@@ -53,6 +53,29 @@
         </label>
         <button class="ax-btn">Change plan</button>
       </form>
+    </section>
+
+    <section class="ax-panel">
+      <div class="ax-panel-head"><h2>Admin access</h2></div>
+      <% if (isOwnerUser) { %>
+        <p class="ax-pad ax-hint">This is an owner account, set by ADMIN_EMAILS in .env.</p>
+      <% } else if (!canManageAdmins) { %>
+        <p class="ax-pad ax-hint"><%= isAdminUser ? 'This account is an admin.' : 'This account isn’t an admin.' %> Only an owner can change that.</p>
+      <% } else if (isAdminUser) { %>
+        <form method="POST" action="/admin/users/<%= creator.id %>/admin" class="ax-pad adm-form">
+          <input type="hidden" name="admin" value="0" />
+          <p class="ax-hint">They can use the whole admin panel. Removing this takes it away right away.</p>
+          <button class="ax-btn adm-danger" data-confirm="Click again to remove admin">Remove admin</button>
+        </form>
+      <% } else if (suspended) { %>
+        <p class="ax-pad ax-hint">Reactivate this account before making it an admin.</p>
+      <% } else { %>
+        <form method="POST" action="/admin/users/<%= creator.id %>/admin" class="ax-pad adm-form">
+          <input type="hidden" name="admin" value="1" />
+          <p class="ax-hint">They’ll get the whole admin panel: every user, payments, fees and emails.</p>
+          <button class="ax-btn" data-confirm="Click again to make admin">Make admin</button>
+        </form>
+      <% } %>
     </section>
 
     <section class="ax-panel">
