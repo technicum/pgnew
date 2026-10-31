@@ -1,0 +1,38 @@
+<%# Bottom of the Overview page: apps not added yet, and ways to reach us.
+    Needs exploreApps and community (lib/dashboard.js). %>
+<% if (exploreApps.length) { %>
+  <section class="dash-explore" aria-labelledby="exploreTitle">
+    <div class="dash-explore-head">
+      <h2 id="exploreTitle">Explore more apps</h2>
+      <a href="/dashboard/apps">View all apps</a>
+    </div>
+    <div class="dash-explore-grid">
+      <% exploreApps.forEach(function (app) { %>
+        <a class="dash-app-card" href="/dashboard/apps?add=<%= app.id %>">
+          <svg viewBox="0 0 24 24" fill="none" width="26" height="26" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- app.icon %></svg>
+          <h3><%= app.name %></h3>
+          <p><%= app.tagline %></p>
+        </a>
+      <% }) %>
+    </div>
+  </section>
+<% } %>
+
+<section class="dash-community" aria-label="Community and feedback">
+  <% community.forEach(function (card) { %>
+    <article class="dash-comm-card">
+      <span class="dash-comm-art is-<%= card.key %>" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" width="30" height="30" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <% if (card.key === 'telegram') { %><path d="M21.5 3.5 2.5 11l6.5 2.5 2.5 7 3.5-4.5 5 3.5z"></path><path d="m9 13.5 7.5-5.5"></path>
+          <% } else if (card.key === 'whatsapp') { %><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"></path>
+          <% } else { %><circle cx="12" cy="12" r="10"></circle><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path><% } %>
+        </svg>
+      </span>
+      <div class="dash-comm-body">
+        <h3><%= card.title %></h3>
+        <p><%= card.note %></p>
+      </div>
+      <a class="dash-comm-btn" href="<%= card.href %>"<%- card.external ? ' target="_blank" rel="noopener"' : '' %>><%= card.label %></a>
+    </article>
+  <% }) %>
+</section>
