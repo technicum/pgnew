@@ -65,7 +65,7 @@ const {
 const { listAbandoned, dismissDraft } = require('./lib/checkoutDrafts');
 const { abandonedView, markContacted, dismissAbandoned, ABANDONED_AFTER_MINUTES } = require('./lib/abandoned');
 const customDomains = require('./lib/customDomains');
-const { APPS, APP_BY_ID, installedApps, setAppInstalled, appForPath } = require('./lib/apps');
+const { APPS, APP_BY_ID, visibleApps, installedApps, setAppInstalled, appForPath } = require('./lib/apps');
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode, handleCashfreeWebhook, handleRazorpayWebhook, loadGatewaySettings } = require('./lib/payments');
 const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
@@ -564,13 +564,14 @@ app.get('/onboarding/handle', requireAuth, async (req, res, next) => {
 // Explore apps: the Store (always on) and the apps a creator can add.
 app.get('/dashboard/apps', requireAuth, async (req, res, next) => {
   try {
+    const apps = visibleApps(res.locals.installedApps || []);
     res.render('apps', {
     title: `Explore apps — ${SITE_NAME}`,
     user: req.session.user,
-    apps: APPS,
+    apps,
     installed: res.locals.installedApps || [],
     // Arriving from an app's page before adding it: that app is highlighted.
-    highlight: APP_BY_ID.has(req.query.add) ? req.query.add : null,
+    highlight: apps.some((a) => a.id === req.query.add) ? req.query.add : null,
     ideas: await appIdeas.listMyIdeas(req.session.user.id),
     ideaCategories: appIdeas.CATEGORIES,
     ideaSent: req.query.idea === 'sent',
