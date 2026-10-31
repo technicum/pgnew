@@ -26,6 +26,7 @@
     <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8" style="gap:12px;">
       <div class="ml-auto flex items-center gap-2">
         <span class="pz-save-status" id="saveStatus"><span class="dot"></span><span id="saveStatusText">Saved</span></span>
+        <%- include('partials/dashboard-header-help') %>
         <div class="mx-1 h-7 w-px bg-border"></div>
         <div class="flex items-center gap-2 rounded-md p-1.5">
           <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>

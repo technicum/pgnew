@@ -703,3 +703,8 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
 }
 
 @keyframes dash-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Narrowest phones: the logo alone leaves room for the header icons. */
+@media (width < 23rem) {
+  .dash-m-brand > span:last-child { display: none; }
+}

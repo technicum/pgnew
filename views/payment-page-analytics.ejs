@@ -50,6 +50,7 @@ var STAGE = { details: 'Left at checkout', payment: 'Left at payment', cancelled
         Payment pages
       </a>
       <div class="ml-auto flex items-center gap-2">
+        <%- include('partials/dashboard-header-help') %>
         <span class="grid size-8 place-items-center rounded-md bg-secondary font-display text-xs font-bold text-secondary-foreground"><%= user.initials %></span>
       </div>
     </header>
