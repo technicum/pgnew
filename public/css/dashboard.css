@@ -557,9 +557,9 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
   .dash-stats > article > div:first-child { width: 36px; height: 36px; }
 }
 
-/* Dashboard look: every page with the sidebar. The builder, admin and studio
-   share this file, so the theme hangs off the sidebar's wrapper, not :root. */
-.min-h-screen:has(> .dash-side) {
+/* Dashboard look: every page with the sidebar, and the store builder. Admin and
+   the studio share this file, so the theme hangs off those wrappers, not :root. */
+.min-h-screen:has(> .dash-side), body:has(> .pz-shell) {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
   --font-display: var(--font-sans);
   --background: #f5f5f7; --foreground: #1d1d1f; --card: #ffffff; --card-foreground: #1d1d1f;
@@ -606,7 +606,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
 @media (width < 64rem) { .dash-side-toggle { display: none; } }
 
 .dash-side ~ main h1, .dash-side ~ main h2 { letter-spacing: -.01em; font-weight: 700; }
-.dash-side ~ main .bg-card.rounded-lg { border-color: transparent; border-radius: 20px; box-shadow: var(--dash-shadow); }
+.dash-side ~ main .bg-card.rounded-lg, .pz-main .bg-card.rounded-lg { border-color: transparent; border-radius: 20px; box-shadow: var(--dash-shadow); }
 .dash-side ~ main header input { border: 0; border-radius: 999px; background: var(--border); }
 .dash-side ~ main header .bg-secondary { border-radius: 50%; background: var(--primary); color: #fff; }
 .dash-hero-actions > a { border: 0; border-radius: 999px; }

@@ -562,3 +562,60 @@ body.pz-modal-open { overflow: hidden; }
   padding: 12px; border: 1px dashed var(--border); border-radius: calc(var(--radius) - 4px);
   font-size: 13px; color: var(--muted-foreground);
 }
+
+/* Dashboard look (the theme itself is in dashboard.css): grouped rows, coloured
+   module icons, and the preview as a phone on the page's own background. */
+.pz-promo { border-bottom: 1px solid var(--border); }
+.pz-promo strong { color: var(--primary); }
+.pz-rail { border-right: 1px solid var(--sidebar-border); }
+.pz-rail-btn { opacity: .72; }
+.pz-rail-btn.active { color: var(--sidebar-accent-foreground); }
+.pz-main .bg-primary.rounded-md, .pz-main header a.rounded-md, .pz-topbar-switcher, .pz-undo-btn { border-radius: 999px; }
+
+.pz-field-input { height: 38px; border-color: transparent; border-radius: 10px; background: #ebebed; }
+.pz-field-input:focus { background: var(--card); }
+.pz-textarea { height: auto; }
+.pz-label { color: var(--muted-foreground); }
+.pz-switch { width: 42px; height: 24px; background: #e3e3e6; }
+.pz-switch::after { width: 20px; height: 20px; }
+.pz-switch.on { background: #30b852; }
+.pz-switch.on::after { left: 20px; }
+
+.pz-block-card { align-items: center; padding: 14px 0; border: 0; border-radius: 0; background: none; }
+.pz-block-card + .pz-block-card { border-top: 1px solid var(--border); }
+.pz-block-card:hover { box-shadow: none; }
+.pz-block-card.is-open { padding: 14px 0; border-color: var(--border); }
+.pz-block-card.pz-dragging { padding: 14px 10px; border-radius: 14px; background: var(--card); }
+.pz-block-card.pz-hidden { opacity: 1; }
+.pz-block-card.pz-hidden .pz-block-main { opacity: .55; }
+.pz-block-card [data-block-type] { width: 36px; height: 36px; border-radius: 11px; color: #fff; background: linear-gradient(160deg, #9aa2b1, #6e7787); }
+[data-block-type="course"], [data-block-type="membership"] { background: linear-gradient(160deg, #42a5ff, #0071e3) !important; }
+[data-block-type="booking"], [data-block-type="newsletter"] { background: linear-gradient(160deg, #7db5ff, #4a86ea) !important; }
+[data-block-type="download"], [data-block-type="tip"], [data-block-type="testimonial"] { background: linear-gradient(160deg, #ffc266, #f09a2e) !important; }
+[data-block-type="form"], [data-block-type="social"] { background: linear-gradient(160deg, #5bd97a, #2eb94f) !important; }
+[data-block-type="link"], [data-block-type="button"], [data-block-type="text"] { background: linear-gradient(160deg, #b58cff, #8b4fe0) !important; }
+[data-block-type="event"], [data-block-type="video"] { background: linear-gradient(160deg, #ff8f8a, #ef5350) !important; }
+
+.pz-builder-grid .st-canvas { padding: 0; color: var(--foreground); background: none; }
+.pz-builder-grid .st-canvas-head { width: 100%; max-width: 300px; margin: 0 auto 14px; }
+.pz-builder-grid .st-canvas-head h2 { color: var(--foreground); font-size: 1rem; }
+.pz-builder-grid .st-canvas-head small { color: var(--muted-foreground); }
+.pz-builder-grid .st-devices { padding: 3px; border: 0; border-radius: 999px; background: var(--border); }
+.pz-builder-grid .st-devices button { border-radius: 999px; color: var(--muted-foreground); font-weight: 600; }
+.pz-builder-grid .st-devices button[aria-pressed="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.pz-builder-grid .lp-status { background: var(--border); color: var(--foreground); }
+.pz-builder-grid .st-device.is-mobile { position: relative; max-width: 300px; max-height: 620px; }
+.pz-builder-grid .st-device.is-mobile .st-chrome { display: none; }
+.pz-builder-grid .st-device.is-mobile .st-screen { border: 10px solid #1d1d1f; border-radius: 40px; box-shadow: var(--dash-shadow); }
+.pz-builder-grid .st-device.is-mobile::before {
+  content: ''; position: absolute; z-index: 1; top: 18px; left: 50%; width: 80px; height: 18px;
+  transform: translateX(-50%); border-radius: 999px; background: #1d1d1f;
+}
+
+@media (width < 40rem) {
+  .pz-block-card { gap: 8px; }
+  .pz-block-chevron { display: none; }
+  .pz-block-card .pz-switch { width: 34px; height: 20px; }
+  .pz-block-card .pz-switch::after { width: 16px; height: 16px; }
+  .pz-block-card .pz-switch.on::after { left: 16px; }
+}

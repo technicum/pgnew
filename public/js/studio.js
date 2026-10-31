@@ -54,5 +54,5 @@
     store('localStorage', 'pz-studio-view', view);
   };
   buttons.forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-st-view')); }); });
-  show(store('localStorage', 'pz-studio-view') || (window.innerWidth < 700 ? 'mobile' : 'desktop'));
+  show(store('localStorage', 'pz-studio-view') || (device && device.getAttribute('data-st-default')) || (window.innerWidth < 700 ? 'mobile' : 'desktop'));
 })();

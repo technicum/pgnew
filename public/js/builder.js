@@ -386,7 +386,7 @@
         <button type="button" class="pz-drag-handle" data-drag-id="${block.id}" title="Drag to reorder" aria-label="Reorder ${escapeHTML(block.title || meta.label)} — drag, or use the arrow keys">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" aria-hidden="true"><circle cx="9" cy="6" r="1.4" fill="currentColor"/><circle cx="9" cy="12" r="1.4" fill="currentColor"/><circle cx="9" cy="18" r="1.4" fill="currentColor"/><circle cx="15" cy="6" r="1.4" fill="currentColor"/><circle cx="15" cy="12" r="1.4" fill="currentColor"/><circle cx="15" cy="18" r="1.4" fill="currentColor"/></svg>
         </button>
-        <div class="grid size-10 place-items-center rounded-md shrink-0 ${meta.cls}">
+        <div class="grid size-10 place-items-center rounded-md shrink-0 ${meta.cls}" data-block-type="${block.type}">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">${meta.icon}</svg>
         </div>
         <div class="pz-block-main">
