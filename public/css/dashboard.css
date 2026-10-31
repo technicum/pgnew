@@ -557,67 +557,120 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
   .dash-stats > article > div:first-child { width: 36px; height: 36px; }
 }
 
+/* Dashboard look: every page with the sidebar. The builder, admin and studio
+   share this file, so the theme hangs off the sidebar's wrapper, not :root. */
+.min-h-screen:has(> .dash-side) {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --background: #f5f5f7; --foreground: #1d1d1f; --card: #ffffff; --card-foreground: #1d1d1f;
+  --popover: #ffffff; --popover-foreground: #1d1d1f;
+  --primary: #0071e3; --primary-foreground: #ffffff;
+  --secondary: #e8f1fd; --secondary-foreground: #0071e3;
+  --muted: #ececf0; --muted-foreground: #6e6e73;
+  --accent: #0071e3; --accent-foreground: #ffffff;
+  --border: rgba(0, 0, 0, .08); --color-border: rgba(0, 0, 0, .08); --input: rgba(0, 0, 0, .12); --ring: #0071e3;
+  --sidebar: #fafafc; --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: #0071e3; --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f1fd; --sidebar-accent-foreground: #0071e3;
+  --sidebar-border: rgba(0, 0, 0, .08); --sidebar-ring: #0071e3;
+  --success: #248a3d; --success-soft: #e7f8eb;
+  --dash-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 14px 32px -18px rgba(0, 0, 0, .16);
+  font-family: var(--font-sans); -webkit-font-smoothing: antialiased;
+}
+.dash-side { border-right: 1px solid var(--sidebar-border); }
+.dash-side.side-dark {
+  --sidebar: #0b0b0d; --sidebar-foreground: #ffffff;
+  --sidebar-primary: #0a84ff; --sidebar-accent: rgba(10, 132, 255, .22); --sidebar-accent-foreground: #6cb6ff;
+  --sidebar-border: rgba(255, 255, 255, .1);
+  border-right: 0;
+}
+.dash-side.side-dark nav [aria-current] svg { color: #6cb6ff; }
+.dash-side .px-4.pt-6 > div { border: 0; background: none; padding: 8px; }
+.dash-side .px-4.pt-6 .bg-accent { border-radius: 50%; }
+.dash-nav-label {
+  padding: 12px 12px 4px; font-size: .6875rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: color-mix(in oklab, var(--sidebar-foreground) 50%, transparent);
+}
+.dash-side nav .dash-nav-label:first-child { padding-top: 0; }
+.dash-side-toggle {
+  display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px 7px 7px; border: 0; border-radius: 999px;
+  background: var(--border); color: var(--muted-foreground); font: 600 .78rem var(--font-sans); cursor: pointer;
+}
+.dash-side-toggle span { position: relative; width: 24px; height: 14px; border-radius: 999px; background: #8e8e93; transition: background .2s ease; }
+.dash-side-toggle span::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%;
+  background: #fff; transition: transform .2s ease;
+}
+.dash-side-toggle[aria-pressed="true"] span { background: var(--foreground); }
+.dash-side-toggle[aria-pressed="true"] span::after { transform: translateX(10px); }
+@media (width < 64rem) { .dash-side-toggle { display: none; } }
+
+.dash-side ~ main h1, .dash-side ~ main h2 { letter-spacing: -.01em; font-weight: 700; }
+.dash-side ~ main .bg-card.rounded-lg { border-color: transparent; border-radius: 20px; box-shadow: var(--dash-shadow); }
+.dash-side ~ main header input { border: 0; border-radius: 999px; background: var(--border); }
+.dash-side ~ main header .bg-secondary { border-radius: 50%; background: var(--primary); color: #fff; }
+.dash-hero-actions > a { border: 0; border-radius: 999px; }
+.dash-hero-actions > a.bg-background { background: var(--card); color: var(--primary); box-shadow: var(--dash-shadow); }
+
 /* Overview before the first sale: the roadmap (views/partials/dashboard-roadmap.ejs) */
-.dash-roadmap-page.mx-auto { max-width: 732px; }
-.dash-roadmap, .dash-road-step, .dash-app-card, .dash-comm-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
-.dash-roadmap { margin-top: 24px; padding: 20px 16px 16px; box-shadow: 0 1px 2px rgba(17, 24, 39, .05); }
-.dash-roadmap-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.dash-roadmap-head h2 { font-size: 1.125rem; font-weight: 700; }
-.dash-roadmap-head span { font-size: .8125rem; color: var(--muted-foreground); white-space: nowrap; }
-.dash-roadmap-bar { height: 10px; margin-top: 14px; overflow: hidden; border-radius: 5px; background: var(--muted); }
-.dash-roadmap-bar span { display: block; height: 100%; border-radius: 5px; background: var(--primary); transition: width .3s ease; }
-.dash-roadmap-steps { display: grid; gap: 12px; margin: 14px 0 0; padding: 0; list-style: none; }
-.dash-road-step { position: relative; display: flex; align-items: center; gap: 14px; padding: 18px 16px; }
-.dash-road-step + .dash-road-step::before {
-  content: ''; position: absolute; left: 25px; top: -13px; height: 12px; border-left: 1px dashed var(--muted-foreground);
-}
+.dash-roadmap-page.mx-auto { max-width: 760px; }
+.dash-roadmap, .dash-app-card, .dash-comm-card { background: var(--card); box-shadow: var(--dash-shadow); }
+.dash-roadmap { margin-top: 28px; padding: 22px 22px 8px; border-radius: 20px; }
+.dash-roadmap-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.dash-roadmap-head h2, .dash-explore-head h2 { font-size: 1.1rem; }
+.dash-roadmap-head span { font-size: .8rem; font-weight: 600; color: var(--success); white-space: nowrap; }
+.dash-roadmap-bar { height: 6px; margin-top: 14px; overflow: hidden; border-radius: 999px; background: var(--border); }
+.dash-roadmap-bar span { display: block; height: 100%; border-radius: 999px; background: #30b852; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.dash-roadmap-steps { margin: 14px 0 0; padding: 0; list-style: none; }
+.dash-road-step { display: flex; align-items: flex-start; gap: 13px; padding: 15px 0; }
+.dash-road-step + .dash-road-step { border-top: 1px solid var(--border); }
 .dash-road-mark {
-  flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px var(--muted-foreground); color: #fff;
+  flex: none; display: grid; place-items: center; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px #8e8e93; color: #fff;
 }
-.dash-road-step.is-done .dash-road-mark { background: var(--success); box-shadow: none; }
+.dash-road-step.is-done .dash-road-mark { background: #30b852; box-shadow: none; }
 .dash-road-body { flex: 1; min-width: 0; }
-.dash-road-body h3, .dash-app-card h3, .dash-comm-body h3 { font-family: var(--font-sans); font-size: .9375rem; font-weight: 600; }
-.dash-road-body p, .dash-app-card p, .dash-comm-body p { margin-top: 3px; font-size: .8125rem; line-height: 1.45; color: var(--muted-foreground); overflow-wrap: anywhere; }
-.dash-road-btn {
-  flex: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 16px; border: 0; border-radius: 18px;
-  background: var(--foreground); color: #fff; font: 600 .8125rem var(--font-sans); text-decoration: none; cursor: pointer;
+.dash-road-body h3, .dash-app-card h3, .dash-comm-body h3 { font-family: var(--font-sans); font-size: .92rem; font-weight: 600; }
+.dash-road-body p, .dash-app-card p, .dash-comm-body p { margin-top: 2px; font-size: .83rem; line-height: 1.4; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.dash-road-btn, .dash-comm-btn {
+  flex: none; align-self: center; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 18px;
+  border: 0; border-radius: 999px; background: var(--foreground); color: var(--background);
+  font: 600 .84rem var(--font-sans); text-decoration: none; cursor: pointer;
 }
-.dash-road-btn:hover { opacity: .85; }
+.dash-road-btn:hover, .dash-comm-btn:hover { opacity: .85; }
 
 /* Overview, for everyone: more apps and ways to reach us (views/partials/dashboard-more.ejs) */
-.dash-explore { margin-top: 26px; }
-.dash-explore-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.dash-explore-head h2 { font-size: 1.125rem; font-weight: 700; }
-.dash-explore-head a { padding: 5px 13px; border-radius: 16px; background: var(--card); color: var(--foreground); font-size: .8125rem; text-decoration: none; }
-.dash-explore-head a:hover { background: var(--muted); }
-.dash-explore-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-.dash-app-card { display: block; padding: 16px; color: inherit; text-decoration: none; transition: border-color .15s; }
-.dash-app-card:hover { border-color: var(--primary); }
-.dash-app-card svg { color: var(--primary); }
-.dash-app-card h3 { margin-top: 10px; }
-.dash-community { display: grid; gap: 12px; margin-top: 24px; }
-.dash-comm-card { display: flex; align-items: center; gap: 16px; padding: 12px 16px 12px 12px; }
-.dash-comm-art { flex: none; display: grid; place-items: center; width: 96px; height: 64px; border-radius: 8px; }
-.dash-comm-art.is-telegram { background: #d6eefb; color: #1683c4; }
-.dash-comm-art.is-whatsapp { background: #d9f6e3; color: #128c4b; }
-.dash-comm-art.is-report { background: #ffefc2; color: #a86400; }
+.dash-explore { margin-top: 28px; }
+.dash-explore-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.dash-explore-head a { font-size: .85rem; font-weight: 600; color: var(--primary); text-decoration: none; }
+.dash-explore-head a:hover { text-decoration: underline; }
+.dash-explore-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.dash-app-card { display: block; padding: 18px; border-radius: 18px; color: inherit; text-decoration: none; transition: transform .2s ease; }
+.dash-app-card:hover { transform: translateY(-2px); }
+.dash-app-card h3 { margin-top: 10px; font-size: .9rem; }
+.dash-app-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: #fff; }
+.dash-app-icon.is-blue { background: linear-gradient(160deg, #42a5ff, #0071e3); }
+.dash-app-icon.is-green { background: linear-gradient(160deg, #5bd97a, #2eb94f); }
+.dash-app-icon.is-purple { background: linear-gradient(160deg, #b58cff, #8b4fe0); }
+.dash-community { display: grid; gap: 14px; margin-top: 28px; }
+.dash-comm-card { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: 20px; }
+.dash-comm-art { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; }
+.dash-comm-art.is-telegram { background: #e8f1fd; color: #0071e3; }
+.dash-comm-art.is-whatsapp { background: #e7f8eb; color: #248a3d; }
+.dash-comm-art.is-report { background: #fff4e2; color: #c77700; }
 .dash-comm-body { flex: 1; min-width: 0; }
-.dash-comm-btn {
-  flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 20px; border: 1px solid var(--border);
-  border-radius: 20px; background: var(--card); color: var(--foreground); font-size: .875rem; font-weight: 500; text-decoration: none;
-}
-.dash-comm-btn:hover { background: var(--muted); }
 .dash-road-btn:focus-visible, .dash-comm-btn:focus-visible, .dash-app-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 @media (width < 40rem) {
   .dash-road-step { flex-wrap: wrap; }
-  .dash-road-btn { width: 100%; min-height: 44px; justify-content: center; }
+  .dash-road-btn { width: 100%; min-height: 44px; }
+  .dash-explore-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (width < 27rem) {
   .dash-explore-grid { grid-template-columns: 1fr; }
-  .dash-comm-card { flex-wrap: wrap; }
-  .dash-comm-art { width: 64px; }
-  .dash-comm-body { flex-basis: calc(100% - 80px); }
-  .dash-comm-btn { width: 100%; min-height: 44px; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-roadmap-bar span, .dash-app-card, .dash-side-toggle span, .dash-side-toggle span::after { transition: none; }
 }
 
 /* Overview after the first sale: revenue by day and the latest orders */
@@ -645,7 +698,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
   }
   .dash-m-brand > span:first-child {
     display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px;
-    background: var(--sidebar); color: var(--sidebar-primary);
+    background: var(--primary); color: #fff;
   }
 }
 
