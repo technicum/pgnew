@@ -95,32 +95,36 @@
 
           <form id="pageForm" novalidate>
             <div class="pb-studio-scroll">
-            <!-- Details tab. On a single-product or coffee page the product's own
-                 settings (type, price, delivery, media) render into #soloProduct. -->
+            <!-- Details tab: what a page needs, then the rest behind "Add more details".
+                 On a single-product or coffee page the product's own settings render
+                 into #soloProduct, and its image or video into #soloMedia. -->
             <div class="pb-panel active" id="tab-page">
-              <div class="pb-section">
-                <p class="pb-section-title" id="ppBasicsTitle">Product</p>
+              <div class="pb-card">
                 <div class="pb-option">
                   <label for="ppTitle" class="pb-label" id="ppTitleLabel">Product name</label>
                   <input type="text" id="ppTitle" class="pz-field-input" maxlength="200" placeholder="e.g. Notion Budget Planner" />
                 </div>
-                <div class="pb-option">
-                  <label for="ppDescription" class="pb-label">Short description <span class="pz-option-hint">(optional)</span></label>
-                  <textarea id="ppDescription" class="pz-field-input" rows="2" maxlength="1000" placeholder="A line or two under the name"></textarea>
-                </div>
+                <div id="soloProduct"></div>
               </div>
-
-              <div id="soloProduct"></div>
 
               <div class="pb-note" id="ppProductsNote" hidden>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 <span>Add your products in the <strong>Products</strong> tab. The shipping-address section only appears on the checkout page if at least one product there is Physical.</span>
               </div>
 
-              <div class="pb-section">
-                <p class="pb-section-title">Page content</p>
+              <details class="pb-extra" id="ppMore">
+                <summary>
+                  <span class="pb-more-plus" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></span>
+                  Add more details
+                  <svg class="pb-more-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </summary>
                 <div class="pb-option">
-                  <label for="ppAbout" class="pb-label">Full description <span class="pz-option-hint">(optional — shown as an “About” section on the page)</span></label>
+                  <label for="ppDescription" class="pb-label">Short description <span class="pz-option-hint">· optional</span></label>
+                  <textarea id="ppDescription" class="pz-field-input" rows="2" maxlength="1000" placeholder="A line or two under the name"></textarea>
+                </div>
+                <div id="soloMedia"></div>
+                <div class="pb-option">
+                  <label for="ppAbout" class="pb-label">Full description <span class="pz-option-hint">· optional, shown as “About”</span></label>
                   <div class="pb-rich-editor">
                   <div class="pb-rich-toolbar" role="toolbar" aria-label="Formatting">
                     <button type="button" data-format="heading" title="Heading">H</button>
@@ -142,7 +146,7 @@
                   <p class="pz-option-hint">Use the buttons, or type <code>## Heading</code>, <code>- list item</code>, <code>**bold**</code>, <code>*italic*</code> and <code>[text](https://…)</code>.</p>
                 </div>
                 <div class="pb-option">
-                  <label for="ppSuccessMessage" class="pb-label">Thank-you message <span class="pz-option-hint">(optional — shown on the receipt)</span></label>
+                  <label for="ppSuccessMessage" class="pb-label">Thank-you message <span class="pz-option-hint">· optional, shown on the receipt</span></label>
                   <textarea id="ppSuccessMessage" class="pz-field-input" rows="2" maxlength="300" placeholder="Leave blank for the default."></textarea>
                 </div>
                 <div class="pb-option">
@@ -160,7 +164,7 @@
                   </div>
                   <p class="pz-option-hint">Changing this breaks any link you’ve already shared.</p>
                 </div>
-              </div>
+              </details>
             </div>
 
             <!-- Products tab: one card per product (payment-pages.js) -->

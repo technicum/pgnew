@@ -264,13 +264,12 @@
     $('ppProductsNote').hidden = !multiple;
     addProductBtn.hidden = !multiple;
     const BASICS = {
-      single: ['Product', 'Product name', 'e.g. Notion Budget Planner'],
-      multiple: ['Page', 'Page headline', 'e.g. Complete Starter Bundle'],
-      coffee: ['Your page', 'Headline', 'Buy me a coffee'],
+      single: ['Product name', 'e.g. Notion Budget Planner'],
+      multiple: ['Page headline', 'e.g. Complete Starter Bundle'],
+      coffee: ['Headline', 'Buy me a coffee'],
     }[pageKind];
-    $('ppBasicsTitle').textContent = BASICS[0];
-    $('ppTitleLabel').textContent = BASICS[1];
-    titleInput.placeholder = BASICS[2];
+    $('ppTitleLabel').textContent = BASICS[0];
+    titleInput.placeholder = BASICS[1];
     setBuilderMode();
   }
 
@@ -294,10 +293,10 @@
   }
   function coffeePriceHTML(p) {
     return `
-      <div class="pb-row">${moneyInput('price', p.price, 'Price per coffee — e.g. 50')}</div>
+      <div class="pb-row">${moneyInput('price', p.price, 'e.g. 50')}</div>
       <div class="pb-coffee-note">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-        <span>A quick-support button — buyers pick how many coffees (×1, ×3, ×5) or type their own number. No file or shipping needed.</span>
+        <span>Buyers pick how many (×1, ×3, ×5) or type their own number — no file or shipping needed.</span>
       </div>`;
   }
   function fulfilHTML(p) {
@@ -354,25 +353,28 @@
   // headline (see syncPreview).
   function soloEditorHTML(p) {
     const section = (title, body) => `<div class="pb-section"><p class="pb-section-title">${title}</p>${body}</div>`;
-    const media = section('Image or video', mediaFieldHTML(p));
     if (p.type === 'coffee') {
-      return `<div data-pid="${p.id}">${section('Price', coffeePriceHTML(p))}${media}</div>`;
+      return `<div data-pid="${p.id}">${section('Price per coffee', coffeePriceHTML(p))}</div>`;
     }
     return `<div data-pid="${p.id}">
       ${section('Product type', `${typeToggleHTML(p)}<p class="pb-field-hint">${p.type === 'digital' ? 'Buyers get a download link on their receipt.' : 'Checkout asks for a shipping address.'}</p>`)}
       ${section('Price', `${pricingToggleHTML(p)}${pricingPanelHTML(p)}`)}
       ${section(p.type === 'digital' ? 'Delivery' : 'Stock &amp; shipping', fulfilHTML(p))}
-      ${media}
     </div>`;
+  }
+  // Its image or video, under "Add more details".
+  function soloMediaHTML(p) {
+    return `<div class="pb-option" data-pid="${p.id}"><p class="pb-label">Image or video <span class="pz-option-hint">· optional</span></p>${mediaFieldHTML(p)}</div>`;
   }
 
   function renderProducts() {
     const solo = pageKind !== 'multiple';
     prodList.innerHTML = solo ? '' : products.map(prodCardHTML).join('');
     soloSlot.innerHTML = solo ? soloEditorHTML(products[0]) : '';
+    $('soloMedia').innerHTML = solo ? soloMediaHTML(products[0]) : '';
     $('tabProductCount').textContent = products.length;
     addProductBtn.disabled = products.length >= MAX_PRODUCTS;
-    const editors = solo ? [soloSlot.firstElementChild] : prodList.querySelectorAll('.pb-prod-card');
+    const editors = solo ? [soloSlot.firstElementChild, $('soloMedia').firstElementChild] : prodList.querySelectorAll('.pb-prod-card');
     editors.forEach((card) => {
       const p = products.find((x) => x.id === Number(card.dataset.pid));
       card.querySelectorAll('[data-field]').forEach((input) => input.addEventListener('input', () => {
@@ -638,6 +640,9 @@
     setAccent(page ? page.accent_color : DEFAULT_ACCENT);
     setBuilderMode();
     renderProducts();
+    // Anything already filled in stays in view.
+    $('ppMore').open = !!(descInput.value || aboutInput.value || successInput.value || marketplaceInput.checked
+      || (pageKind !== 'multiple' && products[0].mediaType));
     showTab('page');
   }
 
@@ -723,7 +728,10 @@
     if (tab) showTab(tab);
     formError.textContent = message;
     formError.classList.add('show');
-    if (focusEl) focusEl.focus();
+    if (focusEl) {
+      if (focusEl.closest('details')) focusEl.closest('details').open = true;
+      focusEl.focus();
+    }
   }
   // The input for one of a product card's fields, for focusing on an error.
   const productInput = (p, field) => (pageKind !== 'multiple' && field === 'title' ? titleInput

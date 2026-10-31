@@ -645,3 +645,53 @@ textarea.pb-prod-desc { margin-bottom: 10px; height: auto; padding: 8px 11px; re
   .pb-row-stats { order: 3; flex-basis: 100%; justify-content: space-between; padding-left: 53px; }
   .pb-row-stats > div { text-align: left; }
 }
+
+/* Payment page editor: grouped cards on the page's grey, with the optional
+   fields tucked under "Add more details". */
+.pb-form, .pb-actions { background: var(--background); }
+.pb-canvas { background: var(--background); background-image: none; }
+.pb-canvas .pb-preview-head h2 { color: var(--foreground); }
+.pb-canvas .pb-preview-head small { color: var(--muted-foreground); }
+.pb-canvas .pb-devices { border: 0; border-radius: 999px; background: var(--border); }
+.pb-canvas .pb-devices button { border-radius: 999px; color: var(--muted-foreground); font-weight: 600; }
+.pb-canvas .pb-devices button[aria-pressed="true"] { background: var(--card); color: var(--foreground); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.pb-canvas .lp-status { background: var(--border); color: var(--foreground); }
+.pb-back { border: 0; border-radius: 50%; background: var(--border); }
+.pb-card, .pb-extra { overflow: hidden; border-radius: 18px; background: var(--card); box-shadow: var(--dash-shadow); }
+.pb-card > .pb-option, .pb-card .pb-section, .pb-extra > .pb-option, #soloMedia > .pb-option { margin: 0; padding: 12px 16px 13px; }
+.pb-card .pb-section { gap: 6px; border-top: 1px solid var(--border); }
+.pb-extra > .pb-option, #soloMedia > .pb-option { border-top: 1px solid var(--border); }
+.pb-panel > .pb-card, .pb-panel > .pb-note { margin: 0 0 16px; }
+.pb-card .pb-section-title { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted-foreground); }
+.pb-card .pb-label, .pb-extra .pb-label { color: var(--muted-foreground); }
+.pb-card .pz-option-hint, .pb-extra .pb-label .pz-option-hint { font-weight: 400; }
+.pb-card .pb-field-hint, .pb-coffee-note { margin: 0; padding: 0; border: 0; background: none; font-size: 12px; line-height: 1.45; color: var(--muted-foreground); }
+.pb-coffee-note svg { display: none; }
+.pb-card .pz-field-input, .pb-extra > .pb-option > .pz-field-input {
+  height: auto; min-height: 26px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: 15px;
+}
+.pb-card .pz-field-input:focus, .pb-extra > .pb-option > .pz-field-input:focus { background: none; box-shadow: none; }
+.pb-card .pb-price { border: 0; background: none; }
+.pb-card .pb-price i { position: static; transform: none; padding-right: 4px; color: var(--muted-foreground); font-style: normal; }
+.pb-card .pb-price .pz-field-input { padding-left: 0; }
+.pb-card .pb-price { display: flex; align-items: center; }
+.pb-extra > summary {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; list-style: none;
+  font-size: .92rem; font-weight: 700;
+}
+.pb-extra > summary::-webkit-details-marker { display: none; }
+.pb-extra > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; border-radius: 18px; }
+.pb-more-plus { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--secondary); color: var(--primary); }
+.pb-more-chev { margin-left: auto; color: var(--muted-foreground); transition: transform .2s ease; }
+.pb-extra[open] .pb-more-chev { transform: rotate(180deg); }
+.pb-extra .pb-rich-editor { margin: 0 -16px; border: 0; border-radius: 0; background: none; }
+.pb-extra .pb-rich-toolbar { border: 0; background: none; padding: 0 10px 8px; }
+.pb-extra .pb-rich-editor textarea.pz-field-input { background: none; border-top: 1px solid var(--border); padding: 12px 16px; }
+.pb-extra .pb-rich-editor + .pz-option-hint { margin-top: 8px; }
+.pb-studio .pb-toggle { padding: 3px; border: 0; background: var(--border); }
+.pb-studio .pb-toggle button { padding: 7px 14px; font-size: .8rem; font-weight: 700; color: var(--muted-foreground); }
+.pb-studio .pb-toggle button.active { background: var(--card); color: var(--foreground); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+.pb-actions { padding: 14px 24px; }
+.pb-actions-row #builderCancelBtn { border: 0; border-radius: 999px; background: var(--border); }
+.pb-actions-row .pb-primary { flex: 1; justify-content: center; }
+@media (prefers-reduced-motion: reduce) { .pb-more-chev { transition: none; } }
