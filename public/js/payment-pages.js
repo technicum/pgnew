@@ -862,11 +862,15 @@
   });
 
   // --- pages list ------------------------------------------------------------------
-  // A plain table — one row per page — with its numbers, the publish
-  // switch, and a ⋯ menu for Edit / Analytics / Delete (plus the link).
+  // One row per page — its numbers, status and share button — and a ⋯ menu
+  // for Edit / Analytics / Pause / Delete. Totals, filter, search, sort and
+  // export all work from `pages`, so they stay right after every change.
   const pagesList = $('pagesList');
   const MENU_ICONS = {
-    more: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+    more: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>',
+    share: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>',
+    play: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 4 13 8-13 8z"/></svg>',
     edit: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
     chart: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V8"/><path d="M18 17v-9"/></svg>',
     open: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
@@ -879,27 +883,36 @@
     if (!p) return '';
     return p.type === 'coffee' ? 'Buy me a coffee' : (p.type === 'physical' ? 'Physical' : 'Digital');
   }
+  const PAGE_ICONS = {
+    physical: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>',
+    digital: '<path d="M12 15V3m0 12-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+    coffee: '<path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M7 2v2M11 2v2"/>',
+    multiple: '<path d="M12 2 2 7l10 5 10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+  };
+  function pageIconKind(page) {
+    if (page.kind === 'multiple') return 'multiple';
+    const p = page.products[0];
+    return p && PAGE_ICONS[p.type] ? p.type : 'digital';
+  }
   function pageRowHTML(page) {
     const url = publicUrl(page);
     const visits = page.view_count || 0;
+    const kind = pageIconKind(page);
     return `
-      <tr class="pb-trow${page.visible ? '' : ' pp-hidden'}${page.id === editingId ? ' pz-editing' : ''}" data-id="${page.id}">
-        <td class="pb-cell-page">
+      <div class="pb-trow${page.visible ? '' : ' pp-hidden'}${page.id === editingId ? ' pz-editing' : ''}" data-id="${page.id}">
+        <span class="pb-page-icon is-${kind}" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${PAGE_ICONS[kind]}</svg></span>
+        <div class="pb-cell-page">
           <button type="button" class="pb-row-title edit-page" data-id="${page.id}">${escapeHTML(page.title)}</button>
           <span class="pb-row-sub">${escapeHTML(pageKindLabel(page))} · /pay/${escapeHTML(page.slug)}${page.to_ship ? ` · <a class="pb-fulfil-pill" href="/dashboard/orders?ship=1">${page.to_ship} to ship</a>` : ''}</span>
-        </td>
-        <td class="pb-num" data-label="Visits">${visits}</td>
-        <td class="pb-num" data-label="Sales">${page.paid_count || 0}</td>
-        <td class="pb-num" data-label="Revenue">${formatINR(page.revenue || 0)}</td>
-        <td data-label="Status">
-          <span class="pb-status">
-            <button type="button" class="pz-switch toggle-visible${page.visible ? ' on' : ''}" data-id="${page.id}"
-              title="${page.visible ? 'Live — anyone with the link can buy' : 'Unpublished — the link shows a not-found page'}"
-              aria-label="Published" aria-pressed="${page.visible ? 'true' : 'false'}"></button>
-            <span>${page.visible ? 'Live' : 'Draft'}</span>
-          </span>
-        </td>
-        <td class="pb-cell-actions">
+        </div>
+        <dl class="pb-row-stats">
+          <div><dd>${visits}</dd><dt>Visits</dt></div>
+          <div><dd>${page.paid_count || 0}</dd><dt>Sales</dt></div>
+          <div><dd>${formatINR(page.revenue || 0)}</dd><dt>Revenue</dt></div>
+        </dl>
+        <span class="pb-status-pill${page.visible ? ' is-live' : ''}" title="${page.visible ? 'Live — anyone with the link can buy' : 'Paused — the link shows a not-found page'}">${page.visible ? 'Live' : 'Paused'}</span>
+        <div class="pb-row-actions">
+          <button type="button" class="pb-more pb-share copy-link" data-url="${escapeHTML(url)}" aria-label="Copy link to ${escapeHTML(page.title)}" title="Copy link">${MENU_ICONS.share}<span class="pb-sr">Copy link</span></button>
           <div class="pb-menu-wrap">
             <button type="button" class="pb-more" aria-haspopup="menu" aria-expanded="false" aria-label="Actions for ${escapeHTML(page.title)}">${MENU_ICONS.more}</button>
             <div class="pb-menu" role="menu" hidden>
@@ -907,12 +920,13 @@
               <a role="menuitem" href="/dashboard/payment-pages/${page.id}/analytics">${MENU_ICONS.chart}Analytics</a>
               <a role="menuitem" href="${escapeHTML(url)}" target="_blank" rel="noopener">${MENU_ICONS.open}View page</a>
               <button type="button" role="menuitem" class="copy-link" data-url="${escapeHTML(url)}">${MENU_ICONS.copy}<span>Copy link</span></button>
+              <button type="button" role="menuitem" class="toggle-visible" data-id="${page.id}">${page.visible ? `${MENU_ICONS.pause}Pause page` : `${MENU_ICONS.play}Go live`}</button>
               <div class="pb-menu-sep"></div>
               <button type="button" role="menuitem" class="pb-delete danger" data-id="${page.id}">${MENU_ICONS.trash}<span>Delete</span></button>
             </div>
           </div>
-        </td>
-      </tr>`;
+        </div>
+      </div>`;
   }
 
   function closeMenus(except) {
@@ -929,14 +943,46 @@
   document.addEventListener('click', (e) => { if (!e.target.closest('.pb-menu-wrap')) closeMenus(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
 
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const SORTS = {
+    newest: (a, b) => new Date(b.created_at) - new Date(a.created_at),
+    revenue: (a, b) => (b.revenue || 0) - (a.revenue || 0),
+    visits: (a, b) => (b.view_count || 0) - (a.view_count || 0),
+    title: (a, b) => a.title.localeCompare(b.title),
+  };
+  let pageFilter = 'all';
+  function shownPages() {
+    const q = $('pageSearch').value.trim().toLowerCase();
+    return pages
+      .filter((p) => pageFilter === 'all' || (pageFilter === 'live') === !!p.visible)
+      .filter((p) => !q || `${p.title} ${p.slug}`.toLowerCase().includes(q))
+      .sort(SORTS[$('pageSort').value]);
+  }
+  function renderTotals() {
+    const sum = (key) => pages.reduce((total, p) => total + (Number(p[key]) || 0), 0);
+    const sales = sum('paid_count');
+    $('statVisits').textContent = sum('view_count');
+    $('statVisitsNote').textContent = `across ${plural(pages.length, 'page')}`;
+    $('statSales').textContent = sales;
+    $('statSalesNote').textContent = sales ? plural(sales, 'paid order') : 'no orders yet';
+    $('statRevenue').textContent = formatINR(sum('revenue'));
+    $('statRevenueNote').textContent = sales ? 'from paid orders' : 'will update automatically';
+    const live = pages.filter((p) => p.visible).length;
+    const counts = { all: `All pages (${pages.length})`, live: `Live (${live})`, paused: `Paused (${pages.length - live})` };
+    $('pageFilter').querySelectorAll('button').forEach((btn) => {
+      btn.textContent = counts[btn.dataset.filter];
+      btn.setAttribute('aria-pressed', String(btn.dataset.filter === pageFilter));
+    });
+  }
+
   function renderPages() {
-    pagesList.innerHTML = pages.length ? `
-      <table class="pb-table">
-        <thead><tr><th>Page</th><th class="pb-num">Visits</th><th class="pb-num">Sales</th><th class="pb-num">Revenue</th><th>Status</th><th><span class="pb-sr">Actions</span></th></tr></thead>
-        <tbody>${pages.map(pageRowHTML).join('')}</tbody>
-      </table>` : '';
+    const shown = shownPages();
+    renderTotals();
+    pagesList.innerHTML = shown.map(pageRowHTML).join('');
     $('emptyPages').hidden = pages.length > 0;
-    $('pageCountLine').textContent = `${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`;
+    $('noMatch').hidden = !pages.length || shown.length > 0;
+    $('pagesToolbar').hidden = !pages.length;
+    $('pageCountLine').textContent = plural(shown.length, 'page');
 
     pagesList.querySelectorAll('.pb-more').forEach((btn) => btn.addEventListener('click', () => {
       const menu = btn.nextElementSibling;
@@ -985,12 +1031,37 @@
       try {
         await navigator.clipboard.writeText(btn.dataset.url);
         label.textContent = 'Copied!';
+        btn.classList.add('is-copied');
       } catch (err) {
         label.textContent = 'Couldn’t copy — use View page';
       }
-      setTimeout(() => { label.textContent = 'Copy link'; }, 1600);
+      setTimeout(() => { label.textContent = 'Copy link'; btn.classList.remove('is-copied'); }, 1600);
     }));
   }
+
+  $('pageFilter').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-filter]');
+    if (!btn) return;
+    pageFilter = btn.dataset.filter;
+    renderPages();
+  });
+  $('pageSearch').addEventListener('input', renderPages);
+  $('pageSort').addEventListener('change', renderPages);
+  // What's on screen, as a spreadsheet. A leading ' keeps a title like
+  // =SUM(...) from running as a formula when it's opened.
+  $('pageExport').addEventListener('click', () => {
+    const cell = (value) => {
+      const text = String(value ?? '');
+      return `"${(/^[=+\-@\t\r]/.test(text) ? `'${text}` : text).replace(/"/g, '""')}"`;
+    };
+    const rows = shownPages().map((p) => [p.title, pageKindLabel(p), publicUrl(p), p.visible ? 'Live' : 'Paused', p.view_count || 0, p.paid_count || 0, (p.revenue || 0) / 100]);
+    const csv = [['Page', 'Type', 'Link', 'Status', 'Visits', 'Sales', 'Revenue (INR)'], ...rows].map((r) => r.map(cell).join(',')).join('\r\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' }));
+    link.download = 'payment-pages.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
 
   loadIntoBuilder(null);
   renderPages();

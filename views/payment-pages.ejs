@@ -42,18 +42,22 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-[1120px] px-4 py-7 md:px-8 md:py-9">
+    <div class="mx-auto max-w-[1120px] px-4 py-7 md:px-8 md:py-9 pb-list-page">
 
-      <section class="pb-page-head">
-        <div>
-          <p class="text-sm font-semibold text-primary">Get paid</p>
-          <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Payment pages</h1>
-          <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">One checkout link that can hold one product or several — a course plus a physical workbook, a bundle of downloads, anything. Mix digital and physical freely; the page only asks for a shipping address when it needs one.</p>
-        </div>
-        <button type="button" class="pb-primary pb-create-btn" data-open-create>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+      <section class="pb-hero">
+        <p class="pb-hero-eyebrow">Get paid</p>
+        <h1>Payment pages</h1>
+        <p class="pb-hero-text">One checkout link that can hold one product or several — a course plus a physical workbook, a bundle of downloads, anything. Mix digital and physical freely; the page only asks for a shipping address when it needs one.</p>
+        <button type="button" class="pb-hero-cta" data-open-create>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>
           <span>Create payment page</span>
         </button>
+      </section>
+
+      <section class="pb-stats" aria-label="Totals across your payment pages">
+        <div class="pb-stat"><p>Visits</p><strong id="statVisits">0</strong><small id="statVisitsNote"></small></div>
+        <div class="pb-stat"><p>Sales</p><strong id="statSales">0</strong><small id="statSalesNote"></small></div>
+        <div class="pb-stat"><p>Revenue</p><strong id="statRevenue">₹0</strong><small id="statRevenueNote"></small></div>
       </section>
 
       <%- include('partials/payment-mode-note', { paymentMode: paymentMode }) %>
@@ -266,14 +270,40 @@
         </div>
       </section>
 
-      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
+      <div class="pb-toolbar" id="pagesToolbar">
+        <div class="pb-seg" role="group" aria-label="Filter pages" id="pageFilter">
+          <button type="button" data-filter="all" aria-pressed="true"></button>
+          <button type="button" data-filter="live" aria-pressed="false"></button>
+          <button type="button" data-filter="paused" aria-pressed="false"></button>
+        </div>
+        <label class="pb-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="pb-sr">Search pages</span>
+          <input type="search" id="pageSearch" placeholder="Search pages…" />
+        </label>
+        <label class="pb-tool">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
+          <span class="pb-sr">Sort pages</span>
+          <select id="pageSort">
+            <option value="newest">Newest</option>
+            <option value="revenue">Most revenue</option>
+            <option value="visits">Most visits</option>
+            <option value="title">Name A–Z</option>
+          </select>
+        </label>
+        <button type="button" class="pb-tool" id="pageExport">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          Export
+        </button>
+      </div>
+
+      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm pb-list-card">
         <div class="pb-list-head">
-          <div>
-            <h2 class="text-lg font-bold">Your payment pages</h2>
-            <p id="pageCountLine"></p>
-          </div>
+          <h2>Your payment pages</h2>
+          <p id="pageCountLine"></p>
         </div>
         <div id="pagesList"><!-- injected --></div>
+        <p class="pb-no-match" id="noMatch" hidden>No pages match that.</p>
         <div id="emptyPages" class="flex flex-col items-center justify-center gap-3 p-6" style="padding:56px 24px; text-align:center;" hidden>
           <div class="grid size-10 place-items-center rounded-md bg-muted text-muted-foreground">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>
