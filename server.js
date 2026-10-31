@@ -13,6 +13,7 @@ const session = require('express-session');
 const {
   findUserByEmail,
   findUserById,
+  markLinkShared,
   createUser,
   verifyPassword,
   toPublicUser,
@@ -33,6 +34,7 @@ const {
 } = require('./lib/blocks');
 const storeDraft = require('./lib/storeDraft');
 const onboarding = require('./lib/onboarding');
+const dashboard = require('./lib/dashboard');
 const QRCode = require('qrcode');
 const {
   listContacts,
@@ -442,13 +444,30 @@ app.get('/dashboard', requireAuth, async (req, res, next) => {
     const today = new Date();
     // Unfinished onboarding: a banner back to it (never a forced redirect).
     const progress = await onboarding.getProgress(user.id);
+    const storeUrl = res.locals.storeUrlFor(user.handle);
+    const { setup, stats } = await dashboard.overview(await findUserById(user.id), storeUrl);
     res.render('dashboard', {
       title: `Overview — ${SITE_NAME}`,
       user,
       todayLabel: today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+      storeUrl,
+      storeHost: storeUrl.replace(/^https?:\/\//, ''),
+      setup,
+      stats,
+      formatINR,
       onboardingStep: progress && !progress.completed ? progress.step : null,
       onboardingSteps: onboarding.STEPS,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The Overview checklist's "Copy my link".
+app.post('/dashboard/link-shared', requireAuth, async (req, res, next) => {
+  try {
+    await markLinkShared(req.session.user.id);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

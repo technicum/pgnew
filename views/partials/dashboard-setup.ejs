@@ -1,0 +1,45 @@
+<%# The Overview page before the first sale (lib/dashboard.js): progress, not
+    metrics. Needs setup and storeUrl. %>
+<section class="dash-setup" aria-label="Set up your store">
+  <div class="dash-setup-hero">
+    <div class="dash-setup-ring" role="img" aria-label="<%= setup.done %> of <%= setup.total %> steps done">
+      <svg viewBox="0 0 80 80" width="80" height="80" fill="none">
+        <circle cx="40" cy="40" r="34" stroke-width="8" class="track"></circle>
+        <% if (setup.done) { %>
+          <circle cx="40" cy="40" r="34" stroke-width="8" stroke-linecap="round" class="fill" pathLength="<%= setup.total %>" stroke-dasharray="<%= setup.done %> <%= setup.total %>" transform="rotate(-90 40 40)"></circle>
+        <% } %>
+      </svg>
+      <span><strong><%= setup.done %></strong><small>of <%= setup.total %></small></span>
+    </div>
+    <div>
+      <h2><%= setup.headline %></h2>
+      <p><%= setup.sub %></p>
+    </div>
+  </div>
+
+  <ol class="dash-setup-steps">
+    <% setup.steps.forEach(function (step) { %>
+      <li class="dash-step is-<%= step.state %>" data-step="<%= step.key %>">
+        <span class="dash-step-mark" aria-hidden="true">
+          <% if (step.state === 'done') { %>
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5L10 17L19 7"></path></svg>
+          <% } else if (step.state === 'locked') { %>
+            <svg viewBox="0 0 24 24" fill="none" width="14" height="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+          <% } %>
+        </span>
+        <div class="dash-step-body">
+          <h3><%= step.title %><% if (step.state === 'done') { %><span class="sr-only"> (done)</span><% } %></h3>
+          <p><%= step.state === 'active' && step.activeNote ? step.activeNote : step.note %></p>
+          <% if (step.state === 'active' && step.copy) { %>
+            <button type="button" class="dash-step-btn" data-copy-link="<%= storeUrl %>">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"></path></svg>
+              <span data-copy-label aria-live="polite">Copy my link</span>
+            </button>
+          <% } else if (step.state === 'active' && step.action) { %>
+            <a class="dash-step-btn" href="<%= step.action.href %>"><%= step.action.label %></a>
+          <% } %>
+        </div>
+      </li>
+    <% }) %>
+  </ol>
+</section>
