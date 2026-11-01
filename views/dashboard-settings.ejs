@@ -1,0 +1,46 @@
+<%# Settings (lib/settings.js → /dashboard/settings): the Instagram connection and deleting the account. The user data protection page and privacy policy send people here, so keep the button names. %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/settings', section: 'Account', heading: 'Settings' }) %>
+
+<section class="ax-panel" id="instagram">
+  <div class="ax-panel-head"><h2>Instagram</h2></div>
+  <% if (!enabled) { %>
+  <p class="ax-empty">Instagram isn’t available yet. It’s still being set up on our side.</p>
+  <% } else if (!account) { %>
+  <div class="ax-row">
+    <div class="ax-main">
+      <span class="ax-title">Not connected</span>
+      <span class="ax-sub ax-block">Connect an Instagram Business or Creator account to use AutoDM.</span>
+    </div>
+    <a class="ax-btn ax-btn-primary" href="/auth/instagram/connect">Connect Instagram</a>
+  </div>
+  <% } else { %>
+  <div class="ax-row">
+    <% if (account.profile_picture_url) { %><img class="st-ig-pic" src="<%= account.profile_picture_url %>" alt="" width="44" height="44" referrerpolicy="no-referrer" /><% } %>
+    <div class="ax-main">
+      <span class="ax-title">@<%= account.username %></span>
+      <span class="ax-sub ax-block"><%= account.needs_reconnect ? 'Connection expired, so automations are paused. Reconnect to resume.' : 'Connected' %></span>
+    </div>
+    <% if (account.needs_reconnect) { %><a class="ax-btn ax-btn-primary" href="/auth/instagram/connect">Reconnect</a><% } %>
+    <form method="POST" action="/auth/instagram/disconnect">
+      <button class="ax-btn ax-btn-danger" data-confirm="Disconnect Instagram and delete your automations and activity?">Disconnect Instagram</button>
+    </form>
+  </div>
+  <% } %>
+</section>
+
+<section class="ax-panel" id="delete-account">
+  <div class="ax-panel-head"><h2>Delete account</h2></div>
+  <form class="ax-pad" method="POST" action="/dashboard/settings/delete-account" style="display:flex;flex-direction:column;gap:14px;max-width:520px">
+    <p style="margin:0">This permanently deletes your store, pages, products, courses, bookings, contacts and uploaded files, and disconnects Instagram. Your customers will lose access to anything they bought from you. This can’t be undone.</p>
+    <p style="margin:0">Order records are kept for tax and accounting reasons. If you’re still owed money from sales, email <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a> before you delete.</p>
+    <label class="ax-field"><span>Type your email to confirm: <%= user.email %></span>
+      <input class="ax-input" type="email" name="confirm_email" required autocomplete="off" /></label>
+    <% if (needsPassword) { %>
+    <label class="ax-field"><span>Password</span>
+      <input class="ax-input" type="password" name="password" required autocomplete="current-password" /></label>
+    <% } %>
+    <div><button class="ax-btn ax-btn-danger" data-confirm="Permanently delete your account and everything in it?">Delete account</button></div>
+  </form>
+</section>
+
+<%- include('partials/app-dash-bottom') %>

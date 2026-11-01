@@ -84,6 +84,7 @@ const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
 const { installBranding } = require('./lib/branding');
+const { installSettings } = require('./lib/settings');
 const { installAutoDm, installAutoDmWebhooks } = require('./lib/autodm');
 
 const app = express();
@@ -442,7 +443,7 @@ app.post('/signup', redirectIfLoggedIn, async (req, res) => {
 app.get('/login', redirectIfLoggedIn, (req, res) => {
   res.render('login', {
     title: `Log in — ${SITE_NAME}`,
-    error: req.query.suspended ? SUSPENDED_MESSAGE : null,
+    error: req.query.suspended ? SUSPENDED_MESSAGE : req.query.deleted ? 'Your account has been deleted.' : null,
     values: { email: '' },
   });
 });
@@ -1405,6 +1406,7 @@ installLivePreview(app, { requireAuth });
 // --- Bookings, Events, Courses (lib/appDashboard.js) ----------------------
 installAppDashboards(app, { requireAuth, siteName: SITE_NAME });
 installAutoDm(app, { requireAuth, siteName: SITE_NAME });
+installSettings(app, { requireAuth, siteName: SITE_NAME });
 
 // Public side: the link a merchant shares lives on their store subdomain
 // (meera.pagezaper.com/free-checklist) — see lib/storefront.js.

@@ -7,7 +7,7 @@
 <section class="ax-panel">
   <div class="ax-empty">
     <p style="margin:0 0 12px">Connect an Instagram Business or Creator account to get started.</p>
-    <a class="ax-btn ax-btn-primary" href="/dashboard/autodm/connect">Connect Instagram</a>
+    <a class="ax-btn ax-btn-primary" href="/auth/instagram/connect?from=autodm">Connect Instagram</a>
   </div>
 </section>
 <% } else { %>
@@ -18,8 +18,9 @@
       <span class="ax-title">@<%= account.username %></span>
       <span class="ax-sub ax-block"><%= account.needs_reconnect ? 'Connection expired, so automations are paused. Reconnect to resume.' : 'Connected' %></span>
     </div>
-    <% if (account.needs_reconnect) { %><a class="ax-btn ax-btn-primary" href="/dashboard/autodm/connect">Reconnect</a><% } %>
-    <form method="POST" action="/dashboard/autodm/disconnect">
+    <% if (account.needs_reconnect) { %><a class="ax-btn ax-btn-primary" href="/auth/instagram/connect?from=autodm">Reconnect</a><% } %>
+    <form method="POST" action="/auth/instagram/disconnect">
+      <input type="hidden" name="from" value="autodm" />
       <button class="ax-btn ax-btn-danger" data-confirm="Disconnect Instagram and delete your automations and activity?">Disconnect Instagram</button>
     </form>
   </div>

@@ -323,3 +323,6 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
 .adm-pill.is-used { background: #e7f6ef; color: #0e8a5f; }
 .adm-pill.is-ready { background: color-mix(in oklab, var(--destructive) 12%, transparent); color: var(--destructive); }
 .adm-del { color: var(--destructive); }
+
+/* Settings: the connected Instagram account. */
+.st-ig-pic { flex: none; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
