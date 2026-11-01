@@ -1,4 +1,4 @@
-/* Legal pages (privacy-policy, terms-of-service, data-deletion). The header and footer come from
+/* Legal pages (privacy-policy, terms-of-service, user-data-protection). The header and footer come from
    explore.css (mk-*); this is the long-form text between them. */
 .lg-main { max-width: 860px; width: calc(100% - 32px); margin: 0 auto; padding: 48px 0 72px; color: #2b3241; font-size: 16px; line-height: 1.7; }
 .lg-main h1 { margin: 0 0 10px; color: var(--mk-ink); font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(38px, 6vw, 56px); font-weight: 400; line-height: 1.05; }

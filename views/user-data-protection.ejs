@@ -10,9 +10,9 @@
 <link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/legal.css?v=<%= assetVersion %>" />
 </head>
-<%# User Data Protection & Deletion (server.js GET /data-deletion). Header and footer from the marketplace (explore.css); the text styles are legal.css. Meta's automatic deletion callback is separate: lib/autodm.js. %>
+<%# User Data Protection & Deletion (server.js GET /user-data-protection). Header and footer from the marketplace (explore.css); the text styles are legal.css. Meta's automatic deletion callback is separate: lib/autodm.js. %>
 <body class="mk-page">
-  <%- include('partials/mk-nav', { active: 'data-deletion' }) %>
+  <%- include('partials/mk-nav', { active: 'user-data-protection' }) %>
 
   <main class="lg-main">
     <h1>User Data Protection &amp; Deletion</h1>
@@ -108,7 +108,7 @@
 
   <footer class="mk-footer">
     <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/data-deletion">Data Deletion</a></nav>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
   </footer>
 </body>
 </html>

@@ -228,11 +228,11 @@ app.get('/about', async (req, res, next) => {
   }
 });
 
-// User Data Protection & Deletion (views/data-deletion.ejs).
-app.get('/data-deletion', async (req, res, next) => {
+// User Data Protection & Deletion (views/user-data-protection.ejs).
+app.get('/user-data-protection', async (req, res, next) => {
   try {
     const seo = await metaFor('deletion', { siteName: SITE_NAME, origin: originOf(req) });
-    res.render('data-deletion', { title: seo.title, seo });
+    res.render('user-data-protection', { title: seo.title, seo });
   } catch (err) {
     next(err);
   }
@@ -330,7 +330,7 @@ app.get('/sitemap.xml', async (req, res, next) => {
   try {
     const origin = originOf(req);
     const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy', '/terms-of-service', '/data-deletion'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
+    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy', '/terms-of-service', '/user-data-protection'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
     (await blog.sitemapPosts()).forEach((p) => {
       urls.push(`<url><loc>${esc(`${origin}/blog/${p.slug}`)}</loc><lastmod>${new Date(p.updated_at).toISOString().slice(0, 10)}</lastmod></url>`);
     });
