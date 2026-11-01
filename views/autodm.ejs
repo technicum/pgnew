@@ -1,0 +1,115 @@
+<%# AutoDM (lib/autodm.js → /dashboard/autodm): connect Instagram, set up comment-to-DM automations, see what was sent. The same page edits one automation at /dashboard/autodm/automations/:id (editing is set). %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/autodm', section: 'AutoDM', heading: 'AutoDM', intro: 'When someone comments a keyword on your Instagram post, they get your message in their DMs automatically.' }) %>
+
+<% if (!enabled) { %>
+<section class="ax-panel"><p class="ax-empty">AutoDM isn’t available yet. It’s still being set up on our side.</p></section>
+<% } else if (!account) { %>
+<section class="ax-panel">
+  <div class="ax-empty">
+    <p style="margin:0 0 12px">Connect an Instagram Business or Creator account to get started.</p>
+    <a class="ax-btn ax-btn-primary" href="/dashboard/autodm/connect">Connect Instagram</a>
+  </div>
+</section>
+<% } else { %>
+
+<section class="ax-panel">
+  <div class="ax-row">
+    <div class="ax-main">
+      <span class="ax-title">@<%= account.username %></span>
+      <span class="ax-sub ax-block"><%= account.needs_reconnect ? 'Connection expired, so automations are paused. Reconnect to resume.' : 'Connected' %></span>
+    </div>
+    <% if (account.needs_reconnect) { %><a class="ax-btn ax-btn-primary" href="/dashboard/autodm/connect">Reconnect</a><% } %>
+    <form method="POST" action="/dashboard/autodm/disconnect">
+      <button class="ax-btn ax-btn-danger" data-confirm="Disconnect Instagram and delete your automations and activity?">Disconnect Instagram</button>
+    </form>
+  </div>
+</section>
+
+<% if (!editing) { %>
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Automations</h2><span class="ax-count"><%= automations.length %></span></div>
+  <% if (!automations.length) { %>
+  <p class="ax-empty">No automations yet. Create your first one below.</p>
+  <% } else { %>
+  <ul class="ax-list">
+    <% automations.forEach(function (a) { var base = '/dashboard/autodm/automations/' + a.id; %>
+    <li class="ax-row<%= a.active ? '' : ' is-off' %>">
+      <div class="ax-main">
+        <a class="ax-title" href="<%= base %>"><%= a.name %></a>
+        <span class="ax-sub ax-block"><%= a.media_id ? (a.media_label || 'One post') : 'Every post' %> · <%= a.keywords ? 'Keywords: ' + a.keywords : 'Every comment' %> · <%= a.sent_count %> sent<%= a.active ? '' : ' · Paused' %></span>
+      </div>
+      <form method="POST" action="<%= base %>/toggle"><input type="hidden" name="active" value="<%= a.active ? '0' : '1' %>" /><button class="ax-btn"><%= a.active ? 'Pause' : 'Resume' %></button></form>
+      <form method="POST" action="<%= base %>/delete"><button class="ax-btn ax-btn-danger" data-confirm="Delete this automation?">Delete</button></form>
+    </li>
+    <% }) %>
+  </ul>
+  <% } %>
+</section>
+<% } %>
+
+<% var a = editing || {}; %>
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2><%= editing ? 'Edit automation' : 'New automation' %></h2></div>
+  <form method="POST" action="<%= editing ? '/dashboard/autodm/automations/' + a.id : '/dashboard/autodm/automations' %>" class="ax-new">
+    <% if (mediaError) { %><p class="ax-hint">We couldn’t load your posts just now, so only “Every post” is available.</p><% } %>
+    <div class="ax-grid">
+      <label class="ax-field"><span>Name</span><input class="ax-input" name="name" value="<%= a.name || '' %>" placeholder="Free guide" required maxlength="120" /></label>
+      <label class="ax-field ax-span-2"><span>Post</span>
+        <select class="ax-input" name="media_id" data-autodm-post>
+          <option value="">Every post</option>
+          <% if (a.media_id && !media.some(function (m) { return m.id === a.media_id; })) { %><option value="<%= a.media_id %>" selected><%= a.media_label || 'Selected post' %></option><% } %>
+          <% media.forEach(function (m) { var label = (m.caption || 'Post without a caption').replace(/\s+/g, ' ').slice(0, 80); %>
+          <option value="<%= m.id %>"<%= a.media_id === m.id ? ' selected' : '' %>><%= label %></option>
+          <% }) %>
+        </select>
+        <input type="hidden" name="media_label" value="<%= a.media_label || '' %>" data-autodm-label />
+      </label>
+      <label class="ax-field ax-span-3"><span>Keywords <small>Separate with commas. Leave empty to reply to every comment.</small></span><input class="ax-input" name="keywords" value="<%= a.keywords || '' %>" placeholder="guide, link, info" maxlength="500" /></label>
+      <label class="ax-field ax-span-3"><span>Message</span><textarea class="ax-input" name="dm_text" rows="4" required maxlength="1000" placeholder="Here’s the guide you asked for!"><%= a.dm_text || '' %></textarea></label>
+      <label class="ax-field ax-span-3"><span>Link <small>Optional. Added at the end of the message.</small></span><input class="ax-input" type="url" name="link_url" value="<%= a.link_url || '' %>" placeholder="https://" maxlength="500" /></label>
+      <label class="ax-field ax-span-3"><span>Public comment reply <small>Optional. Posted under their comment.</small></span><input class="ax-input" name="comment_reply" value="<%= a.comment_reply || '' %>" placeholder="Sent you a DM!" maxlength="300" /></label>
+    </div>
+    <p class="ax-hint">Each person gets this message once. Instagram only allows it within 7 days of their comment.</p>
+    <div class="ax-actions">
+      <button class="ax-btn ax-btn-primary"><%= editing ? 'Save' : 'Create automation' %></button>
+      <% if (editing) { %><a class="ax-btn" href="/dashboard/autodm">Cancel</a><% } %>
+    </div>
+  </form>
+</section>
+
+<% if (!editing) { %>
+<section class="ax-panel">
+  <div class="ax-panel-head"><h2>Recent activity</h2><span class="ax-count">Kept for 90 days</span></div>
+  <% if (!activity.length) { %>
+  <p class="ax-empty">Messages you send will show up here.</p>
+  <% } else { %>
+  <ul class="ax-list">
+    <% activity.forEach(function (l) { %>
+    <li class="ax-row">
+      <div class="ax-main">
+        <span class="ax-title">@<%= l.commenter_name || 'unknown' %></span>
+        <span class="ax-sub ax-block">“<%= l.comment_text %>” · <%= l.automation_name || 'Deleted automation' %> · <%= new Date(l.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata' }) %></span>
+        <% if (l.error) { %><span class="ax-sub ax-block"><%= l.error %></span><% } %>
+      </div>
+      <span class="ax-sub"><%= l.status === 'sent' ? 'Sent' : l.status === 'failed' ? 'Failed' : 'Sending' %></span>
+    </li>
+    <% }) %>
+  </ul>
+  <% } %>
+</section>
+<% } %>
+
+<script>
+  // Keep the chosen post's caption, so the list can name it later.
+  (function () {
+    var select = document.querySelector('[data-autodm-post]');
+    var label = document.querySelector('[data-autodm-label]');
+    if (!select || !label) return;
+    select.addEventListener('change', function () {
+      label.value = select.value ? select.options[select.selectedIndex].text.trim().slice(0, 120) : '';
+    });
+  })();
+</script>
+<% } %>
+
+<%- include('partials/app-dash-bottom') %>

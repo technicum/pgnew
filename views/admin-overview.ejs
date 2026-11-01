@@ -3,46 +3,58 @@
 <% var t = data.totals; var paid = t.marketplace.count + t.direct.count; var sales = t.marketplace.sales + t.direct.sales; var earned = t.marketplace.fees + t.direct.fees;
    var maxDay = Math.max(1, Math.max.apply(null, data.signups.map(function (d) { return d.n; }))); %>
 
+<%
+  // The sign-ups line: points across the box, scaled to the busiest day.
+  var chartW = 640, chartH = 200;
+  var points = data.signups.map(function (d, i) {
+    return { x: Math.round(i / (data.signups.length - 1) * chartW), y: Math.round(chartH - 12 - (d.n / maxDay) * (chartH - 36)), day: d.day, n: d.n };
+  });
+  var line = points.map(function (p) { return p.x + ',' + p.y; }).join(' ');
+  var signupTotal = data.signups.reduce(function (sum, d) { return sum + d.n; }, 0);
+  var dayLabel = function (d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }); };
+  var statIcon = function (paths) { return '<span class="adm-stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + paths + '</svg></span>'; };
+  var firstName = user.name.split(' ')[0];
+  var actions = [
+    { href: '/admin/emails/send', title: 'Send email', sub: 'Reach your creators', icon: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>' },
+    { href: '/admin/blog/new', title: 'New blog post', sub: 'Write and publish', icon: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>' },
+    { href: '/admin/plans', title: 'Manage plans', sub: 'Pricing and limits', icon: '<path d="m12 2 3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z"/>' },
+    { href: '/admin/fees', title: 'Transaction fees', sub: 'Your platform cut', icon: '<line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>' },
+  ];
+%>
+
 <header class="adm-head">
   <div>
-    <h1>Overview</h1>
-    <p>How the platform is doing.</p>
+    <p class="adm-eyebrow">Platform admin</p>
+    <h1>Welcome, <%= firstName %>.</h1>
+    <p>Here’s how the platform is doing.</p>
   </div>
 </header>
 
 <section class="adm-stats">
-  <a class="adm-stat" href="/admin/users"><p>Creators</p><strong><%= data.users %></strong><small>+<%= data.new7 %> this week · +<%= data.new30 %> in 30 days</small></a>
-  <a class="adm-stat" href="/admin/users?status=suspended"><p>Suspended</p><strong><%= data.suspended %></strong><small>accounts offline</small></a>
-  <div class="adm-stat"><p>Paid orders</p><strong><%= paid %></strong><small><%= formatINR(sales) %> in sales</small></div>
-  <a class="adm-stat is-accent" href="/admin/fees"><p>Platform earnings</p><strong><%= formatINR(earned) %></strong><small>from transaction fees</small></a>
+  <a class="adm-stat" href="/admin/users"><p>Creators<%- statIcon('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>') %></p><strong><%= data.users %></strong><small>+<%= data.new7 %> this week · +<%= data.new30 %> in 30 days</small></a>
+  <a class="adm-stat" href="/admin/users?status=suspended"><p>Suspended<%- statIcon('<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>') %></p><strong><%= data.suspended %></strong><small>accounts offline</small></a>
+  <div class="adm-stat"><p>Paid orders<%- statIcon('<path d="M16 10a4 4 0 0 1-8 0"/><path d="M3.1 6h17.8"/><path d="M3.4 5.5a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.7a2 2 0 0 0-.4-1.2l-2-2.7A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"/>') %></p><strong><%= paid %></strong><small><%= formatINR(sales) %> in sales</small></div>
+  <a class="adm-stat is-accent" href="/admin/fees"><p>Platform earnings<%- statIcon('<path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3a5 5 0 0 0 0-10"/>') %></p><strong><%= formatINR(earned) %></strong><small>from transaction fees</small></a>
 </section>
 
-<div class="adm-cols">
+<div class="adm-grid-main">
   <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Sign-ups</h2><span class="ax-count">Last 14 days</span></div>
-    <div class="adm-bars" role="img" aria-label="Sign-ups per day for the last 14 days">
-      <% data.signups.forEach(function (d) { %>
-        <span class="adm-bar" style="--h: <%= Math.round((d.n / maxDay) * 100) %>%;" title="<%= d.day %>: <%= d.n %>"><i></i><small><%= Number(d.day.slice(8)) %></small></span>
-      <% }) %>
+    <div class="ax-panel-head"><div><h2>Sign-ups</h2><p class="adm-panel-sub">New creators joining the platform</p></div><span class="ax-count">Last 14 days</span></div>
+    <div class="adm-chart">
+      <p class="adm-chart-total"><%= signupTotal %> <span>sign-ups</span></p>
+      <svg viewBox="0 0 <%= chartW %> <%= chartH %>" preserveAspectRatio="none" role="img" aria-label="<%= signupTotal %> sign-ups in the last 14 days">
+        <defs><linearGradient id="admArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0071e3" stop-opacity=".18"/><stop offset="100%" stop-color="#0071e3" stop-opacity="0"/></linearGradient></defs>
+        <% [24, 80, 136].forEach(function (y) { %><line class="adm-chart-grid" x1="0" x2="<%= chartW %>" y1="<%= y %>" y2="<%= y %>" vector-effect="non-scaling-stroke"></line><% }) %>
+        <polygon points="0,<%= chartH %> <%= line %> <%= chartW %>,<%= chartH %>" fill="url(#admArea)"></polygon>
+        <polyline class="adm-chart-line" points="<%= line %>" vector-effect="non-scaling-stroke"></polyline>
+        <% points.forEach(function (p, i) { %><rect class="adm-chart-hit" x="<%= p.x - Math.round(chartW / 26) %>" y="0" width="<%= Math.round(chartW / 13) %>" height="<%= chartH %>"><title><%= dayLabel(p.day) %>: <%= p.n %> sign-up<%= p.n === 1 ? '' : 's' %></title></rect><% }) %>
+      </svg>
+      <div class="adm-chart-labels"><span><%= dayLabel(data.signups[0].day) %></span><span><%= dayLabel(data.signups[7].day) %></span><span><%= dayLabel(data.signups[13].day) %></span></div>
     </div>
   </section>
 
   <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Plans</h2><a class="ax-count" href="/admin/plans">Manage →</a></div>
-    <ul class="adm-list">
-      <% data.plans.forEach(function (p) { %>
-        <li>
-          <a href="/admin/users?plan=<%= p.id %>"><b><%= p.name %></b><% if (p.is_default) { %> <span class="adm-pill">Default</span><% } %></a>
-          <span><%= p.users %> creator<%= p.users === 1 ? '' : 's' %></span>
-        </li>
-      <% }) %>
-    </ul>
-  </section>
-</div>
-
-<div class="adm-cols">
-  <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Newest creators</h2><a class="ax-count" href="/admin/users">All users →</a></div>
+    <div class="ax-panel-head"><div><h2>Newest creators</h2><p class="adm-panel-sub">The latest sign-ups</p></div><a class="ax-count" href="/admin/users">View all</a></div>
     <ul class="adm-list">
       <% data.recent.forEach(function (u) { %>
         <li>
@@ -52,9 +64,23 @@
       <% }) %>
     </ul>
   </section>
+</div>
+
+<div class="adm-grid-two">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><div><h2>Quick actions</h2><p class="adm-panel-sub">Jump straight to it</p></div></div>
+    <div class="adm-actions">
+      <% actions.forEach(function (a) { %>
+        <a class="adm-action" href="<%= a.href %>">
+          <span class="adm-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" width="17" height="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><%- a.icon %></svg></span>
+          <strong><%= a.title %></strong><small><%= a.sub %></small>
+        </a>
+      <% }) %>
+    </div>
+  </section>
 
   <section class="ax-panel">
-    <div class="ax-panel-head"><h2>Top sellers</h2><span class="ax-count">Payment pages, paid orders</span></div>
+    <div class="ax-panel-head"><div><h2>Top sellers</h2><p class="adm-panel-sub">Payment pages, paid orders</p></div></div>
     <% if (data.topSellers.length) { %>
       <ul class="adm-list">
         <% data.topSellers.forEach(function (s) { %>
@@ -69,5 +95,17 @@
     <% } %>
   </section>
 </div>
+
+<section class="ax-panel">
+  <div class="ax-panel-head"><div><h2>Plans</h2><p class="adm-panel-sub">Creators on each plan</p></div><a class="ax-count" href="/admin/plans">Manage</a></div>
+  <ul class="adm-list">
+    <% data.plans.forEach(function (p) { %>
+      <li>
+        <a href="/admin/users?plan=<%= p.id %>"><b><%= p.name %></b><% if (p.is_default) { %> <span class="adm-pill">Default</span><% } %></a>
+        <span><%= p.users %> creator<%= p.users === 1 ? '' : 's' %></span>
+      </li>
+    <% }) %>
+  </ul>
+</section>
 
 <%- include('partials/admin-bottom') %>

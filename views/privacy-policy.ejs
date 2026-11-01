@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<%- include('partials/seo-meta') %>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/legal.css?v=<%= assetVersion %>" />
+</head>
+<%# Privacy Policy (server.js GET /privacy-policy). Linked from Meta and Google app settings, so keep the URL and the #data-deletion anchor stable. Header and footer from the marketplace (explore.css); the text styles are legal.css. %>
+<body class="mk-page">
+  <%- include('partials/mk-nav', { active: 'privacy' }) %>
+
+  <main class="lg-main">
+    <h1>Privacy Policy</h1>
+    <div class="lg-meta">Effective date: 1 November 2026 &nbsp;·&nbsp; Last updated: 1 November 2026</div>
+
+    <p>This Privacy Policy explains how PageZaper (“<strong>PageZaper</strong>”, “<strong>we</strong>”, “<strong>us</strong>” or “<strong>our</strong>”) collects, uses, shares and protects personal information when you use our website at <a href="https://pagezaper.com/">pagezaper.com</a>, creator pages hosted on <em>*.pagezaper.com</em> or connected custom domains, and our related services (together, the “<strong>Services</strong>”).</p>
+    <p>PageZaper helps creators, coaches, educators and local businesses (“<strong>Creators</strong>”) sell digital products, courses, memberships, bookings and event tickets, capture leads, and automate replies on Instagram (“<strong>AutoDM</strong>”). By using the Services, you agree to the practices described in this policy.</p>
+
+    <nav class="lg-toc" aria-label="Contents">
+      <strong>Contents</strong>
+      <ol>
+        <li><a href="#who">Who this policy applies to</a></li>
+        <li><a href="#collect">Information we collect</a></li>
+        <li><a href="#instagram">Instagram &amp; Meta platform data</a></li>
+        <li><a href="#google">Google data</a></li>
+        <li><a href="#use">How we use information</a></li>
+        <li><a href="#share">How we share information</a></li>
+        <li><a href="#retention">Data retention</a></li>
+        <li><a href="#data-deletion">Data deletion instructions</a></li>
+        <li><a href="#rights">Your rights</a></li>
+        <li><a href="#security">Security</a></li>
+        <li><a href="#cookies">Cookies</a></li>
+        <li><a href="#children">Children</a></li>
+        <li><a href="#transfers">Where data is stored</a></li>
+        <li><a href="#changes">Changes to this policy</a></li>
+        <li><a href="#contact">Contact &amp; grievance officer</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="who">1. Who this policy applies to</h2>
+    <ul>
+      <li><strong>Creators</strong> who sign up for a PageZaper account and build pages, sell offerings or connect social accounts.</li>
+      <li><strong>Visitors and customers</strong> who view a Creator’s page, buy from a Creator, book a session, join a membership, submit a form or interact with a Creator on Instagram.</li>
+    </ul>
+    <p>When a Creator collects information from their own customers through PageZaper (for example, buyer details, booking answers or leads), the Creator decides how that information is used, and we process it on the Creator’s behalf. Customers should also read the Creator’s own privacy terms. Questions about a specific Creator’s use of your data should be directed to that Creator; we will help where we can.</p>
+
+    <h2 id="collect">2. Information we collect</h2>
+    <h3>Information you give us</h3>
+    <ul>
+      <li><strong>Account information:</strong> name, email address, phone number, password (stored only in hashed form), username/handle and profile details.</li>
+      <li><strong>Page and offering content:</strong> text, images, videos, files, prices, availability and other content you upload.</li>
+      <li><strong>Customer and lead information:</strong> name, email, phone number and answers submitted through checkout pages, booking forms, lead magnets and other forms.</li>
+      <li><strong>Payment and payout information:</strong> order details and, for Creators, information needed for payouts and identity verification (KYC) where required by law or our payment partners. Card and bank details are processed by our payment partners. PageZaper does not store full card numbers.</li>
+      <li><strong>Communications:</strong> messages you send to us, such as support requests.</li>
+    </ul>
+    <h3>Information collected automatically</h3>
+    <ul>
+      <li><strong>Usage and device data:</strong> IP address, browser type, device information, pages viewed, referring URLs and actions taken, used for analytics, security and to show Creators page views and sales in their dashboard.</li>
+      <li><strong>Cookies and similar technologies:</strong> see <a href="#cookies">Cookies</a>.</li>
+    </ul>
+    <h3>Information from third parties</h3>
+    <ul>
+      <li>Data from <strong>Instagram / Meta</strong> when a Creator connects their account (see <a href="#instagram">section 3</a>).</li>
+      <li>Data from <strong>Google</strong> when you choose to sign in with Google (see <a href="#google">section 4</a>).</li>
+      <li>Payment status and transaction information from our payment partners.</li>
+    </ul>
+
+    <h2 id="instagram">3. Instagram &amp; Meta platform data</h2>
+    <p>Creators can connect an Instagram Professional (Business or Creator) account to PageZaper using Meta’s official login and APIs. We only access data the Creator explicitly authorises, and only to provide the features they turn on.</p>
+
+    <div class="lg-table">
+      <table>
+        <tr><th>Data we access</th><th>Why we use it</th></tr>
+        <tr><td>Instagram account ID, username, name and profile picture</td><td>To identify the connected account and show it in your PageZaper dashboard.</td></tr>
+        <tr><td>Your posts, reels and their captions/IDs</td><td>So you can choose which posts an AutoDM automation applies to.</td></tr>
+        <tr><td>Comments on your posts (comment text, commenter’s Instagram-scoped ID and username)</td><td>To detect the keywords you set, trigger the automated reply you configured, and show automation results in your dashboard.</td></tr>
+        <tr><td>Direct messages sent by your automations</td><td>To send the automated DM you configured (for example, a link to your product). We do not read your Instagram inbox.</td></tr>
+        <tr><td>Access tokens issued by Meta</td><td>To make API calls on your behalf. Tokens are stored encrypted and never shown publicly.</td></tr>
+      </table>
+    </div>
+
+    <div class="lg-callout">
+      <strong>What we do not do with Instagram data:</strong>
+      <ul>
+        <li>We do <strong>not</strong> sell, rent or license Instagram or other Meta platform data to anyone.</li>
+        <li>We do <strong>not</strong> use it for advertising, profiling or building data sets about people outside the connected Creator’s own account.</li>
+        <li>We do <strong>not</strong> send messages to anyone except in response to an interaction (such as a comment or DM) with the Creator’s account, and only as configured by the Creator, within the limits set by Meta.</li>
+        <li>We do <strong>not</strong> post content to your account without your action or instruction.</li>
+      </ul>
+    </div>
+
+    <p>Our use of data received from Meta complies with the <a href="https://developers.facebook.com/terms/" target="_blank" rel="noopener">Meta Platform Terms</a> and <a href="https://developers.facebook.com/devpolicy/" target="_blank" rel="noopener">Developer Policies</a>. People who interact with a Creator on Instagram are also covered by <a href="https://privacycenter.instagram.com/policy" target="_blank" rel="noopener">Instagram’s Privacy Policy</a>.</p>
+    <p><strong>Disconnecting:</strong> you can disconnect Instagram at any time from the AutoDM page in your PageZaper dashboard, or remove PageZaper from Instagram under <em>Settings → Security → Apps and websites</em> (or in Meta Accounts Center). When you disconnect, we stop accessing your account and delete your access tokens and stored Instagram data as described in <a href="#data-deletion">section 8</a>.</p>
+
+    <h2 id="google">4. Google data</h2>
+    <p>If you choose “Continue with Google”, we receive your name, email address and Google account ID, and use them only to create your account and sign you in. PageZaper’s use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including its Limited Use requirements. We do not use Google data for advertising and do not transfer it to others except as needed to provide sign-in, comply with law or protect security.</p>
+    <p>You can export your contacts as a CSV file to open in a spreadsheet app. This is a download to your device and does not give us access to your Google account.</p>
+
+    <h2 id="use">5. How we use information</h2>
+    <ul>
+      <li>To create and manage accounts and to provide, run and improve the Services.</li>
+      <li>To host Creator pages and process orders, bookings, memberships, course access and payouts.</li>
+      <li>To run automations Creators configure, such as AutoDM replies and lead capture.</li>
+      <li>To send transactional messages (receipts, booking confirmations, account and security notices).</li>
+      <li>To send product updates or marketing emails, which you can unsubscribe from at any time.</li>
+      <li>To provide customer support and respond to requests.</li>
+      <li>To detect, prevent and investigate fraud, abuse, spam and security incidents.</li>
+      <li>To comply with legal obligations, including tax, accounting and KYC requirements.</li>
+    </ul>
+
+    <h2 id="share">6. How we share information</h2>
+    <p>We do not sell personal information. We share it only in these cases:</p>
+    <ul>
+      <li><strong>With Creators:</strong> when you buy from, book with or submit a form to a Creator, that Creator receives the details needed to fulfil your order or respond to you.</li>
+      <li><strong>With service providers</strong> who help us run the Services under confidentiality obligations, such as hosting and server providers, DNS/CDN providers, payment gateways, email and messaging providers, and analytics tools. They may use the data only to provide services to us.</li>
+      <li><strong>With Meta</strong> to the extent needed to perform the actions you request through its APIs (for example, sending a DM through the Instagram API).</li>
+      <li><strong>For legal reasons:</strong> if required by law, court order or government request, or to protect the rights, safety and property of PageZaper, our users or others.</li>
+      <li><strong>Business transfers:</strong> if PageZaper is involved in a merger, acquisition or sale of assets, information may be transferred as part of that transaction, subject to this policy.</li>
+    </ul>
+
+    <h2 id="retention">7. Data retention</h2>
+    <ul>
+      <li>We keep account information for as long as your account is active.</li>
+      <li>Instagram data (tokens, comments, messages and automation logs) is kept only while your account is connected and is needed to provide the feature. Automation logs are kept for up to 90 days.</li>
+      <li>Order and payment records may be kept for longer where required for tax, accounting or legal purposes (generally up to 8 years under Indian law).</li>
+      <li>After you delete your account, we delete or anonymise your personal information within 30 days, except where we must keep it for legal reasons.</li>
+    </ul>
+
+    <h2 id="data-deletion">8. Data deletion instructions</h2>
+    <p>You can ask us to delete your data at any time. Choose any of these options:</p>
+    <h3>Option A: Remove the PageZaper connection from Instagram / Facebook</h3>
+    <ol>
+      <li>On Instagram, go to <strong>Settings → Security → Apps and websites</strong> (or open <strong>Meta Accounts Center</strong>).</li>
+      <li>Find <strong>PageZaper</strong> under <em>Active</em> and select <strong>Remove</strong>.</li>
+      <li>Meta notifies us. We stop accessing your account and delete your stored Instagram data and access tokens within 30 days.</li>
+    </ol>
+    <h3>Option B: Delete from your PageZaper dashboard</h3>
+    <ol>
+      <li>Log in to PageZaper and open <strong>AutoDM</strong>.</li>
+      <li>Select <strong>Disconnect Instagram</strong>. Your access token, automations and activity are deleted straight away.</li>
+      <li>To delete your entire PageZaper account and associated data, use Option C.</li>
+    </ol>
+    <h3>Option C: Email us</h3>
+    <p>Send a request to <a href="mailto:hello@pagezaper.com?subject=Data%20deletion%20request">hello@pagezaper.com</a> with the subject “Data deletion request”, including your PageZaper account email and/or Instagram username. If you interacted with a Creator on Instagram (for example, by commenting on their post) and want that interaction data removed from PageZaper, include your Instagram username. We will verify the request and confirm deletion within 30 days.</p>
+
+    <h2 id="rights">9. Your rights</h2>
+    <p>Subject to applicable law, including India’s Digital Personal Data Protection Act, 2023, you can:</p>
+    <ul>
+      <li>Access a summary of the personal data we hold about you.</li>
+      <li>Correct or update inaccurate or incomplete information.</li>
+      <li>Request deletion of your personal data (see <a href="#data-deletion">section 8</a>).</li>
+      <li>Withdraw consent, including disconnecting Instagram or unsubscribing from marketing emails. Withdrawal does not affect processing that happened before it.</li>
+      <li>Nominate another person to exercise your rights in the event of death or incapacity.</li>
+      <li>Raise a grievance with us, and, if unresolved, with the Data Protection Board of India.</li>
+    </ul>
+    <p>To exercise these rights, contact us using the details in <a href="#contact">section 15</a>.</p>
+
+    <h2 id="security">10. Security</h2>
+    <p>We use reasonable technical and organisational measures to protect personal information, including HTTPS encryption in transit, hashed passwords, encrypted storage of third-party access tokens, access controls and regular backups. No method of transmission or storage is completely secure, so we cannot guarantee absolute security. If a data breach affects your personal information, we will notify you and the authorities as required by law.</p>
+
+    <h2 id="cookies">11. Cookies</h2>
+    <p>We use essential cookies to keep you signed in, secure your session and remember preferences. We may also use analytics cookies to understand how the Services are used. You can block or delete cookies in your browser settings, but parts of the Services, such as signing in, may not work without them.</p>
+
+    <h2 id="children">12. Children</h2>
+    <p>The Services are not intended for anyone under 18. We do not knowingly collect personal data from children without verifiable parental consent. If you believe a child has given us personal data, contact us and we will delete it.</p>
+
+    <h2 id="transfers">13. Where data is stored</h2>
+    <p>Your information is stored on servers operated by our hosting providers and may be processed in India or other countries where our service providers (including Meta and Google) operate. Where data is transferred outside India, we take steps to make sure it remains protected in line with this policy and applicable law.</p>
+
+    <h2 id="changes">14. Changes to this policy</h2>
+    <p>We may update this policy from time to time. We will change the “Last updated” date above, and if the changes are significant, we will notify you by email or through the Services. Continued use of the Services after an update means you accept the revised policy.</p>
+
+    <h2 id="contact">15. Contact &amp; grievance officer</h2>
+    <p>If you have questions, requests or complaints about this policy or your personal data, contact:</p>
+    <p>
+      <strong>PageZaper</strong><br>
+      Grievance Officer: Abhishek Bhardwaj<br>
+      Email: <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a><br>
+      Address: 58/3 City Court, Zirakpur, Punjab, India
+    </p>
+    <p>We aim to acknowledge requests within 48 hours and resolve them within 30 days.</p>
+  </main>
+
+  <footer class="mk-footer">
+    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a></nav>
+  </footer>
+</body>
+</html>

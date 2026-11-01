@@ -1,0 +1,30 @@
+/* Legal pages (views/privacy-policy.ejs). The header and footer come from
+   explore.css (mk-*); this is the long-form text between them. */
+.lg-main { max-width: 860px; width: calc(100% - 32px); margin: 0 auto; padding: 48px 0 72px; color: #2b3241; font-size: 16px; line-height: 1.7; }
+.lg-main h1 { margin: 0 0 10px; color: var(--mk-ink); font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(38px, 6vw, 56px); font-weight: 400; line-height: 1.05; }
+.lg-main h2 { margin: 44px 0 12px; color: var(--mk-ink); font-size: 22px; line-height: 1.3; scroll-margin-top: 90px; }
+.lg-main h3 { margin: 24px 0 8px; color: var(--mk-ink); font-size: 17px; }
+.lg-main ul, .lg-main ol { padding-left: 22px; }
+.lg-main li { margin-bottom: 6px; }
+.lg-main a { color: var(--mk-blue); }
+.lg-meta { margin-bottom: 32px; color: var(--mk-muted); font-size: 14px; }
+
+.lg-toc { margin-bottom: 40px; padding: 20px 24px; border: 1px solid var(--mk-line); border-radius: 16px; background: #fff; }
+.lg-toc strong { display: block; margin-bottom: 8px; color: var(--mk-ink); }
+.lg-main .lg-toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 32px; font-size: 15px; }
+.lg-toc a { text-decoration: none; }
+.lg-toc a:hover { text-decoration: underline; }
+
+.lg-callout { margin: 20px 0; padding: 16px 20px; border-left: 4px solid var(--mk-blue); border-radius: 8px; background: #e8f0ff; }
+.lg-callout ul { margin: 8px 0 0; }
+
+.lg-table { overflow-x: auto; margin: 16px 0; }
+.lg-table table { width: 100%; border-collapse: collapse; background: #fff; font-size: 15px; }
+.lg-table th, .lg-table td { padding: 10px 12px; border: 1px solid var(--mk-line); text-align: left; vertical-align: top; }
+.lg-table th { background: #f2f4f8; color: var(--mk-ink); }
+
+@media (max-width: 640px) {
+  .lg-main { padding-top: 32px; }
+  .lg-main .lg-toc ol { columns: 1; }
+  .lg-table table { font-size: 14px; }
+}

@@ -83,6 +83,7 @@ const appIdeas = require('./lib/appIdeas');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
+const { installAutoDm, installAutoDmWebhooks } = require('./lib/autodm');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -106,6 +107,8 @@ app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.post('/webhooks/cashfree', (req, res, next) => handleCashfreeWebhook(req, res).catch(next));
 // Razorpay payment events (lib/razorpay.js; keys and webhook secrets set at /admin/payments).
 app.post('/webhooks/razorpay', (req, res, next) => handleRazorpayWebhook(req, res).catch(next));
+// Instagram comments and Meta's removal callbacks (lib/autodm.js) — signed, no session needed.
+installAutoDmWebhooks(app);
 
 app.use(session({
   // Falls back to a fixed dev secret so `node server.js` works with no
@@ -221,6 +224,16 @@ app.get('/about', async (req, res, next) => {
   }
 });
 
+// Privacy Policy (views/privacy-policy.ejs).
+app.get('/privacy-policy', async (req, res, next) => {
+  try {
+    const seo = await metaFor('privacy', { siteName: SITE_NAME, origin: originOf(req) });
+    res.render('privacy-policy', { title: seo.title, seo });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // The marketplace (lib/marketplace.js): everything creators chose to list.
 app.get('/explore', async (req, res, next) => {
   try {
@@ -293,7 +306,7 @@ app.get('/sitemap.xml', async (req, res, next) => {
   try {
     const origin = originOf(req);
     const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const urls = ['/', '/explore', '/about', '/blog'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
+    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
     (await blog.sitemapPosts()).forEach((p) => {
       urls.push(`<url><loc>${esc(`${origin}/blog/${p.slug}`)}</loc><lastmod>${new Date(p.updated_at).toISOString().slice(0, 10)}</lastmod></url>`);
     });
@@ -1367,6 +1380,7 @@ installLivePreview(app, { requireAuth });
 
 // --- Bookings, Events, Courses (lib/appDashboard.js) ----------------------
 installAppDashboards(app, { requireAuth, siteName: SITE_NAME });
+installAutoDm(app, { requireAuth, siteName: SITE_NAME });
 
 // Public side: the link a merchant shares lives on their store subdomain
 // (meera.pagezaper.com/free-checklist) — see lib/storefront.js.

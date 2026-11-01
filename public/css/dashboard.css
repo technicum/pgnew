@@ -559,7 +559,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
 
 /* Dashboard look: every page with the sidebar, and the store builder. Admin and
    the studio share this file, so the theme hangs off those wrappers, not :root. */
-.min-h-screen:has(> .dash-side), body:has(> .pz-shell) {
+.min-h-screen:has(> .dash-side), body:has(> .pz-shell), .adm-body {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
   --font-display: var(--font-sans);
   --background: #f5f5f7; --foreground: #1d1d1f; --card: #ffffff; --card-foreground: #1d1d1f;

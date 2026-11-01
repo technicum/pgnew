@@ -170,7 +170,7 @@
   display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; max-width: 1220px; margin: 0 auto;
   padding: 20px 20px 34px; font-size: 13px; color: var(--mk-muted);
 }
-.mk-footer nav { display: flex; gap: 18px; }
+.mk-footer nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 .mk-footer a { color: var(--mk-soft); text-decoration: none; font-weight: 600; }
 
 @media (max-width: 700px) {
