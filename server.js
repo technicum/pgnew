@@ -228,6 +228,16 @@ app.get('/about', async (req, res, next) => {
   }
 });
 
+// User Data Protection & Deletion (views/data-deletion.ejs).
+app.get('/data-deletion', async (req, res, next) => {
+  try {
+    const seo = await metaFor('deletion', { siteName: SITE_NAME, origin: originOf(req) });
+    res.render('data-deletion', { title: seo.title, seo });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Terms of Service (views/terms-of-service.ejs).
 app.get('/terms-of-service', async (req, res, next) => {
   try {
@@ -320,7 +330,7 @@ app.get('/sitemap.xml', async (req, res, next) => {
   try {
     const origin = originOf(req);
     const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy', '/terms-of-service'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
+    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy', '/terms-of-service', '/data-deletion'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
     (await blog.sitemapPosts()).forEach((p) => {
       urls.push(`<url><loc>${esc(`${origin}/blog/${p.slug}`)}</loc><lastmod>${new Date(p.updated_at).toISOString().slice(0, 10)}</lastmod></url>`);
     });

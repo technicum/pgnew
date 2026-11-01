@@ -1,4 +1,4 @@
-/* Legal pages (views/privacy-policy.ejs). The header and footer come from
+/* Legal pages (privacy-policy, terms-of-service, data-deletion). The header and footer come from
    explore.css (mk-*); this is the long-form text between them. */
 .lg-main { max-width: 860px; width: calc(100% - 32px); margin: 0 auto; padding: 48px 0 72px; color: #2b3241; font-size: 16px; line-height: 1.7; }
 .lg-main h1 { margin: 0 0 10px; color: var(--mk-ink); font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(38px, 6vw, 56px); font-weight: 400; line-height: 1.05; }
@@ -22,6 +22,19 @@
 .lg-table table { width: 100%; border-collapse: collapse; background: #fff; font-size: 15px; }
 .lg-table th, .lg-table td { padding: 10px 12px; border: 1px solid var(--mk-line); text-align: left; vertical-align: top; }
 .lg-table th { background: #f2f4f8; color: var(--mk-ink); }
+
+.lg-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
+.lg-card { padding: 20px; border: 1px solid var(--mk-line); border-radius: 12px; background: #fff; }
+.lg-card h3 { margin: 0 0 8px; }
+.lg-main .lg-card ol { margin: 0; padding-left: 18px; font-size: 15px; }
+.lg-card-note { margin: 10px 0 0; font-size: 14px; }
+.lg-tag { display: inline-block; margin-bottom: 10px; padding: 2px 10px; border-radius: 20px; background: #e8f0ff; color: var(--mk-blue); font-size: 12px; font-weight: 700; }
+.lg-main .lg-btn { display: inline-block; margin: 8px 0; padding: 12px 22px; border-radius: 10px; background: var(--mk-blue); color: #fff; font-weight: 600; text-decoration: none; }
+.lg-main .lg-btn:hover { opacity: .92; }
+
+@media (max-width: 760px) {
+  .lg-cards { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 640px) {
   .lg-main { padding-top: 32px; }

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<%- include('partials/seo-meta') %>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/legal.css?v=<%= assetVersion %>" />
+</head>
+<%# User Data Protection & Deletion (server.js GET /data-deletion). Header and footer from the marketplace (explore.css); the text styles are legal.css. Meta's automatic deletion callback is separate: lib/autodm.js. %>
+<body class="mk-page">
+  <%- include('partials/mk-nav', { active: 'data-deletion' }) %>
+
+  <main class="lg-main">
+    <h1>User Data Protection &amp; Deletion</h1>
+    <div class="lg-meta">Last updated: 1 November 2026</div>
+
+    <p>This page explains how PageZaper protects your data and how you can delete it, including data we receive when you connect Instagram or log in with Facebook. For full details on what we collect and why, read our <a href="/privacy-policy">Privacy Policy</a>.</p>
+
+    <div class="lg-callout">
+      <strong>In short:</strong> you can delete your data at any time. We never sell your data. When you ask us to delete it, we remove your account data, Instagram data and access tokens, and confirm by email within 30 days.
+    </div>
+
+    <h2 id="how-to-delete">How to delete your data</h2>
+    <p>Choose whichever option suits you. Each one works on its own.</p>
+
+    <div class="lg-cards">
+      <div class="lg-card">
+        <span class="lg-tag">Option 1</span>
+        <h3>From Instagram or Facebook</h3>
+        <ol>
+          <li>On Instagram, go to <strong>Settings → Security → Apps and websites</strong>. On Facebook, go to <strong>Settings &amp; privacy → Settings → Apps and websites</strong>.</li>
+          <li>Find <strong>PageZaper</strong> under <em>Active</em>.</li>
+          <li>Select <strong>Remove</strong>.</li>
+        </ol>
+        <p class="lg-card-note">We stop accessing your account straight away and delete your Instagram data within 30 days.</p>
+      </div>
+      <div class="lg-card">
+        <span class="lg-tag">Option 2</span>
+        <h3>From your PageZaper dashboard</h3>
+        <ol>
+          <li>Log in at <a href="https://pagezaper.com/">pagezaper.com</a>.</li>
+          <li>Open <strong>Settings</strong>.</li>
+          <li>Select <strong>Disconnect Instagram</strong> to remove only Instagram data, or <strong>Delete account</strong> to remove everything.</li>
+        </ol>
+        <p class="lg-card-note">Disconnection takes effect immediately. Remaining copies are fully removed within 30 days.</p>
+      </div>
+      <div class="lg-card">
+        <span class="lg-tag">Option 3</span>
+        <h3>Email us</h3>
+        <ol>
+          <li>Email <a href="mailto:hello@pagezaper.com?subject=Data%20deletion%20request">hello@pagezaper.com</a> with the subject <strong>“Data deletion request”</strong>.</li>
+          <li>Include your PageZaper account email and/or your Instagram username.</li>
+          <li>We verify the request and confirm by email when deletion is complete.</li>
+        </ol>
+        <p class="lg-card-note">Use this option if you can’t log in, or if you’re not a PageZaper user.</p>
+      </div>
+    </div>
+
+    <a class="lg-btn" href="mailto:hello@pagezaper.com?subject=Data%20deletion%20request&amp;body=Please%20delete%20my%20data%20from%20PageZaper.%0A%0APageZaper%20account%20email%3A%20%0AInstagram%20username%3A%20%0A%0AScope%3A%20(Delete%20everything%20%2F%20Instagram%20data%20only)">Request data deletion by email</a>
+
+    <h2 id="not-a-user">Commented on or messaged a creator who uses PageZaper?</h2>
+    <p>If you commented on a post or sent a message to a creator who uses PageZaper’s AutoDM, we may store your Instagram username, Instagram-scoped ID and the comment or message that triggered the automated reply. You don’t need a PageZaper account to have this removed. Email <a href="mailto:hello@pagezaper.com?subject=Data%20deletion%20request">hello@pagezaper.com</a> with your Instagram username and we will delete that data from PageZaper within 30 days. Removing comments or messages from Instagram itself is controlled by Instagram, not by us.</p>
+
+    <h2 id="what-gets-deleted">What gets deleted</h2>
+    <div class="lg-table">
+      <table>
+        <tr><th>Data</th><th>What happens</th></tr>
+        <tr><td>Instagram access tokens</td><td>Deleted immediately when you disconnect or remove PageZaper.</td></tr>
+        <tr><td>Instagram profile data (account ID, username, profile picture)</td><td>Deleted within 30 days.</td></tr>
+        <tr><td>Comments, messages and AutoDM logs</td><td>Deleted within 30 days.</td></tr>
+        <tr><td>Account details (name, email, phone, password hash)</td><td>Deleted within 30 days of account deletion.</td></tr>
+        <tr><td>Pages, products and uploaded files</td><td>Taken offline immediately and deleted within 30 days of account deletion.</td></tr>
+        <tr><td>Leads and contacts stored in your CRM</td><td>Deleted within 30 days of account deletion.</td></tr>
+        <tr><td>Backups</td><td>Overwritten on our normal backup cycle, within 30 days.</td></tr>
+      </table>
+    </div>
+
+    <h3>What we may keep</h3>
+    <p>We keep a limited set of records only where the law requires it. For example, order, invoice and payment records may be kept for up to 8 years for tax and accounting purposes under Indian law. These records are not used for any other purpose and are deleted when the retention period ends.</p>
+
+    <h2 id="protection">How we protect your data</h2>
+    <ul>
+      <li><strong>Encryption in transit:</strong> all traffic to PageZaper uses HTTPS.</li>
+      <li><strong>Encrypted tokens:</strong> Instagram and other third-party access tokens are stored encrypted and are never shown publicly.</li>
+      <li><strong>Hashed passwords:</strong> passwords are stored only as secure hashes, never in plain text.</li>
+      <li><strong>Least access:</strong> we request only the Instagram permissions needed for the features you turn on, and use them only for those features.</li>
+      <li><strong>Access controls:</strong> only authorised systems and people can access user data, and only when needed to run or support the service.</li>
+      <li><strong>No selling:</strong> we never sell, rent or share your Instagram or personal data for advertising.</li>
+      <li><strong>Breach notification:</strong> if a security incident affects your data, we will notify you and the relevant authorities as required by law.</li>
+    </ul>
+
+    <h2 id="rights">Your other rights</h2>
+    <p>Besides deletion, you can ask to access a copy of your data, correct inaccurate data, or withdraw consent at any time, under India’s Digital Personal Data Protection Act, 2023. Email <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a> and we will respond within 30 days.</p>
+
+    <h2 id="contact">Contact &amp; grievance officer</h2>
+    <p>
+      <strong>PageZaper</strong><br>
+      Grievance Officer: Abhishek Bhardwaj<br>
+      Email: <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a><br>
+      Address: 58/3 City Court, Zirakpur, Punjab, India
+    </p>
+    <p>We aim to acknowledge requests within 48 hours and complete them within 30 days.</p>
+  </main>
+
+  <footer class="mk-footer">
+    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/data-deletion">Data Deletion</a></nav>
+  </footer>
+</body>
+</html>
