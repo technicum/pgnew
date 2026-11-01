@@ -170,4 +170,10 @@
   .foot-copy { font-size: 13px; color: var(--muted); }
 
 /* Logo set at Platform admin → Branding. */
-.brand-logo { display: block; height: 34px; width: auto; max-width: 180px; object-fit: contain; }
+.brand-logo {
+    display: block;
+    height: 79px;
+    width: auto;
+    max-width: 222px;
+    object-fit: contain;
+}
