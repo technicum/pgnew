@@ -228,6 +228,16 @@ app.get('/about', async (req, res, next) => {
   }
 });
 
+// Terms of Service (views/terms-of-service.ejs).
+app.get('/terms-of-service', async (req, res, next) => {
+  try {
+    const seo = await metaFor('terms', { siteName: SITE_NAME, origin: originOf(req) });
+    res.render('terms-of-service', { title: seo.title, seo });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Privacy Policy (views/privacy-policy.ejs).
 app.get('/privacy-policy', async (req, res, next) => {
   try {
@@ -310,7 +320,7 @@ app.get('/sitemap.xml', async (req, res, next) => {
   try {
     const origin = originOf(req);
     const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
+    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy', '/terms-of-service'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
     (await blog.sitemapPosts()).forEach((p) => {
       urls.push(`<url><loc>${esc(`${origin}/blog/${p.slug}`)}</loc><lastmod>${new Date(p.updated_at).toISOString().slice(0, 10)}</lastmod></url>`);
     });
