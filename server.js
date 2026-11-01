@@ -85,6 +85,7 @@ const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
 const { installBranding } = require('./lib/branding');
 const { installSettings } = require('./lib/settings');
+const { installInstagramRoutes } = require('./routes/instagram');
 const { installAutoDm, installAutoDmWebhooks } = require('./lib/autodm');
 
 const app = express();
@@ -1405,6 +1406,7 @@ installLivePreview(app, { requireAuth });
 
 // --- Bookings, Events, Courses (lib/appDashboard.js) ----------------------
 installAppDashboards(app, { requireAuth, siteName: SITE_NAME });
+installInstagramRoutes(app, { requireAuth });
 installAutoDm(app, { requireAuth, siteName: SITE_NAME });
 installSettings(app, { requireAuth, siteName: SITE_NAME });
 
