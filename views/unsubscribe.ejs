@@ -10,15 +10,13 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/auth.css?v=<%= assetVersion %>" />
+<%- include('partials/brand-icon') %>
 </head>
 <body class="auth-page">
 
 <div class="auth-top">
   <a href="/" class="logo">
-    <span class="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </span>
-    <%= siteName %>
+    <%- include('partials/brand-app') %>
   </a>
 </div>
 

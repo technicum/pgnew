@@ -2,6 +2,7 @@
     type, google } — from lib/seo.js metaFor (the platform pages) or a blog post (server.js). google holds the
     Search Console code and Analytics ID from Platform admin → SEO; both are validated when saved. %>
 <title><%= seo.title %></title>
+<% if (brandIcon) { %><%- include('brand-icon') %><% } %>
 <% if (seo.description) { %><meta name="description" content="<%= seo.description %>" /><% } %>
 <meta property="og:site_name" content="<%= siteName %>" />
 <meta property="og:type" content="<%= seo.type || 'website' %>" />

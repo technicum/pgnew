@@ -1,0 +1,25 @@
+<%- include('partials/admin-top') %>
+<%# Platform admin → Branding (lib/branding.js): PageZaper's own logo and browser icon. Blank keeps the built-in ones. Creators' stores are not affected. %>
+
+<header class="adm-head">
+  <div>
+    <h1>Branding</h1>
+    <p>The logo and browser icon on <%= siteName %>’s own pages, such as the homepage, login and dashboard. Leave a field blank to keep the built-in one. Creators’ stores aren’t affected.</p>
+  </div>
+</header>
+
+<form method="POST" action="/admin/branding">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Logo and icon</h2></div>
+    <div class="adm-form ax-pad">
+      <%- include('partials/ax-image-field', { name: 'logo', label: 'Logo', value: branding.logo, hint: 'Replaces both the mark and the name in the header, so include your name in the image. Shown 34 px tall on a light background. Use a PNG with a transparent background.' }) %>
+      <%- include('partials/ax-image-field', { name: 'icon', label: 'Browser icon', value: branding.icon, hint: 'Shown in the browser tab and on phone home screens. Use a square PNG, at least 180 × 180. SVG and ICO files can’t be uploaded.' }) %>
+    </div>
+  </section>
+  <section class="ax-panel ax-savebar">
+    <span class="ax-sub">Browsers can keep showing the old icon for a while after you change it.</span>
+    <button class="ax-btn ax-btn-primary">Save</button>
+  </section>
+</form>
+
+<%- include('partials/admin-bottom') %>

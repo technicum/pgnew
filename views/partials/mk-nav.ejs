@@ -1,7 +1,7 @@
 <%# The main site's header on the marketplace-styled pages (explore.css). Pass active: 'explore' | 'blog' | 'about'. %>
 <header class="mk-nav">
   <div class="mk-nav-in">
-    <a class="mk-brand" href="/"><span class="mark">ϟ</span><span>page<b>zaper</b></span></a>
+    <a class="mk-brand" href="/"><%- include('brand-mk') %></a>
     <nav class="mk-nav-links" aria-label="Main">
       <a href="/explore"<%- active === 'explore' ? ' aria-current="page"' : '' %>>Explore</a>
       <a href="/blog"<%- active === 'blog' ? ' aria-current="page"' : '' %>>Blog</a>

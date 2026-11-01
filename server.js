@@ -83,6 +83,7 @@ const appIdeas = require('./lib/appIdeas');
 const { installLivePreview } = require('./lib/livePreview');
 const { MySQLSessionStore } = require('./lib/sessionStore');
 const { installGoogleAuth } = require('./lib/googleAuth');
+const { installBranding } = require('./lib/branding');
 const { installAutoDm, installAutoDmWebhooks } = require('./lib/autodm');
 
 const app = express();
@@ -128,6 +129,9 @@ app.use(session({
 // change instead of hunting through views/*.ejs.
 const SITE_NAME = 'PageZaper';
 const SITE_DOMAIN = 'pagezaper.com';
+
+// The logo and icon from Platform admin → Branding (lib/branding.js), for every view.
+installBranding(app);
 
 // Store subdomains, trust proxy, assetVersion and storeUrlFor for views.
 installStorefront(app, { siteName: SITE_NAME, siteDomain: SITE_DOMAIN, port: PORT });

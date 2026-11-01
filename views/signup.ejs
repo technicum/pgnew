@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/auth.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/onboarding.css?v=<%= assetVersion %>" />
+<%- include('partials/brand-icon') %>
 </head>
 <%# Onboarding step 1 (lib/onboarding.js): the account. On success the person is logged in and goes to /onboarding. %>
 <body class="auth-page ob-signup">
@@ -17,10 +18,7 @@
 <div class="ob-split">
   <aside class="ob-pitch">
     <a href="/" class="logo ob-logo">
-      <span class="logo-mark">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </span>
-      <%= siteName %>
+      <%- include('partials/brand-app') %>
     </a>
     <div class="ob-pitch-body">
       <h2>Your business, online in 5 minutes.</h2>

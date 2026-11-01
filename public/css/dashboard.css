@@ -708,3 +708,6 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 600; }
 @media (width < 23rem) {
   .dash-m-brand > span:last-child { display: none; }
 }
+
+/* Logo set at Platform admin → Branding. */
+.brand-logo { display: block; height: 34px; width: auto; max-width: 180px; object-fit: contain; }

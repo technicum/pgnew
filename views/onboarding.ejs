@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/auth.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/onboarding.css?v=<%= assetVersion %>" />
+<%- include('partials/brand-icon') %>
 </head>
 <%# Onboarding steps 2–7 (lib/onboarding.js). Every step is a plain form post to /onboarding/step/<n>;
     what's inside comes from the business type's preset (lib/presets.js). %>
@@ -17,10 +18,7 @@
 
 <header class="ob-top">
   <a href="/dashboard" class="logo ob-logo">
-    <span class="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M5 12.5L10 17L19 7" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </span>
-    <%= siteName %>
+    <%- include('partials/brand-app') %>
   </a>
   <div class="ob-top-progress">
     <div class="ob-progress" aria-hidden="true"><% for (var i = 1; i <= steps; i++) { %><span<%= i <= step ? ' class=on' : '' %>></span><% } %></div>

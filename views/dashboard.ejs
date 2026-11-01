@@ -8,8 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="<%= siteName %>" />
 <link rel="manifest" href="/manifest.webmanifest" />
-<link rel="icon" href="/icons/app-icon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="/icons/app-icon.svg" />
+<%- include('partials/brand-icon') %>
 <title><%= title %></title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -24,8 +23,10 @@
   <main class="lg:ml-64">
     <header class="sticky top-0 z-20 flex h-20 items-center border-b border-border bg-background/95 px-4 backdrop-blur md:px-8">
       <a href="/dashboard" class="dash-m-brand">
+        <% if (brandLogo) { %><img class="brand-logo" src="<%= brandLogo %>" alt="<%= siteName %>" /><% } else { %>
         <span><svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12.5L10 17L19 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <span><%= siteName %></span>
+        <% } %>
       </a>
       <div class="relative hidden max-w-md flex-1 sm:block">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>

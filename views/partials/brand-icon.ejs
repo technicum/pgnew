@@ -1,0 +1,3 @@
+<%# Browser tab and home-screen icon: the one set at Platform admin → Branding (lib/branding.js), or the built-in one. %>
+<link rel="icon" href="<%= brandIcon || '/icons/app-icon.svg' %>"<%- brandIcon ? '' : ' type="image/svg+xml"' %> />
+<link rel="apple-touch-icon" href="<%= brandIcon || '/icons/app-icon.svg' %>" />

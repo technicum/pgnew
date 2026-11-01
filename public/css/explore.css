@@ -189,3 +189,6 @@
   .mk-card, .mk-media img, .mk-art, .mk-go, .mk-btn { transition: none; }
   .mk-card:hover, .mk-card:hover .mk-art, .mk-card:hover .mk-media img { transform: none; }
 }
+
+/* Logo set at Platform admin → Branding. */
+.brand-logo { display: block; height: 34px; width: auto; max-width: 180px; object-fit: contain; }
