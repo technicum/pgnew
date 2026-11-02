@@ -44,7 +44,7 @@ function installInstagramRoutes(app, { requireAuth }) {
       console.error('Instagram connect: Meta returned an error:', {
         error: q.error, error_reason: reason, error_code: q.error_code, error_description: detail,
       });
-      if (reason === 'user_denied') return fail(res, home, 'Instagram wasn’t connected, because the request was cancelled.');
+      if (reason === 'user_denied') return fail(res, home, 'Instagram wasn’t connected: the Facebook login was closed or declined (user_denied). Make sure you pick your Instagram account and click Continue/Save on every step.');
       return fail(res, home, `Instagram wasn’t connected: ${detail || reason || q.error}.`);
     }
     if (!sameState(expected, String(req.query.state || ''))) return fail(res, home, 'That Instagram connection expired. Please try again.');
