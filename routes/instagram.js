@@ -50,12 +50,20 @@ function installInstagramRoutes(app, { requireAuth }) {
     if (!sameState(expected, String(req.query.state || ''))) return fail(res, home, 'That Instagram connection expired. Please try again.');
     if (!req.query.code || !ig.instagramEnabled()) return fail(res, home, 'Instagram didn’t finish connecting. Please try again.');
     try {
-      await autodm.connectAccount(req.session.user.id, await ig.exchangeCode(String(req.query.code), req));
+      const accessToken = await ig.exchangeCode(String(req.query.code), req).catch((err) => {
+        err.step = 'exchanging the login code for a token';
+        throw err;
+      });
+      await autodm.connectAccount(req.session.user.id, accessToken);
       res.redirect(303, `${home}?ok=connected`);
     } catch (err) {
       if (err.code === 'INVALID_INPUT') return fail(res, home, err.message);
-      console.error('Instagram connect failed:', err.message, err.meta || '');
-      fail(res, home, 'Couldn’t connect Instagram. Check it’s a Business or Creator account and try again.');
+      console.error('Instagram connect failed:', err.step || '(unknown step)', '-', err.message, err.meta || '');
+      // err.message is Meta's error text with tokens stripped (lib/instagram.js),
+      // or a database error; neither holds secrets.
+      const where = err.step ? ` while ${err.step}` : '';
+      const metaCode = err.meta?.code ? ` [Meta code ${err.meta.code}${err.meta.subcode ? `/${err.meta.subcode}` : ''}]` : '';
+      fail(res, home, `Couldn’t connect Instagram${where}: ${String(err.message || 'unknown error').slice(0, 300)}${metaCode}`);
     }
   });
 
