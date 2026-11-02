@@ -35,7 +35,18 @@ function installInstagramRoutes(app, { requireAuth }) {
     const home = homeFor(req.session.instagramFrom);
     delete req.session.instagramState;
     delete req.session.instagramFrom;
-    if (req.query.error) return fail(res, home, 'Instagram wasn’t connected, because the request was cancelled.');
+    if (req.query.error) {
+      // Meta sends error, error_reason, error_description (and error_code /
+      // error_message on some failures). Only user_denied is a real cancel.
+      const q = req.query;
+      const reason = String(q.error_reason || '');
+      const detail = String(q.error_description || q.error_message || '').slice(0, 300);
+      console.error('Instagram connect: Meta returned an error:', {
+        error: q.error, error_reason: reason, error_code: q.error_code, error_description: detail,
+      });
+      if (reason === 'user_denied') return fail(res, home, 'Instagram wasn’t connected, because the request was cancelled.');
+      return fail(res, home, `Instagram wasn’t connected: ${detail || reason || q.error}.`);
+    }
     if (!sameState(expected, String(req.query.state || ''))) return fail(res, home, 'That Instagram connection expired. Please try again.');
     if (!req.query.code || !ig.instagramEnabled()) return fail(res, home, 'Instagram didn’t finish connecting. Please try again.');
     try {
