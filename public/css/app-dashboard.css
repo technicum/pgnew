@@ -426,7 +426,3 @@ textarea.ax-input { height: auto; padding: 9px 11px; line-height: 1.5; resize: v
   .dm-stats dd { font-size: 18px; }
   .dm-how { grid-template-columns: minmax(0, 1fr); }
 }
-
-/* The page width partials/app-dash-top asks for (max-w-[1100px]). The class was
-   never in the compiled dashboard.css, so these pages ran edge to edge. */
-.max-w-\[1100px\] { max-width: 1100px; }

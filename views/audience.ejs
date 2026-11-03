@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" />
-<link rel="stylesheet" href="/css/dashboard.css" />
+<link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/audience.css?v=<%= assetVersion %>" />
 </head>
 <body>
@@ -35,47 +35,65 @@
 
     <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
 
-      <section class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <%# Heading with the page's two actions. Stats, the add panel and the list are kept current by audience.js. %>
+      <section class="pz-aud-head">
         <div>
           <p class="text-sm font-semibold text-primary">Audience</p>
           <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Your people</h1>
           <p class="mt-2 text-sm text-muted-foreground">Everyone who's booked, bought or been added by hand — one list you own, not locked inside a social platform.</p>
         </div>
-      </section>
-
-      <section class="mt-6 rounded-lg border border-border bg-card p-5 shadow-sm md:p-6">
-        <h2 class="text-lg font-bold">Add someone</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Add a name plus an email or phone number — enough to actually reach them later.</p>
-        <form id="addContactForm" class="mt-4" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start;">
-          <input type="text" id="contactName" class="pz-field-input" placeholder="Name" style="flex:1; min-width:160px;" required />
-          <input type="email" id="contactEmail" class="pz-field-input" placeholder="Email" style="flex:1; min-width:180px;" />
-          <input type="text" id="contactPhone" class="pz-field-input" placeholder="Phone" style="flex:1; min-width:140px;" />
-          <input type="text" id="contactNote" class="pz-field-input" placeholder="Note (optional)" style="flex:1.4; min-width:180px;" />
-          <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-10 px-4">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
-            Add
-          </button>
-        </form>
-        <p class="pz-field-error" id="contactFormError"></p>
-      </section>
-
-      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
-        <div class="flex items-center justify-between border-b border-border p-5 md:px-6">
-          <div>
-            <h2 class="text-lg font-bold">People</h2>
-            <p class="mt-1 text-sm text-muted-foreground" id="contactCountLine"><%= contacts.length %> <%= contacts.length === 1 ? 'person' : 'people' %> in your audience</p>
-          </div>
+        <div class="pz-aud-actions">
           <!-- A CSV of the people shown — everyone, or just those matching the search / filters (audience.js). -->
-          <button type="button" id="exportContacts" class="inline-flex items-center justify-center gap-2 rounded-md text-sm font-semibold border border-border bg-card shadow-sm hover:bg-muted h-10 px-4"<%= contacts.length ? '' : ' disabled' %>>
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+          <button type="button" id="exportContacts" class="pz-aud-btn"<%= contacts.length ? '' : ' disabled' %>>
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
             <span id="exportContactsLabel">Export CSV</span>
           </button>
+          <button type="button" id="openAddContact" class="pz-aud-btn pz-aud-btn-primary" aria-expanded="<%= contacts.length ? 'false' : 'true' %>" aria-controls="addContactPanel">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>
+            Add person
+          </button>
+        </div>
+      </section>
+
+      <dl class="pz-aud-stats" aria-label="Audience at a glance">
+        <div><dt>People</dt><dd id="statTotal">0</dd></div>
+        <div><dt>With email</dt><dd id="statEmail">0</dd></div>
+        <div><dt>With phone</dt><dd id="statPhone">0</dd></div>
+        <div><dt>New in 30 days</dt><dd id="statNew">0</dd></div>
+      </dl>
+
+      <section class="pz-aud-panel pz-aud-add" id="addContactPanel"<%= contacts.length ? ' hidden' : '' %>>
+        <div class="pz-aud-add-head">
+          <div>
+            <h2>Add someone</h2>
+            <p>A name plus an email or phone number — enough to actually reach them later.</p>
+          </div>
+          <button type="button" class="pz-icon-btn" id="closeAddContact" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <form id="addContactForm" class="pz-aud-form">
+          <label class="pz-aud-field"><span>Name</span><input type="text" id="contactName" class="pz-field-input" placeholder="Priya Sharma" required /></label>
+          <label class="pz-aud-field"><span>Email</span><input type="email" id="contactEmail" class="pz-field-input" placeholder="priya@example.com" /></label>
+          <label class="pz-aud-field"><span>Phone</span><input type="text" id="contactPhone" class="pz-field-input" placeholder="+91 98765 43210" /></label>
+          <label class="pz-aud-field"><span>Note <small>optional</small></span><input type="text" id="contactNote" class="pz-field-input" placeholder="Met at the Pune workshop" /></label>
+          <div class="pz-aud-form-foot">
+            <p class="pz-field-error" id="contactFormError"></p>
+            <button type="submit" class="pz-aud-btn pz-aud-btn-primary">Add to audience</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="pz-aud-panel">
+        <div class="pz-aud-list-head">
+          <h2>People</h2>
+          <p id="contactCountLine"><%= contacts.length %> <%= contacts.length === 1 ? 'person' : 'people' %> in your audience</p>
         </div>
 
         <!-- Search + filters, all client-side over the list below (audience.js). -->
         <div class="pz-audience-tools">
           <div class="pz-audience-search">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
+            <svg viewBox="0 0 24 24" fill="none" width="16" height="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 21-4.34-4.34"></path><circle cx="11" cy="11" r="8"></circle></svg>
             <input type="search" id="contactSearch" class="pz-field-input" placeholder="Search by name, email, phone or note…" aria-label="Search people" />
           </div>
           <select id="contactSourceFilter" class="pz-field-input pz-audience-select" aria-label="Filter by source">
@@ -92,12 +110,12 @@
 
         <div id="contactsList"><!-- injected --></div>
 
-        <div id="emptyContacts" class="flex flex-col items-center justify-center gap-3 p-6" style="padding:56px 24px; text-align:center; display:none;">
-          <div class="grid size-10 place-items-center rounded-md bg-muted text-muted-foreground">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg>
-          </div>
-          <p class="text-sm font-semibold" id="emptyContactsTitle">No one here yet</p>
-          <p class="text-sm text-muted-foreground" style="max-width:360px;" id="emptyContactsSub">Add the first person above, or come back once someone books or buys from your store.</p>
+        <div id="emptyContacts" class="pz-aud-empty" style="display:none;">
+          <span class="pz-aud-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" width="22" height="22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          </span>
+          <p class="pz-aud-empty-title" id="emptyContactsTitle">No one here yet</p>
+          <p class="pz-aud-empty-sub" id="emptyContactsSub">Add the first person above, or come back once someone books or buys from your store.</p>
         </div>
       </section>
 

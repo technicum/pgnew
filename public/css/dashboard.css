@@ -139,6 +139,7 @@
   .w-max { width: max-content; }
   .w-px { width: 1px; }
   .max-w-\[1500px\] { max-width: 1500px; }
+  .max-w-\[1100px\] { max-width: 1100px; }
   .max-w-md { max-width: var(--container-md); }
   .min-w-0 { min-width: 0px; }
   .min-w-\[720px\] { min-width: 720px; }

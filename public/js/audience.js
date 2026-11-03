@@ -81,13 +81,29 @@
   // groupLabel: the heading this row sits under — a signup's note starts
   // "Lead magnet: <title>", which the heading already says, so only the
   // answers after it are shown.
+  const ICON_MAIL = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>';
+  const ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>';
+  // One of six avatar tints, fixed per name, so the list isn't one colour.
+  function tintOf(name) {
+    let h = 0;
+    for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return h % 6;
+  }
+  function addedOn(contact) {
+    if (!contact.created_at) return '';
+    const d = new Date(contact.created_at);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  }
+
   function contactRowHTML(contact, groupLabel) {
     const metaParts = [];
-    if (contact.email) metaParts.push(escapeHTML(contact.email));
-    if (contact.phone) metaParts.push(escapeHTML(contact.phone));
+    if (contact.email) metaParts.push(`<a href="mailto:${escapeHTML(contact.email)}">${ICON_MAIL}${escapeHTML(contact.email)}</a>`);
+    if (contact.phone) metaParts.push(`<a href="tel:${escapeHTML(String(contact.phone).replace(/[^\d+]/g, ''))}">${ICON_PHONE}${escapeHTML(contact.phone)}</a>`);
     const metaHTML = metaParts.length
-      ? `<div class="pz-contact-meta">${metaParts.map((p) => `<span>${p}</span>`).join('')}</div>`
-      : '';
+      ? `<div class="pz-contact-meta">${metaParts.join('')}</div>`
+      : '<div class="pz-contact-meta"><span>No contact info</span></div>';
+    const added = addedOn(contact);
     let note = contact.note || '';
     const prefix = `Lead magnet: ${contact.source_name || groupLabel}`;
     if (groupLabel && contact.source === 'form' && note.startsWith(prefix)) {
@@ -98,12 +114,13 @@
       <div class="pz-contact-row" data-id="${contact.id}"
         data-search="${escapeHTML(`${contact.name} ${contact.email} ${contact.phone} ${contact.note || ''}`.toLowerCase())}"
         data-email="${contact.email ? '1' : ''}" data-phone="${contact.phone ? '1' : ''}">
-        <div class="pz-contact-avatar">${escapeHTML(initials(contact.name))}</div>
+        <div class="pz-contact-avatar pz-tint-${tintOf(contact.name)}">${escapeHTML(initials(contact.name))}</div>
         <div class="pz-contact-main">
           <div class="pz-contact-name">${escapeHTML(contact.name || 'Untitled')}</div>
           ${metaHTML}
           ${noteHTML}
         </div>
+        ${added ? `<span class="pz-contact-added" title="Added on">${escapeHTML(added)}</span>` : ''}
         <button type="button" class="pz-icon-btn remove-contact" data-id="${contact.id}" aria-label="Remove person">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="15" height="15" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
         </button>
@@ -189,7 +206,18 @@
           ${members.map((c) => contactRowHTML(c, label)).join('')}
         </section>`).join('');
     attachRowListeners();
+    renderStats();
     applyFilters();
+  }
+
+  // The four numbers under the heading, over everyone (not just the filtered rows).
+  function renderStats() {
+    const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const set = (id, n) => { document.getElementById(id).textContent = n.toLocaleString('en-IN'); };
+    set('statTotal', contacts.length);
+    set('statEmail', contacts.filter((c) => c.email).length);
+    set('statPhone', contacts.filter((c) => c.phone).length);
+    set('statNew', contacts.filter((c) => c.created_at && new Date(c.created_at).getTime() >= monthAgo).length);
   }
 
   function attachRowListeners() {
@@ -326,6 +354,20 @@
   const phoneInput = document.getElementById('contactPhone');
   const noteInput = document.getElementById('contactNote');
   const formError = document.getElementById('contactFormError');
+  const addPanel = document.getElementById('addContactPanel');
+  const openAdd = document.getElementById('openAddContact');
+
+  // "Add person" opens the form; it starts open when there's no one yet.
+  function setAddOpen(open) {
+    addPanel.hidden = !open;
+    openAdd.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) nameInput.focus();
+  }
+  openAdd.addEventListener('click', () => setAddOpen(addPanel.hidden));
+  document.getElementById('closeAddContact').addEventListener('click', () => {
+    setAddOpen(false);
+    openAdd.focus();
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
