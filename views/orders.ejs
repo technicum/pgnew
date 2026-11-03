@@ -37,29 +37,27 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+    <div class="mx-auto px-4 py-7 md:px-8 md:py-9 od-page">
 
       <section>
-        <p class="text-sm font-semibold text-primary">Sales</p>
+        <p class="cp-eyebrow">Sales</p>
         <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Orders</h1>
-        <p class="mt-2 text-sm text-muted-foreground">Everything bought through your <a href="/dashboard/payment-pages" style="color:var(--primary); text-decoration:underline;">payment pages</a>, newest first.</p>
+        <p class="cp-lede">Everything bought through your <a href="/dashboard/payment-pages">payment pages</a>, newest first.</p>
       </section>
 
       <%- include('partials/payment-mode-note', { paymentMode: paymentMode }) %>
 
-      <section class="pp-order-stats" aria-label="Totals">
-        <div class="pp-order-stat"><p>Revenue</p><strong id="statRevenue">₹0</strong></div>
-        <div class="pp-order-stat"><p><%= siteName %> fees</p><strong id="statFees">₹0</strong></div>
-        <div class="pp-order-stat"><p>Paid orders</p><strong id="statPaid">0</strong></div>
-        <div class="pp-order-stat"><p>Awaiting payment</p><strong id="statPending">0</strong></div>
+      <section class="od-stats" aria-label="Totals">
+        <div class="od-stat"><p>Revenue</p><strong id="statRevenue">₹0</strong></div>
+        <div class="od-stat"><p><%= siteName %> fees</p><strong id="statFees">₹0</strong></div>
+        <div class="od-stat"><p>Paid orders</p><strong id="statPaid">0</strong></div>
+        <div class="od-stat"><p>Awaiting payment</p><strong id="statPending">0</strong></div>
       </section>
 
-      <section class="mt-6 rounded-lg border border-border bg-card shadow-sm">
-        <div class="flex items-center justify-between border-b border-border p-5 md:px-6">
-          <div>
-            <h2 class="text-lg font-bold">All orders</h2>
-            <p class="mt-1 text-sm text-muted-foreground" id="orderCountLine"></p>
-          </div>
+      <section class="cp-card od-card">
+        <div class="od-head">
+          <h2>All orders</h2>
+          <p id="orderCountLine"></p>
         </div>
 
         <div class="pp-orders-tools">
@@ -81,8 +79,8 @@
         </div>
 
         <div id="ordersList"><!-- injected --></div>
-        <div id="emptyOrders" class="flex flex-col items-center justify-center gap-3 p-6" style="padding:56px 24px; text-align:center;" hidden>
-          <div class="grid size-10 place-items-center rounded-md bg-muted text-muted-foreground">
+        <div id="emptyOrders" class="cp-empty od-empty" hidden>
+          <div class="cp-empty-icon">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10a4 4 0 0 1-8 0"></path><path d="M3.103 6.034h17.794"></path><path d="M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z"></path></svg>
           </div>
           <p class="text-sm font-semibold" id="emptyOrdersTitle">No orders yet</p>

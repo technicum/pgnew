@@ -103,8 +103,11 @@
       <div class="pp-order-row" data-id="${o.id}"
            data-search="${escapeHTML(`${o.buyer_name} ${o.buyer_email} ${o.buyer_phone} ${o.coupon_code} ${(o.items || []).map((i) => i.title).join(' ')} ${address}`.toLowerCase())}">
         <div class="pp-order-buyer">
-          <strong>${escapeHTML(o.buyer_name || o.buyer_email)}</strong>
-          <span>${contact}</span>
+          <span class="od-avatar" aria-hidden="true">${escapeHTML((String(o.buyer_name || o.buyer_email || '?').trim()[0] || '?').toUpperCase())}</span>
+          <span class="od-buyer-text">
+            <strong>${escapeHTML(o.buyer_name || o.buyer_email)}</strong>
+            <span>${contact}</span>
+          </span>
         </div>
         <div class="pp-order-what">
           ${items || escapeHTML(o.page_title)}

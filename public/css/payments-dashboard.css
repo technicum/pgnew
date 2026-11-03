@@ -835,3 +835,83 @@ select.cp-input { cursor: pointer; }
   .cp-row-actions { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .cp-chev { transition: none; } }
+
+/* ---------- Orders page (views/orders.ejs, public/js/orders.js) ----------
+   Same look as Coupons (reuses .cp-eyebrow/.cp-lede/.cp-card/.cp-empty) on a
+   wider 940px column. Row markup keeps the .pp-order-* classes orders.js uses. */
+.od-page { width: 100%; max-width: calc(940px + 4rem); margin-inline: auto; --cp-radius: 20px; }
+.od-page .pp-mode-note { margin-top: 20px; padding: 13px 16px; border: 0; border-radius: 16px; font-size: .84rem; align-items: center; }
+.od-page .pp-mode-razorpay, .od-page .pp-mode-cashfree { background: var(--success-soft); color: var(--foreground); }
+.od-page .pp-mode-razorpay svg, .od-page .pp-mode-cashfree svg { color: var(--success); }
+
+.od-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 20px;
+  border-radius: var(--cp-radius); background: var(--card); box-shadow: var(--dash-shadow);
+}
+.od-stat { min-width: 0; padding: 20px; }
+.od-stat + .od-stat { border-left: 1px solid var(--border); }
+.od-stat p { margin: 0; font-size: .76rem; color: var(--muted-foreground); }
+.od-stat strong { display: block; margin-top: 6px; font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+.od-head { padding: 20px 20px 0; }
+.od-head h2 { font-size: 1.05rem; font-weight: 700; }
+.od-head p { margin-top: 3px; font-size: .8rem; color: var(--muted-foreground); }
+
+.od-page .pp-orders-tools { gap: 12px; padding: 16px 20px; }
+.od-page .pp-orders-search { display: flex; align-items: center; flex: 1 1 280px; }
+.od-page .pp-orders-search svg { left: 15px; }
+.od-page .pp-orders-search .pz-field-input {
+  height: 38px; padding: 0 16px 0 38px; border: 0; border-radius: 999px; background: var(--muted); font-size: .84rem;
+}
+.od-page .pp-orders-search .pz-field-input:focus { box-shadow: 0 0 0 2px var(--ring); }
+.od-page .pp-orders-tools select {
+  flex: 0 1 170px; height: 38px; padding: 0 34px 0 14px; border: 0; border-radius: 999px; font-size: .84rem; font-weight: 600;
+  background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 13px center;
+  appearance: none; -webkit-appearance: none; box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgba(0, 0, 0, .04);
+}
+.od-page .pp-orders-tools select:focus { box-shadow: 0 0 0 2px var(--ring); outline: 0; }
+
+.od-page .pp-order-row {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.4fr) auto auto; gap: 16px;
+  padding: 16px 20px; border-bottom: 0; border-top: 1px solid var(--border);
+}
+.od-page .pp-order-row:last-child { border-radius: 0 0 var(--cp-radius) var(--cp-radius); }
+.od-page .pp-order-buyer { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.od-avatar {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--primary); color: var(--primary-foreground); font-size: .82rem; font-weight: 700;
+}
+.od-buyer-text { display: flex; flex-direction: column; min-width: 0; }
+.od-page .pp-order-buyer strong { font-size: .9rem; }
+.od-page .pp-order-buyer .od-buyer-text > span { margin-top: 2px; font-size: .76rem; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.od-page .pp-order-what { font-size: .88rem; font-weight: 600; }
+.od-page .pp-order-what span { font-size: .76rem; font-weight: 400; }
+.od-page .pp-order-address { color: var(--primary) !important; }
+.od-page .pp-order-address::before {
+  content: ''; display: inline-block; width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.od-page .pp-order-amount strong { font-size: .95rem; }
+.od-page .pp-order-amount span { font-size: .74rem; }
+.od-page .pp-order-side { min-width: 0; }
+.od-page .pp-status {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px;
+  font-size: .72rem; letter-spacing: 0; text-transform: none;
+}
+.od-page .pp-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.od-page .pp-order-actions .pz-card-btn { border-radius: 999px; }
+.od-empty { border-top: 1px solid var(--border); padding-top: 44px; }
+.od-empty #emptyOrdersTitle { color: var(--foreground); font-weight: 700; }
+.od-empty p + p { margin-top: -8px; }
+
+@media (max-width: 760px) {
+  .od-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .od-stat:nth-child(3) { border-left: 0; }
+  .od-stat:nth-child(n + 3) { border-top: 1px solid var(--border); }
+  .od-page .pp-orders-search { flex-basis: 100%; }
+  .od-page .pp-orders-tools select { flex: 1 1 0; }
+  .od-page .pp-order-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .od-page .pp-order-what { padding-left: 48px; }
+  .od-page .pp-order-side { padding-left: 48px; }
+}
