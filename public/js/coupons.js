@@ -85,20 +85,27 @@
       : 'No expiry';
     const [state, stateLabel] = statusOf(c);
     return `
-      <div class="pp-coupon-row${c.active ? '' : ' pp-off'}" data-id="${c.id}">
-        <span class="pp-coupon-code">${escapeHTML(c.code)}</span>
-        <button type="button" class="pp-coupon-copy" data-copy="${escapeHTML(c.code)}" aria-label="Copy ${escapeHTML(c.code)}">Copy</button>
-        <span class="pp-coupon-info">
-          <strong>${escapeHTML(off)}</strong>
-          <span>${page ? escapeHTML(page.title) : 'All payment pages'}</span>
-          <span>${escapeHTML(uses)}</span>
-          <span>${escapeHTML(expiry)}</span>
+      <div class="cp-row${c.active ? '' : ' is-off'}" data-id="${c.id}">
+        <span class="cp-row-icon is-${state}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" width="17" height="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg></span>
+        <span class="cp-row-main">
+          <span class="cp-row-top">
+            <span class="cp-code">${escapeHTML(c.code)}</span>
+            <button type="button" class="cp-copy" data-copy="${escapeHTML(c.code)}" aria-label="Copy ${escapeHTML(c.code)}">Copy</button>
+          </span>
+          <span class="cp-row-meta">
+            <strong>${escapeHTML(off)}</strong>
+            <span>${page ? escapeHTML(page.title) : 'All payment pages'}</span>
+            <span>${escapeHTML(uses)}</span>
+            <span>${escapeHTML(expiry)}</span>
+          </span>
         </span>
-        <span class="pp-coupon-state is-${state}">${stateLabel}</span>
-        <button type="button" class="pz-switch toggle-coupon${c.active ? ' on' : ''}" data-id="${c.id}" role="switch" aria-checked="${c.active ? 'true' : 'false'}" aria-label="${escapeHTML(c.code)} active"></button>
-        <button type="button" class="pz-card-btn danger remove-coupon" data-id="${c.id}" aria-label="Delete code ${escapeHTML(c.code)}">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="13" height="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
-        </button>
+        <span class="cp-pill is-${state}">${stateLabel}</span>
+        <span class="cp-row-actions">
+          <button type="button" class="pz-switch toggle-coupon${c.active ? ' on' : ''}" data-id="${c.id}" role="switch" aria-checked="${c.active ? 'true' : 'false'}" aria-label="${escapeHTML(c.code)} active"></button>
+          <button type="button" class="cp-delete remove-coupon" data-id="${c.id}" aria-label="Delete code ${escapeHTML(c.code)}">
+            <svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13"/></svg>
+          </button>
+        </span>
       </div>`;
   }
 
@@ -108,9 +115,9 @@
     const shown = q ? coupons.filter((c) => c.code.toUpperCase().includes(q)) : coupons;
     $('couponsList').innerHTML = shown.map(couponRowHTML).join('');
     $('emptyCoupons').hidden = shown.length > 0;
-    $('emptyCouponsText').textContent = coupons.length
-      ? `No codes match “${search.value.trim()}”.`
-      : 'No coupon codes yet — add one above, then share it with your audience.';
+    const emptyText = $('emptyCouponsText');
+    if (coupons.length) emptyText.textContent = `No codes match “${search.value.trim()}”.`;
+    else emptyText.innerHTML = 'No coupon codes yet. Add one above with <strong>New coupon</strong>, then share it with your audience.';
     const live = coupons.filter(isLive).length;
     $('statActive').textContent = live;
     $('statUses').textContent = coupons.reduce((sum, c) => sum + (c.used_count || 0), 0);
@@ -171,6 +178,21 @@
   pageSelect.innerHTML = '<option value="">All payment pages</option>'
     + pages.map((p) => `<option value="${p.id}">${escapeHTML(p.title)}</option>`).join('');
 
+  // "% off" / "₹ off" segmented toggle writes the hidden #couponType.
+  const typeInput = $('couponType');
+  const segButtons = [...document.querySelectorAll('.cp-seg [data-type]')];
+  const addBtn = $('couponAdd');
+  function setType(type) {
+    typeInput.value = type;
+    segButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.type === type)));
+    $('couponValue').placeholder = type === 'percent' ? '20' : '100';
+  }
+  function syncAdd() {
+    addBtn.disabled = !($('couponCode').value.trim() && $('couponValue').value.trim());
+  }
+  segButtons.forEach((b) => b.addEventListener('click', () => { setType(b.dataset.type); syncAdd(); }));
+  couponForm.addEventListener('input', syncAdd);
+
   couponForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     couponError.classList.remove('show');
@@ -203,6 +225,9 @@
       });
       coupons.unshift(created);
       couponForm.reset();
+      setType('percent');
+      $('couponLimits').open = false;
+      syncAdd();
       search.value = '';
       render();
       $('couponCode').focus();
