@@ -16,7 +16,7 @@
 <link rel="stylesheet" href="/css/dashboard.css?v=<%= assetVersion %>" />
 <link rel="stylesheet" href="/css/apps.css?v=<%= assetVersion %>" />
 </head>
-<%# Explore apps (server.js → /dashboard/apps, catalog in lib/apps.js): a small card per app with an on/off switch. The Store is built in and always on. %>
+<%# Explore apps (server.js → /dashboard/apps, catalog in lib/apps.js): a card per app (name, status, tagline, full description) with an on/off switch, and a count of the apps that are on. The Store is built in and always on. %>
 <body>
 <div class="min-h-screen bg-background">
 
@@ -36,6 +36,8 @@
         <p class="text-sm font-semibold text-primary">Apps</p>
         <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Explore apps</h1>
         <p class="mt-2 text-sm text-muted-foreground" style="max-width:64ch;">Switch on the apps you need and they appear in your sidebar. Switching one off only hides it — anything it published stays live.</p>
+        <% var onCount = apps.filter(function (a) { return a.core || installed.indexOf(a.id) !== -1; }).length; %>
+        <p class="ap-summary"><span class="ap-summary-dot" aria-hidden="true"></span><b id="apOnCount"><%= onCount %></b> of <%= apps.length %> apps on</p>
       </section>
 
       <% if (highlight && installed.indexOf(highlight) === -1) { %>
@@ -46,10 +48,10 @@
         <% apps.forEach(function (a) { var on = a.core || installed.indexOf(a.id) !== -1; %>
         <article class="ap-card<%= on ? ' ap-on' : '' %><%= highlight === a.id ? ' ap-highlight' : '' %>" id="<%= a.id %>" data-app="<%= a.id %>">
           <div class="ap-card-row">
-            <span class="ap-icon" style="--app:<%= a.color %>"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- a.icon %></svg></span>
+            <span class="ap-icon" style="--app:<%= a.color %>"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><%- a.icon %></svg></span>
             <span class="ap-text">
               <h2><%= a.name %></h2>
-              <p><%= a.tagline %></p>
+              <span class="ap-state"><%= a.core ? 'Built in' : (on ? 'On' : 'Off') %></span>
             </span>
             <% if (a.core) { %>
             <span class="ap-switch is-on is-locked" role="switch" aria-checked="true" aria-disabled="true" title="Built in — always on"><span class="ap-sr"><%= a.name %> is always on</span></span>
@@ -60,9 +62,11 @@
             </form>
             <% } %>
           </div>
+          <p class="ap-tagline"><%= a.tagline %></p>
+          <p class="ap-desc"><%= a.description %></p>
           <div class="ap-card-foot">
-            <span class="ap-state"><%= a.core ? 'Built in' : (on ? 'On' : 'Off') %></span>
-            <a class="ap-open" href="<%= a.href %>"<%= on ? '' : ' hidden' %>>Open →</a>
+            <a class="ap-open" href="<%= a.href %>"<%= on ? '' : ' hidden' %>>Open <%= a.name %> →</a>
+            <span class="ap-off-hint"<%= on ? ' hidden' : '' %>>Switch on to use it</span>
           </div>
         </article>
         <% }) %>
@@ -96,7 +100,11 @@
               <% }) %>
             </ul>
           <% } else { %>
-            <p class="ap-ideas-empty">Ideas you send show up here, with what we’re doing about them.</p>
+            <div class="ap-ideas-empty">
+              <span class="ap-ideas-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/></svg></span>
+              <b>No ideas yet</b>
+              <p>Ideas you send show up here, with what we’re doing about them — planned, building or done.</p>
+            </div>
           <% } %>
         </div>
       </section>
@@ -131,6 +139,8 @@
           card.classList.remove('ap-highlight');
           card.querySelector('.ap-state').textContent = turningOn ? 'On' : 'Off';
           card.querySelector('.ap-open').hidden = !turningOn;
+          card.querySelector('.ap-off-hint').hidden = turningOn;
+          document.getElementById('apOnCount').textContent = document.querySelectorAll('.ap-card.ap-on').length;
           var flash = document.querySelector('.ap-flash');
           if (flash) flash.remove();
           var page = await (await fetch('/dashboard/apps', { headers: { Accept: 'text/html' } })).text();
