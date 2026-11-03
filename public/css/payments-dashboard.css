@@ -915,3 +915,81 @@ select.cp-input { cursor: pointer; }
   .od-page .pp-order-what { padding-left: 48px; }
   .od-page .pp-order-side { padding-left: 48px; }
 }
+
+/* ---------- Abandoned carts page (views/abandoned.ejs) ----------
+   Same .od-page column and stats card as Orders. Restyles the shared
+   partials/abandoned-carts (public/css/abandoned.css) on this page only —
+   inside Courses / Bookings / payment-page Analytics it keeps its own look. */
+.ab-page .ab-stat-sub { margin-top: 3px; font-size: .72rem; }
+.ab-page .ab { gap: 18px; margin-top: 18px; }
+.ab-page .ab-card { border: 0; border-radius: var(--cp-radius); box-shadow: var(--dash-shadow); }
+.ab-page .ab-input { border-radius: 12px; background: var(--card); font-size: .86rem; }
+.ab-page textarea.ab-input { padding: 12px 14px; }
+
+/* Follow-up message */
+.ab-page .ab-compose summary { padding: 20px; }
+.ab-page .ab-compose summary b { font-size: 1.05rem; }
+.ab-page .ab-compose summary small { margin-top: 3px; font-size: .8rem; }
+.ab-page .ab-summary-edit {
+  padding: 7px 14px; border-radius: 999px; background: var(--secondary); font-size: .8rem; font-weight: 700;
+}
+.ab-page .ab-compose-body { gap: 20px; padding: 0 20px 20px; }
+.ab-page .ab-field { font-size: .78rem; font-weight: 700; }
+.ab-page .ab-field small { font-weight: 500; }
+.ab-page .ab-link { font-size: .78rem; font-weight: 600; text-decoration: none; }
+.ab-page .ab-link:hover { text-decoration: underline; }
+.ab-page .ab-preview { padding: 14px 16px; border: 0; border-radius: 16px; background: var(--success-soft); }
+.ab-page .ab-preview span { color: var(--success); font-size: .7rem; }
+.ab-page .ab-preview p { color: var(--foreground); font-size: .84rem; }
+
+/* List */
+.ab-page .ab-head { padding: 20px 20px 0; border-bottom: 0; }
+.ab-page .ab-head h2 { font-size: 1.05rem; }
+.ab-page .ab-head p { margin-top: 3px; font-size: .8rem; }
+.ab-page .ab-tools { gap: 12px; padding: 16px 20px; border-bottom: 0; }
+.ab-page .ab-search { display: flex; align-items: center; flex: 1 1 280px; }
+.ab-page .ab-search svg { left: 15px; }
+.ab-page .ab-search .ab-input { height: 38px; padding: 0 16px 0 38px; border: 0; border-radius: 999px; background: var(--muted); }
+.ab-page .ab-search .ab-input:focus { box-shadow: 0 0 0 2px var(--ring); }
+.ab-page .ab-tools select.ab-input {
+  flex: 0 1 170px; height: 38px; padding: 0 34px 0 14px; border: 0; border-radius: 999px; font-weight: 600;
+  background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 13px center;
+  appearance: none; -webkit-appearance: none; box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgba(0, 0, 0, .04);
+}
+.ab-page .ab-tools select.ab-input:focus { box-shadow: 0 0 0 2px var(--ring); }
+
+.ab-page .ab-row { gap: 12px 16px; padding: 16px 20px; }
+.ab-page .ab-row:first-child { border-top: 1px solid var(--border); }
+.ab-page .ab-row:last-child { border-radius: 0 0 var(--cp-radius) var(--cp-radius); }
+.ab-page .ab-who { gap: 12px; }
+.ab-page .ab-avatar { width: 36px; height: 36px; background: var(--primary); color: var(--primary-foreground); font-size: .82rem; }
+.ab-page .ab-who b { font-size: .9rem; }
+.ab-page .ab-who small, .ab-page .ab-cart small { font-size: .76rem; }
+.ab-page .ab-cart { font-size: .88rem; }
+.ab-page .ab-total { font-family: var(--font-sans); font-size: .95rem; }
+.ab-page .ab-tag {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 10px;
+  background: var(--warning-soft); color: var(--warning); font-size: .7rem;
+}
+.ab-page .ab-tag:not(.is-done)::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.ab-page .ab-tag.is-done { background: var(--success-soft); color: var(--success); }
+/* Actions line up under the cart text, past the avatar. */
+.ab-page .ab-actions { gap: 8px; padding-left: 48px; }
+.ab-page .ab-btn { height: 32px; padding: 0 14px; border-radius: 999px; font-size: .78rem; }
+.ab-page .ab-btn.is-quiet { background: none; }
+.ab-page .ab-btn.is-quiet:hover { background: var(--muted); color: var(--foreground); }
+
+.ab-page .ab-empty { gap: 6px; padding: 44px 24px 52px; border-top: 1px solid var(--border); font-size: .86rem; }
+.ab-page .ab-empty::before {
+  content: ''; justify-self: center; width: 48px; height: 48px; margin-bottom: 8px; border-radius: 14px;
+  background: var(--secondary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='%231261ef' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1'/%3E%3Ccircle cx='19' cy='21' r='1'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E") no-repeat center;
+}
+.ab-page .ab-empty b { font-size: .95rem; }
+
+@media (max-width: 760px) {
+  .ab-page .ab-compose summary, .ab-page .ab-head { padding-left: 16px; padding-right: 16px; }
+  .ab-page .ab-search { flex-basis: 100%; }
+  .ab-page .ab-tools select.ab-input { flex: 1 1 0; }
+  .ab-page .ab-row { padding: 16px; }
+  .ab-page .ab-cart, .ab-page .ab-actions { padding-left: 48px; }
+}

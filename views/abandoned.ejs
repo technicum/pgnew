@@ -33,19 +33,19 @@
       </div>
     </header>
 
-    <div class="mx-auto max-w-[1100px] px-4 py-7 md:px-8 md:py-9">
+    <div class="mx-auto px-4 py-7 md:px-8 md:py-9 od-page ab-page">
 
       <section>
-        <p class="text-sm font-semibold text-primary">Sales</p>
+        <p class="cp-eyebrow">Sales</p>
         <h1 class="mt-1 text-3xl font-extrabold md:text-4xl">Abandoned carts</h1>
-        <p class="mt-2 text-sm text-muted-foreground">People who started paying for something — a payment page, a course or a booking — and didn’t finish within <%= abandonedAfter %> minutes. A friendly nudge brings a lot of them back.</p>
+        <p class="cp-lede">People who started paying for something — a payment page, a course or a booking — and didn’t finish within <%= abandonedAfter %> minutes. A friendly nudge brings a lot of them back.</p>
       </section>
 
-      <section class="pp-order-stats" aria-label="Totals">
-        <div class="pp-order-stat"><p>Abandoned carts</p><strong><%= ab.carts.length %></strong></div>
-        <div class="pp-order-stat"><p>Value left behind</p><strong><%= formatINR(ab.total) %></strong></div>
-        <div class="pp-order-stat"><p>Not contacted yet</p><strong id="statWaiting"><%= ab.waiting %></strong></div>
-        <div class="pp-order-stat"><p>Recovered after a follow-up</p><strong><%= recovered.count %></strong><small class="ab-stat-sub"><%= recovered.count ? formatINR(recovered.value) + ' in carts won back' : 'buyers who paid after you reached out' %></small></div>
+      <section class="od-stats" aria-label="Totals">
+        <div class="od-stat"><p>Abandoned carts</p><strong><%= ab.carts.length %></strong></div>
+        <div class="od-stat"><p>Value left behind</p><strong><%= formatINR(ab.total) %></strong></div>
+        <div class="od-stat"><p>Not contacted yet</p><strong id="statWaiting"><%= ab.waiting %></strong></div>
+        <div class="od-stat"><p>Recovered after a follow-up</p><strong><%= recovered.count %></strong><small class="ab-stat-sub"><%= recovered.count ? formatINR(recovered.value) + ' in carts won back' : 'buyers who paid after you reached out' %></small></div>
       </section>
 
       <%- include('partials/abandoned-carts', { ab: ab, kindFilter: true, composeOpen: true, title: 'Carts' }) %>
