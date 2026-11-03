@@ -69,7 +69,7 @@ const { APPS, APP_BY_ID, visibleApps, installedApps, setAppInstalled, appForPath
 const { listOrders, orderStatsByPage, pageAnalytics, getOrder, markOrderPaid, markOrderShipped, cancelOrder } = require('./lib/orders');
 const { paymentMode, handleCashfreeWebhook, handleRazorpayWebhook, loadGatewaySettings } = require('./lib/payments');
 const { listItems, TYPES: MARKET_TYPES } = require('./lib/marketplace');
-const { isAdminAccount } = require('./lib/platform');
+const { isAdminAccount, getFees } = require('./lib/platform');
 const { installStorefront } = require('./lib/storefront');
 const { installAppDashboards } = require('./lib/appDashboard');
 const { PLATFORMS: SOCIAL_PLATFORMS, normalizeSocials } = require('./lib/socials');
@@ -87,6 +87,8 @@ const { installBranding } = require('./lib/branding');
 const { installSettings } = require('./lib/settings');
 const { installInstagramRoutes } = require('./routes/instagram');
 const { installAutoDm, installAutoDmWebhooks } = require('./lib/autodm');
+const { installWcApi } = require('./lib/wooCommerce');
+const { pluginZip } = require('./lib/pluginZip');
 
 const app = express();
 // Falls back to 3000 when PORT isn't set in the environment (e.g. local dev
@@ -112,6 +114,8 @@ app.post('/webhooks/cashfree', (req, res, next) => handleCashfreeWebhook(req, re
 app.post('/webhooks/razorpay', (req, res, next) => handleRazorpayWebhook(req, res).catch(next));
 // Instagram comments and Meta's removal callbacks (lib/autodm.js) — signed, no session needed.
 installAutoDmWebhooks(app);
+// The PageZaper Pay WordPress plugin's API (lib/wooCommerce.js) — API-key auth, no session.
+installWcApi(app);
 
 app.use(session({
   // Falls back to a fixed dev secret so `node server.js` works with no
@@ -230,6 +234,32 @@ app.get('/about', async (req, res, next) => {
   }
 });
 
+// PageZaper Pay for WooCommerce (views/woocommerce.ejs): what it is, how
+// the split works, and the plugin download (lib/pluginZip.js).
+app.get('/woocommerce', async (req, res, next) => {
+  try {
+    const seo = await metaFor('woocommerce', { siteName: SITE_NAME, origin: originOf(req) });
+    const [{ version }, fees] = await Promise.all([pluginZip(), getFees()]);
+    res.render('woocommerce', { title: seo.title, seo, version, feePct: fees.direct_pct });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/woocommerce/pagezaper-pay.zip', async (req, res, next) => {
+  try {
+    const { zip, filename } = await pluginZip();
+    res.set({
+      'content-type': 'application/zip',
+      'content-disposition': `attachment; filename="${filename}"`,
+      'cache-control': 'public, max-age=300',
+    });
+    res.send(zip);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // User Data Protection & Deletion (views/user-data-protection.ejs).
 app.get('/user-data-protection', async (req, res, next) => {
   try {
@@ -332,7 +362,7 @@ app.get('/sitemap.xml', async (req, res, next) => {
   try {
     const origin = originOf(req);
     const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-    const urls = ['/', '/explore', '/about', '/blog', '/privacy-policy', '/terms-of-service', '/user-data-protection'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
+    const urls = ['/', '/explore', '/about', '/woocommerce', '/blog', '/privacy-policy', '/terms-of-service', '/user-data-protection'].map((u) => `<url><loc>${esc(origin + u)}</loc></url>`);
     (await blog.sitemapPosts()).forEach((p) => {
       urls.push(`<url><loc>${esc(`${origin}/blog/${p.slug}`)}</loc><lastmod>${new Date(p.updated_at).toISOString().slice(0, 10)}</lastmod></url>`);
     });

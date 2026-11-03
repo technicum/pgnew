@@ -37,6 +37,7 @@ var svg = function (paths) { return '<svg viewBox="0 0 24 24" width="22" height=
         <a href="/explore">Explore</a>
         <a href="/blog">Blog</a>
         <a href="/about" aria-current="page">About</a>
+        <a href="/woocommerce">WooCommerce</a>
         <% if (currentUser) { %><a class="mk-cta" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Log in</a><a class="mk-cta" href="/signup">Start selling</a><% } %>
       </nav>
     </div>
@@ -110,7 +111,7 @@ var svg = function (paths) { return '<svg viewBox="0 0 24 24" width="22" height=
 
   <footer class="mk-footer">
     <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="mailto:<%= contact.email %>">Contact</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="mailto:<%= contact.email %>">Contact</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
   </footer>
 </body>
 </html>

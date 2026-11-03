@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<%- include('partials/seo-meta') %>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/explore.css?v=<%= assetVersion %>" />
+<link rel="stylesheet" href="/css/about.css?v=<%= assetVersion %>" />
+</head>
+<%# PageZaper Pay for WooCommerce (server.js GET /woocommerce): what the plugin does, how the Razorpay Route split
+    works, setup steps, and the download (GET /woocommerce/pagezaper-pay.zip, built by lib/pluginZip.js from
+    wordpress/pagezaper-pay). Same building blocks as About (explore.css + about.css). feePct is the platform's
+    direct-sale rate from /admin/fees — a creator's plan can set its own. %>
+<%
+var svg = function (paths) { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>'; };
+var setupHref = currentUser ? '/dashboard/settings/payouts' : '/signup';
+var example = 100000; // ₹1,000 in paise
+var exampleFee = Math.round(example * feePct / 100);
+var rupees = function (paise) { return '₹' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: paise % 100 ? 2 : 0, maximumFractionDigits: 2 }); };
+var features = [
+  { icon: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/>', title: 'Every way India pays', text: 'UPI, cards, net banking and wallets on Razorpay’s secure checkout — on the classic WooCommerce checkout and the new block checkout.' },
+  { icon: '<path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.2-2.8L3 3"/><path d="m15 9 6-6"/>', title: 'Automatic split payouts', text: 'Each sale is split by Razorpay Route the moment it’s captured: your share goes to your bank, PageZaper’s fee stays with PageZaper. No invoices, no manual payouts.' },
+  { icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>', title: 'Verified, not trusted', text: 'An order is only marked paid after PageZaper checks the payment with Razorpay directly — for that order, at that amount. A tampered browser can’t fake a sale.' },
+  { icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>', title: 'Minutes to set up', text: 'Verify your business once in PageZaper, paste one API key into WordPress, and you’re taking payments.' },
+  { icon: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>', title: 'A key per site', text: 'Every WordPress site gets its own API key. Revoke one from your dashboard and that site stops taking payments at once.' },
+  { icon: '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>', title: 'No monthly fee', text: 'You pay PageZaper’s fee on what you sell — nothing when you don’t.' },
+];
+var steps = [
+  { title: 'Verify your business', text: 'In PageZaper, open Settings → Payouts and enter your business details, PAN and bank account. Razorpay verifies them, usually within a day or two.' },
+  { title: 'Create an API key', text: 'Under Connected WordPress sites, enter your store’s address and press Create API key. Copy it — it’s shown once.' },
+  { title: 'Install the plugin', text: 'Download PageZaper Pay below. In WordPress, go to Plugins → Add New → Upload Plugin, choose the zip, then Activate.' },
+  { title: 'Paste the key', text: 'In WooCommerce → Settings → Payments → PageZaper Pay, enable it and paste your key. Buyers see it at checkout straight away.' },
+];
+%>
+<body class="mk-page">
+  <%- include('partials/mk-nav', { active: 'woocommerce' }) %>
+
+  <section class="mk-hero">
+    <div class="mk-hero-glow" aria-hidden="true"></div>
+    <div class="mk-hero-in">
+      <span class="mk-pill">✦ PageZaper Pay for WooCommerce</span>
+      <h1>Payments for your WordPress store, <em>paid out automatically.</em></h1>
+      <p>Take UPI, card, net banking and wallet payments on WooCommerce through Razorpay. Every sale is split for you — your share lands in your bank, with nothing to reconcile.</p>
+      <div class="ab-hero-actions">
+        <a class="mk-btn mk-btn-lime" href="/woocommerce/pagezaper-pay.zip" download>Download the plugin<%= version ? ' · v' + version : '' %></a>
+        <a class="ab-ghost" href="#setup">How to set it up</a>
+      </div>
+    </div>
+  </section>
+
+  <main class="ab-main">
+    <section class="ab-section">
+      <div class="ab-head">
+        <span class="ab-kicker">What you get</span>
+        <h2>A checkout your buyers trust, <em>payouts you don’t chase.</em></h2>
+        <p>PageZaper Pay is a WooCommerce payment gateway that runs on PageZaper’s Razorpay account. You don’t need a Razorpay account of your own — just a verified payout account in PageZaper.</p>
+      </div>
+      <div class="ab-grid">
+        <% features.forEach(function (f) { %>
+        <article class="ab-card">
+          <span class="ab-icon"><%- svg(f.icon) %></span>
+          <h3><%= f.title %></h3>
+          <p><%= f.text %></p>
+        </article>
+        <% }) %>
+      </div>
+    </section>
+
+    <section class="ab-section">
+      <div class="ab-head">
+        <span class="ab-kicker">How the split works</span>
+        <h2>One payment, <em>two destinations.</em></h2>
+        <p>When a buyer pays <%= rupees(example) %>, Razorpay sends <b><%= rupees(example - exampleFee) %></b> to your linked account and keeps <b><%= rupees(exampleFee) %></b> in PageZaper’s — the <%= feePct %>% direct-sale fee. Your plan may have its own rate; you’ll see it in your dashboard. Razorpay then settles your share to your bank on its usual schedule.</p>
+      </div>
+    </section>
+
+    <section class="ab-section" id="setup">
+      <div class="ab-head">
+        <span class="ab-kicker">Set up</span>
+        <h2>Live in <em>four steps.</em></h2>
+        <p>Your store’s currency needs to be Indian Rupees (INR). WordPress 6.0+, WooCommerce 7.0+ and PHP 7.4+.</p>
+      </div>
+      <div class="ab-grid">
+        <% steps.forEach(function (s, i) { %>
+        <article class="ab-card">
+          <span class="ab-icon" aria-hidden="true"><b><%= i + 1 %></b></span>
+          <h3><%= s.title %></h3>
+          <p><%= s.text %></p>
+        </article>
+        <% }) %>
+      </div>
+      <div class="ab-hero-actions" style="margin-top:28px">
+        <a class="mk-btn mk-btn-lime" href="/woocommerce/pagezaper-pay.zip" download>Download PageZaper Pay<%= version ? ' v' + version : '' %> (.zip)</a>
+        <a class="ab-ghost" href="<%= setupHref %>"><%= currentUser ? 'Set up payouts →' : 'Create your PageZaper account →' %></a>
+      </div>
+    </section>
+  </main>
+
+  <section class="mk-sell">
+    <div>
+      <span class="mk-pill mk-pill-dark">For WooCommerce stores</span>
+      <h2>Start <em>getting paid</em> on WordPress.</h2>
+      <p>Verify your business once, connect your store, and every sale pays out on its own.</p>
+    </div>
+    <a class="mk-btn mk-btn-lime" href="<%= setupHref %>"><%= currentUser ? 'Set up payouts →' : 'Start for free →' %></a>
+  </section>
+
+  <footer class="mk-footer">
+    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
+    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
+  </footer>
+</body>
+</html>

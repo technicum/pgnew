@@ -1,0 +1,164 @@
+<%# Settings → Payouts (lib/settings.js → /dashboard/settings/payouts): the creator's Razorpay Route Linked
+    Account (lib/linkedAccounts.js) — what their connected WordPress store's sales are paid out to. The status
+    shown comes from Razorpay's API, never from this form. Split payments only go to an activated account. %>
+<%- include('partials/app-dash-top', { navActive: '/dashboard/settings', section: 'Account', heading: 'Payouts', back: { href: '/dashboard/settings', label: 'Settings' }, intro: 'Get paid for sales on your WordPress / WooCommerce store. Razorpay verifies your business once, then each sale is split automatically: your share goes to your bank, PageZaper’s fee stays with PageZaper.' }) %>
+
+<%
+var STATUS = {
+  pending: { label: 'Verification pending', text: 'Razorpay is checking your details. This usually takes a day or two — we’ll update this page as soon as they’re done.' },
+  needs_info: { label: 'Needs more information', text: 'Razorpay needs a few more details before it can activate your account. Fix them below and send the form again.' },
+  activated: { label: 'Active', text: 'Your payout account is active. Sales on your connected WordPress stores are paid out to your bank.' },
+};
+var v = function (name) {
+  if (form[name] !== undefined) return form[name];
+  if (!account) return '';
+  var a = account.address || {};
+  var fromAccount = { legal_business_name: account.legal_business_name, business_type: account.business_type, subcategory: account.subcategory,
+    contact_name: account.contact_name, phone: account.phone, gst: account.gst, website: account.website, ifsc: account.ifsc,
+    street1: a.street1, street2: a.street2, city: a.city, state: a.state, postal_code: a.postal_code };
+  return fromAccount[name] || '';
+};
+%>
+
+<% if (!mode) { %>
+<section class="ax-panel">
+  <p class="ax-empty">Payouts aren’t available yet — they’re still being set up on our side.</p>
+</section>
+<% } else { %>
+
+<% if (mode === 'test') { %><div class="ax-flash ax-flash-error" role="note">Test mode: this account is made on PageZaper’s Razorpay test keys. Nothing here moves real money.</div><% } %>
+
+<% if (account && account.account_id) { var st = STATUS[account.status] || STATUS.pending; %>
+<section class="ax-panel" id="status">
+  <div class="ax-panel-head"><h2>Status</h2><span class="ax-count"><%= account.account_id %></span></div>
+  <div class="ax-row">
+    <div class="ax-main">
+      <span class="ax-title"><%= st.label %></span>
+      <span class="ax-sub ax-block"><%= st.text %></span>
+      <% if (account.rz_status === 'suspended') { %><span class="ax-sub ax-block">Razorpay has suspended this account. Email <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a> and we’ll help sort it out.</span><% } %>
+      <span class="ax-sub ax-block">Pays out to the account ending <%= account.bank_last4 %> (<%= account.ifsc %>).<% if (account.checked_at) { %> Last checked <%= new Date(account.checked_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) %>.<% } %></span>
+    </div>
+    <% if (account.status !== 'activated') { %>
+    <form method="POST" action="/dashboard/settings/payouts/check"><button class="ax-btn">Check status</button></form>
+    <% } %>
+  </div>
+  <% if (account.requirements && account.requirements.length) { %>
+  <div class="ax-pad">
+    <p class="ax-sub" style="margin:0 0 8px">Razorpay is asking for:</p>
+    <ul style="margin:0;padding-left:18px">
+      <% account.requirements.forEach(function (r) { %>
+      <li><%= (r.field || 'details').replace(/_/g, ' ') %><% if (r.reason) { %> — <%= r.reason.replace(/_/g, ' ') %><% } %><% if (r.url) { %> · <a href="<%= r.url %>" target="_blank" rel="noopener">fix on Razorpay ↗</a><% } %></li>
+      <% }) %>
+    </ul>
+  </div>
+  <% } %>
+</section>
+<% } %>
+
+<% if (!account || account.status !== 'activated') { %>
+<form method="POST" action="/dashboard/settings/payouts" autocomplete="off">
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Your business</h2></div>
+    <div class="adm-form ax-pad" style="display:flex;flex-direction:column;gap:14px;max-width:620px">
+      <label class="ax-field"><span>Legal business name</span>
+        <input class="ax-input" name="legal_business_name" value="<%= v('legal_business_name') %>" maxlength="200" required placeholder="As on your PAN or registration" /></label>
+      <label class="ax-field"><span>Business type</span>
+        <select class="ax-input" name="business_type" required>
+          <option value="">Choose…</option>
+          <% Object.keys(businessTypes).forEach(function (k) { %><option value="<%= k %>"<%= v('business_type') === k ? ' selected' : '' %>><%= businessTypes[k] %></option><% }) %>
+        </select></label>
+      <label class="ax-field"><span>What your store sells</span>
+        <select class="ax-input" name="subcategory" required>
+          <option value="">Choose…</option>
+          <% Object.keys(subcategories).forEach(function (k) { %><option value="<%= k %>"<%= v('subcategory') === k ? ' selected' : '' %>><%= subcategories[k] %></option><% }) %>
+        </select></label>
+      <label class="ax-field"><span>PAN</span>
+        <input class="ax-input" name="pan" value="<%= form.pan || '' %>" maxlength="10" required placeholder="ABCDE1234F" style="text-transform:uppercase" spellcheck="false" /></label>
+      <% if (account && account.pan_last4) { %><p class="ax-hint">Saved PAN ends <%= account.pan_last4 %> — enter it again to resend the form.</p><% } %>
+      <label class="ax-field"><span>GSTIN <small>(optional)</small></span>
+        <input class="ax-input" name="gst" value="<%= v('gst') %>" maxlength="15" placeholder="22ABCDE1234F1Z5" style="text-transform:uppercase" spellcheck="false" /></label>
+      <label class="ax-field"><span>Store website</span>
+        <input class="ax-input" type="url" name="website" value="<%= v('website') %>" maxlength="255" required placeholder="https://mystore.in" /></label>
+      <label class="ax-field"><span>Contact name</span>
+        <input class="ax-input" name="contact_name" value="<%= v('contact_name') || user.name %>" maxlength="120" required /></label>
+      <label class="ax-field"><span>Mobile number</span>
+        <input class="ax-input" type="tel" name="phone" value="<%= v('phone') %>" maxlength="14" required placeholder="98765 43210" /></label>
+    </div>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Registered address</h2></div>
+    <div class="adm-form ax-pad" style="display:flex;flex-direction:column;gap:14px;max-width:620px">
+      <label class="ax-field"><span>Address line 1</span>
+        <input class="ax-input" name="street1" value="<%= v('street1') %>" maxlength="100" required /></label>
+      <label class="ax-field"><span>Address line 2 <small>(optional)</small></span>
+        <input class="ax-input" name="street2" value="<%= v('street2') %>" maxlength="100" /></label>
+      <label class="ax-field"><span>City</span>
+        <input class="ax-input" name="city" value="<%= v('city') %>" maxlength="60" required /></label>
+      <label class="ax-field"><span>State</span>
+        <select class="ax-input" name="state" required>
+          <option value="">Choose…</option>
+          <% states.forEach(function (s) { %><option value="<%= s %>"<%= String(v('state')).toUpperCase() === s ? ' selected' : '' %>><%= s.toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }) %></option><% }) %>
+        </select></label>
+      <label class="ax-field"><span>PIN code</span>
+        <input class="ax-input" name="postal_code" value="<%= v('postal_code') %>" maxlength="6" inputmode="numeric" required /></label>
+    </div>
+  </section>
+
+  <section class="ax-panel">
+    <div class="ax-panel-head"><h2>Bank account</h2></div>
+    <div class="adm-form ax-pad" style="display:flex;flex-direction:column;gap:14px;max-width:620px">
+      <label class="ax-field"><span>Account holder name</span>
+        <input class="ax-input" name="beneficiary_name" value="<%= form.beneficiary_name || '' %>" maxlength="120" required /></label>
+      <label class="ax-field"><span>Account number</span>
+        <input class="ax-input" name="account_number" maxlength="22" inputmode="numeric" required /></label>
+      <label class="ax-field"><span>Confirm account number</span>
+        <input class="ax-input" name="account_number_confirm" maxlength="22" inputmode="numeric" required /></label>
+      <label class="ax-field"><span>IFSC</span>
+        <input class="ax-input" name="ifsc" value="<%= v('ifsc') %>" maxlength="11" required placeholder="HDFC0001234" style="text-transform:uppercase" spellcheck="false" /></label>
+      <p class="ax-hint">Sent straight to Razorpay. PageZaper keeps only the last four digits of your account number and PAN.</p>
+      <label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" name="tnc" value="1" required />
+        <span>I agree to Razorpay’s <a href="https://razorpay.com/terms/" target="_blank" rel="noopener">terms</a> for Route linked accounts, and confirm these details are correct.</span></label>
+      <div><button class="ax-btn ax-btn-primary"><%= account && account.account_id ? 'Send to Razorpay again' : 'Send to Razorpay' %></button></div>
+    </div>
+  </section>
+</form>
+<% } %>
+
+<section class="ax-panel" id="sites">
+  <div class="ax-panel-head"><h2>Connected WordPress sites</h2><span class="ax-count"><%= sites.length %>/<%= maxSites %></span></div>
+  <% if (newKey) { %>
+  <div class="ax-pad" style="display:flex;flex-direction:column;gap:8px">
+    <div class="ax-flash ax-flash-ok" role="status">API key for <b><%= newKey.site.label %></b> — copy it now. It won’t be shown again.</div>
+    <input class="ax-input" value="<%= newKey.key %>" readonly onclick="this.select()" spellcheck="false" style="font-family:monospace" />
+    <p class="ax-hint">In WordPress: WooCommerce → Settings → Payments → PageZaper Pay, paste this key and save.</p>
+  </div>
+  <% } %>
+  <% if (!account || account.status !== 'activated') { %>
+  <p class="ax-hint ax-pad" style="margin:0">You can connect a site now. It starts taking payments once Razorpay activates your payout account.</p>
+  <% } %>
+  <% sites.forEach(function (s) { %>
+  <div class="ax-row">
+    <div class="ax-main">
+      <span class="ax-title"><%= s.label %></span>
+      <span class="ax-sub ax-block"><%= s.site_url %> · key ends <%= s.key_last4 %> · <%= s.last_used_at ? 'last used ' + new Date(s.last_used_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' }) : 'not used yet' %></span>
+    </div>
+    <form method="POST" action="/dashboard/settings/payouts/sites/<%= s.id %>/revoke">
+      <button class="ax-btn ax-btn-danger" data-confirm="Revoke this key? <%= s.label %> will stop taking payments through PageZaper.">Revoke key</button>
+    </form>
+  </div>
+  <% }) %>
+  <% if (sites.length < maxSites) { %>
+  <form class="ax-pad" method="POST" action="/dashboard/settings/payouts/sites" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <label class="ax-field" style="flex:1 1 220px"><span>Site address</span>
+      <input class="ax-input" type="url" name="site_url" required placeholder="https://mystore.in" /></label>
+    <label class="ax-field" style="flex:1 1 180px"><span>Name <small>(optional)</small></span>
+      <input class="ax-input" name="label" maxlength="80" placeholder="My store" /></label>
+    <button class="ax-btn ax-btn-primary">Create API key</button>
+  </form>
+  <% } %>
+  <p class="ax-hint ax-pad" style="margin:0">Don’t have the plugin yet? <a href="/woocommerce">Download PageZaper Pay for WooCommerce</a>.</p>
+</section>
+<% } %>
+
+<%- include('partials/app-dash-bottom') %>

@@ -1,4 +1,4 @@
-<%# The main site's header on the marketplace-styled pages (explore.css). Pass active: 'explore' | 'blog' | 'about'. %>
+<%# The main site's header on the marketplace-styled pages (explore.css). Pass active: 'explore' | 'blog' | 'about' | 'woocommerce'. %>
 <header class="mk-nav">
   <div class="mk-nav-in">
     <a class="mk-brand" href="/"><%- include('brand-mk') %></a>
@@ -6,6 +6,7 @@
       <a href="/explore"<%- active === 'explore' ? ' aria-current="page"' : '' %>>Explore</a>
       <a href="/blog"<%- active === 'blog' ? ' aria-current="page"' : '' %>>Blog</a>
       <a href="/about"<%- active === 'about' ? ' aria-current="page"' : '' %>>About</a>
+      <a href="/woocommerce"<%- active === 'woocommerce' ? ' aria-current="page"' : '' %>>WooCommerce</a>
       <% if (currentUser) { %><a class="mk-cta" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Log in</a><a class="mk-cta" href="/signup">Start selling</a><% } %>
     </nav>
   </div>
