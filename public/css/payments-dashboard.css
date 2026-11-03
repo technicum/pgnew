@@ -699,7 +699,8 @@ textarea.pb-prod-desc { margin-bottom: 10px; height: auto; padding: 8px 11px; re
 /* ---------- Coupons page (views/coupons.ejs, public/js/coupons.js) ----------
    Icon stat strip, a "New coupon" card with one boxed Code / Discount row and
    the optional limits tucked under a disclosure, then the list card. */
-.cp-page { --cp-radius: 20px; }
+/* 720px content column + the 2rem side padding (the prebuilt Tailwind has no max-w-[…] for this). */
+.cp-page { --cp-radius: 20px; width: 100%; max-width: calc(720px + 4rem); margin-inline: auto; }
 .cp-eyebrow { font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); }
 .cp-lede { max-width: 62ch; margin-top: 10px; font-size: .9rem; line-height: 1.6; color: var(--muted-foreground); }
 .cp-lede a { color: var(--primary); font-weight: 600; text-decoration: none; }
