@@ -26,10 +26,10 @@
   <div class="announcement">✦ Launch your creator business in minutes <% if (signedIn) { %><a href="/dashboard">Go to dashboard →</a><% } else { %><a href="/signup">Start free →</a><% } %></div>
   <header class="nav">
     <a class="brand" href="#top"><%- include('partials/brand-mk') %></a>
-    <nav class="navlinks" aria-label="Main navigation"><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
+    <nav class="navlinks" aria-label="Main navigation"><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a></nav>
     <div class="actions"><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard →</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free →</a><% } %></div>
     <button class="menu" type="button" aria-label="Toggle menu" aria-expanded="false">☰</button>
-    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free</a><% } %></nav>
+    <nav class="mobile-nav" aria-label="Mobile navigation"><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><% if (signedIn) { %><a class="btn btn-blue" href="/dashboard">Dashboard</a><% } else { %><a href="/login">Sign in</a><a class="btn btn-blue" href="/signup">Start for free</a><% } %></nav>
   </header>
 
   <main>
@@ -71,7 +71,7 @@
     <section class="cta" id="start"><span class="kicker">Your audience is already waiting</span><h2>Make your next click<br><em>count.</em></h2><p>Start free. Build in minutes. Grow on your terms.</p><a class="btn btn-white" href="<%= signedIn ? '/dashboard' : '/signup' %>"><%= signedIn ? 'Go to your dashboard →' : 'Start building for free →' %></a></section>
   </main>
 
-  <footer class="footer wrap"><div><a class="brand" href="#top"><%- include('partials/brand-mk') %></a><p>The simpler way to grow and monetize your audience.</p></div><nav><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav><div class="legal"><span>© <%= new Date().getFullYear() %> <%= siteName %>. All rights reserved.</span><span>Made for creators everywhere.</span></div></footer>
+  <footer class="footer wrap"><div><a class="brand" href="#top"><%- include('partials/brand-mk') %></a><p>The simpler way to grow and monetize your audience.</p></div><nav><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav><div class="legal"><span>© <%= new Date().getFullYear() %> <%= siteName %>. All rights reserved.</span><span>Made for creators everywhere.</span></div></footer>
 
   <script>
     const button = document.querySelector('.menu');
