@@ -86,7 +86,7 @@ const { installGoogleAuth } = require('./lib/googleAuth');
 const { installBranding } = require('./lib/branding');
 const { installSettings } = require('./lib/settings');
 const { installInstagramRoutes } = require('./routes/instagram');
-const { installAutoDm, installAutoDmWebhooks } = require('./lib/autodm');
+const { installAutoDm, installAutoDmWebhooks, instagramWebhookBody } = require('./lib/autodm');
 const { installWcApi } = require('./lib/wooCommerce');
 const { pluginZip } = require('./lib/pluginZip');
 
@@ -106,6 +106,9 @@ app.use(express.urlencoded({ extended: true }));
 // The store builder's draft and its preview carry the whole page (up to
 // lib/storeDraft.js MAX_BLOCKS blocks), so they get more room than 100 kB.
 app.use(['/dashboard/builder/draft', '/dashboard/builder/preview'], express.json({ limit: '1mb' }));
+// Instagram's webhook needs the exact raw bytes for X-Hub-Signature-256, so it
+// is read raw here, before express.json can touch it (lib/autodm.js).
+app.post('/webhooks/instagram', instagramWebhookBody);
 app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Cashfree payment events (lib/payments.js) — signed, no session needed.
