@@ -1,6 +1,7 @@
-// Subscribes every connected Instagram account to the app's webhooks
-// (POST /{ig-user-id}/subscribed_apps?subscribed_fields=comments,messages on
-// graph.facebook.com) and prints what Meta has for each afterwards. Accounts
+// Subscribes every connected Instagram account to the app's webhooks:
+// GET /{ig-user-id}/subscribed_apps, then POST it with
+// subscribed_fields=comments,messages on graph.facebook.com, then GET again,
+// printing Meta's response to each. Accounts
 // connected before the connect flow did this need it once.
 //
 //   node scripts/ig-subscribe.js            subscribe + print every account
@@ -33,18 +34,23 @@ async function main() {
       console.error('  ✗ cannot decrypt the stored token (TOKEN_ENC_KEY changed?) — the account must reconnect.');
       continue;
     }
-    if (!checkOnly) {
-      try {
-        const sub = await ig.subscribeToComments(token, row.ig_user_id);
-        console.log(`  ✓ subscribed_fields=${sub.fields} →`, show(sub.response));
-      } catch (err) {
-        console.error('  ✗ subscribe failed:', err.message, show(err.meta));
-      }
+    try {
+      console.log('  GET subscribed_apps (before):', show(await ig.getSubscribedApps(token, row.ig_user_id)));
+    } catch (err) {
+      console.error('  ✗ GET subscribed_apps failed:', err.message, show(err.meta));
+    }
+    if (checkOnly) continue;
+    try {
+      const sub = await ig.subscribeToComments(token, row.ig_user_id);
+      console.log(`  ✓ POST subscribed_apps?subscribed_fields=${sub.fields} →`, show(sub.response));
+    } catch (err) {
+      console.error('  ✗ POST subscribed_apps failed:', err.message, show(err.meta));
+      continue;
     }
     try {
-      console.log('  subscribed_apps:', show(await ig.getSubscribedApps(token, row.ig_user_id)));
+      console.log('  GET subscribed_apps (after):', show(await ig.getSubscribedApps(token, row.ig_user_id)));
     } catch (err) {
-      console.error('  ✗ reading subscribed_apps failed:', err.message, show(err.meta));
+      console.error('  ✗ GET subscribed_apps failed:', err.message, show(err.meta));
     }
   }
 }
