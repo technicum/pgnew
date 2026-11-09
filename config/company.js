@@ -3,6 +3,7 @@
 // view (footer, legal pages, About, homepage JSON-LD) and lib/seo.js uses it
 // for default meta text. Change the address or name here only.
 // These must match the Meta Business verification / Udyam registration exactly.
+// Last reviewed: 9 November 2026.
 const address = {
   street: '58/3 City Court',
   locality: 'Zirakpur',
