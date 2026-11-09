@@ -112,9 +112,6 @@ var TAB_ICONS = {
     <a class="mk-btn mk-btn-lime" href="<%= currentUser ? '/dashboard' : '/signup' %>"><%= currentUser ? 'Go to dashboard →' : 'Start selling →' %></a>
   </section>
 
-  <footer class="mk-footer">
-    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="/signup">Sell on <%= siteName %></a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
-  </footer>
+  <%- include('partials/mk-footer') %>
 </body>
 </html>

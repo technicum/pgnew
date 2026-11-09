@@ -16,9 +16,9 @@
 
   <main class="lg-main">
     <h1>Terms of Service</h1>
-    <div class="lg-meta">Effective date: 1 November 2026 &nbsp;·&nbsp; Last updated: 1 November 2026</div>
+    <div class="lg-meta">Effective date: 1 November 2026 &nbsp;·&nbsp; Last updated: 9 November 2026</div>
 
-    <p>These Terms of Service (“<strong>Terms</strong>”) are an agreement between you and PageZaper (“<strong>PageZaper</strong>”, “<strong>we</strong>”, “<strong>us</strong>” or “<strong>our</strong>”). They govern your use of <a href="https://pagezaper.com/">pagezaper.com</a>, creator pages hosted on pagezaper.com subdomains or connected custom domains, and all related tools and services (together, the “<strong>Services</strong>”).</p>
+    <p><%= company.product %> is a product owned and operated by <%= company.name %>, a <%= company.type.toLowerCase() %> registered in India. These Terms of Service (“<strong>Terms</strong>”) are an agreement between you and <%= company.name %>, trading as <%= company.product %> (“<strong>PageZaper</strong>”, “<strong>we</strong>”, “<strong>us</strong>” or “<strong>our</strong>”). They govern your use of <a href="https://pagezaper.com/">pagezaper.com</a>, creator pages hosted on pagezaper.com subdomains or connected custom domains, and all related tools and services (together, the “<strong>Services</strong>”).</p>
     <p>By creating an account, buying from a creator page or otherwise using the Services, you agree to these Terms and to our <a href="/privacy-policy">Privacy Policy</a>. If you do not agree, do not use the Services.</p>
 
     <nav class="lg-toc" aria-label="Contents">
@@ -47,6 +47,7 @@
 
     <h2 id="definitions">1. Definitions</h2>
     <ul>
+      <li><strong>PageZaper</strong>, “<strong>we</strong>”, “<strong>us</strong>” or “<strong>our</strong>”: <%= company.name %>, a <%= company.type.toLowerCase() %> registered in India (proprietor <%= company.proprietor %>) with its address at <%= company.addressLine %>, trading as <%= company.product %>. <%= company.name %> is the contracting party under these Terms.</li>
       <li><strong>Creator</strong>: anyone who signs up for a PageZaper account to build a page, sell offerings, take bookings or use our automation tools.</li>
       <li><strong>Customer</strong>: anyone who visits a Creator’s page, buys an offering, books a session, joins a membership or submits a form.</li>
       <li><strong>Offering</strong>: anything a Creator lists through PageZaper, including digital products, courses, memberships, bookings, coaching sessions, event tickets and lead magnets.</li>
@@ -178,17 +179,11 @@
     <h2 id="contact">18. Contact &amp; grievance officer</h2>
     <p>For questions or complaints about these Terms or the Services, contact:</p>
     <p>
-      <strong>PageZaper</strong><br>
-      Grievance Officer: Abhishek Bhardwaj<br>
-      Email: <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a><br>
-      Address: 58/3 City Court, Zirakpur, Punjab, India
+      <%- include('partials/legal-contact') %>
     </p>
     <p>We aim to acknowledge complaints within 48 hours and resolve them within 30 days.</p>
   </main>
 
-  <footer class="mk-footer">
-    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
-  </footer>
+  <%- include('partials/mk-footer') %>
 </body>
 </html>

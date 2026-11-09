@@ -16,9 +16,9 @@
 
   <main class="lg-main">
     <h1>Privacy Policy</h1>
-    <div class="lg-meta">Effective date: 1 November 2026 &nbsp;·&nbsp; Last updated: 1 November 2026</div>
+    <div class="lg-meta">Effective date: 1 November 2026 &nbsp;·&nbsp; Last updated: 9 November 2026</div>
 
-    <p>This Privacy Policy explains how PageZaper (“<strong>PageZaper</strong>”, “<strong>we</strong>”, “<strong>us</strong>” or “<strong>our</strong>”) collects, uses, shares and protects personal information when you use our website at <a href="https://pagezaper.com/">pagezaper.com</a>, creator pages hosted on <em>*.pagezaper.com</em> or connected custom domains, and our related services (together, the “<strong>Services</strong>”).</p>
+    <p><%= company.product %> is a product owned and operated by <%= company.name %>, a <%= company.type.toLowerCase() %> registered in India (“<strong>PageZaper</strong>”, “<strong>we</strong>”, “<strong>us</strong>” or “<strong>our</strong>”). This Privacy Policy explains how PageZaper collects, uses, shares and protects personal information when you use our website at <a href="https://pagezaper.com/">pagezaper.com</a>, creator pages hosted on <em>*.pagezaper.com</em> or connected custom domains, and our related services (together, the “<strong>Services</strong>”).</p>
     <p>PageZaper helps creators, coaches, educators and local businesses (“<strong>Creators</strong>”) sell digital products, courses, memberships, bookings and event tickets, capture leads, and automate replies on Instagram (“<strong>AutoDM</strong>”). By using the Services, you agree to the practices described in this policy.</p>
 
     <nav class="lg-toc" aria-label="Contents">
@@ -178,17 +178,11 @@
     <h2 id="contact">15. Contact &amp; grievance officer</h2>
     <p>If you have questions, requests or complaints about this policy or your personal data, contact:</p>
     <p>
-      <strong>PageZaper</strong><br>
-      Grievance Officer: Abhishek Bhardwaj<br>
-      Email: <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a><br>
-      Address: 58/3 City Court, Zirakpur, Punjab, India
+      <%- include('partials/legal-contact') %>
     </p>
     <p>We aim to acknowledge requests within 48 hours and resolve them within 30 days.</p>
   </main>
 
-  <footer class="mk-footer">
-    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
-  </footer>
+  <%- include('partials/mk-footer') %>
 </body>
 </html>

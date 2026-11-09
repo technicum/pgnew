@@ -78,6 +78,7 @@ const { userMedia, deleteUserMedia } = require('./lib/adminMedia');
 const { installAdmin } = require('./lib/adminRoutes');
 const { startEmails, validUnsubscribe, unsubscribe, recordOpen } = require('./lib/emails');
 const { metaFor, googleTags } = require('./lib/seo');
+const COMPANY = require('./config/company');
 const blog = require('./lib/blog');
 const appIdeas = require('./lib/appIdeas');
 const { installLivePreview } = require('./lib/livePreview');
@@ -154,6 +155,7 @@ installGoogleAuth(app, { siteName: SITE_NAME });
 app.use((req, res, next) => {
   res.locals.siteName = SITE_NAME;
   res.locals.siteDomain = SITE_DOMAIN;
+  res.locals.company = COMPANY; // the business behind PageZaper (config/company.js)
   res.locals.currentUser = req.session.user || null;
   // A failed check only hides the admin link; /admin checks again itself.
   isAdminAccount(req.session.user).catch(() => false).then((admin) => {
@@ -263,8 +265,9 @@ app.get('/woocommerce/pagezaper-pay.zip', async (req, res, next) => {
   }
 });
 
-// User Data Protection & Deletion (views/user-data-protection.ejs).
-app.get('/user-data-protection', async (req, res, next) => {
+// User Data Protection & Deletion (views/user-data-protection.ejs). /data-deletion
+// serves the same page (footer link); its canonical URL stays /user-data-protection.
+app.get(['/user-data-protection', '/data-deletion'], async (req, res, next) => {
   try {
     const seo = await metaFor('deletion', { siteName: SITE_NAME, origin: originOf(req) });
     res.render('user-data-protection', { title: seo.title, seo });

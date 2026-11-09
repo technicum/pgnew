@@ -1,0 +1,5 @@
+<%# The footer on the marketplace-styled public pages (explore.css): the operating business (config/company.js via res.locals.company) and the legal links. Not used on creators' storefronts. %>
+<footer class="mk-footer">
+  <span>© <%= new Date().getFullYear() %> <%= siteName %> — a product of <%= company.name %></span>
+  <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/woocommerce">WooCommerce</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/data-deletion">Data Deletion</a><a href="mailto:<%= company.email %>">Contact</a></nav>
+</footer>

@@ -16,9 +16,9 @@
 
   <main class="lg-main">
     <h1>User Data Protection &amp; Deletion</h1>
-    <div class="lg-meta">Last updated: 1 November 2026</div>
+    <div class="lg-meta">Last updated: 9 November 2026</div>
 
-    <p>This page explains how PageZaper protects your data and how you can delete it, including data we receive when you connect Instagram or log in with Facebook. For full details on what we collect and why, read our <a href="/privacy-policy">Privacy Policy</a>.</p>
+    <p><%= company.product %> is a product owned and operated by <%= company.name %>, a <%= company.type.toLowerCase() %> registered in India. This page explains how PageZaper protects your data and how you can delete it, including data we receive when you connect Instagram or log in with Facebook. For full details on what we collect and why, read our <a href="/privacy-policy">Privacy Policy</a>.</p>
 
     <div class="lg-callout">
       <strong>In short:</strong> you can delete your data at any time. We never sell your data. When you ask us to delete it, we remove your account data, Instagram data and access tokens, and confirm by email within 30 days.
@@ -98,17 +98,11 @@
 
     <h2 id="contact">Contact &amp; grievance officer</h2>
     <p>
-      <strong>PageZaper</strong><br>
-      Grievance Officer: Abhishek Bhardwaj<br>
-      Email: <a href="mailto:hello@pagezaper.com">hello@pagezaper.com</a><br>
-      Address: 58/3 City Court, Zirakpur, Punjab, India
+      <%- include('partials/legal-contact') %>
     </p>
     <p>We aim to acknowledge requests within 48 hours and complete them within 30 days.</p>
   </main>
 
-  <footer class="mk-footer">
-    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
-  </footer>
+  <%- include('partials/mk-footer') %>
 </body>
 </html>

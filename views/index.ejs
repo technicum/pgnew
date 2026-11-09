@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <%- include('partials/seo-meta') %>
+  <%# Structured data: the business (config/company.js) and PageZaper as its software product. %>
+  <% var orgId = company.url + '/#organization'; var ld = { '@context': 'https://schema.org', '@graph': [
+    { '@type': 'Organization', '@id': orgId, name: company.name, legalName: company.legalName, url: company.url, email: company.email,
+      founder: { '@type': 'Person', name: company.proprietor },
+      address: Object.assign({ '@type': 'PostalAddress', streetAddress: company.address.street, addressLocality: company.address.locality, addressRegion: company.address.region, addressCountry: company.address.countryCode }, company.address.postalCode ? { postalCode: company.address.postalCode } : {}) },
+    { '@type': 'SoftwareApplication', name: company.product, url: company.url, applicationCategory: 'BusinessApplication', operatingSystem: 'Web',
+      publisher: { '@id': orgId }, provider: { '@id': orgId } },
+  ] }; %>
+  <script type="application/ld+json"><%- JSON.stringify(ld).replace(/</g, '\\u003c') %></script>
   <% if (!brandIcon) { %><link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTQiIGZpbGw9IiMxMjYxZWYiLz4KICA8cGF0aCBkPSJNMzYgOCAxNCAzNWgxNWwtMiAyMSAyMy0zMEgzNWwxLTE4WiIgZmlsbD0iI2ZmZiIvPgo8L3N2Zz4=" type="image/svg+xml"><% } %>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +80,7 @@
     <section class="cta" id="start"><span class="kicker">Your audience is already waiting</span><h2>Make your next click<br><em>count.</em></h2><p>Start free. Build in minutes. Grow on your terms.</p><a class="btn btn-white" href="<%= signedIn ? '/dashboard' : '/signup' %>"><%= signedIn ? 'Go to your dashboard →' : 'Start building for free →' %></a></section>
   </main>
 
-  <footer class="footer wrap"><div><a class="brand" href="#top"><%- include('partials/brand-mk') %></a><p>The simpler way to grow and monetize your audience.</p></div><nav><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav><div class="legal"><span>© <%= new Date().getFullYear() %> <%= siteName %>. All rights reserved.</span><span>Made for creators everywhere.</span></div></footer>
+  <footer class="footer wrap"><div><a class="brand" href="#top"><%- include('partials/brand-mk') %></a><p>The simpler way to grow and monetize your audience.</p></div><nav><a href="#tools">Tools</a><a href="#sell">Sell</a><a href="#stories">Stories</a><a href="#faq">FAQ</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/data-deletion">Data Deletion</a><a href="mailto:<%= company.email %>">Contact</a></nav><div class="legal"><span>© <%= new Date().getFullYear() %> <%= siteName %> — a product of <%= company.name %></span><span>Made for creators everywhere.</span></div></footer>
 
   <script>
     const button = document.querySelector('.menu');

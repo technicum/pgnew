@@ -74,6 +74,15 @@ var svg = function (paths) { return '<svg viewBox="0 0 24 24" width="22" height=
       </div>
     </section>
 
+    <section class="ab-section" id="who-we-are">
+      <div class="ab-head">
+        <span class="ab-kicker">Who we are</span>
+        <h2>Built by <em><%= company.name %>.</em></h2>
+        <p><%= siteName %> is built and operated by <%= company.name %>, an Indian software company (proprietor <%= company.proprietor %>) providing software publishing and development services since <%= company.since %>.</p>
+        <p><%= company.addressLine %><br>Email: <a href="mailto:<%= company.email %>"><%= company.email %></a></p>
+      </div>
+    </section>
+
     <section class="ab-section ab-founder" id="contact">
       <div class="ab-person">
         <span class="ab-avatar" aria-hidden="true">AB</span>
@@ -109,9 +118,6 @@ var svg = function (paths) { return '<svg viewBox="0 0 24 24" width="22" height=
     <a class="mk-btn mk-btn-lime" href="<%= currentUser ? '/dashboard' : '/signup' %>"><%= currentUser ? 'Go to dashboard →' : 'Start selling →' %></a>
   </section>
 
-  <footer class="mk-footer">
-    <span>© <%= new Date().getFullYear() %> <%= siteName %></span>
-    <nav><a href="/">Home</a><a href="/explore">Explore</a><a href="/blog">Blog</a><a href="/about">About</a><a href="/woocommerce">WooCommerce</a><a href="mailto:<%= contact.email %>">Contact</a><a href="/privacy-policy">Privacy Policy</a><a href="/terms-of-service">Terms of Service</a><a href="/user-data-protection">User Data Protection</a></nav>
-  </footer>
+  <%- include('partials/mk-footer') %>
 </body>
 </html>

@@ -1,0 +1,5 @@
+<%# The operator / grievance officer block on the legal pages, from config/company.js (res.locals.company). Goes inside a <p>. %>
+<strong><%= company.name %> (operator of <%= company.product %>)</strong><br>
+      Grievance Officer: <%= company.grievanceOfficer %><br>
+      Email: <a href="mailto:<%= company.email %>"><%= company.email %></a><br>
+      Address: <%= company.addressLine %>
